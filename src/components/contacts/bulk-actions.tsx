@@ -8,7 +8,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { StatusSelect } from "./status-select";
 import { toast } from "@/components/ui/use-toast";
 import { MoreHorizontal, Trash2 } from "lucide-react";
 import {
@@ -41,17 +40,19 @@ export function BulkActions({ selectedIds, onSuccess }: BulkActionsProps) {
           })
         )
       );
+
       toast({
         title: "Success",
         description: `Updated ${selectedIds.length} contacts`,
       });
       onSuccess();
-    } catch (error) {
+    } catch (error: unknown) { // Capture error and handle it if necessary
       toast({
         title: "Error",
         description: "Failed to update contacts",
         variant: "destructive",
       });
+      console.error("Failed to update contacts:", error); // Logging the error
     } finally {
       setLoading(false);
     }
@@ -67,18 +68,20 @@ export function BulkActions({ selectedIds, onSuccess }: BulkActionsProps) {
           })
         )
       );
+
       toast({
         title: "Success",
         description: `Deleted ${selectedIds.length} contacts`,
       });
       setDeleteDialogOpen(false);
       onSuccess();
-    } catch (error) {
+    } catch (error: unknown) { // Capture error and handle it if necessary
       toast({
         title: "Error",
         description: "Failed to delete contacts",
         variant: "destructive",
       });
+      console.error("Failed to delete contacts:", error); // Logging the error
     } finally {
       setLoading(false);
     }
@@ -93,11 +96,15 @@ export function BulkActions({ selectedIds, onSuccess }: BulkActionsProps) {
             Bulk Actions
           </Button>
         </DropdownMenuTrigger>
+
         <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            onSelect={() => setDeleteDialogOpen(true)}
-            className="text-red-600"
-          >
+          <DropdownMenuItem onSelect={() => updateStatus("active")}>
+            Activate
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => updateStatus("inactive")}>
+            Deactivate
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setDeleteDialogOpen(true)} className="text-red-600">
             <Trash2 className="h-4 w-4 mr-2" />
             Delete Selected
           </DropdownMenuItem>
@@ -113,18 +120,10 @@ export function BulkActions({ selectedIds, onSuccess }: BulkActionsProps) {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
-              disabled={loading}
-            >
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={loading}>
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={deleteContacts}
-              disabled={loading}
-            >
+            <Button variant="destructive" onClick={deleteContacts} disabled={loading}>
               {loading ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>

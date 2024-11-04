@@ -1,5 +1,4 @@
 import { SideNav } from "@/components/dashboard/side-nav";
-import { useSidebar } from "@/store/use-sidebar";
 
 export default function DashboardLayout({
   children,

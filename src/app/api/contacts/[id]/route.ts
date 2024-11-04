@@ -1,24 +1,26 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/db/prisma";
+import { authOptions } from "@/lib/auth/options";
 
-export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(req: Request) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    if (!params.id) {
+    // Extract `id` from the request URL
+    const url = new URL(req.url);
+    const id = url.pathname.split("/").pop();
+
+    if (!id) {
       return new NextResponse("Contact ID required", { status: 400 });
     }
 
     const contact = await prisma.contact.findUnique({
       where: {
-        id: params.id,
+        id,
       },
     });
 
@@ -29,20 +31,24 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(req: Request) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const url = new URL(req.url);
+    const id = url.pathname.split("/").pop();
+
+    if (!id) {
+      return new NextResponse("Contact ID required", { status: 400 });
     }
 
     const body = await req.json();
     const contact = await prisma.contact.update({
       where: {
-        id: params.id,
+        id,
       },
       data: {
         ...body,
@@ -57,19 +63,23 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(req: Request) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
+    const url = new URL(req.url);
+    const id = url.pathname.split("/").pop();
+
+    if (!id) {
+      return new NextResponse("Contact ID required", { status: 400 });
+    }
+
     await prisma.contact.delete({
       where: {
-        id: params.id,
+        id,
       },
     });
 

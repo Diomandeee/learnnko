@@ -1,4 +1,3 @@
-// src/components/contacts/data-table-loading.tsx
 export function DataTableLoading() {
     return (
       <div className="space-y-3">

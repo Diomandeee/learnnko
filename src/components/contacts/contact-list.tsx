@@ -1,8 +1,7 @@
-// src/components/contacts/contact-list.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-import { Contact } from "@/types/contacts";
+import { Contact } from "@/types/contacts"; // Ensure that Contact type includes necessary fields
 import {
   Table,
   TableBody,
@@ -22,18 +21,17 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-  MoreHorizontal, 
-  Mail, 
-  Pencil, 
-  Trash2, 
+import {
+  MoreHorizontal,
+  Mail,
+  Pencil,
+  Trash2,
   UserCheck,
   ChevronUp,
   ChevronDown,
-  Users,  
-  UserPlus, 
+  Users,
+  UserPlus,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 interface ContactListProps {
@@ -51,12 +49,18 @@ const statusColors = {
   LOST: "red",
 };
 
-export function ContactList({ searchQuery, statusFilter, sortOrder }: ContactListProps) {
-  const router = useRouter();
+export function ContactList({
+  searchQuery,
+  statusFilter,
+  sortOrder,
+}: ContactListProps) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
-  const [sortConfig, setSortConfig] = useState({
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof Contact;
+    direction: "asc" | "desc";
+  }>({
     key: "createdAt",
     direction: "desc",
   });
@@ -71,7 +75,8 @@ export function ContactList({ searchQuery, statusFilter, sortOrder }: ContactLis
 
         const response = await fetch(`/api/contacts?${queryParams}`);
         if (!response.ok) throw new Error("Failed to fetch contacts");
-        const data = await response.json();
+
+        const data: Contact[] = await response.json(); // Cast the response data to Contact[]
         setContacts(data);
       } catch (error) {
         console.error("Error fetching contacts:", error);
@@ -99,7 +104,7 @@ export function ContactList({ searchQuery, statusFilter, sortOrder }: ContactLis
     }
   };
 
-  const handleSort = (key: string) => {
+  const handleSort = (key: keyof Contact) => {
     setSortConfig({
       key,
       direction:
@@ -110,13 +115,20 @@ export function ContactList({ searchQuery, statusFilter, sortOrder }: ContactLis
   };
 
   const getSortedContacts = () => {
-    const sorted = [...contacts].sort((a: any, b: any) => {
-      if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === "asc" ? -1 : 1;
-      if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === "asc" ? 1 : -1;
+    return [...contacts].sort((a, b) => {
+      if (sortConfig.key && a[sortConfig.key] && b[sortConfig.key]) {
+        if (a[sortConfig.key]! < b[sortConfig.key]!) {
+          return sortConfig.direction === "asc" ? -1 : 1;
+        }
+        if (a[sortConfig.key]! > b[sortConfig.key]!) {
+          return sortConfig.direction === "asc" ? 1 : -1;
+        }
+      }
       return 0;
-    });
-    return sorted;
-  };
+    }
+    );
+  }
+
 
   if (loading) {
     return (
@@ -130,9 +142,7 @@ export function ContactList({ searchQuery, statusFilter, sortOrder }: ContactLis
     <div className="space-y-4">
       {selectedContacts.length > 0 && (
         <div className="bg-muted/50 p-4 rounded-lg flex items-center justify-between">
-          <p className="text-sm">
-            {selectedContacts.length} contact(s) selected
-          </p>
+          <p className="text-sm">{selectedContacts.length} contact(s) selected</p>
           <div className="flex gap-2">
             <Button size="sm" variant="outline">
               <Mail className="h-4 w-4 mr-2" />
@@ -193,7 +203,7 @@ export function ContactList({ searchQuery, statusFilter, sortOrder }: ContactLis
                 <TableCell>{contact.email}</TableCell>
                 <TableCell>{contact.company || "-"}</TableCell>
                 <TableCell>
-                  <Badge variant={statusColors[contact.status as keyof typeof statusColors] as any}>
+                  <Badge color={statusColors[contact.status as keyof typeof statusColors]}>
                     {contact.status}
                   </Badge>
                 </TableCell>
@@ -229,7 +239,7 @@ export function ContactList({ searchQuery, statusFilter, sortOrder }: ContactLis
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  </TableCell>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -260,18 +270,10 @@ export function ContactList({ searchQuery, statusFilter, sortOrder }: ContactLis
           Showing {contacts.length} of {contacts.length} contacts
         </p>
         <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={true} // Add pagination logic
-          >
+          <Button variant="outline" size="sm" disabled={true} /* Add pagination logic */>
             Previous
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={true} // Add pagination logic
-          >
+          <Button variant="outline" size="sm" disabled={true} /* Add pagination logic */>
             Next
           </Button>
         </div>

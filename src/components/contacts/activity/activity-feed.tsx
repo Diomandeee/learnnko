@@ -5,12 +5,16 @@ import { formatDistanceToNow } from "date-fns";
 import { ActivityIcon } from "./activity-icon";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+interface ActivityMetadata {
+  [key: string]: unknown; // You can be more specific about the key-value pairs as your app grows
+}
+
 interface Activity {
   id: string;
   type: string;
   description: string;
   createdAt: string;
-  metadata: any;
+  metadata: ActivityMetadata; // Updated metadata type
 }
 
 interface ActivityFeedProps {
@@ -46,10 +50,7 @@ export function ActivityFeed({ contactId }: ActivityFeedProps) {
     <ScrollArea className="h-[400px] pr-4">
       <div className="space-y-4">
         {activities.map((activity) => (
-          <div
-            key={activity.id}
-            className="flex items-start space-x-4 text-sm"
-          >
+          <div key={activity.id} className="flex items-start space-x-4 text-sm">
             <ActivityIcon type={activity.type} />
             <div className="flex-1 space-y-1">
               <p className="text-sm text-gray-900">{activity.description}</p>

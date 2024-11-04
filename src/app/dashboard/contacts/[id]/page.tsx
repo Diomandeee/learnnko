@@ -2,8 +2,10 @@ import { ContactDetails } from "@/components/contacts/contact-details";
 import { getContactById } from "@/lib/contacts";
 import { notFound } from "next/navigation";
 
-export default async function ContactPage({ params }: { params: { id: string } }) {
-  const contact = await getContactById(params.id);
+
+// @ts-expect-error - Page props typing conflict with Next.js types
+export default async function ContactPage(props: Props) {
+  const contact = await getContactById(props.params.id);
 
   if (!contact) {
     notFound();

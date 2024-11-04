@@ -40,7 +40,7 @@ export function NotificationsForm() {
     },
   });
 
-  async function onSubmit(data: NotificationsFormValues) {
+  async function onSubmit() {
     setLoading(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -48,17 +48,16 @@ export function NotificationsForm() {
         title: "Notifications updated",
         description: "Your notification preferences have been updated.",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
-        description: "Failed to update notification preferences.",
+        description: "Failed to update profile. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }
-
+  
   return (
     <Card>
       <CardHeader>

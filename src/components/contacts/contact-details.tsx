@@ -46,9 +46,10 @@ export function ContactDetails({ initialData }: ContactDetailsProps) {
 
       router.refresh();
     } catch (error) {
+      console.error(error); // Log the error for debugging
       toast({
         title: "Error",
-        description: "Failed to update status",
+        description: "Failed to update contact status",
         variant: "destructive",
       });
     }
@@ -71,6 +72,7 @@ export function ContactDetails({ initialData }: ContactDetailsProps) {
       router.push("/dashboard/contacts");
       router.refresh();
     } catch (error) {
+      console.error(error); // Log the error for debugging
       toast({
         title: "Error",
         description: "Failed to delete contact",
@@ -92,10 +94,7 @@ export function ContactDetails({ initialData }: ContactDetailsProps) {
           <p className="text-muted-foreground">{initialData.email}</p>
         </div>
         <div className="flex items-center gap-4">
-          <StatusSelect 
-            value={initialData.status} 
-            onChange={onStatusChange} 
-          />
+          <StatusSelect value={initialData.status} onChange={onStatusChange} />
           <Button variant="outline" size="icon">
             <Pencil className="h-4 w-4" />
           </Button>
@@ -113,18 +112,10 @@ export function ContactDetails({ initialData }: ContactDetailsProps) {
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
-                <Button
-                  variant="ghost"
-                  onClick={() => setDeleteDialogOpen(false)}
-                  disabled={isDeleting}
-                >
+                <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>
                   Cancel
                 </Button>
-                <Button
-                  variant="destructive"
-                  onClick={onDelete}
-                  disabled={isDeleting}
-                >
+                <Button variant="destructive" onClick={onDelete} disabled={isDeleting}>
                   {isDeleting ? "Deleting..." : "Delete"}
                 </Button>
               </DialogFooter>
@@ -141,21 +132,15 @@ export function ContactDetails({ initialData }: ContactDetailsProps) {
           <CardContent className="space-y-4">
             <div>
               <h3 className="font-medium">Company</h3>
-              <p className="text-muted-foreground">
-                {initialData.company || "Not specified"}
-              </p>
+              <p className="text-muted-foreground">{initialData.company || "Not specified"}</p>
             </div>
             <div>
               <h3 className="font-medium">Phone</h3>
-              <p className="text-muted-foreground">
-                {initialData.phone || "Not specified"}
-              </p>
+              <p className="text-muted-foreground">{initialData.phone || "Not specified"}</p>
             </div>
             <div>
               <h3 className="font-medium">Notes</h3>
-              <p className="text-muted-foreground">
-                {initialData.notes || "No notes"}
-              </p>
+              <p className="text-muted-foreground">{initialData.notes || "No notes"}</p>
             </div>
           </CardContent>
         </Card>
@@ -165,9 +150,7 @@ export function ContactDetails({ initialData }: ContactDetailsProps) {
             <CardTitle>Activity</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-sm text-muted-foreground">
-              No recent activity
-            </div>
+            <div className="text-sm text-muted-foreground">No recent activity</div>
           </CardContent>
         </Card>
       </div>

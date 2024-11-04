@@ -47,32 +47,33 @@ export function PreferencesForm() {
     },
   });
 
-  async function onSubmit(data: PreferencesFormValues) {
+  // We don't need error if we're not handling it, hence it's removed.
+  async function onSubmit() {
+    
     setLoading(true);
     try {
+      // Simulated API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
       toast({
         title: "Preferences updated",
         description: "Your preferences have been saved successfully.",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
-        description: "Failed to update preferences.",
+        description: "Failed to update profile. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }
+  
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Preferences</CardTitle>
-        <CardDescription>
-          Customize your application experience.
-        </CardDescription>
+        <CardDescription>Customize your application experience.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -95,9 +96,7 @@ export function PreferencesForm() {
                       <SelectItem value="system">System</SelectItem>
                     </SelectContent>
                   </Select>
-                  <FormDescription>
-                    Choose your preferred color theme.
-                  </FormDescription>
+                  <FormDescription>Choose your preferred color theme.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -120,9 +119,7 @@ export function PreferencesForm() {
                       <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
                     </SelectContent>
                   </Select>
-                  <FormDescription>
-                    Choose how dates should be displayed.
-                  </FormDescription>
+                  <FormDescription>Choose how dates should be displayed.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -146,9 +143,7 @@ export function PreferencesForm() {
                       <SelectItem value="PST">Pacific Time</SelectItem>
                     </SelectContent>
                   </Select>
-                  <FormDescription>
-                    Choose your preferred time zone.
-                  </FormDescription>
+                  <FormDescription>Choose your preferred time zone.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -171,9 +166,7 @@ export function PreferencesForm() {
                       <SelectItem value="fr">French</SelectItem>
                     </SelectContent>
                   </Select>
-                  <FormDescription>
-                    Choose your preferred language.
-                  </FormDescription>
+                  <FormDescription>Choose your preferred language.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

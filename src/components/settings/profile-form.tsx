@@ -43,7 +43,7 @@ export function ProfileForm() {
     },
   });
 
-  async function onSubmit(data: ProfileFormValues) {
+  async function onSubmit() {
     setLoading(true);
     try {
       // Simulated API call
@@ -52,16 +52,16 @@ export function ProfileForm() {
         title: "Profile updated",
         description: "Your profile has been updated successfully.",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to update profile. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }
+
 
   return (
     <Card>

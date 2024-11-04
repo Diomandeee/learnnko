@@ -9,6 +9,7 @@ export default nextConfig;
 
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/prisma/schema.prisma
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -25,37 +26,38 @@ model User {
   password  String
   role      Role       @default(USER)
   contacts  Contact[]
-  activities Activity[]
+  bio          String?
+  phoneNumber  String?
+  preferences  Json?
+  notifications Json?
+  activities   Activity[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 }
-
-model Contact {
-  id            String     @id @default(auto()) @map("_id") @db.ObjectId
-  firstName     String
-  lastName      String
-  email         String
-  phone         String?
-  company       String?
-  status        Status     @default(NEW)
-  notes         String?
-  activities    Activity[]
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  userId        String     @db.ObjectId
-  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
 model Activity {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  type        String   // e.g., "STATUS_CHANGE", "NOTE_ADDED", "EMAIL_SENT"
+  userId      String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id])
+  contactId   String   @db.ObjectId  // Add contactId field here
+  type        String
   description String
   metadata    Json?
   createdAt   DateTime @default(now())
-  contactId   String   @db.ObjectId
-  userId      String   @db.ObjectId
-  contact     Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Contact {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  firstName String
+  lastName  String
+  email     String
+  phone     String?
+  company   String?
+  notes     String?
+  status    Status   @default(NEW)
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum Role {
@@ -70,328 +72,9 @@ enum Status {
   CONVERTED
   LOST
 }
-
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/setup-buf-crm.sh
-#!/bin/bash
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-print_colored() {
-    local color=$1
-    local message=$2
-    echo -e "${color}${message}${NC}"
-}
-
-# Create register page directory
-print_colored $BLUE "Creating register page directory..."
-
-# Create register form component
-print_colored $BLUE "Creating register form component..."
-cat > src/components/auth/register-form.tsx << 'EOL'
-"use client";
-
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { toast } from "@/components/ui/use-toast";
-
-const formSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  confirmPassword: z.string()
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
-
-export function RegisterForm() {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-    },
-  });
-
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true);
-
-    try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: values.name,
-          email: values.email,
-          password: values.password,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to register");
-      }
-
-      toast({
-        title: "Success",
-        description: "Registration successful. Please sign in.",
-      });
-
-      router.push("/login");
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Something went wrong",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl>
-                <Input 
-                  {...field}
-                  disabled={isLoading}
-                  placeholder="John Doe"
-                  autoComplete="name"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input 
-                  {...field}
-                  type="email"
-                  disabled={isLoading}
-                  placeholder="john@example.com"
-                  autoComplete="email"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl>
-                <Input 
-                  {...field}
-                  type="password"
-                  disabled={isLoading}
-                  placeholder="********"
-                  autoComplete="new-password"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="confirmPassword"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Confirm Password</FormLabel>
-              <FormControl>
-                <Input 
-                  {...field}
-                  type="password"
-                  disabled={isLoading}
-                  placeholder="********"
-                  autoComplete="new-password"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <Button 
-          type="submit" 
-          className="w-full" 
-          disabled={isLoading}
-        >
-          {isLoading ? "Creating account..." : "Create account"}
-        </Button>
-      </form>
-    </Form>
-  );
-}
-EOL
-
-# Create register API route
-print_colored $BLUE "Creating register API route..."
-mkdir -p src/app/api/auth/register
-
-cat > src/app/api/auth/register/route.ts << 'EOL'
-import { NextResponse } from "next/server";
-import { hash } from "bcryptjs";
-import { prisma } from "@/lib/db/prisma";
-import { z } from "zod";
-
-const registerSchema = z.object({
-  name: z.string().min(2),
-  email: z.string().email(),
-  password: z.string().min(8),
-});
-
-export async function POST(request: Request) {
-  try {
-    const json = await request.json();
-    const body = registerSchema.parse(json);
-
-    // Check if email already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: body.email }
-    });
-
-    if (existingUser) {
-      return NextResponse.json(
-        { error: "User with this email already exists" },
-        { status: 400 }
-      );
-    }
-
-    // Hash password
-    const hashedPassword = await hash(body.password, 12);
-
-    // Create user
-    const user = await prisma.user.create({
-      data: {
-        name: body.name,
-        email: body.email,
-        password: hashedPassword,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-      }
-    });
-
-    return NextResponse.json({
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      }
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.errors[0].message },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
-  }
-}
-EOL
-
-# Add link to register page in login page
-print_colored $BLUE "Updating login page with register link..."
-cat > src/app/(auth)/login/page.tsx << 'EOL'
-import { Metadata } from "next";
-
-import Link from "next/link";
-import { LoginForm } from "@/components/auth/login-form";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-export const metadata: Metadata = {
-  title: "Login | BUF BARISTA CRM",
-  description: "Login to your account",
-};
-
-export default function LoginPage() {
-  return (
-    <div className="container flex h-screen w-screen flex-col items-center justify-center">
-      <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Login</CardTitle>
-            <CardDescription>
-              Enter your email below to login to your account
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <LoginForm />
-            <p className="mt-4 text-center text-sm text-muted-foreground">
-              Don&apos;t have an account?{" "}
-              <Link href="/register" className="text-primary hover:underline">
-                Sign up
-              </Link>
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-}
-EOL
-
-print_colored $GREEN "Register page and functionality created successfully! 🚀"
-print_colored $BLUE "The following files were created/updated:"
-echo "1. src/components/auth/register-form.tsx"
-echo "2. src/app/(auth)/register/page.tsx"
-echo "3. src/app/api/auth/register/route.ts"
-echo "4. src/app/(auth)/login/page.tsx (updated)"
-echo ""
-print_colored $BLUE "Next steps:"
-echo "1. Make sure bcryptjs is installed: npm install bcryptjs @types/bcryptjs"
-echo "2. Test the registration flow"
-echo "3. Check the database to confirm users are being created properly"
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/auth/[...nextauth]/route.ts
 import { NextAuthOptions } from "next-auth";
@@ -657,54 +340,131 @@ export async function DELETE(
 
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/contacts/route.ts
+// src/app/api/contacts/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/db/prisma";
+import { authOptions } from "@/lib/auth/options";
 
 export async function POST(request: Request) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
+  console.log("[CONTACTS_POST] Starting request handler");
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+  try {
+    // 1. Get and validate session
+    const session = await getServerSession(authOptions);
+    console.log("[CONTACTS_POST] Session data:", {
+      email: session?.user?.email,
+      exists: !!session
     });
 
-    if (!user) {
-      return new NextResponse("Unauthorized", { status: 401 });
+    if (!session?.user?.email) {
+      console.log("[CONTACTS_POST] No valid session found");
+      return NextResponse.json(
+        { error: "Unauthorized - Please log in" },
+        { status: 401 }
+      );
     }
 
-    const json = await request.json();
+    // 2. Find user and create if not exists
+    let user = await prisma.user.findUnique({
+      where: { 
+        email: session.user.email 
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true
+      }
+    });
+
+    console.log("[CONTACTS_POST] Found user:", user);
+
+    if (!user) {
+      console.log("[CONTACTS_POST] User not found, creating new user");
+      user = await prisma.user.create({
+        data: {
+          email: session.user.email,
+          name: session.user.name || '',
+          password: '', // You might want to handle this differently
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true
+        }
+      });
+      console.log("[CONTACTS_POST] Created new user:", user);
+    }
+
+    // 3. Get and validate contact data
+    const contactData = await request.json();
+    console.log("[CONTACTS_POST] Contact data:", contactData);
+
+    // 4. Create the contact
     const contact = await prisma.contact.create({
       data: {
-        ...json,
-        userId: user.id,
+        firstName: contactData.firstName,
+        lastName: contactData.lastName,
+        email: contactData.email,
+        phone: contactData.phone || null,
+        company: contactData.company || null,
+        notes: contactData.notes || null,
         status: "NEW",
+        userId: user.id,
       },
     });
 
-    return NextResponse.json(contact);
+    console.log("[CONTACTS_POST] Created contact:", contact);
+
+    // 5. Return success response
+    return NextResponse.json(
+      { message: "Contact created successfully", contact },
+      { status: 201 }
+    );
+
   } catch (error) {
-    console.error("[CONTACTS_POST]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+    console.error("[CONTACTS_POST] Error:", error);
+    
+    // Handle specific errors
+    if (error instanceof Error) {
+      if (error.message.includes('Prisma')) {
+        return NextResponse.json(
+          { error: "Database error", details: error.message },
+          { status: 500 }
+        );
+      }
+    }
+
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
 
 export async function GET() {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
+    console.log("[CONTACTS_GET] Session:", session);
+
     if (!session?.user?.email) {
-      return new NextResponse("Unauthorized", { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
     const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+      where: { 
+        email: session.user.email 
+      }
     });
 
     if (!user) {
-      return new NextResponse("Unauthorized", { status: 401 });
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
     }
 
     const contacts = await prisma.contact.findMany({
@@ -718,7 +478,70 @@ export async function GET() {
 
     return NextResponse.json(contacts);
   } catch (error) {
-    console.error("[CONTACTS_GET]", error);
+    console.error("[CONTACTS_GET] Error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/settings/route.ts
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/options";
+import { prisma } from "@/lib/db/prisma";
+
+export async function PUT(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.email) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const data = await request.json();
+    
+    const updatedSettings = await prisma.user.update({
+      where: {
+        email: session.user.email,
+      },
+      data: {
+        // Add the fields you want to update
+        ...data,
+        updatedAt: new Date(),
+      },
+    });
+
+    return NextResponse.json(updatedSettings);
+  } catch (error) {
+    console.error("[SETTINGS_UPDATE]", error);
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+}
+
+export async function GET() {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.email) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const settings = await prisma.user.findUnique({
+      where: {
+        email: session.user.email,
+      },
+      select: {
+        name: true,
+        email: true,
+        // Add other fields you want to return
+      },
+    });
+
+    return NextResponse.json(settings);
+  } catch (error) {
+    console.error("[SETTINGS_GET]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
@@ -799,36 +622,6 @@ export default function RegisterPage() {
   );
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/analytics/page.tsx
-import { getContacts } from "@/lib/contacts";
-import { AnalyticsOverview } from "@/components/dashboard/analytics/overview";
-import { ContactChart } from "@/components/dashboard/analytics/contact-chart";
-import { DataExport } from "@/components/contacts/data-export";
-
-export default async function AnalyticsPage() {
-  const contacts = await getContacts();
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
-          <p className="text-muted-foreground">
-            View your contact analytics and insights
-          </p>
-        </div>
-        <DataExport contacts={contacts} />
-      </div>
-
-      <div className="grid gap-6">
-        <AnalyticsOverview contacts={contacts} />
-        <ContactChart contacts={contacts} />
-      </div>
-    </div>
-  );
-}
-
-________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/contacts/[id]/page.tsx
 import { ContactDetails } from "@/components/contacts/contact-details";
 import { getContactById } from "@/lib/contacts";
@@ -850,53 +643,278 @@ export default async function ContactPage({ params }: { params: { id: string } }
 
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/contacts/new/page.tsx
+import { Metadata } from "next";
 import { ContactForm } from "@/components/contacts/contact-form";
 
+export const metadata: Metadata = {
+  title: "New Contact | CRM",
+  description: "Create a new contact in your CRM",
+};
+
 export default function NewContactPage() {
-  return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">New Contact</h1>
-        <p className="text-muted-foreground">Add a new contact to your CRM</p>
-      </div>
-      <ContactForm />
-    </div>
-  );
+  return <ContactForm />;
 }
 
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/contacts/page.tsx
+// src/app/dashboard/contacts/page.tsx
 import { Suspense } from "react";
 import { ContactList } from "@/components/contacts/contact-list";
 import { Search } from "@/components/contacts/search";
+import { PageContainer } from "@/components/layout/page-container";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { getContactStats } from "@/lib/contacts";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
+import {
+  ArrowUp,
+  ArrowDown,
+  Download,
+  MoreHorizontal,
+  UserPlus,
+  Mail,
+  Share2,
+  Trash2,
+  Users,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { DataTableLoading } from "@/components/contacts/data-table-loading";
+import { ContactStats } from "@/types/contacts";
 
 interface ContactsPageProps {
   searchParams: {
     search?: string;
+    status?: string;
+    sort?: string;
+    page?: string;
   };
 }
 
-export default function ContactsPage({ searchParams }: ContactsPageProps) {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
-          <p className="text-muted-foreground">Manage your contacts and leads</p>
-        </div>
-        <Search />
-      </div>
-      <Suspense fallback={<div>Loading...</div>}>
-        <ContactList searchQuery={searchParams.search} />
-      </Suspense>
-    </div>
-  );
+async function getStats(): Promise<ContactStats> {
+  await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate network delay
+  return getContactStats();
 }
 
+export default async function ContactsPage({ searchParams }: ContactsPageProps) {
+  const stats = await getStats();
+
+  return (
+    <PageContainer>
+      <div className="space-y-6 p-6">
+        {/* Header Section */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
+            <p className="text-muted-foreground">
+              Manage your contacts and leads effectively
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/contacts/new">
+              <Button>
+                <UserPlus className="mr-2 h-4 w-4" />
+                New Contact
+              </Button>
+            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuItem>
+                  <Mail className="mr-2 h-4 w-4" />
+                  Email Selected
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Share List
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export CSV
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-red-600">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Selected
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Filters and Search */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Filter Contacts</CardTitle>
+            <CardDescription>
+              Refine your contact list using the filters below
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className="flex flex-col space-y-1.5">
+                <label className="text-sm font-medium">Status</label>
+                <Select defaultValue={searchParams.status ?? "all"}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="NEW">New</SelectItem>
+                    <SelectItem value="CONTACTED">Contacted</SelectItem>
+                    <SelectItem value="QUALIFIED">Qualified</SelectItem>
+                    <SelectItem value="CONVERTED">Converted</SelectItem>
+                    <SelectItem value="LOST">Lost</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col space-y-1.5">
+                <label className="text-sm font-medium">Sort By</label>
+                <Select defaultValue={searchParams.sort ?? "newest"}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                    <SelectItem value="oldest">Oldest First</SelectItem>
+                    <SelectItem value="name">Name A-Z</SelectItem>
+                    <SelectItem value="name-desc">Name Z-A</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col space-y-1.5 md:col-span-2">
+                <label className="text-sm font-medium">Search</label>
+                <Search />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Stats Overview */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.total.toLocaleString()}</div>
+              <div className="flex items-center space-x-2">
+                {parseFloat(stats.percentageChange) > 0 ? (
+                  <ArrowUp className="h-4 w-4 text-emerald-500" />
+                ) : (
+                  <ArrowDown className="h-4 w-4 text-red-500" />
+                )}
+                <p className={cn(
+                  "text-xs",
+                  parseFloat(stats.percentageChange) > 0 ? "text-emerald-500" : "text-red-500"
+                )}>
+                  {stats.percentageChange}% from last month
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">New Contacts</CardTitle>
+              <UserPlus className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.newThisMonth.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">Added this month</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Qualified Leads</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {(stats.byStatus?.QUALIFIED || 0).toLocaleString()}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Active qualified leads
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
+              <ArrowUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {stats.total > 0
+                  ? ((stats.byStatus?.CONVERTED || 0) / stats.total * 100).toFixed(1)
+                  : "0.0"}%
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Overall conversion rate
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Contact List */}
+        <Card>
+          <CardHeader>
+            <CardTitle>All Contacts</CardTitle>
+            <CardDescription>
+              A list of all your contacts including their status and contact information
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Suspense fallback={<DataTableLoading />}>
+              <ContactList
+                searchQuery={searchParams.search}
+                statusFilter={searchParams.status}
+                sortOrder={searchParams.sort}
+                page={searchParams.page ? parseInt(searchParams.page) : 1}
+              />
+            </Suspense>
+          </CardContent>
+        </Card>
+      </div>
+    </PageContainer>
+  );
+}
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/layout.tsx
 import { SideNav } from "@/components/dashboard/side-nav";
-import { TopNav } from "@/components/dashboard/top-nav";
 
 export default function DashboardLayout({
   children,
@@ -905,47 +923,429 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="min-h-screen">
-      <TopNav />
-      <div className="flex">
-        <SideNav />
-        <main className="flex-1 p-8 pt-6">{children}</main>
-      </div>
+      <SideNav />
+      <main className="min-h-screen transition-all duration-300 ease-in-out">
+        <div className="h-full pt-20 md:pt-0">
+          <div className="container mx-auto p-6">
+            {children}
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
 
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/page.tsx
-import { Suspense } from "react";
-import { getContacts, getContactStats } from "@/lib/contacts";
-import { AnalyticsOverview } from "@/components/dashboard/analytics/overview";
-import { RecentActivities } from "@/components/dashboard/recent-activities";
-import { UpcomingTasks } from "@/components/dashboard/upcoming-tasks";
+// src/app/dashboard/page.tsx
+
+import { Metadata } from "next";
+import { PageContainer } from "@/components/layout/page-container";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Overview } from "@/components/dashboard/overview";
+import { ContactChart } from "@/components/dashboard/analytics/contact-chart";
+
+import { RecentSales } from "@/components/dashboard/recent-sales";
+import { Button } from "@/components/ui/button";
+import { CalendarDateRangePicker } from "@/components/dashboard/date-range";
+import { getContacts } from "@/lib/contacts";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/options";
+import { redirect } from "next/navigation";
+import {
+  ArrowUpRight,
+  Users,
+  UserPlus,
+  UserCheck,
+  BarChart2,
+  Download,
+} from "lucide-react";
+import Link from "next/link";
+import { DataExport } from "@/components/contacts/data-export";
+
+export const metadata: Metadata = {
+  title: "Dashboard | BUF BARISTA CRM",
+  description: "View your CRM analytics and insights",
+};
+
+const timeFrames = [
+  {
+    value: "today",
+    label: "Today",
+  },
+  {
+    value: "week",
+    label: "This Week",
+  },
+  {
+    value: "month",
+    label: "This Month",
+  },
+  {
+    value: "quarter",
+    label: "This Quarter",
+  },
+  {
+    value: "year",
+    label: "This Year",
+  },
+];
 
 export default async function DashboardPage() {
+  const session = await getServerSession(authOptions);
+
+  if (!session) {
+    redirect('/auth/login');
+  }
+
   const contacts = await getContacts();
-  const stats = await getContactStats();
+
+  // Calculate statistics
+  const stats = {
+    totalContacts: contacts.length,
+    newContacts: contacts.filter(c => c.status === 'NEW').length,
+    convertedContacts: contacts.filter(c => c.status === 'CONVERTED').length,
+    qualifiedLeads: contacts.filter(c => c.status === 'QUALIFIED').length,
+  };
+
+  // Calculate conversion rates and growth
+  const conversionRate = stats.totalContacts > 0 
+    ? ((stats.convertedContacts / stats.totalContacts) * 100).toFixed(1) 
+    : "0.0";
 
   return (
+    <PageContainer>
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="flex items-center justify-between space-y-2">
+          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+          <div className="flex items-center space-x-2">
+            <CalendarDateRangePicker />
+            <DataExport contacts={contacts} />
+
+            <Button>
+              <Download className="mr-2 h-4 w-4" />
+              Download
+            </Button>
+
+          </div>
+        </div>
+
+        {/* Time Frame Filter */}
+        <div className="flex items-center space-x-4">
+          <Select defaultValue="month">
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select time frame" />
+            </SelectTrigger>
+            <SelectContent>
+              {timeFrames.map((timeFrame) => (
+                <SelectItem key={timeFrame.value} value={timeFrame.value}>
+                  {timeFrame.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total Contacts
+              </CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalContacts}</div>
+              <div className="flex items-center space-x-2">
+                <ArrowUpRight className="h-4 w-4 text-emerald-500" />
+                <p className="text-xs text-muted-foreground">
+                  +20.1% from last month
+                </p>
+              </div>
+              <div className="mt-4 h-[60px]">
+                <BarChart2 className="h-[60px] w-full text-emerald-500/25" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                New Contacts
+              </CardTitle>
+              <UserPlus className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.newContacts}</div>
+              <div className="flex items-center space-x-2">
+                <ArrowUpRight className="h-4 w-4 text-emerald-500" />
+                <p className="text-xs text-muted-foreground">
+                  +10.5% from last month
+                </p>
+              </div>
+              <div className="mt-4 h-[60px]">
+                <BarChart2 className="h-[60px] w-full text-blue-500/25" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Qualified Leads
+              </CardTitle>
+              <UserCheck className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.qualifiedLeads}</div>
+              <div className="flex items-center space-x-2">
+                <ArrowUpRight className="h-4 w-4 text-emerald-500" />
+                <p className="text-xs text-muted-foreground">
+                  +12.3% from last month
+                </p>
+              </div>
+              <div className="mt-4 h-[60px]">
+                <BarChart2 className="h-[60px] w-full text-violet-500/25" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Conversion Rate
+              </CardTitle>
+              <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{conversionRate}%</div>
+              <div className="flex items-center space-x-2">
+                <ArrowUpRight className="h-4 w-4 text-emerald-500" />
+                <p className="text-xs text-muted-foreground">
+                  +4.5% from last month
+                </p>
+              </div>
+              <div className="mt-4 h-[60px]">
+                <BarChart2 className="h-[60px] w-full text-orange-500/25" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Charts and Recent Activity */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+          <Card className="col-span-4">
+            <CardHeader>
+              <CardTitle>Overview</CardTitle>
+              <CardDescription>
+                Contact acquisition and conversion overview for the current period.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pl-2">
+              <Overview />
+            </CardContent>
+          </Card>
+
+          <Card className="col-span-3">
+            <CardHeader>
+              <CardTitle>Recent Contacts</CardTitle>
+              <CardDescription>
+                Your most recently added contacts.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RecentSales />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Additional Analytics */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Card className="col-span-1">
+            <CardHeader>
+              <CardTitle>Lead Sources</CardTitle>
+              <CardDescription>
+                Distribution of contact sources
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-4">
+                  {/* Lead source distribution will go here */}
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium leading-none">Website</p>
+                      <p className="text-sm text-muted-foreground">45%</p>
+                    </div>
+                    <div className="w-[100px] h-2 bg-blue-100 rounded-full overflow-hidden">
+                      <div className="h-full w-[45%] bg-blue-500 rounded-full" />
+                    </div>
+                  </div>
+                  {/* Add more lead sources */}
+                </div>
+                <ScrollBar orientation="vertical" />
+              </ScrollArea>
+            </CardContent>
+          </Card>
+
+          <Card className="col-span-1">
+            <CardHeader>
+              <CardTitle>Status Distribution</CardTitle>
+              <CardDescription>
+                Current status of all contacts
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-4">
+                  {/* Status distribution will go here */}
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium leading-none">New</p>
+                      <p className="text-sm text-muted-foreground">
+                        {stats.newContacts} contacts
+                      </p>
+                    </div>
+                    <div className="w-[100px] h-2 bg-emerald-100 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-emerald-500 rounded-full" 
+                        style={{ 
+                          width: `${(stats.newContacts / stats.totalContacts) * 100}%` 
+                        }} 
+                      />
+                    </div>
+                  </div>
+                  {/* Add more statuses */}
+                </div>
+                <ScrollBar orientation="vertical" />
+              </ScrollArea>
+            </CardContent>
+          </Card>
+
+          <Card className="col-span-1">
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+              <CardDescription>
+                Latest updates and changes
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-4">
+                  {/* Activity items will go here */}
+                  <div className="flex items-center">
+                    <div className="ml-4 space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        New contact added
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        2 minutes ago
+                      </p>
+                    </div>
+                  </div>
+                  {/* Add more activity items */}
+                </div>
+                <ScrollBar orientation="vertical" />
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
+        <ContactChart contacts={contacts} />
+
+        {/* Quick Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+            <CardDescription>
+              Common tasks and shortcuts
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Link href="/dashboard/contacts/new">
+                <Button className="w-full">
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Add New Contact
+                </Button>
+              </Link>
+              <Link href="/dashboard/contacts">
+                <Button variant="outline" className="w-full">
+                  <Users className="mr-2 h-4 w-4" />
+                  View All Contacts
+                </Button>
+              </Link>
+  
+            </div>
+          </CardContent> 
+        </Card>
+      </div>
+    </PageContainer>
+  );
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/settings/page.tsx
+import { Metadata } from "next";
+import { Separator } from "@/components/ui/separator";
+import { ProfileForm } from "@/components/settings/profile-form";
+import { AccountForm } from "@/components/settings/account-form";
+import { NotificationsForm } from "@/components/settings/notifications-form";
+import { PreferencesForm } from "@/components/settings/preferences-form";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageContainer } from "@/components/layout/page-container";
+
+export const metadata: Metadata = {
+  title: "Settings | BUF BARISTA CRM",
+  description: "Manage your account settings and preferences",
+};
+
+export default function SettingsPage() {
+  return (
+    <PageContainer>
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
         <p className="text-muted-foreground">
-          Overview of your contacts and recent activity
+          Manage your account settings and preferences.
         </p>
       </div>
-
-      <AnalyticsOverview contacts={contacts} />
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <Suspense fallback={<div>Loading activities...</div>}>
-          <RecentActivities />
-        </Suspense>
-        <Suspense fallback={<div>Loading tasks...</div>}>
-          <UpcomingTasks />
-        </Suspense>
-      </div>
+      <Separator />
+      <Tabs defaultValue="profile" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="account">Account</TabsTrigger>
+          <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="preferences">Preferences</TabsTrigger>
+        </TabsList>
+        <TabsContent value="profile" className="space-y-4">
+          <ProfileForm />
+        </TabsContent>
+        <TabsContent value="account" className="space-y-4">
+          <AccountForm />
+        </TabsContent>
+        <TabsContent value="notifications" className="space-y-4">
+          <NotificationsForm />
+        </TabsContent>
+        <TabsContent value="preferences" className="space-y-4">
+          <PreferencesForm />
+        </TabsContent>
+      </Tabs>
     </div>
+    </PageContainer>
   );
 }
 
@@ -1139,18 +1539,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
 
+// Define form schema
 const formSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
-interface LoginFormData extends z.infer<typeof formSchema> {}
-
 export function LoginForm() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  const form = useForm<LoginFormData>({
+  const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
@@ -1158,7 +1557,7 @@ export function LoginForm() {
     },
   });
 
-  async function onSubmit(values: LoginFormData) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
 
     try {
@@ -1179,7 +1578,8 @@ export function LoginForm() {
 
       router.push("/dashboard");
       router.refresh();
-    } catch (error) {
+    } catch {
+      // Handling the error, but not capturing it in a variable.
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",
@@ -1211,6 +1611,7 @@ export function LoginForm() {
             </FormItem>
           )}
         />
+
         <FormField
           control={form.control}
           name="password"
@@ -1228,6 +1629,7 @@ export function LoginForm() {
             </FormItem>
           )}
         />
+
         <Button
           type="submit"
           className="w-full"
@@ -1239,7 +1641,6 @@ export function LoginForm() {
     </Form>
   );
 }
-
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/auth/register-form.tsx
 "use client";
@@ -1424,12 +1825,16 @@ import { formatDistanceToNow } from "date-fns";
 import { ActivityIcon } from "./activity-icon";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+interface ActivityMetadata {
+  [key: string]: unknown; // You can be more specific about the key-value pairs as your app grows
+}
+
 interface Activity {
   id: string;
   type: string;
   description: string;
   createdAt: string;
-  metadata: any;
+  metadata: ActivityMetadata; // Updated metadata type
 }
 
 interface ActivityFeedProps {
@@ -1465,10 +1870,7 @@ export function ActivityFeed({ contactId }: ActivityFeedProps) {
     <ScrollArea className="h-[400px] pr-4">
       <div className="space-y-4">
         {activities.map((activity) => (
-          <div
-            key={activity.id}
-            className="flex items-start space-x-4 text-sm"
-          >
+          <div key={activity.id} className="flex items-start space-x-4 text-sm">
             <ActivityIcon type={activity.type} />
             <div className="flex-1 space-y-1">
               <p className="text-sm text-gray-900">{activity.description}</p>
@@ -1487,7 +1889,6 @@ export function ActivityFeed({ contactId }: ActivityFeedProps) {
     </ScrollArea>
   );
 }
-
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/contacts/activity/activity-icon.tsx
 import { MessageSquare, Mail, Star, AlertCircle, Edit, Trash } from "lucide-react";
@@ -1524,7 +1925,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { StatusSelect } from "./status-select";
 import { toast } from "@/components/ui/use-toast";
 import { MoreHorizontal, Trash2 } from "lucide-react";
 import {
@@ -1557,17 +1957,19 @@ export function BulkActions({ selectedIds, onSuccess }: BulkActionsProps) {
           })
         )
       );
+
       toast({
         title: "Success",
         description: `Updated ${selectedIds.length} contacts`,
       });
       onSuccess();
-    } catch (error) {
+    } catch (error: unknown) { // Capture error and handle it if necessary
       toast({
         title: "Error",
         description: "Failed to update contacts",
         variant: "destructive",
       });
+      console.error("Failed to update contacts:", error); // Logging the error
     } finally {
       setLoading(false);
     }
@@ -1583,18 +1985,20 @@ export function BulkActions({ selectedIds, onSuccess }: BulkActionsProps) {
           })
         )
       );
+
       toast({
         title: "Success",
         description: `Deleted ${selectedIds.length} contacts`,
       });
       setDeleteDialogOpen(false);
       onSuccess();
-    } catch (error) {
+    } catch (error: unknown) { // Capture error and handle it if necessary
       toast({
         title: "Error",
         description: "Failed to delete contacts",
         variant: "destructive",
       });
+      console.error("Failed to delete contacts:", error); // Logging the error
     } finally {
       setLoading(false);
     }
@@ -1609,11 +2013,15 @@ export function BulkActions({ selectedIds, onSuccess }: BulkActionsProps) {
             Bulk Actions
           </Button>
         </DropdownMenuTrigger>
+
         <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            onSelect={() => setDeleteDialogOpen(true)}
-            className="text-red-600"
-          >
+          <DropdownMenuItem onSelect={() => updateStatus("active")}>
+            Activate
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => updateStatus("inactive")}>
+            Deactivate
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setDeleteDialogOpen(true)} className="text-red-600">
             <Trash2 className="h-4 w-4 mr-2" />
             Delete Selected
           </DropdownMenuItem>
@@ -1629,18 +2037,10 @@ export function BulkActions({ selectedIds, onSuccess }: BulkActionsProps) {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
-              disabled={loading}
-            >
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={loading}>
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={deleteContacts}
-              disabled={loading}
-            >
+            <Button variant="destructive" onClick={deleteContacts} disabled={loading}>
               {loading ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
@@ -1649,7 +2049,6 @@ export function BulkActions({ selectedIds, onSuccess }: BulkActionsProps) {
     </>
   );
 }
-
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/contacts/contact-details.tsx
 "use client";
@@ -1700,9 +2099,10 @@ export function ContactDetails({ initialData }: ContactDetailsProps) {
 
       router.refresh();
     } catch (error) {
+      console.error(error); // Log the error for debugging
       toast({
         title: "Error",
-        description: "Failed to update status",
+        description: "Failed to update contact status",
         variant: "destructive",
       });
     }
@@ -1725,6 +2125,7 @@ export function ContactDetails({ initialData }: ContactDetailsProps) {
       router.push("/dashboard/contacts");
       router.refresh();
     } catch (error) {
+      console.error(error); // Log the error for debugging
       toast({
         title: "Error",
         description: "Failed to delete contact",
@@ -1746,10 +2147,7 @@ export function ContactDetails({ initialData }: ContactDetailsProps) {
           <p className="text-muted-foreground">{initialData.email}</p>
         </div>
         <div className="flex items-center gap-4">
-          <StatusSelect 
-            value={initialData.status} 
-            onChange={onStatusChange} 
-          />
+          <StatusSelect value={initialData.status} onChange={onStatusChange} />
           <Button variant="outline" size="icon">
             <Pencil className="h-4 w-4" />
           </Button>
@@ -1767,18 +2165,10 @@ export function ContactDetails({ initialData }: ContactDetailsProps) {
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
-                <Button
-                  variant="ghost"
-                  onClick={() => setDeleteDialogOpen(false)}
-                  disabled={isDeleting}
-                >
+                <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>
                   Cancel
                 </Button>
-                <Button
-                  variant="destructive"
-                  onClick={onDelete}
-                  disabled={isDeleting}
-                >
+                <Button variant="destructive" onClick={onDelete} disabled={isDeleting}>
                   {isDeleting ? "Deleting..." : "Delete"}
                 </Button>
               </DialogFooter>
@@ -1795,21 +2185,15 @@ export function ContactDetails({ initialData }: ContactDetailsProps) {
           <CardContent className="space-y-4">
             <div>
               <h3 className="font-medium">Company</h3>
-              <p className="text-muted-foreground">
-                {initialData.company || "Not specified"}
-              </p>
+              <p className="text-muted-foreground">{initialData.company || "Not specified"}</p>
             </div>
             <div>
               <h3 className="font-medium">Phone</h3>
-              <p className="text-muted-foreground">
-                {initialData.phone || "Not specified"}
-              </p>
+              <p className="text-muted-foreground">{initialData.phone || "Not specified"}</p>
             </div>
             <div>
               <h3 className="font-medium">Notes</h3>
-              <p className="text-muted-foreground">
-                {initialData.notes || "No notes"}
-              </p>
+              <p className="text-muted-foreground">{initialData.notes || "No notes"}</p>
             </div>
           </CardContent>
         </Card>
@@ -1819,16 +2203,13 @@ export function ContactDetails({ initialData }: ContactDetailsProps) {
             <CardTitle>Activity</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-sm text-muted-foreground">
-              No recent activity
-            </div>
+            <div className="text-sm text-muted-foreground">No recent activity</div>
           </CardContent>
         </Card>
       </div>
     </div>
   );
 }
-
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/contacts/contact-form.tsx
 "use client";
@@ -1847,10 +2228,15 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import { useSession } from "next-auth/react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import Link from "next/link";
 
 const contactFormSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
@@ -1865,6 +2251,12 @@ export function ContactForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const { data: session, status } = useSession({
+    required: true,
+    onUnauthenticated() {
+      router.push('/auth/login');
+    },
+  });
 
   const form = useForm<ContactFormData>({
     resolver: zodResolver(contactFormSchema),
@@ -1879,7 +2271,17 @@ export function ContactForm() {
   });
 
   async function onSubmit(data: ContactFormData) {
+    if (!session) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to create contacts",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
+
     try {
       const response = await fetch("/api/contacts", {
         method: "POST",
@@ -1887,10 +2289,12 @@ export function ContactForm() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
+        credentials: "include",
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create contact");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create contact");
       }
 
       toast({
@@ -1903,7 +2307,7 @@ export function ContactForm() {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to create contact",
+        description: error instanceof Error ? error.message : "Failed to create contact",
         variant: "destructive",
       });
     } finally {
@@ -1911,102 +2315,176 @@ export function ContactForm() {
     }
   }
 
+  if (status === "loading") {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+      </div>
+    );
+  }
+
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="firstName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>First Name</FormLabel>
-                <FormControl>
-                  <Input {...field} disabled={loading} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+    <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-6">
+      <div className="flex items-center gap-4">
+        <Link 
+          href="/dashboard/contacts"
+          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to contacts
+        </Link>
+      </div>
 
-          <FormField
-            control={form.control}
-            name="lastName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Last Name</FormLabel>
-                <FormControl>
-                  <Input {...field} disabled={loading} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Create New Contact</CardTitle>
+          <CardDescription>
+            Add a new contact to your CRM. Fill in the required information below.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <div className="grid gap-6 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>First Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="John" {...field} disabled={loading} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input type="email" {...field} disabled={loading} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                <FormField
+                  control={form.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Doe" {...field} disabled={loading} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-        <FormField
-          control={form.control}
-          name="phone"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Phone Number</FormLabel>
-              <FormControl>
-                <Input {...field} disabled={loading} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+              <div className="grid gap-6 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="email" 
+                          placeholder="john@example.com" 
+                          {...field} 
+                          disabled={loading} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-        <FormField
-          control={form.control}
-          name="company"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Company</FormLabel>
-              <FormControl>
-                <Input {...field} disabled={loading} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="+1 (555) 000-0000" 
+                          {...field} 
+                          disabled={loading} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Optional
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-        <FormField
-          control={form.control}
-          name="notes"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Notes</FormLabel>
-              <FormControl>
-                <Textarea rows={4} {...field} disabled={loading} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+              <FormField
+                control={form.control}
+                name="company"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Company</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Company name" 
+                        {...field} 
+                        disabled={loading} 
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Optional - Enter the company name if applicable
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        <div className="flex justify-end">
-          <Button type="submit" disabled={loading}>
-            {loading ? "Creating..." : "Create Contact"}
-          </Button>
-        </div>
-      </form>
-    </Form>
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        rows={4} 
+                        placeholder="Add any additional notes about this contact..."
+                        {...field} 
+                        disabled={loading} 
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Optional - Add any relevant information about this contact
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <CardFooter className="flex justify-between px-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={loading}
+                  onClick={() => router.push('/dashboard/contacts')}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Contact'
+                  )}
+                </Button>
+              </CardFooter>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -2015,7 +2493,7 @@ ________________________________________________________________________________
 "use client";
 
 import { useEffect, useState } from "react";
-import { Contact } from "@/types/contacts";
+import { Contact } from "@/types/contacts"; // Ensure that Contact type includes necessary fields
 import {
   Table,
   TableBody,
@@ -2026,17 +2504,71 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  MoreHorizontal,
+  Mail,
+  Pencil,
+  Trash2,
+  UserCheck,
+  ChevronUp,
+  ChevronDown,
+  Users,
+  UserPlus,
+} from "lucide-react";
+import Link from "next/link";
 
-export function ContactList() {
+interface ContactListProps {
+  searchQuery?: string;
+  statusFilter?: string;
+  sortOrder?: string;
+  page?: number;
+}
+
+const statusColors = {
+  NEW: "blue",
+  CONTACTED: "yellow",
+  QUALIFIED: "green",
+  CONVERTED: "purple",
+  LOST: "red",
+};
+
+export function ContactList({
+  searchQuery,
+  statusFilter,
+  sortOrder,
+}: ContactListProps) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof Contact;
+    direction: "asc" | "desc";
+  }>({
+    key: "createdAt",
+    direction: "desc",
+  });
 
   useEffect(() => {
     async function fetchContacts() {
       try {
-        const response = await fetch("/api/contacts");
+        const queryParams = new URLSearchParams();
+        if (searchQuery) queryParams.set("search", searchQuery);
+        if (statusFilter) queryParams.set("status", statusFilter);
+        if (sortOrder) queryParams.set("sort", sortOrder);
+
+        const response = await fetch(`/api/contacts?${queryParams}`);
         if (!response.ok) throw new Error("Failed to fetch contacts");
-        const data = await response.json();
+
+        const data: Contact[] = await response.json(); // Cast the response data to Contact[]
         setContacts(data);
       } catch (error) {
         console.error("Error fetching contacts:", error);
@@ -2046,46 +2578,201 @@ export function ContactList() {
     }
 
     fetchContacts();
-  }, []);
+  }, [searchQuery, statusFilter, sortOrder]);
+
+  const toggleSelectAll = () => {
+    if (selectedContacts.length === contacts.length) {
+      setSelectedContacts([]);
+    } else {
+      setSelectedContacts(contacts.map((contact) => contact.id!));
+    }
+  };
+
+  const toggleSelectContact = (contactId: string) => {
+    if (selectedContacts.includes(contactId)) {
+      setSelectedContacts(selectedContacts.filter((id) => id !== contactId));
+    } else {
+      setSelectedContacts([...selectedContacts, contactId]);
+    }
+  };
+
+  const handleSort = (key: keyof Contact) => {
+    setSortConfig({
+      key,
+      direction:
+        sortConfig.key === key && sortConfig.direction === "asc"
+          ? "desc"
+          : "asc",
+    });
+  };
+
+  const getSortedContacts = () => {
+    return [...contacts].sort((a, b) => {
+      if (sortConfig.key && a[sortConfig.key] && b[sortConfig.key]) {
+        if (a[sortConfig.key]! < b[sortConfig.key]!) {
+          return sortConfig.direction === "asc" ? -1 : 1;
+        }
+        if (a[sortConfig.key]! > b[sortConfig.key]!) {
+          return sortConfig.direction === "asc" ? 1 : -1;
+        }
+      }
+      return 0;
+    }
+    );
+  }
+
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
   }
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Company</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Created</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {contacts.map((contact) => (
-            <TableRow key={contact.id}>
-              <TableCell>
-                {contact.firstName} {contact.lastName}
-              </TableCell>
-              <TableCell>{contact.email}</TableCell>
-              <TableCell>{contact.company || "-"}</TableCell>
-              <TableCell>
-                <Badge>{contact.status}</Badge>
-              </TableCell>
-              <TableCell>
-                {format(new Date(contact.createdAt!), "MMM d, yyyy")}
-              </TableCell>
+    <div className="space-y-4">
+      {selectedContacts.length > 0 && (
+        <div className="bg-muted/50 p-4 rounded-lg flex items-center justify-between">
+          <p className="text-sm">{selectedContacts.length} contact(s) selected</p>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline">
+              <Mail className="h-4 w-4 mr-2" />
+              Email Selected
+            </Button>
+            <Button size="sm" variant="destructive">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Selected
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[40px]">
+                <Checkbox
+                  checked={selectedContacts.length === contacts.length}
+                  onCheckedChange={toggleSelectAll}
+                />
+              </TableHead>
+              <TableHead className="cursor-pointer" onClick={() => handleSort("firstName")}>
+                <div className="flex items-center space-x-1">
+                  <span>Name</span>
+                  {sortConfig.key === "firstName" && (
+                    sortConfig.direction === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+                  )}
+                </div>
+              </TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Company</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="cursor-pointer" onClick={() => handleSort("createdAt")}>
+                <div className="flex items-center space-x-1">
+                  <span>Created</span>
+                  {sortConfig.key === "createdAt" && (
+                    sortConfig.direction === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+                  )}
+                </div>
+              </TableHead>
+              <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {getSortedContacts().map((contact) => (
+              <TableRow key={contact.id}>
+                <TableCell>
+                  <Checkbox
+                    checked={selectedContacts.includes(contact.id!)}
+                    onCheckedChange={() => toggleSelectContact(contact.id!)}
+                  />
+                </TableCell>
+                <TableCell className="font-medium">
+                  {contact.firstName} {contact.lastName}
+                </TableCell>
+                <TableCell>{contact.email}</TableCell>
+                <TableCell>{contact.company || "-"}</TableCell>
+                <TableCell>
+                  <Badge color={statusColors[contact.status as keyof typeof statusColors]}>
+                    {contact.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {format(new Date(contact.createdAt!), "MMM d, yyyy")}
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuItem asChild>
+                        <Link href={`/dashboard/contacts/${contact.id}`}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <Mail className="mr-2 h-4 w-4" />
+                        Send Email
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <UserCheck className="mr-2 h-4 w-4" />
+                        Update Status
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="text-red-600">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {contacts.length === 0 && (
+        <div className="flex flex-col items-center justify-center p-8 text-center">
+          <div className="rounded-full bg-muted p-3">
+            <Users className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <h3 className="mt-4 text-lg font-semibold">No contacts found</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Get started by adding your first contact.
+          </p>
+          <Button asChild className="mt-4">
+            <Link href="/dashboard/contacts/new">
+              <UserPlus className="mr-2 h-4 w-4" />
+              Add Contact
+            </Link>
+          </Button>
+        </div>
+      )}
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Showing {contacts.length} of {contacts.length} contacts
+        </p>
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm" disabled={true} /* Add pagination logic */>
+            Previous
+          </Button>
+          <Button variant="outline" size="sm" disabled={true} /* Add pagination logic */>
+            Next
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
-
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/contacts/data-export.tsx
 "use client";
@@ -2163,13 +2850,43 @@ export function DataExport({ contacts }: DataExportProps) {
 }
 
 ________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/contacts/data-table-loading.tsx
+export function DataTableLoading() {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center space-x-4">
+          <div className="h-8 w-8 animate-pulse rounded-md bg-muted" />
+          <div className="space-y-2">
+            <div className="h-4 w-[250px] animate-pulse rounded-md bg-muted" />
+            <div className="h-4 w-[200px] animate-pulse rounded-md bg-muted" />
+          </div>
+        </div>
+        {[...Array(5)].map((_, i) => (
+          <div
+            key={i}
+            className="flex items-center space-x-4 rounded-md border p-4"
+          >
+            <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
+            <div className="space-y-2">
+              <div className="h-4 w-[250px] animate-pulse rounded-md bg-muted" />
+              <div className="h-4 w-[200px] animate-pulse rounded-md bg-muted" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/contacts/search.tsx
+// src/components/contacts/search.tsx
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
+import { Search as SearchIcon, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useDebounce } from "@/lib/hooks/use-debounce";
-import { useEffect, useState } from "react";
 
 export function Search() {
   const router = useRouter();
@@ -2178,28 +2895,55 @@ export function Search() {
   const [value, setValue] = useState(searchParams.get("search") ?? "");
   const debouncedValue = useDebounce(value, 500);
 
+  const createQueryString = useCallback(
+    (params: Record<string, string | null>) => {
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+
+      for (const [key, value] of Object.entries(params)) {
+        if (value === null) {
+          newSearchParams.delete(key);
+        } else {
+          newSearchParams.set(key, value);
+        }
+      }
+
+      return newSearchParams.toString();
+    },
+    [searchParams]
+  );
+
   useEffect(() => {
-    const params = new URLSearchParams(searchParams);
-    if (debouncedValue) {
-      params.set("search", debouncedValue);
-    } else {
-      params.delete("search");
-    }
-    router.replace(`${pathname}?${params.toString()}`);
-  }, [debouncedValue, pathname, router, searchParams]);
+    const queryString = createQueryString({
+      search: debouncedValue || null,
+    });
+
+    router.push(`${pathname}?${queryString}`);
+  }, [debouncedValue, router, pathname, createQueryString]);
 
   return (
-    <div className="relative w-full sm:w-[300px]">
+    <div className="relative w-full md:w-[300px]">
+      <SearchIcon
+        className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground"
+      />
       <Input
         placeholder="Search contacts..."
-        value={value}
         onChange={(e) => setValue(e.target.value)}
-        className="w-full"
+        value={value}
+        className="pl-8 pr-8"
       />
+      {value && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="absolute right-0 top-0 h-full px-2 py-0"
+          onClick={() => setValue("")}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 }
-
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/contacts/status-select.tsx
 import {
@@ -2351,6 +3095,135 @@ export function AnalyticsOverview({ contacts }: AnalyticsOverviewProps) {
 }
 
 ________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/date-range.tsx
+"use client";
+
+import * as React from "react";
+import { CalendarIcon } from "lucide-react";
+import { addDays, format } from "date-fns";
+import { DateRange } from "react-day-picker";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+export function CalendarDateRangePicker({
+  className,
+}: React.HTMLAttributes<HTMLDivElement>) {
+  const [date, setDate] = React.useState<DateRange | undefined>({
+    from: new Date(2024, 0, 20),
+    to: addDays(new Date(2024, 0, 20), 20),
+  });
+
+  return (
+    <div className={cn("grid gap-2", className)}>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            id="date"
+            variant={"outline"}
+            size="sm"
+            className={cn(
+              "w-[260px] justify-start text-left font-normal",
+              !date && "text-muted-foreground"
+            )}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {date?.from ? (
+              date.to ? (
+                <>
+                  {format(date.from, "LLL dd, y")} -{" "}
+                  {format(date.to, "LLL dd, y")}
+                </>
+              ) : (
+                format(date.from, "LLL dd, y")
+              )
+            ) : (
+              <span>Pick a date</span>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="end">
+          <Calendar
+            initialFocus
+            mode="range"
+            defaultMonth={date?.from}
+            selected={date}
+            onSelect={setDate}
+            numberOfMonths={2}
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/overview.tsx
+"use client";
+
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
+
+const data = [
+  {
+    name: "Jan",
+    total: 1200,
+  },
+  {
+    name: "Feb",
+    total: 1600,
+  },
+  {
+    name: "Mar",
+    total: 1400,
+  },
+  {
+    name: "Apr",
+    total: 1800,
+  },
+  {
+    name: "May",
+    total: 2200,
+  },
+  {
+    name: "Jun",
+    total: 2600,
+  },
+];
+
+export function Overview() {
+  return (
+    <ResponsiveContainer width="100%" height={350}>
+      <BarChart data={data}>
+        <XAxis
+          dataKey="name"
+          stroke="#888888"
+          fontSize={12}
+          tickLine={false}
+          axisLine={false}
+        />
+        <YAxis
+          stroke="#888888"
+          fontSize={12}
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={(value) => `$${value}`}
+        />
+        <Bar
+          dataKey="total"
+          fill="currentColor"
+          radius={[4, 4, 0, 0]}
+          className="fill-primary"
+        />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/recent-activities.tsx
 "use client";
 
@@ -2390,7 +3263,7 @@ export function RecentActivities() {
           <div>Loading...</div>
         ) : (
           <div className="space-y-4">
-            {activities.map((activity: any) => (
+            {activities.map((activity: { id: string; type: string; description: string; createdAt: string }) => (
               <div
                 key={activity.id}
                 className="flex items-start space-x-4 text-sm"
@@ -2419,6 +3292,37 @@ export function RecentActivities() {
 }
 
 ________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/recent-sales.tsx
+export function RecentSales() {
+    return (
+      <div className="space-y-8">
+        {/* Example recent contacts */}
+        <div className="flex items-center">
+          <div className="space-y-1">
+            <p className="text-sm font-medium leading-none">John Doe</p>
+            <p className="text-sm text-muted-foreground">john@example.com</p>
+          </div>
+          <div className="ml-auto font-medium">New</div>
+        </div>
+        <div className="flex items-center">
+          <div className="space-y-1">
+            <p className="text-sm font-medium leading-none">Alice Smith</p>
+            <p className="text-sm text-muted-foreground">alice@example.com</p>
+          </div>
+          <div className="ml-auto font-medium">Qualified</div>
+        </div>
+        <div className="flex items-center">
+          <div className="space-y-1">
+            <p className="text-sm font-medium leading-none">Bob Johnson</p>
+            <p className="text-sm text-muted-foreground">bob@example.com</p>
+          </div>
+          <div className="ml-auto font-medium">Converted</div>
+        </div>
+        {/* Add more recent contacts as needed */}
+      </div>
+    );
+  }
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/side-nav.tsx
 "use client";
 
@@ -2428,66 +3332,136 @@ import { cn } from "@/lib/utils";
 import { 
   Home, 
   Users, 
-  BarChart2,
   Settings,
-  PlusCircle 
+  PlusCircle,
+  ChevronRight,
+  ChevronLeft
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useSidebar } from "@/store/use-sidebar";
+import { useEffect, useState } from "react";
 
 const routes = [
   {
     label: "Dashboard",
     icon: Home,
     href: "/dashboard",
+    color: "text-sky-500"
   },
   {
     label: "Contacts",
     icon: Users,
     href: "/dashboard/contacts",
-  },
-  {
-    label: "Analytics",
-    icon: BarChart2,
-    href: "/dashboard/analytics",
+    color: "text-violet-500"
   },
   {
     label: "Settings",
     icon: Settings,
     href: "/dashboard/settings",
-  },
+    color: "text-orange-500"
+  }
 ];
 
 export function SideNav() {
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+  const { isCollapsed, toggleCollapse } = useSidebar();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
 
   return (
-    <div className="flex h-full w-64 flex-col border-r bg-gray-50/40">
-      <div className="p-6">
-        <Link
-          href="/dashboard/contacts/new"
-          className="flex w-full items-center justify-center rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
-        >
-          <PlusCircle className="mr-2 h-4 w-4" />
-          New Contact
-        </Link>
-      </div>
-      <nav className="flex-1 space-y-1 px-2">
-        {routes.map((route) => (
-          <Link
-            key={route.href}
-            href={route.href}
-            className={cn(
-              "flex items-center rounded-md px-3 py-2 text-sm font-medium",
-              pathname === route.href
-                ? "bg-gray-100 text-gray-900"
-                : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-            )}
+    <aside
+      className={cn(
+        "fixed left-0 z-50 flex h-full w-60 flex-col bg-background border-r",
+        isCollapsed && "w-[70px]",
+        "transition-all duration-300 ease-in-out"
+      )}
+    >
+      <TooltipProvider delayDuration={0}>
+        <div className="flex h-16 items-center justify-between px-3 border-b">
+          {!isCollapsed && (
+            <span className="font-bold">BUF BARISTA CRM</span>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto"
+            onClick={toggleCollapse}
           >
-            <route.icon className="mr-3 h-4 w-4" />
-            {route.label}
-          </Link>
-        ))}
-      </nav>
-    </div>
+            {isCollapsed ? <ChevronRight /> : <ChevronLeft />}
+          </Button>
+        </div>
+
+        <div className="p-3">
+          {isCollapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href="/dashboard/contacts/new">
+                  <Button size="icon" className="w-full">
+                    <PlusCircle className="h-5 w-5" />
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                New Contact
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <Link href="/dashboard/contacts/new">
+              <Button className="w-full">
+                <PlusCircle className="mr-2 h-5 w-5" />
+                New Contact
+              </Button>
+            </Link>
+          )}
+        </div>
+
+        <ScrollArea className="flex-1 px-3">
+          <div className="space-y-2 py-2">
+            {routes.map((route) => (
+              isCollapsed ? (
+                <Tooltip key={route.href}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href={route.href}
+                      className={cn(
+                        "flex items-center justify-center rounded-md p-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                        pathname === route.href && "bg-accent text-accent-foreground"
+                      )}
+                    >
+                      <route.icon className={cn("h-5 w-5", route.color)} />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    {route.label}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <Link
+                  key={route.href}
+                  href={route.href}
+                  className={cn(
+                    "flex items-center rounded-md p-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                    pathname === route.href && "bg-accent text-accent-foreground"
+                  )}
+                >
+                  <route.icon className={cn("mr-2 h-5 w-5", route.color)} />
+                  {route.label}
+                </Link>
+              )
+            ))}
+          </div>
+        </ScrollArea>
+      </TooltipProvider>
+    </aside>
   );
 }
 
@@ -2715,81 +3689,719 @@ export default function ContactForm() {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/nav/main-nav.tsx
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/layout/page-container.tsx
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { LogOut, User } from "lucide-react";
+import { useSidebar } from "@/store/use-sidebar";
+import { useEffect, useState } from "react";
 
-const navigationItems = [
-  {
-    title: "Dashboard",
-    href: "/dashboard",
-  },
-  {
-    title: "Contacts",
-    href: "/dashboard/contacts",
-  },
-  {
-    title: "Analytics",
-    href: "/dashboard/analytics",
-  },
-];
+interface PageContainerProps {
+  children: React.ReactNode;
+  className?: string;
+}
 
-export function MainNav() {
-  const pathname = usePathname();
+export function PageContainer({ children, className }: PageContainerProps) {
+  const { isCollapsed, isResetting } = useSidebar();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
 
   return (
-    <header className="border-b bg-background">
-      <div className="container flex h-16 items-center px-4">
-        <Link href="/dashboard" className="mr-6 font-bold">
-          BUF BARISTA CRM
-        </Link>
-        <nav className="flex items-center space-x-6 text-sm font-medium">
-          {navigationItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "transition-colors hover:text-foreground/80",
-                pathname === item.href ? "text-foreground" : "text-foreground/60"
-              )}
-            >
-              {item.title}
-            </Link>
-          ))}
-        </nav>
-        <div className="ml-auto flex items-center space-x-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <User className="h-5 w-5" />
-                <span className="sr-only">Toggle user menu</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => signOut()}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Log out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-    </header>
+    <div
+      className={cn(
+        "min-h-screen transition-all duration-300 ease-in-out",
+        {
+          "ml-64": !isCollapsed,
+          "ml-16": isCollapsed,
+          "ml-0": isResetting,
+        },
+        className
+      )}
+    >
+      {children}
+    </div>
   );
 }
 
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/settings/account-form.tsx
+"use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/use-toast";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
+import { useState } from "react";
+
+const accountFormSchema = z.object({
+  currentPassword: z.string().min(8, "Password must be at least 8 characters."),
+  newPassword: z.string().min(8, "Password must be at least 8 characters."),
+  confirmPassword: z.string(),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
+type AccountFormValues = z.infer<typeof accountFormSchema>;
+
+export function AccountForm() {
+  const [loading, setLoading] = useState(false);
+
+  const form = useForm<AccountFormValues>({
+    resolver: zodResolver(accountFormSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
+
+  async function onSubmit() {
+    setLoading(true);
+    try {
+      // Simulated API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      toast({
+        title: "Password updated",
+        description: "Your password has been updated successfully.",
+      });
+      form.reset();
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    }
+    setLoading(false);
+  }
+  
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Account Security</CardTitle>
+        <CardDescription>
+          Update your password and manage account security settings.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <FormField
+              control={form.control}
+              name="currentPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Current Password</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Enter current password" 
+                      type="password" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="newPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>New Password</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Enter new password" 
+                      type="password" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Password must be at least 8 characters long.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirm New Password</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Confirm new password" 
+                      type="password" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loading ? "Updating..." : "Update password"}
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/settings/notifications-form.tsx
+"use client";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useForm } from "react-hook-form";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+} from "@/components/ui/form";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "@/components/ui/use-toast";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
+import { useState } from "react";
+
+const notificationsFormSchema = z.object({
+  emailNotifications: z.boolean(),
+  pushNotifications: z.boolean(),
+  monthlyNewsletter: z.boolean(),
+  marketingEmails: z.boolean(),
+});
+
+type NotificationsFormValues = z.infer<typeof notificationsFormSchema>;
+
+export function NotificationsForm() {
+  const [loading, setLoading] = useState(false);
+
+  const form = useForm<NotificationsFormValues>({
+    resolver: zodResolver(notificationsFormSchema),
+    defaultValues: {
+      emailNotifications: true,
+      pushNotifications: false,
+      monthlyNewsletter: true,
+      marketingEmails: false,
+    },
+  });
+
+  async function onSubmit() {
+    setLoading(true);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      toast({
+        title: "Notifications updated",
+        description: "Your notification preferences have been updated.",
+      });
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    }
+    setLoading(false);
+  }
+  
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Notifications</CardTitle>
+        <CardDescription>
+          Configure how you want to receive notifications.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <FormField
+              control={form.control}
+              name="emailNotifications"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">
+                      Email Notifications
+                    </FormLabel>
+                    <FormDescription>
+                      Receive notifications about your account activity via email.
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="pushNotifications"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">
+                      Push Notifications
+                    </FormLabel>
+                    <FormDescription>
+                      Receive push notifications in your browser.
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="monthlyNewsletter"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">
+                      Monthly Newsletter
+                    </FormLabel>
+                    <FormDescription>
+                      Receive our monthly newsletter with updates and tips.
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="marketingEmails"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">
+                      Marketing Emails
+                    </FormLabel>
+                    <FormDescription>
+                      Receive emails about new features and special offers.
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <Button type="submit" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loading ? "Saving..." : "Save preferences"}
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/settings/preferences-form.tsx
+"use client";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useForm } from "react-hook-form";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "@/components/ui/use-toast";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
+import { useState } from "react";
+
+const preferencesFormSchema = z.object({
+  theme: z.enum(["light", "dark", "system"]),
+  dateFormat: z.string(),
+  timeZone: z.string(),
+  language: z.string(),
+});
+
+type PreferencesFormValues = z.infer<typeof preferencesFormSchema>;
+
+export function PreferencesForm() {
+  const [loading, setLoading] = useState(false);
+
+  const form = useForm<PreferencesFormValues>({
+    resolver: zodResolver(preferencesFormSchema),
+    defaultValues: {
+      theme: "system",
+      dateFormat: "MM/DD/YYYY",
+      timeZone: "UTC",
+      language: "en",
+    },
+  });
+
+  // We don't need error if we're not handling it, hence it's removed.
+  async function onSubmit() {
+    
+    setLoading(true);
+    try {
+      // Simulated API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      toast({
+        title: "Preferences updated",
+        description: "Your preferences have been saved successfully.",
+      });
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    }
+    setLoading(false);
+  }
+  
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Preferences</CardTitle>
+        <CardDescription>Customize your application experience.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <FormField
+              control={form.control}
+              name="theme"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Theme</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a theme" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="light">Light</SelectItem>
+                      <SelectItem value="dark">Dark</SelectItem>
+                      <SelectItem value="system">System</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>Choose your preferred color theme.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="dateFormat"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Date Format</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select date format" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
+                      <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
+                      <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>Choose how dates should be displayed.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="timeZone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Time Zone</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select time zone" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="UTC">UTC</SelectItem>
+                      <SelectItem value="EST">Eastern Time</SelectItem>
+                      <SelectItem value="CST">Central Time</SelectItem>
+                      <SelectItem value="PST">Pacific Time</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>Choose your preferred time zone.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="language"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Language</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select language" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="en">English</SelectItem>
+                      <SelectItem value="es">Spanish</SelectItem>
+                      <SelectItem value="fr">French</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>Choose your preferred language.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loading ? "Saving..." : "Save preferences"}
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/settings/profile-form.tsx
+"use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/use-toast";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
+
+const profileFormSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters."),
+  email: z.string().email("Invalid email address."),
+  bio: z.string().max(160).optional(),
+  phoneNumber: z.string().optional(),
+});
+
+type ProfileFormValues = z.infer<typeof profileFormSchema>;
+
+export function ProfileForm() {
+  const [loading, setLoading] = useState(false);
+
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileFormSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      bio: "",
+      phoneNumber: "",
+    },
+  });
+
+  async function onSubmit() {
+    setLoading(true);
+    try {
+      // Simulated API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully.",
+      });
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    }
+    setLoading(false);
+  }
+
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Profile</CardTitle>
+        <CardDescription>
+          Manage your public profile information.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-8">
+          <div className="flex items-center gap-x-4">
+            <Avatar className="h-20 w-20">
+              <AvatarImage src="/placeholder-avatar.jpg" alt="Profile picture" />
+              <AvatarFallback>CN</AvatarFallback>
+            </Avatar>
+            <div>
+              <Button variant="outline" size="sm">
+                Change Photo
+              </Button>
+              <p className="text-sm text-muted-foreground mt-2">
+                JPG, GIF or PNG. Max size of 3MB.
+              </p>
+            </div>
+          </div>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Your name" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      This is your public display name.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="you@example.com" {...field} type="email" />
+                    </FormControl>
+                    <FormDescription>
+                      Your email address for communications.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="bio"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bio</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Tell us a little bit about yourself"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Brief description for your profile. Maximum 160 characters.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phoneNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone Number</FormLabel>
+                    <FormControl>
+                      <Input placeholder="+1 (555) 000-0000" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Your contact phone number.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {loading ? "Updating..." : "Update profile"}
+              </Button>
+            </form>
+          </Form>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/accordion.tsx
 "use client"
@@ -2912,6 +4524,59 @@ const AlertDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttrib
 AlertDescription.displayName = "AlertDescription"
 
 export { Alert, AlertTitle, AlertDescription }
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/avatar.tsx
+"use client"
+
+import * as React from "react"
+import * as AvatarPrimitive from "@radix-ui/react-avatar"
+
+import { cn } from "@/lib/utils"
+
+const Avatar = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Root
+    ref={ref}
+    className={cn(
+      "relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full",
+      className
+    )}
+    {...props}
+  />
+))
+Avatar.displayName = AvatarPrimitive.Root.displayName
+
+const AvatarImage = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Image>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Image
+    ref={ref}
+    className={cn("aspect-square h-full w-full", className)}
+    {...props}
+  />
+))
+AvatarImage.displayName = AvatarPrimitive.Image.displayName
+
+const AvatarFallback = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Fallback>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Fallback
+    ref={ref}
+    className={cn(
+      "flex h-full w-full items-center justify-center rounded-full bg-muted",
+      className
+    )}
+    {...props}
+  />
+))
+AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName
+
+export { Avatar, AvatarImage, AvatarFallback }
 
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/badge.tsx
@@ -4690,13 +6355,10 @@ export { Tabs, TabsList, TabsTrigger, TabsContent }
 
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/textarea.tsx
-import * as React from "react"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
-export interface TextareaProps
-  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
-
-const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
+const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(
   ({ className, ...props }, ref) => {
     return (
       <textarea
@@ -4707,12 +6369,12 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         ref={ref}
         {...props}
       />
-    )
+    );
   }
-)
-Textarea.displayName = "Textarea"
+);
+Textarea.displayName = "Textarea";
 
-export { Textarea }
+export { Textarea };
 
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/toast.tsx
@@ -5078,51 +6740,162 @@ function useToast() {
 export { useToast, toast }
 
 ________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/hooks/use-media-query.ts
+import { useState, useEffect } from "react";
+
+export function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    
+    // Update matches state initially
+    setMatches(media.matches);
+
+    // Update matches state on change
+    function listener(e: MediaQueryListEvent) {
+      setMatches(e.matches);
+    }
+
+    // Modern browsers
+    if (media.addEventListener) {
+      media.addEventListener("change", listener);
+      return () => media.removeEventListener("change", listener);
+    } else {
+      // Fallback for older browsers
+      media.addListener(listener);
+      return () => media.removeListener(listener);
+    }
+  }, [query]);
+
+  return matches;
+}
+
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/activity/logger.ts
+// import { prisma } from "@/lib/db/prisma";
+
+// export type ActivityType = 
+//   | "STATUS_CHANGE"
+//   | "NOTE_ADDED"
+//   | "EMAIL_SENT"
+//   | "CONTACT_CREATED"
+//   | "CONTACT_UPDATED"
+//   | "CONTACT_DELETED";
+
+// export async function logActivity({
+//   contactId,
+//   userId,
+//   type,
+//   description,
+//   metadata = {}
+// }: {
+//   contactId: string;
+//   userId: string;
+//   type: ActivityType;
+//   description: string;
+//   metadata?: Record<string, any>;
+// }) {
+//   try {
+//     const activity = await prisma.activity.create({
+//       data: {
+//         contactId: contactId,
+//         userId,
+//         type,
+//         description,
+//         metadata,
+//       },
+//     });
+//     return activity;
+//   } catch (error) {
+//     console.error("Failed to log activity:", error);
+//     return null;
+//   }
+// }
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/auth/options.ts
+import { NextAuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import { compare } from "bcryptjs";
 import { prisma } from "@/lib/db/prisma";
 
-export type ActivityType = 
-  | "STATUS_CHANGE"
-  | "NOTE_ADDED"
-  | "EMAIL_SENT"
-  | "CONTACT_CREATED"
-  | "CONTACT_UPDATED"
-  | "CONTACT_DELETED";
-
-export async function logActivity({
-  contactId,
-  userId,
-  type,
-  description,
-  metadata = {}
-}: {
-  contactId: string;
-  userId: string;
-  type: ActivityType;
-  description: string;
-  metadata?: Record<string, any>;
-}) {
-  try {
-    const activity = await prisma.activity.create({
-      data: {
-        contactId,
-        userId,
-        type,
-        description,
-        metadata,
-      },
-    });
-    return activity;
-  } catch (error) {
-    console.error("Failed to log activity:", error);
-    return null;
-  }
+interface CustomUserSession {
+  id: string;
+  email: string;
+  name: string | null;
 }
+
+export const authOptions: NextAuthOptions = {
+  providers: [
+    CredentialsProvider({
+      name: "credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          throw new Error("Missing credentials");
+        }
+
+        const user = await prisma.user.findUnique({
+          where: {
+            email: credentials.email
+          }
+        });
+
+        if (!user || !user.password) {
+          throw new Error("No user found");
+        }
+
+        const isValid = await compare(credentials.password, user.password);
+
+        if (!isValid) {
+          throw new Error("Invalid password");
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+        };
+      }
+    })
+  ],
+  pages: {
+    signIn: "/auth/login",
+  },
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.email = user.email;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user = {
+          ...session.user,
+          id: token.id as string, // Type assertion
+        } as CustomUserSession;
+      }
+      return session;
+    },
+  },
+  secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === "development",
+};
 
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/contacts.ts
 import { prisma } from "./db/prisma";
-import { Contact } from "@/types/contacts";
+import { Contact, ContactStats } from "@/types/contacts";
 
 export async function getContacts(): Promise<Contact[]> {
   try {
@@ -5131,7 +6904,7 @@ export async function getContacts(): Promise<Contact[]> {
         createdAt: "desc",
       },
     });
-    return contacts;
+    return contacts as Contact[]; // Add type assertion to fix the type error
   } catch (error) {
     console.error("Error fetching contacts:", error);
     return [];
@@ -5143,42 +6916,81 @@ export async function getContactById(id: string): Promise<Contact | null> {
     const contact = await prisma.contact.findUnique({
       where: { id },
     });
-    return contact;
+    return contact as Contact | null; // Add type assertion to fix the type error
   } catch (error) {
     console.error("Error fetching contact:", error);
     return null;
   }
 }
 
-export async function getContactStats() {
+export async function getContactStats(): Promise<ContactStats> {
   try {
-    const [total, qualified, converted] = await Promise.all([
-      prisma.contact.count(),
-      prisma.contact.count({
-        where: { status: "QUALIFIED" },
-      }),
-      prisma.contact.count({
-        where: { status: "CONVERTED" },
-      }),
-    ]);
+    // Get total contacts
+    const totalContacts = await prisma.contact.count();
+
+    // Get contacts created this month
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const newThisMonth = await prisma.contact.count({
+      where: {
+        createdAt: {
+          gte: startOfMonth,
+        },
+      },
+    });
+
+    // Get contacts created last month for comparison
+    const startOfLastMonth = new Date(startOfMonth);
+    startOfLastMonth.setMonth(startOfLastMonth.getMonth() - 1);
+    const endOfLastMonth = new Date(startOfMonth);
+    endOfLastMonth.setMilliseconds(-1);
+
+    const lastMonthContacts = await prisma.contact.count({
+      where: {
+        createdAt: {
+          gte: startOfLastMonth,
+          lt: startOfMonth,
+        },
+      },
+    });
+
+    // Calculate percentage change
+    const percentageChange = lastMonthContacts === 0
+      ? newThisMonth === 0 ? "0.0" : "100.0"
+      : ((newThisMonth - lastMonthContacts) / lastMonthContacts * 100).toFixed(1);
+
+    // Get contacts by status
+    const statusCounts = await prisma.contact.groupBy({
+      by: ["status"],
+      _count: {
+        id: true,
+      },
+    });
+
+    // Convert status counts to record
+    const byStatus = statusCounts.reduce((acc, curr) => {
+      acc[curr.status as keyof typeof acc] = curr._count.id;
+      return acc;
+    }, {} as Record<string, number>);
 
     return {
-      total,
-      qualified,
-      converted,
-      conversionRate: total ? (converted / total) * 100 : 0,
+      total: totalContacts,
+      newThisMonth,
+      percentageChange,
+      byStatus,
     };
   } catch (error) {
     console.error("Error fetching contact stats:", error);
     return {
       total: 0,
-      qualified: 0,
-      converted: 0,
-      conversionRate: 0,
+      newThisMonth: 0,
+      percentageChange: "0.0",
+      byStatus: {},
     };
   }
 }
-
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/db/prisma.ts
 import { PrismaClient } from '@prisma/client'
@@ -5195,19 +7007,19 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/hooks/use-debounce.ts
-import { useEffect, useState } from "react"
+import { useEffect, useState } from "react";
 
 export function useDebounce<T>(value: T, delay?: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value)
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedValue(value), delay || 500)
-    return () => clearTimeout(timer)
-  }, [value, delay])
+    const timer = setTimeout(() => setDebouncedValue(value), delay || 500);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
 
-  return debouncedValue
+  return debouncedValue;
+
 }
-
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/utils.ts
 import { type ClassValue, clsx } from "clsx"
@@ -5221,48 +7033,192 @@ ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/middleware.ts
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
+import type { NextRequest } from "next/server";
 
-export async function middleware(req: any) {
-  const token = await getToken({ req });
-  const isAuthenticated = !!token;
-  const isAuthPage = req.nextUrl.pathname.startsWith("/login") ||
-    req.nextUrl.pathname.startsWith("/register");
+export async function middleware(request: NextRequest) {
+  try {
+    // Get the token with explicit typing
+    const token = await getToken({
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET,
+    });
 
-  if (isAuthPage) {
-    if (isAuthenticated) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+    // Debug logging for development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Middleware] Path: ${request.nextUrl.pathname}`);
+      console.log(`[Middleware] Token exists: ${!!token}`);
     }
-    return null;
-  }
 
-  if (!isAuthenticated && req.nextUrl.pathname.startsWith("/dashboard")) {
-    return NextResponse.redirect(new URL("/login", req.url));
-  }
+    // API route protection
+    if (request.nextUrl.pathname.startsWith('/api')) {
+      // Skip auth check for auth-related API routes
+      if (request.nextUrl.pathname.startsWith('/api/auth')) {
+        return NextResponse.next();
+      }
 
-  return NextResponse.next();
+      if (!token) {
+        console.error('[Middleware] API Route - Unauthorized access attempt');
+        return new NextResponse(
+          JSON.stringify({ error: "Unauthorized access" }), 
+          { 
+            status: 401,
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+      }
+      
+      // Add user info to request headers for API routes
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set('x-user-id', token.sub || '');
+      requestHeaders.set('x-user-email', token.email as string || '');
+
+      return NextResponse.next({
+        headers: requestHeaders,
+      });
+    }
+
+    // Auth page protection
+    if (request.nextUrl.pathname.startsWith('/auth')) {
+      if (token) {
+        console.log('[Middleware] Auth Page - Redirecting authenticated user to dashboard');
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
+      return NextResponse.next();
+    }
+
+    // Dashboard protection
+    if (request.nextUrl.pathname.startsWith('/dashboard')) {
+      if (!token) {
+        console.log('[Middleware] Dashboard - Redirecting unauthenticated user to login');
+        const loginUrl = new URL('/auth/login', request.url);
+        loginUrl.searchParams.set('callbackUrl', request.url);
+        return NextResponse.redirect(loginUrl);
+      }
+      return NextResponse.next();
+    }
+
+    // Contact page protection
+    if (request.nextUrl.pathname.startsWith('/contacts')) {
+      if (!token) {
+        console.log('[Middleware] Contacts - Redirecting unauthenticated user to login');
+        const loginUrl = new URL('/auth/login', request.url);
+        loginUrl.searchParams.set('callbackUrl', request.url);
+        return NextResponse.redirect(loginUrl);
+      }
+      return NextResponse.next();
+    }
+
+    // Public routes
+    return NextResponse.next();
+  } catch (error) {
+    console.error('[Middleware] Error:', error);
+    
+    // Handle errors gracefully
+    if (request.nextUrl.pathname.startsWith('/api')) {
+      return new NextResponse(
+        JSON.stringify({ error: "Internal server error" }), 
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    }
+    
+    // Redirect to error page for non-API routes
+    return NextResponse.redirect(new URL('/error', request.url));
+  }
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login", "/register"],
+  matcher: [
+    // Protected API routes
+    '/api/:path*',
+    // Auth pages
+    '/auth/:path*',
+    // Dashboard pages
+    '/dashboard/:path*',
+    // Contact pages
+    "/api/contacts/:path*",
+
+  ],
 };
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/store/use-sidebar.ts
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+interface SidebarState {
+  isCollapsed: boolean;
+  isResetting: boolean;
+  toggleCollapse: () => void;
+  onResetStart: () => void;
+  onResetEnd: () => void;
+}
+
+export const useSidebar = create<SidebarState>()(
+  persist(
+    (set) => ({
+      isCollapsed: false,
+      isResetting: false,
+      toggleCollapse: () => set((state) => ({ isCollapsed: !state.isCollapsed })),
+      onResetStart: () => set({ isResetting: true }),
+      onResetEnd: () => set({ isResetting: false }),
+    }),
+    {
+      name: 'sidebar-state',
+    }
+  )
+);
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/types/avatar.ts
+import { AvatarProps as RadixAvatarProps } from "@radix-ui/react-avatar"
+
+export interface AvatarProps extends RadixAvatarProps {
+  src?: string
+  alt?: string
+  fallback?: string
+  status?: 'online' | 'offline' | 'busy' | 'away'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
+  className?: string
+}
+
+export interface AvatarGroupProps {
+  children: React.ReactNode
+  max?: number
+  className?: string
+}
 
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/types/contacts/index.ts
-export interface Contact {
-  id?: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string;
-  company?: string;
-  status: ContactStatus;
-  notes?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-  userId?: string;
-}
+// // export interface Contact {
+// //   id?: string;
+// //   firstName: string;
+// //   lastName: string;
+// //   email: string;
+// //   phone?: string;
+// //   company?: string;
+// //   status: ContactStatus;
+// //   notes?: string;
+// //   createdAt?: Date;
+// //   updatedAt?: Date;
+// //   userId?: string;
+// // }
 
-export type ContactStatus = 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'CONVERTED' | 'LOST';
+// // export type ContactStatus = 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'CONVERTED' | 'LOST';
+
+// // export interface ContactFormData {
+// //   firstName: string;
+// //   lastName: string;
+// //   email: string;
+// //   phone?: string;
+// //   company?: string;
+// //   notes?: string;
+// // }
 
 export interface ContactFormData {
   firstName: string;
@@ -5273,4 +7229,46 @@ export interface ContactFormData {
   notes?: string;
 }
 
+export interface Contact {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  company?: string;
+  status: ContactStatus;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  userId: string;
+}
+
+export type ContactStatus = 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'CONVERTED' | 'LOST';
+
+export interface ContactListProps {
+  searchQuery?: string;
+  statusFilter?: string;
+  sortOrder?: string;
+  page?: number;
+}
+
+export interface ContactStats {
+  total: number;
+  newThisMonth: number;
+  percentageChange: string;
+  byStatus: {
+    [key in ContactStatus]?: number;
+  };
+}
+
+export interface StatsCardProps {
+  title: string;
+  value: string | number;
+  description: string;
+  icon: React.ReactNode;
+  trend?: {
+    value: string;
+    positive: boolean;
+  };
+}
 ________________________________________________________________________________

@@ -6,10 +6,8 @@ import { cn } from "@/lib/utils";
 import { 
   Home, 
   Users, 
-  BarChart2,
   Settings,
   PlusCircle,
-  Menu,
   ChevronRight,
   ChevronLeft
 } from "lucide-react";

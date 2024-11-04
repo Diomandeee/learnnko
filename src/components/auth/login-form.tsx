@@ -18,18 +18,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
 
+// Define form schema
 const formSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
-interface LoginFormData extends z.infer<typeof formSchema> {}
-
 export function LoginForm() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  const form = useForm<LoginFormData>({
+  const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
@@ -37,7 +36,7 @@ export function LoginForm() {
     },
   });
 
-  async function onSubmit(values: LoginFormData) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
 
     try {
@@ -58,7 +57,8 @@ export function LoginForm() {
 
       router.push("/dashboard");
       router.refresh();
-    } catch (error) {
+    } catch {
+      // Handling the error, but not capturing it in a variable.
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",
@@ -90,6 +90,7 @@ export function LoginForm() {
             </FormItem>
           )}
         />
+
         <FormField
           control={form.control}
           name="password"
@@ -107,6 +108,7 @@ export function LoginForm() {
             </FormItem>
           )}
         />
+
         <Button
           type="submit"
           className="w-full"

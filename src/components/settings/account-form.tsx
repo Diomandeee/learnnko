@@ -42,7 +42,7 @@ export function AccountForm() {
     },
   });
 
-  async function onSubmit(data: AccountFormValues) {
+  async function onSubmit() {
     setLoading(true);
     try {
       // Simulated API call
@@ -52,16 +52,16 @@ export function AccountForm() {
         description: "Your password has been updated successfully.",
       });
       form.reset();
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
-        description: "Failed to update password. Please try again.",
+        description: "Failed to update profile. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }
+  
 
   return (
     <Card>

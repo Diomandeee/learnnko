@@ -36,7 +36,7 @@ export function RecentActivities() {
           <div>Loading...</div>
         ) : (
           <div className="space-y-4">
-            {activities.map((activity: any) => (
+            {activities.map((activity: { id: string; type: string; description: string; createdAt: string }) => (
               <div
                 key={activity.id}
                 className="flex items-start space-x-4 text-sm"
