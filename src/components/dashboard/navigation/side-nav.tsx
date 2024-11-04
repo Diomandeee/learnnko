@@ -10,8 +10,24 @@ import {
   PlusCircle,
   ChevronRight,
   ChevronLeft,
-  Coffee
+  Coffee,
+  ListOrdered,
+  ServerCrash,
+  Trash,
+
 } from "lucide-react";
+
+import { 
+  FaChartLine as SalesIcon,
+  FaCashRegister as PosIcon,
+  FaClipboardList as OrdersIcon,
+  FaTrash as WasteIcon,
+  FaBoxes as InventoryIcon,
+  FaFileAlt as ReportsIcon 
+} from "react-icons/fa"; 
+
+
+
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -31,6 +47,38 @@ const routes = [
     href: "/dashboard/contacts",
     color: "text-violet-500"
   },
+  {
+    label: "Reports",
+    icon: SalesIcon, // Replace with the actual icon you want for Sales
+    href: "/dashboard/sales",
+    color: "text-red-500"
+  },
+  {
+    label: "POS",
+    icon: PosIcon, // Replace with the actual icon you want for POS
+    href: "/dashboard/pos",
+    color: "text-blue-500"
+  },
+  {
+    label: "Orders",
+    icon: OrdersIcon, // Replace with the actual icon you want for Orders
+    href: "/dashboard/order",
+    color: "text-green-500"
+  },
+  {
+    label: "Waste",
+    icon: WasteIcon, // Replace with the actual icon you want for Waste
+    href: "/dashboard/waste",
+    color: "text-yellow-500"
+  },
+
+  {
+    label: "Inventory",
+    icon: InventoryIcon, // Replace with the actual icon you want for Inventory
+    href: "/dashboard/inventory",
+    color: "text-purple-500"
+  },
+
   {
     label: "Settings",
     icon: Settings,

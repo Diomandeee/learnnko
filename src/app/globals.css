@@ -63,3 +63,11 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+
+
+.page-title {
+  font-size: 28px;
+  color: #4a90e2;
+  margin-bottom: 20px;
+  text-align: center;
+}

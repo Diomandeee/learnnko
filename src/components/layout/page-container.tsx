@@ -25,8 +25,7 @@ export function PageContainer({ children, className }: PageContainerProps) {
     <div
       className={cn(
         "min-h-screen transition-all duration-300 ease-in-out",
-        isCollapsed ? "ml-[70px]" : "ml-60",
-        "p-6",
+        isCollapsed ? "ml-[70px]" : "ml-[170px]",
         className
       )}
     >

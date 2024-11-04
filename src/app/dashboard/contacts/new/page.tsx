@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import { ContactForm } from "@/components/contacts/contact-form";
+import { PageContainer } from "@/components/layout/page-container";
 
 export const metadata: Metadata = {
   title: "New Contact | CRM",
@@ -7,5 +8,11 @@ export const metadata: Metadata = {
 };
 
 export default function NewContactPage() {
-  return <ContactForm />;
+  return (
+    <PageContainer>
+      <div className="space-y-6">
+        <ContactForm />
+      </div>
+    </PageContainer>
+  );
 }
