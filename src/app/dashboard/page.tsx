@@ -29,8 +29,7 @@ import {
   Users,
   UserPlus,
   UserCheck,
-  BarChart2,
-  Download,
+   Download,
   Plus,
 } from "lucide-react";
 import Link from "next/link";
@@ -49,8 +48,6 @@ const timeFrames = [
   { value: "quarter", label: "This Quarter" },
   { value: "year", label: "This Year" },
 ] as const;
-
-type TimeFrame = typeof timeFrames[number]["value"];
 
 interface DashboardStats {
   totalContacts: number;

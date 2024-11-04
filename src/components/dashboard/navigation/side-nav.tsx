@@ -10,7 +10,6 @@ import {
   PlusCircle,
   ChevronRight,
   ChevronLeft,
-  Menu,
   Coffee
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
