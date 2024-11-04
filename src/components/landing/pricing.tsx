@@ -1,20 +1,3 @@
-#!/bin/bash
-
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-print_colored() {
-    local color=$1
-    local message=$2
-    echo -e "${color}${message}${NC}"
-}
-
-# Update Pricing component
-print_colored $BLUE "Updating Pricing component..."
-cat > "src/components/landing/pricing.tsx" << 'EOF'
 import { Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -130,10 +113,3 @@ export function Pricing() {
     </section>
   )
 }
-EOF
-
-print_colored $GREEN "Pricing component updated successfully! 🚀"
-print_colored $BLUE "Changes made:"
-echo "1. Fixed apostrophe in 'shop's' to use proper HTML entity"
-echo "2. Now using &apos; for apostrophes"
-echo "3. ESLint error resolved"
