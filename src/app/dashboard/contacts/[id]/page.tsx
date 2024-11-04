@@ -1,6 +1,7 @@
 import { ContactDetails } from "@/components/contacts/contact-details";
 import { getContactById } from "@/lib/contacts";
 import { notFound } from "next/navigation";
+import { PageContainer } from "@/components/layout/page-container";
 
 
 // @ts-expect-error - Page props typing conflict with Next.js types
@@ -12,8 +13,10 @@ export default async function ContactPage(props: Props) {
   }
 
   return (
-    <div className="space-y-6">
+    <PageContainer>
       <ContactDetails initialData={contact} />
-    </div>
+    </PageContainer>
+
+
   );
 }

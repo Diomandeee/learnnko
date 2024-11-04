@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { MobileNav } from "./mobile-nav";
-import { Button } from "@/components/ui/button";
 import { UserButton } from "@/components/auth/user-button";
 import { Coffee } from "lucide-react";
 
