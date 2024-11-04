@@ -1,26 +1,268 @@
-cat > "src/components/dashboard/navigation/top-nav.tsx" << 'EOF'
-"use client";
+#!/bin/bash
 
-import Link from "next/link";
-import { MobileNav } from "./mobile-nav";
+cat > "src/app/dashboard/contacts/page.tsx" << 'EOF'
+import { Suspense } from "react";
+import { ContactList } from "@/components/contacts/contact-list";
+import { Search } from "@/components/contacts/search";
+import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
-import { UserButton } from "@/components/auth/user-button";
-import { Coffee } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { getContactStats } from "@/lib/contacts";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
+import {
+  ArrowUp,
+  ArrowDown,
+  Download,
+  MoreHorizontal,
+  UserPlus,
+  Mail,
+  Share2,
+  Trash2,
+  Users,
+  Plus,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { DataTableLoading } from "@/components/contacts/data-table-loading";
 
-export function TopNav() {
+interface PageProps {
+  searchParams?: {
+    [key: string]: string | undefined
+  }
+}
+
+async function getSearchParams(searchParams: PageProps['searchParams']) {
+  const params = {
+    search: searchParams?.search,
+    status: searchParams?.status,
+    sort: searchParams?.sort ?? 'newest',
+    page: searchParams?.page ? parseInt(searchParams.page) : 1
+  };
+
+  return Promise.resolve(params);
+}
+
+export default async function ContactsPage({ searchParams = {} }: PageProps) {
+  const [stats, params] = await Promise.all([
+    getContactStats(),
+    getSearchParams(searchParams)
+  ]);
+
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b bg-background px-4 md:px-6">
-      <div className="flex items-center gap-2">
-        <MobileNav />
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <Coffee className="h-5 w-5" />
-          <span className="font-bold">Buf Barista</span>
-        </Link>
+    <PageContainer>
+      <div className="space-y-4 px-2 md:space-y-6 md:p-6">
+        {/* Header Section */}
+        <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between md:space-y-0">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight md:text-3xl">Contacts</h1>
+            <p className="text-xs text-muted-foreground md:text-base">
+              Manage your contacts and leads effectively
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/contacts/new" className="flex-1 md:flex-none">
+              <Button className="w-full md:w-auto">
+                <Plus className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">New Contact</span>
+              </Button>
+            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[180px]">
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuItem>
+                  <Mail className="mr-2 h-4 w-4" />
+                  Email Selected
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Share List
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export CSV
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-red-600">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Selected
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        <Separator className="my-2 md:my-4" />
+
+        {/* Filters - Single column on mobile */}
+        <Card className="overflow-hidden">
+          <CardHeader className="space-y-1 p-4">
+            <CardTitle className="text-base">Filter Contacts</CardTitle>
+            <CardDescription className="text-xs">
+              Refine your contact list
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 p-4">
+            <div className="flex flex-col space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Status</label>
+                <Select value={params.status ?? "all"}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="NEW">New</SelectItem>
+                    <SelectItem value="CONTACTED">Contacted</SelectItem>
+                    <SelectItem value="QUALIFIED">Qualified</SelectItem>
+                    <SelectItem value="CONVERTED">Converted</SelectItem>
+                    <SelectItem value="LOST">Lost</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Sort By</label>
+                <Select value={params.sort}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                    <SelectItem value="oldest">Oldest First</SelectItem>
+                    <SelectItem value="name">Name A-Z</SelectItem>
+                    <SelectItem value="name-desc">Name Z-A</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Search</label>
+                <Search className="h-8" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Stats Cards - Single column on mobile */}
+        <div className="grid gap-3 md:grid-cols-4">
+          <Card className="relative overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium">Total</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="text-lg font-bold">{stats.total.toLocaleString()}</div>
+              <div className="flex items-center space-x-1">
+                {parseFloat(stats.percentageChange) > 0 ? (
+                  <ArrowUp className="h-3 w-3 text-emerald-500" />
+                ) : (
+                  <ArrowDown className="h-3 w-3 text-red-500" />
+                )}
+                <p className={cn(
+                  "text-[10px]",
+                  parseFloat(stats.percentageChange) > 0 ? "text-emerald-500" : "text-red-500"
+                )}>
+                  {stats.percentageChange}%
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden md:block">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium">New</CardTitle>
+              <UserPlus className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="text-lg font-bold">{stats.newThisMonth.toLocaleString()}</div>
+              <p className="text-[10px] text-muted-foreground">This month</p>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden md:block">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium">Qualified</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="text-lg font-bold">
+                {(stats.byStatus?.QUALIFIED || 0).toLocaleString()}
+              </div>
+              <p className="text-[10px] text-muted-foreground">Active leads</p>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden md:block">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium">Conversion</CardTitle>
+              <ArrowUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="text-lg font-bold">
+                {stats.total > 0
+                  ? ((stats.byStatus?.CONVERTED || 0) / stats.total * 100).toFixed(1)
+                  : "0.0"}%
+              </div>
+              <p className="text-[10px] text-muted-foreground">Overall rate</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Contact List */}
+        <Card className="overflow-hidden">
+          <CardHeader className="space-y-1 p-4">
+            <CardTitle className="text-base">All Contacts</CardTitle>
+            <CardDescription className="text-xs">
+              Your contact list
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0 sm:p-2">
+            <Suspense fallback={<DataTableLoading />}>
+              <ContactList
+                searchQuery={params.search}
+                statusFilter={params.status}
+                sortOrder={params.sort}
+                page={params.page}
+              />
+            </Suspense>
+          </CardContent>
+        </Card>
       </div>
-      <div className="flex items-center gap-4">
-        <UserButton />
-      </div>
-    </div>
+    </PageContainer>
   );
 }
 EOF
+
+echo "Updated contacts page with improved mobile responsiveness!"
+echo "Key changes:"
+echo "1. Stats cards now single column on mobile"
+echo "2. Filters section optimized for mobile width"
+echo "3. Reduced padding and margins to prevent horizontal scroll"
+echo "4. Improved typography scaling"
+echo "5. Better compact layout for mobile view"

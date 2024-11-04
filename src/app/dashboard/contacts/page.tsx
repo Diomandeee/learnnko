@@ -37,6 +37,7 @@ import {
   Share2,
   Trash2,
   Users,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -58,9 +59,7 @@ async function getSearchParams(searchParams: PageProps['searchParams']) {
 
   return Promise.resolve(params);
 }
-
 export default async function ContactsPage({ searchParams = {} }: PageProps) {
-  // Get stats and search params in parallel
   const [stats, params] = await Promise.all([
     getContactStats(),
     getSearchParams(searchParams)
@@ -68,29 +67,30 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
 
   return (
     <PageContainer>
-      <div className="space-y-6 p-6">
+      <div className="space-y-4 max-w-[500px] mx-auto px-2 md:max-w-full md:space-y-6 md:p-6">
+        {/* Header remains the same */}
         {/* Header Section */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between md:space-y-0">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-xl font-bold tracking-tight md:text-3xl">Contacts</h1>
+            <p className="text-xs text-muted-foreground md:text-base">
               Manage your contacts and leads effectively
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/dashboard/contacts/new">
-              <Button>
-                <UserPlus className="mr-2 h-4 w-4" />
-                New Contact
+            <Link href="/dashboard/contacts/new" className="flex-1 md:flex-none">
+              <Button className="w-full md:w-auto">
+                <Plus className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">New Contact</span>
               </Button>
             </Link>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" size="icon" className="h-9 w-9">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuContent align="end" className="w-[180px]">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                 <DropdownMenuItem>
                   <Mail className="mr-2 h-4 w-4" />
@@ -114,22 +114,23 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
           </div>
         </div>
 
-        <Separator />
+        
+        <Separator className="my-2 md:my-4" />
 
-        {/* Filters and Search */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Filter Contacts</CardTitle>
-            <CardDescription>
-              Refine your contact list using the filters below
+        {/* Filters - More compact */}
+        <Card className="overflow-hidden">
+          <CardHeader className="space-y-1 p-3">
+            <CardTitle className="text-base">Filter Contacts</CardTitle>
+            <CardDescription className="text-xs">
+              Refine your contact list
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <div className="flex flex-col space-y-1.5">
-                <label className="text-sm font-medium">Status</label>
+          <CardContent className="space-y-3 p-3">
+            <div className="flex flex-col space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Status</label>
                 <Select value={params.status ?? "all"}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -143,10 +144,10 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
                 </Select>
               </div>
 
-              <div className="flex flex-col space-y-1.5">
-                <label className="text-sm font-medium">Sort By</label>
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Sort By</label>
                 <Select value={params.sort}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
@@ -158,92 +159,88 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
                 </Select>
               </div>
 
-              <div className="flex flex-col space-y-1.5 md:col-span-2">
-                <label className="text-sm font-medium">Search</label>
-                <Search />
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Search</label>
+                <Search/>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Stats Overview */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
+        {/* Stats Cards - Square layout */}
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <Card className="aspect-square overflow-hidden">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium">Total</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
               <div className="text-2xl font-bold">{stats.total.toLocaleString()}</div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1 mt-1">
                 {parseFloat(stats.percentageChange) > 0 ? (
-                  <ArrowUp className="h-4 w-4 text-emerald-500" />
+                  <ArrowUp className="h-3 w-3 text-emerald-500" />
                 ) : (
-                  <ArrowDown className="h-4 w-4 text-red-500" />
+                  <ArrowDown className="h-3 w-3 text-red-500" />
                 )}
                 <p className={cn(
-                  "text-xs",
+                  "text-[10px]",
                   parseFloat(stats.percentageChange) > 0 ? "text-emerald-500" : "text-red-500"
                 )}>
-                  {stats.percentageChange}% from last month
+                  {stats.percentageChange}%
                 </p>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">New Contacts</CardTitle>
+          <Card className="aspect-square overflow-hidden">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium">New</CardTitle>
               <UserPlus className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
               <div className="text-2xl font-bold">{stats.newThisMonth.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">Added this month</p>
+              <p className="text-[10px] text-muted-foreground mt-1">This month</p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Qualified Leads</CardTitle>
+          <Card className="aspect-square overflow-hidden">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium">Qualified</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
               <div className="text-2xl font-bold">
                 {(stats.byStatus?.QUALIFIED || 0).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Active qualified leads
-              </p>
+              <p className="text-[10px] text-muted-foreground mt-1">Active leads</p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
+          <Card className="aspect-square overflow-hidden">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium">Conversion</CardTitle>
               <ArrowUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
               <div className="text-2xl font-bold">
                 {stats.total > 0
                   ? ((stats.byStatus?.CONVERTED || 0) / stats.total * 100).toFixed(1)
                   : "0.0"}%
               </div>
-              <p className="text-xs text-muted-foreground">
-                Overall conversion rate
-              </p>
+              <p className="text-[10px] text-muted-foreground mt-1">Overall rate</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Contact List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>All Contacts</CardTitle>
-            <CardDescription>
-              A list of all your contacts including their status and contact information
+        <Card className="overflow-hidden">
+          <CardHeader className="space-y-1 p-3">
+            <CardTitle className="text-base">All Contacts</CardTitle>
+            <CardDescription className="text-xs">
+              Your contact list
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0 sm:p-2">
             <Suspense fallback={<DataTableLoading />}>
               <ContactList
                 searchQuery={params.search}
@@ -258,4 +255,3 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
     </PageContainer>
   );
 }
- 
