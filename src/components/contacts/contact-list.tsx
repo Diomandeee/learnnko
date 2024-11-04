@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Contact } from "@/types/contacts"; // Ensure that Contact type includes necessary fields
+import { Contact } from "@/types/contacts";
 import {
   Table,
   TableBody,
@@ -14,6 +14,14 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,7 +40,9 @@ import {
   Users,
   UserPlus,
 } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface ContactListProps {
   searchQuery?: string;
@@ -54,9 +64,13 @@ export function ContactList({
   statusFilter,
   sortOrder,
 }: ContactListProps) {
+  const router = useRouter();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [contactToDelete, setContactToDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [sortConfig, setSortConfig] = useState<{
     key: keyof Contact;
     direction: "asc" | "desc";
@@ -76,10 +90,15 @@ export function ContactList({
         const response = await fetch(`/api/contacts?${queryParams}`);
         if (!response.ok) throw new Error("Failed to fetch contacts");
 
-        const data: Contact[] = await response.json(); // Cast the response data to Contact[]
+        const data: Contact[] = await response.json();
         setContacts(data);
       } catch (error) {
         console.error("Error fetching contacts:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load contacts",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
@@ -125,10 +144,46 @@ export function ContactList({
         }
       }
       return 0;
-    }
-    );
-  }
+    });
+  };
 
+  const handleDeleteContact = async (contactId: string) => {
+    setContactToDelete(contactId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!contactToDelete) return;
+
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/contacts/${contactToDelete}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Failed to delete contact");
+
+      setContacts(contacts.filter(contact => contact.id !== contactToDelete));
+      
+      toast({
+        title: "Success",
+        description: "Contact deleted successfully",
+      });
+
+      router.refresh();
+    } catch (error) {
+      console.error("Error deleting contact:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete contact",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+      setContactToDelete(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -155,6 +210,33 @@ export function ContactList({
           </div>
         </div>
       )}
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Contact</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this contact? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="rounded-md border">
         <Table>
@@ -233,7 +315,10 @@ export function ContactList({
                         <UserCheck className="mr-2 h-4 w-4" />
                         Update Status
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-red-600">
+                      <DropdownMenuItem
+                        onClick={() => handleDeleteContact(contact.id!)}
+                        className="text-red-600"
+                      >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete
                       </DropdownMenuItem>
@@ -264,16 +349,15 @@ export function ContactList({
         </div>
       )}
 
-      {/* Pagination */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           Showing {contacts.length} of {contacts.length} contacts
         </p>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" disabled={true} /* Add pagination logic */>
+          <Button variant="outline" size="sm" disabled={true}>
             Previous
           </Button>
-          <Button variant="outline" size="sm" disabled={true} /* Add pagination logic */>
+          <Button variant="outline" size="sm" disabled={true}>
             Next
           </Button>
         </div>
