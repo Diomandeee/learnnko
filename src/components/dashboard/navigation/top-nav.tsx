@@ -1,4 +1,3 @@
-cat > "src/components/dashboard/navigation/top-nav.tsx" << 'EOF'
 "use client";
 
 import Link from "next/link";
@@ -23,4 +22,3 @@ export function TopNav() {
     </div>
   );
 }
-EOF

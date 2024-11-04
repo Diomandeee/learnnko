@@ -1,5 +1,3 @@
-/* eslint-disable */
-// @ts-nocheck
 import { Suspense } from "react";
 import { ContactList } from "@/components/contacts/contact-list";
 import { Search } from "@/components/contacts/search";
@@ -43,31 +41,37 @@ import {
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { DataTableLoading } from "@/components/contacts/data-table-loading";
-import { ContactStats } from "@/types/contacts";
 
-interface ContactsPageProps {
-  searchParams: {
-    search?: string;
-    status?: string;
-    sort?: string;
-    page?: string;
+interface PageProps {
+  searchParams?: {
+    [key: string]: string | undefined
+  }
+}
+
+async function getSearchParams(searchParams: PageProps['searchParams']) {
+  const params = {
+    search: searchParams?.search,
+    status: searchParams?.status,
+    sort: searchParams?.sort ?? 'newest',
+    page: searchParams?.page ? parseInt(searchParams.page) : 1
   };
+
+  return Promise.resolve(params);
 }
 
-async function getStats(): Promise<ContactStats> {
-  await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate network delay
-  return getContactStats();
-}
-
-export default async function ContactsPage({ searchParams }: ContactsPageProps) {
-  const stats = await getStats();
+export default async function ContactsPage({ searchParams = {} }: PageProps) {
+  // Get stats and search params in parallel
+  const [stats, params] = await Promise.all([
+    getContactStats(),
+    getSearchParams(searchParams)
+  ]);
 
   return (
     <PageContainer>
       <div className="space-y-6 p-6">
         {/* Header Section */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div> 
+          <div>
             <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
             <p className="text-muted-foreground">
               Manage your contacts and leads effectively
@@ -124,7 +128,7 @@ export default async function ContactsPage({ searchParams }: ContactsPageProps) 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <div className="flex flex-col space-y-1.5">
                 <label className="text-sm font-medium">Status</label>
-                <Select defaultValue={searchParams.status ?? "all"}>
+                <Select value={params.status ?? "all"}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
@@ -141,7 +145,7 @@ export default async function ContactsPage({ searchParams }: ContactsPageProps) 
 
               <div className="flex flex-col space-y-1.5">
                 <label className="text-sm font-medium">Sort By</label>
-                <Select defaultValue={searchParams.sort ?? "newest"}>
+                <Select value={params.sort}>
                   <SelectTrigger>
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
@@ -242,10 +246,10 @@ export default async function ContactsPage({ searchParams }: ContactsPageProps) 
           <CardContent>
             <Suspense fallback={<DataTableLoading />}>
               <ContactList
-                searchQuery={searchParams.search}
-                statusFilter={searchParams.status}
-                sortOrder={searchParams.sort}
-                page={searchParams.page ? parseInt(searchParams.page) : 1}
+                searchQuery={params.search}
+                statusFilter={params.status}
+                sortOrder={params.sort}
+                page={params.page}
               />
             </Suspense>
           </CardContent>
@@ -254,3 +258,4 @@ export default async function ContactsPage({ searchParams }: ContactsPageProps) 
     </PageContainer>
   );
 }
+ 
