@@ -80,8 +80,9 @@ export default async function DashboardPage() {
     <PageContainer>
       <div className="space-y-4 max-w-[500px] mx-auto px-2 md:max-w-full md:space-y-6 md:p-6">
         {/* Header */}
+          <h1 className="page-title">Dashboard</h1>
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <h2 className="text-2xl font-bold tracking-tight md:text-3xl">Dashboard</h2>
+
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <CalendarDateRangePicker />
             <div className="flex items-center gap-2">

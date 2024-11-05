@@ -75,33 +75,274 @@ enum Status {
 }
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/setup-buf-crm.sh
-cat > "src/components/dashboard/navigation/top-nav.tsx" << 'EOF'
-"use client";
+#!/bin/bash
 
-import Link from "next/link";
-import { MobileNav } from "./mobile-nav";
+cat > "src/app/dashboard/contacts/page.tsx" << 'EOF'
+import { Suspense } from "react";
+import { ContactList } from "@/components/contacts/contact-list";
+import { Search } from "@/components/contacts/search";
+import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
-import { UserButton } from "@/components/auth/user-button";
-import { Coffee } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { getContactStats } from "@/lib/contacts";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
+import {
+  ArrowUp,
+  ArrowDown,
+  Download,
+  MoreHorizontal,
+  UserPlus,
+  Mail,
+  Share2,
+  Trash2,
+  Users,
+  Plus,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { DataTableLoading } from "@/components/contacts/data-table-loading";
 
-export function TopNav() {
+interface PageProps {
+  searchParams?: {
+    [key: string]: string | undefined
+  }
+}
+
+async function getSearchParams(searchParams: PageProps['searchParams']) {
+  const params = {
+    search: searchParams?.search,
+    status: searchParams?.status,
+    sort: searchParams?.sort ?? 'newest',
+    page: searchParams?.page ? parseInt(searchParams.page) : 1
+  };
+
+  return Promise.resolve(params);
+}
+
+export default async function ContactsPage({ searchParams = {} }: PageProps) {
+  const [stats, params] = await Promise.all([
+    getContactStats(),
+    getSearchParams(searchParams)
+  ]);
+
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b bg-background px-4 md:px-6">
-      <div className="flex items-center gap-2">
-        <MobileNav />
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <Coffee className="h-5 w-5" />
-          <span className="font-bold">Buf Barista</span>
-        </Link>
+    <PageContainer>
+      <div className="space-y-4 px-2 md:space-y-6 md:p-6">
+        {/* Header Section */}
+        <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between md:space-y-0">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight md:text-3xl">Contacts</h1>
+            <p className="text-xs text-muted-foreground md:text-base">
+              Manage your contacts and leads effectively
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/contacts/new" className="flex-1 md:flex-none">
+              <Button className="w-full md:w-auto">
+                <Plus className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">New Contact</span>
+              </Button>
+            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[180px]">
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuItem>
+                  <Mail className="mr-2 h-4 w-4" />
+                  Email Selected
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Share List
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export CSV
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-red-600">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Selected
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        <Separator className="my-2 md:my-4" />
+
+        {/* Filters - Single column on mobile */}
+        <Card className="overflow-hidden">
+          <CardHeader className="space-y-1 p-4">
+            <CardTitle className="text-base">Filter Contacts</CardTitle>
+            <CardDescription className="text-xs">
+              Refine your contact list
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 p-4">
+            <div className="flex flex-col space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Status</label>
+                <Select value={params.status ?? "all"}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="NEW">New</SelectItem>
+                    <SelectItem value="CONTACTED">Contacted</SelectItem>
+                    <SelectItem value="QUALIFIED">Qualified</SelectItem>
+                    <SelectItem value="CONVERTED">Converted</SelectItem>
+                    <SelectItem value="LOST">Lost</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Sort By</label>
+                <Select value={params.sort}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                    <SelectItem value="oldest">Oldest First</SelectItem>
+                    <SelectItem value="name">Name A-Z</SelectItem>
+                    <SelectItem value="name-desc">Name Z-A</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Search</label>
+                <Search className="h-8" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Stats Cards - Single column on mobile */}
+        <div className="grid gap-3 md:grid-cols-4">
+          <Card className="relative overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium">Total</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="text-lg font-bold">{stats.total.toLocaleString()}</div>
+              <div className="flex items-center space-x-1">
+                {parseFloat(stats.percentageChange) > 0 ? (
+                  <ArrowUp className="h-3 w-3 text-emerald-500" />
+                ) : (
+                  <ArrowDown className="h-3 w-3 text-red-500" />
+                )}
+                <p className={cn(
+                  "text-[10px]",
+                  parseFloat(stats.percentageChange) > 0 ? "text-emerald-500" : "text-red-500"
+                )}>
+                  {stats.percentageChange}%
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden md:block">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium">New</CardTitle>
+              <UserPlus className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="text-lg font-bold">{stats.newThisMonth.toLocaleString()}</div>
+              <p className="text-[10px] text-muted-foreground">This month</p>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden md:block">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium">Qualified</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="text-lg font-bold">
+                {(stats.byStatus?.QUALIFIED || 0).toLocaleString()}
+              </div>
+              <p className="text-[10px] text-muted-foreground">Active leads</p>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden md:block">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium">Conversion</CardTitle>
+              <ArrowUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="text-lg font-bold">
+                {stats.total > 0
+                  ? ((stats.byStatus?.CONVERTED || 0) / stats.total * 100).toFixed(1)
+                  : "0.0"}%
+              </div>
+              <p className="text-[10px] text-muted-foreground">Overall rate</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Contact List */}
+        <Card className="overflow-hidden">
+          <CardHeader className="space-y-1 p-4">
+            <CardTitle className="text-base">All Contacts</CardTitle>
+            <CardDescription className="text-xs">
+              Your contact list
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0 sm:p-2">
+            <Suspense fallback={<DataTableLoading />}>
+              <ContactList
+                searchQuery={params.search}
+                statusFilter={params.status}
+                sortOrder={params.sort}
+                page={params.page}
+              />
+            </Suspense>
+          </CardContent>
+        </Card>
       </div>
-      <div className="flex items-center gap-4">
-        <UserButton />
-      </div>
-    </div>
+    </PageContainer>
   );
 }
 EOF
 
+echo "Updated contacts page with improved mobile responsiveness!"
+echo "Key changes:"
+echo "1. Stats cards now single column on mobile"
+echo "2. Filters section optimized for mobile width"
+echo "3. Reduced padding and margins to prevent horizontal scroll"
+echo "4. Improved typography scaling"
+echo "5. Better compact layout for mobile view"
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/auth/[...nextauth]/route.ts
 import { authOptions } from "@/lib/auth/options";
@@ -621,6 +862,7 @@ ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/contacts/new/page.tsx
 import { Metadata } from "next";
 import { ContactForm } from "@/components/contacts/contact-form";
+import { PageContainer } from "@/components/layout/page-container";
 
 export const metadata: Metadata = {
   title: "New Contact | CRM",
@@ -628,7 +870,13 @@ export const metadata: Metadata = {
 };
 
 export default function NewContactPage() {
-  return <ContactForm />;
+  return (
+    <PageContainer>
+      <div className="space-y-6">
+        <ContactForm />
+      </div>
+    </PageContainer>
+  );
 }
 
 ________________________________________________________________________________
@@ -672,6 +920,7 @@ import {
   Share2,
   Trash2,
   Users,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -693,9 +942,7 @@ async function getSearchParams(searchParams: PageProps['searchParams']) {
 
   return Promise.resolve(params);
 }
-
 export default async function ContactsPage({ searchParams = {} }: PageProps) {
-  // Get stats and search params in parallel
   const [stats, params] = await Promise.all([
     getContactStats(),
     getSearchParams(searchParams)
@@ -703,29 +950,30 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
 
   return (
     <PageContainer>
-      <div className="space-y-6 p-6">
+      <div className="space-y-4 max-w-[500px] mx-auto px-2 md:max-w-full md:space-y-6 md:p-6">
+        {/* Header remains the same */}
         {/* Header Section */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between md:space-y-0">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-xl font-bold tracking-tight md:text-3xl">Contacts</h1>
+            <p className="text-xs text-muted-foreground md:text-base">
               Manage your contacts and leads effectively
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/dashboard/contacts/new">
-              <Button>
-                <UserPlus className="mr-2 h-4 w-4" />
-                New Contact
+            <Link href="/dashboard/contacts/new" className="flex-1 md:flex-none">
+              <Button className="w-full md:w-auto">
+                <Plus className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">New Contact</span>
               </Button>
             </Link>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" size="icon" className="h-9 w-9">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuContent align="end" className="w-[180px]">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                 <DropdownMenuItem>
                   <Mail className="mr-2 h-4 w-4" />
@@ -749,22 +997,23 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
           </div>
         </div>
 
-        <Separator />
+        
+        <Separator className="my-2 md:my-4" />
 
-        {/* Filters and Search */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Filter Contacts</CardTitle>
-            <CardDescription>
-              Refine your contact list using the filters below
+        {/* Filters - More compact */}
+        <Card className="overflow-hidden">
+          <CardHeader className="space-y-1 p-3">
+            <CardTitle className="text-base">Filter Contacts</CardTitle>
+            <CardDescription className="text-xs">
+              Refine your contact list
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <div className="flex flex-col space-y-1.5">
-                <label className="text-sm font-medium">Status</label>
+          <CardContent className="space-y-3 p-3">
+            <div className="flex flex-col space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Status</label>
                 <Select value={params.status ?? "all"}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -778,10 +1027,10 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
                 </Select>
               </div>
 
-              <div className="flex flex-col space-y-1.5">
-                <label className="text-sm font-medium">Sort By</label>
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Sort By</label>
                 <Select value={params.sort}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
@@ -793,92 +1042,88 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
                 </Select>
               </div>
 
-              <div className="flex flex-col space-y-1.5 md:col-span-2">
-                <label className="text-sm font-medium">Search</label>
-                <Search />
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Search</label>
+                <Search/>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Stats Overview */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
+        {/* Stats Cards - Square layout */}
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <Card className="aspect-square overflow-hidden">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium">Total</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
               <div className="text-2xl font-bold">{stats.total.toLocaleString()}</div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1 mt-1">
                 {parseFloat(stats.percentageChange) > 0 ? (
-                  <ArrowUp className="h-4 w-4 text-emerald-500" />
+                  <ArrowUp className="h-3 w-3 text-emerald-500" />
                 ) : (
-                  <ArrowDown className="h-4 w-4 text-red-500" />
+                  <ArrowDown className="h-3 w-3 text-red-500" />
                 )}
                 <p className={cn(
-                  "text-xs",
+                  "text-[10px]",
                   parseFloat(stats.percentageChange) > 0 ? "text-emerald-500" : "text-red-500"
                 )}>
-                  {stats.percentageChange}% from last month
+                  {stats.percentageChange}%
                 </p>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">New Contacts</CardTitle>
+          <Card className="aspect-square overflow-hidden">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium">New</CardTitle>
               <UserPlus className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
               <div className="text-2xl font-bold">{stats.newThisMonth.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">Added this month</p>
+              <p className="text-[10px] text-muted-foreground mt-1">This month</p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Qualified Leads</CardTitle>
+          <Card className="aspect-square overflow-hidden">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium">Qualified</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
               <div className="text-2xl font-bold">
                 {(stats.byStatus?.QUALIFIED || 0).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Active qualified leads
-              </p>
+              <p className="text-[10px] text-muted-foreground mt-1">Active leads</p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
+          <Card className="aspect-square overflow-hidden">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium">Conversion</CardTitle>
               <ArrowUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
               <div className="text-2xl font-bold">
                 {stats.total > 0
                   ? ((stats.byStatus?.CONVERTED || 0) / stats.total * 100).toFixed(1)
                   : "0.0"}%
               </div>
-              <p className="text-xs text-muted-foreground">
-                Overall conversion rate
-              </p>
+              <p className="text-[10px] text-muted-foreground mt-1">Overall rate</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Contact List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>All Contacts</CardTitle>
-            <CardDescription>
-              A list of all your contacts including their status and contact information
+        <Card className="overflow-hidden">
+          <CardHeader className="space-y-1 p-3">
+            <CardTitle className="text-base">All Contacts</CardTitle>
+            <CardDescription className="text-xs">
+              Your contact list
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0 sm:p-2">
             <Suspense fallback={<DataTableLoading />}>
               <ContactList
                 searchQuery={params.search}
@@ -893,34 +1138,2697 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
     </PageContainer>
   );
 }
- 
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/inventory/page.tsx
+"use client"
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import {
+  Package,
+  Search,
+  AlertCircle,
+  Plus,
+  Edit2,
+  Trash2,
+  RefreshCw,
+  Download,
+  Upload,
+  Check,
+  X,
+  AlertTriangle,
+  ArrowUpDown,
+  Save,
+  Coffee
+} from 'lucide-react'
+import Link from 'next/link'
+import { PageContainer } from "@/components/layout/page-container";
+import './styles.css';
+
+interface InventoryItem {
+  id: string
+  name: string
+  category: string
+  quantity: number
+  unit: string
+  minThreshold: number
+  maxThreshold: number
+  unitCost: number
+  lastRestocked: string
+  supplier: string
+  location: string
+  notes: string
+}
+
+interface SortConfig {
+  key: keyof InventoryItem
+  direction: 'asc' | 'desc'
+}
+
+const InventoryManagement: React.FC = () => {
+  // State Management
+  const [inventory, setInventory] = useState<InventoryItem[]>([])
+  const [filteredInventory, setFilteredInventory] = useState<InventoryItem[]>(
+    []
+  )
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('All')
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    key: 'name',
+    direction: 'asc'
+  })
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<{
+    type: 'success' | 'error'
+    text: string
+  } | null>(null)
+
+  // Form state for new/edit item
+  const [formData, setFormData] = useState<Partial<InventoryItem>>({
+    name: '',
+    category: '',
+    quantity: 0,
+    unit: '',
+    minThreshold: 0,
+    maxThreshold: 0,
+    unitCost: 0,
+    supplier: '',
+    location: '',
+    notes: ''
+  })
+
+  // Categories derived from inventory items
+  const categories = useMemo(() => {
+    const uniqueCategories = new Set(inventory.map((item) => item.category))
+    return ['All', ...Array.from(uniqueCategories)]
+  }, [inventory])
+
+  // Message helper - moved to the top before use
+  const showMessage = (text: string, type: 'success' | 'error') => {
+    setMessage({ text, type })
+    setTimeout(() => setMessage(null), 3000)
+  }
+
+  // Load inventory from localStorage
+  const loadInventory = useCallback(() => {
+    setIsLoading(true)
+    try {
+      const savedInventory = JSON.parse(
+        localStorage.getItem('inventory') || '[]'
+      ) as InventoryItem[]
+      setInventory(savedInventory)
+      setFilteredInventory(savedInventory)
+      setError(null)
+    } catch (err) {
+      setError('Failed to load inventory data')
+      console.error('Error loading inventory:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  // Save inventory to localStorage
+  const saveInventory = useCallback((items: InventoryItem[]) => {
+    try {
+      localStorage.setItem('inventory', JSON.stringify(items))
+      setInventory(items)
+      showMessage('Inventory saved successfully', 'success')
+    } catch (err) {
+      showMessage('Failed to save inventory', 'error')
+      console.error('Error saving inventory:', err)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadInventory()
+  }, [loadInventory])
+
+  // Filter and sort inventory
+  useEffect(() => {
+    let filtered = [...inventory]
+
+    // Apply category filter
+    if (selectedCategory !== 'All') {
+      filtered = filtered.filter((item) => item.category === selectedCategory)
+    }
+
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (item) =>
+          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.supplier.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      const aValue = a[sortConfig.key]
+      const bValue = b[sortConfig.key]
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortConfig.direction === 'asc'
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue)
+      }
+
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortConfig.direction === 'asc'
+          ? aValue - bValue
+          : bValue - aValue
+      }
+
+      return 0
+    })
+
+    setFilteredInventory(filtered)
+  }, [inventory, selectedCategory, searchTerm, sortConfig])
+
+  // Handle sort
+  const handleSort = (key: keyof InventoryItem) => {
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }))
+  }
+
+  // Add new item
+  const handleAddItem = () => {
+    setFormData({
+      name: '',
+      category: '',
+      quantity: 0,
+      unit: '',
+      minThreshold: 0,
+      maxThreshold: 0,
+      unitCost: 0,
+      supplier: '',
+      location: '',
+      notes: '',
+      lastRestocked: new Date().toISOString()
+    })
+    setSelectedItem(null)
+    setIsModalOpen(true)
+  }
+
+  // Edit item
+  const handleEditItem = (item: InventoryItem) => {
+    setFormData(item)
+    setSelectedItem(item)
+    setIsModalOpen(true)
+  }
+
+  // Delete item
+  const handleDeleteItem = (item: InventoryItem) => {
+    setSelectedItem(item)
+    setIsDeleteModalOpen(true)
+  }
+
+  // Confirm delete
+  const confirmDelete = () => {
+    if (selectedItem) {
+      const updatedInventory = inventory.filter(
+        (item) => item.id !== selectedItem.id
+      )
+      saveInventory(updatedInventory)
+      setIsDeleteModalOpen(false)
+      setSelectedItem(null)
+      showMessage('Item deleted successfully', 'success')
+    }
+  }
+
+  // Save item (create/update)
+  const handleSaveItem = () => {
+    if (!formData.name || !formData.category) {
+      showMessage('Name and category are required', 'error')
+      return
+    }
+
+    const newItem: InventoryItem = {
+      id: selectedItem?.id || Date.now().toString(),
+      name: formData.name || '',
+      category: formData.category || '',
+      quantity: formData.quantity || 0,
+      unit: formData.unit || '',
+      minThreshold: formData.minThreshold || 0,
+      maxThreshold: formData.maxThreshold || 0,
+      unitCost: formData.unitCost || 0,
+      supplier: formData.supplier || '',
+      location: formData.location || '',
+      notes: formData.notes || '',
+      lastRestocked: selectedItem?.lastRestocked || new Date().toISOString()
+    }
+
+    const updatedInventory = selectedItem
+      ? inventory.map((item) => (item.id === selectedItem.id ? newItem : item))
+      : [...inventory, newItem]
+
+    saveInventory(updatedInventory)
+    setIsModalOpen(false)
+    showMessage(
+      `Item ${selectedItem ? 'updated' : 'added'} successfully`,
+      'success'
+    )
+  }
+
+  // Export inventory
+  const handleExport = () => {
+    const dataStr = JSON.stringify(inventory, null, 2)
+    const dataUri =
+      'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr)
+    const exportFileDefaultName = 'inventory-data.json'
+
+    const linkElement = document.createElement('a')
+    linkElement.setAttribute('href', dataUri)
+    linkElement.setAttribute('download', exportFileDefaultName)
+    linkElement.click()
+    showMessage('Inventory exported successfully', 'success')
+  }
+
+  // Import inventory
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const importedData = JSON.parse(e.target?.result as string)
+          saveInventory(importedData)
+          showMessage('Inventory imported successfully', 'success')
+        } catch (err) {
+          showMessage('Failed to import inventory data', 'error')
+          console.error('Error importing inventory:', err)
+        }
+      }
+      reader.readAsText(file)
+    }
+  }
+
+  // Check low stock items
+  const lowStockItems = useMemo(() => {
+    return inventory.filter((item) => item.quantity <= item.minThreshold)
+  }, [inventory])
+
+  return (
+    <PageContainer>
+    <div className="inventory-container">
+        <h1 className="page-title">Inventory Management</h1>
+      <header className="header">
+        <div className="header-actions">
+          <button onClick={handleAddItem} className="add-button">
+            <Plus size={16} /> Add Item
+          </button>
+          <button onClick={handleExport} className="export-button">
+            <Download size={16} /> Export
+          </button>
+          <label className="import-button">
+            <Upload size={16} /> Import
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleImport}
+              style={{ display: 'none' }}
+            />
+          </label>
+          <button onClick={loadInventory} className="refresh-button">
+            <RefreshCw size={16} /> Refresh
+          </button>
+        </div>
+      </header>
+
+      {isLoading && <div className="loading">Loading inventory data...</div>}
+      {error && (
+        <div className="error">
+          <AlertTriangle size={16} /> {error}
+        </div>
+      )}
+
+      <div className="filters">
+        <div className="search-container">
+          <Search size={16} />
+          <input
+            type="text"
+            placeholder="Search inventory..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
+        </div>
+
+        <select
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
+          className="category-select"
+        >
+          {categories.map((category) => (
+            <option key={category} value={category}>
+              {category}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {lowStockItems.length > 0 && (
+        <div className="low-stock-alert">
+          <AlertCircle size={16} />
+          <span>{lowStockItems.length} item(s) are running low on stock</span>
+          <button
+            onClick={() => setSelectedCategory('All')}
+            className="view-all-button"
+          >
+            View All
+          </button>
+        </div>
+      )}
+
+      <div className="inventory-table-container">
+        <table className="inventory-table">
+          <thead>
+            <tr>
+              <th onClick={() => handleSort('name')}>
+                Name {sortConfig.key === 'name' && <ArrowUpDown size={16} />}
+              </th>
+              <th onClick={() => handleSort('category')}>
+                Category{' '}
+                {sortConfig.key === 'category' && <ArrowUpDown size={16} />}
+              </th>
+              <th onClick={() => handleSort('quantity')}>
+                Quantity{' '}
+                {sortConfig.key === 'quantity' && <ArrowUpDown size={16} />}
+              </th>
+              <th onClick={() => handleSort('minThreshold')}>
+                Min Threshold{' '}
+                {sortConfig.key === 'minThreshold' && <ArrowUpDown size={16} />}
+              </th>
+              <th onClick={() => handleSort('unitCost')}>
+                Unit Cost{' '}
+                {sortConfig.key === 'unitCost' && <ArrowUpDown size={16} />}
+              </th>
+              <th onClick={() => handleSort('supplier')}>
+                Supplier{' '}
+                {sortConfig.key === 'supplier' && <ArrowUpDown size={16} />}
+              </th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredInventory.map((item) => (
+              <tr
+                key={item.id}
+                className={
+                  item.quantity <= item.minThreshold ? 'low-stock' : ''
+                }
+              >
+                <td>{item.name}</td>
+                <td>{item.category}</td>
+                <td>
+                  {item.quantity} {item.unit}
+                </td>
+                <td>{item.minThreshold}</td>
+                <td>${item.unitCost.toFixed(2)}</td>
+                <td>{item.supplier}</td>
+                <td className="actions">
+                  <button
+                    onClick={() => handleEditItem(item)}
+                    className="edit-button"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteItem(item)}
+                    className="delete-button"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {isModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>{selectedItem ? 'Edit Item' : 'Add New Item'}</h2>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Name</label>
+                <input
+                  type="text"
+                  value={formData.name || ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Category</label>
+                <input
+                  type="text"
+                  value={formData.category || ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, category: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Quantity</label>
+                <input
+                  type="number"
+                  value={formData.quantity || 0}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      quantity: parseInt(e.target.value)
+                    })
+                  }
+                  min="0"
+                />
+              </div>
+              <div className="form-group">
+                <label>Unit</label>
+                <input
+                  type="text"
+                  value={formData.unit || ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, unit: e.target.value })
+                  }
+                  placeholder="e.g., kg, lbs, pcs"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Min Threshold</label>
+                <input
+                  type="number"
+                  value={formData.minThreshold || 0}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      minThreshold: parseInt(e.target.value)
+                    })
+                  }
+                  min="0"
+                />
+              </div>
+              <div className="form-group">
+                <label>Max Threshold</label>
+                <input
+                  type="number"
+                  value={formData.maxThreshold || 0}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      maxThreshold: parseInt(e.target.value)
+                    })
+                  }
+                  min="0"
+                />
+              </div>
+              <div className="form-group">
+                <label>Unit Cost ($)</label>
+                <input
+                  type="number"
+                  value={formData.unitCost || 0}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      unitCost: parseFloat(e.target.value)
+                    })
+                  }
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+              <div className="form-group">
+                <label>Supplier</label>
+                <input
+                  type="text"
+                  value={formData.supplier || ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, supplier: e.target.value })
+                  }
+                />
+              </div>
+              <div className="form-group">
+                <label>Location</label>
+                <input
+                  type="text"
+                  value={formData.location || ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, location: e.target.value })
+                  }
+                />
+              </div>
+              <div className="form-group full-width">
+                <label>Notes</label>
+                <textarea
+                  value={formData.notes || ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, notes: e.target.value })
+                  }
+                  rows={3}
+                />
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="cancel-button"
+              >
+                <X size={16} /> Cancel
+              </button>
+              <button onClick={handleSaveItem} className="save-button">
+                <Save size={16} /> Save Item
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isDeleteModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content delete-modal">
+            <h2>Confirm Delete</h2>
+            <p>
+              Are you sure you want to delete &quot;{selectedItem?.name}&quot;?
+              This action cannot be undone.
+            </p>
+            <div className="modal-actions">
+              <button
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="cancel-button"
+              >
+                <X size={16} /> Cancel
+              </button>
+              <button onClick={confirmDelete} className="delete-button">
+                <Trash2 size={16} /> Delete Item
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {message && (
+        <div className={`notification ${message.type}`}>
+          {message.type === 'success' ? (
+            <Check size={16} />
+          ) : (
+            <AlertTriangle size={16} />
+          )}
+          {message.text}
+        </div>
+      )}
+
+      <div className="quick-actions">
+        <Link href="/pos" className="action-button">
+          <Coffee size={20} /> New Order
+        </Link>
+      </div>
+
+      
+    </div>
+    </PageContainer>
+  )
+}
+
+export default InventoryManagement
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/inventory/styles.css
+.inventory-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f8f9fa;
+  }
+  
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  .page-title {
+    font-size: 24px;
+    color: #4a90e2;
+    margin: 0;
+  }
+  
+  .header-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 40px;
+  }
+  
+  .add-button,
+  .export-button,
+  .import-button,
+  .refresh-button {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    color: white;
+  }
+  
+  .add-button {
+    background-color: #28a745;
+  }
+  
+  .export-button,
+  .import-button {
+    background-color: #17a2b8;
+  }
+  
+  .refresh-button {
+    background-color: #6c757d;
+  }
+  
+  .filters {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .search-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    background-color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+  }
+  
+  .search-input {
+    border: none;
+    outline: none;
+    width: 100%;
+    font-size: 14px;
+  }
+  
+  .category-select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    min-width: 150px;
+  }
+  
+  .low-stock-alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+    border-radius: 4px;
+    color: #856404;
+    margin-bottom: 20px;
+  }
+  
+  .view-all-button {
+    padding: 4px 8px;
+    background-color: #856404;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  
+  .inventory-table-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow-x: auto;
+  }
+  
+  .inventory-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .inventory-table th {
+    background-color: #f8f9fa;
+    padding: 12px;
+    text-align: left;
+    font-weight: bold;
+    color: #495057;
+    cursor: pointer;
+  }
+  
+  .inventory-table td {
+    padding: 12px;
+    border-top: 1px solid #dee2e6;
+  }
+  
+  .low-stock {
+    background-color: #fff3cd;
+  }
+  
+  .actions {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .edit-button,
+  .delete-button {
+    padding: 6px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .edit-button {
+    background-color: #17a2b8;
+    color: white;
+  }
+  
+  .delete-button {
+    background-color: #dc3545;
+    color: white;
+  }
+  
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  .modal-content {
+    background-color: white;
+    padding: 24px;
+    border-radius: 8px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  
+  .modal-content h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #495057;
+  }
+  
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .form-group.full-width {
+    grid-column: 1 / -1;
+  }
+  
+  .form-group label {
+    font-size: 14px;
+    color: #495057;
+  }
+  
+  .form-group input,
+  .form-group textarea {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+  
+  .form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+  
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  
+  .cancel-button,
+  .save-button {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    color: white;
+  }
+  
+  .cancel-button {
+    background-color: #6c757d;
+  }
+  
+  .save-button {
+    background-color: #28a745;
+  }
+  
+  .delete-modal {
+    max-width: 400px;
+  }
+  
+  .delete-modal p {
+    margin-bottom: 20px;
+    color: #495057;
+  }
+  
+  .notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: white;
+    animation: slideIn 0.3s ease-out;
+    z-index: 1000;
+  }
+  
+  .notification.success {
+    background-color: #28a745;
+  }
+  
+  .notification.error {
+    background-color: #dc3545;
+  }
+  
+  .quick-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+  }
+  
+  .action-button {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 10px 20px;
+    background-color: #4a90e2;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+  }
+  
+  .action-button:hover {
+    background-color: #357abd;
+  }
+  
+  @keyframes slideIn {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .header {
+      flex-direction: column;
+      gap: 15px;
+    }
+  
+    .header-actions {
+      flex-wrap: wrap;
+    }
+  
+    .add-button,
+    .export-button,
+    .import-button,
+    .refresh-button {
+      flex: 1;
+      justify-content: center;
+    }
+  
+    .filters {
+      flex-direction: column;
+    }
+  
+    .search-container {
+      width: 100%;
+    }
+  
+    .category-select {
+      width: 100%;
+    }
+  
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+  
+    .modal-content {
+      width: 95%;
+      margin: 10px;
+      padding: 15px;
+    }
+  
+    .inventory-table {
+      font-size: 14px;
+    }
+  
+    .quick-actions {
+      flex-direction: column;
+    }
+  
+    .action-button {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .inventory-table-container {
+      margin: 0 -20px;
+      width: calc(100% + 40px);
+      border-radius: 0;
+    }
+  
+    .inventory-table th,
+    .inventory-table td {
+      padding: 8px;
+    }
+  
+    .actions {
+      flex-direction: column;
+      gap: 4px;
+    }
+  
+    .edit-button,
+    .delete-button {
+      width: 100%;
+    }
+  }
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/layout.tsx
-import { SideNav } from "@/components/dashboard/side-nav";
+import { SideNav } from "@/components/dashboard/navigation/side-nav";
 
 export default function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen">
-      <SideNav />
-      <main className="min-h-screen transition-all duration-300 ease-in-out">
-        <div className="h-full pt-20 md:pt-0">
-          <div className="container mx-auto p-6">
-            {children}
+    <div className="relative min-h-screen">
+      <div className="flex min-h-screen">
+        <SideNav />
+        <main className="flex-1 transition-all duration-300 ease-in-out">
+          <div className="h-full pt-0">
+            <div className="container mx-auto p-6">
+              {children}
+            </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/page.tsx
-// src/app/dashboard/page.tsx
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/order/page.tsx
+"use client"
+import React, { useState, useEffect, useCallback } from 'react'
+import {
+  Clock,
+  Check,
+  PlayCircle,
+  ThumbsUp,
+  ThumbsDown,
+  Mail,
+  Phone,
+  ArrowUpDown,
+  Trash2,
+  Edit2,
+  Save,
+  Download,
+  Upload,
+  RefreshCcw,
+  Search,
+  Calendar,
+  FileText,
+  AlertTriangle
+} from 'lucide-react'
+import { jsPDF } from 'jspdf'
+import 'jspdf-autotable'
+import Link from 'next/link'
+import { PageContainer } from "@/components/layout/page-container";
+import './styles.css';
 
+interface OrderItem {
+  id: string
+  name: string
+  quantity: number
+  price: number
+}
+
+interface Order {
+  id: number
+  customerName: string
+  status: string
+  timestamp: string
+  items: OrderItem[]
+  total: number
+  isComplimentary: boolean
+  queueTime: number
+  preparationTime?: number
+  customerEmail?: string
+  customerPhone?: string
+  leadInterest?: boolean
+  startTime?: string
+  notes?: string
+}
+
+interface SearchFilters {
+  customerName: string
+  orderId: string
+  itemName: string
+  dateRange: {
+    start: string
+    end: string
+  }
+}
+
+const ActiveOrders: React.FC = () => {
+  // Basic state
+  const [orders, setOrders] = useState<Order[]>([])
+  const [allOrders, setAllOrders] = useState<Order[]>([])
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
+  const [statusFilter, setStatusFilter] = useState('All')
+  const [sortCriteria, setSortCriteria] = useState('timestamp')
+  const [sortDirection, setSortDirection] = useState('desc')
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Modal states
+  const [showClearConfirmation, setShowClearConfirmation] = useState(false)
+  const [showResetConfirmation, setShowResetConfirmation] = useState(false)
+  const [showOrderDetails, setShowOrderDetails] = useState(false)
+
+  // Search and filter states
+  const [searchFilters, setSearchFilters] = useState<SearchFilters>({
+    customerName: '',
+    orderId: '',
+    itemName: '',
+    dateRange: {
+      start: '',
+      end: ''
+    }
+  })
+
+  // Order editing states
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [editedItems, setEditedItems] = useState<OrderItem[]>([])
+  const [orderNotes, setOrderNotes] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
+  const [showEditConfirmation, setShowEditConfirmation] = useState(false)
+
+  // Message state for user feedback
+  const [message, setMessage] = useState<{
+    type: 'success' | 'error'
+    text: string
+  } | null>(null)
+
+  // Helper function to show messages
+  const showMessage = useCallback((text: string, type: 'success' | 'error') => {
+    setMessage({ text, type })
+    setTimeout(() => setMessage(null), 3000)
+  }, [])
+
+  // Load orders from localStorage
+  const loadOrders = useCallback(() => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const loadedOrders = JSON.parse(
+        localStorage.getItem('orders') || '[]'
+      ) as Order[]
+      setOrders(loadedOrders)
+      setAllOrders(loadedOrders)
+      setFilteredOrders(loadedOrders)
+    } catch (err) {
+      setError('Failed to load orders. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  // Filter and sort orders based on search criteria and filters
+  const filterAndSortOrders = useCallback(() => {
+    let filtered = orders
+
+    // Apply status filter
+    if (statusFilter !== 'All') {
+      filtered = filtered.filter((order) => order.status === statusFilter)
+    }
+
+    // Apply search filters
+    if (searchFilters.customerName) {
+      filtered = filtered.filter((order) =>
+        order.customerName
+          .toLowerCase()
+          .includes(searchFilters.customerName.toLowerCase())
+      )
+    }
+
+    if (searchFilters.orderId) {
+      filtered = filtered.filter((order) =>
+        order.id.toString().includes(searchFilters.orderId)
+      )
+    }
+
+    if (searchFilters.itemName) {
+      filtered = filtered.filter((order) =>
+        order.items.some((item) =>
+          item.name.toLowerCase().includes(searchFilters.itemName.toLowerCase())
+        )
+      )
+    }
+
+    // Apply date range filter
+    if (searchFilters.dateRange.start && searchFilters.dateRange.end) {
+      const startDate = new Date(searchFilters.dateRange.start)
+      const endDate = new Date(searchFilters.dateRange.end)
+      filtered = filtered.filter((order) => {
+        const orderDate = new Date(order.timestamp)
+        return orderDate >= startDate && orderDate <= endDate
+      })
+    }
+
+    // Sort filtered orders
+    const sorted = [...filtered].sort((a, b) => {
+      if (sortCriteria === 'timestamp') {
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      } else if (sortCriteria === 'preparationTime') {
+        return (b.preparationTime || 0) - (a.preparationTime || 0)
+      } else if (sortCriteria === 'queueTime') {
+        return b.queueTime - a.queueTime
+      }
+      return 0
+    })
+
+    if (sortDirection === 'asc') {
+      sorted.reverse()
+    }
+
+    setFilteredOrders(sorted)
+  }, [orders, statusFilter, searchFilters, sortCriteria, sortDirection])
+
+  // Update filters
+  const updateSearchFilters = (
+    field: keyof SearchFilters,
+    value: string | { start: string; end: string }
+  ) => {
+    setSearchFilters((prev) => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  // Handle order notes
+  const updateOrderNotes = (orderId: number, notes: string) => {
+    const updatedOrders = orders.map((order) =>
+      order.id === orderId ? { ...order, notes } : order
+    )
+    setOrders(updatedOrders)
+    setAllOrders(updatedOrders)
+    localStorage.setItem('orders', JSON.stringify(updatedOrders))
+    showMessage('Order notes updated successfully', 'success')
+  }
+
+  // Calculate new total based on items
+  const calculateTotal = (items: OrderItem[]) => {
+    return items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  }
+
+  // Handle item editing
+  const updateOrderItem = (
+    orderId: number,
+    itemId: string,
+    updates: Partial<OrderItem>
+  ) => {
+    if (!selectedOrder) return
+
+    const updatedItems = selectedOrder.items.map((item) =>
+      item.id === itemId ? { ...item, ...updates } : item
+    )
+
+    const newTotal = calculateTotal(updatedItems)
+
+    setSelectedOrder({
+      ...selectedOrder,
+      items: updatedItems,
+      total: newTotal
+    })
+  }
+  // Effect hooks for initial load and filtering
+  useEffect(() => {
+    loadOrders()
+  }, [loadOrders])
+
+  useEffect(() => {
+    filterAndSortOrders()
+  }, [filterAndSortOrders])
+
+  // Order status management
+  const updateOrderStatus = (orderId: number, newStatus: string) => {
+    const updatedOrders = orders.map((order) => {
+      if (order.id === orderId) {
+        const updatedOrder = { ...order, status: newStatus }
+        if (newStatus === 'Completed' && order.startTime) {
+          const endTime = new Date()
+          const startTime = new Date(order.startTime)
+          updatedOrder.preparationTime =
+            (endTime.getTime() - startTime.getTime()) / 1000
+        }
+        return updatedOrder
+      }
+      return order
+    })
+
+    setOrders(updatedOrders)
+    setAllOrders(updatedOrders)
+    localStorage.setItem('orders', JSON.stringify(updatedOrders))
+    showMessage('Order status updated successfully', 'success')
+  }
+
+  // Lead interest tracking
+  const recordLeadInterest = (orderId: number, interested: boolean) => {
+    const updatedOrders = orders.map((order) =>
+      order.id === orderId ? { ...order, leadInterest: interested } : order
+    )
+
+    setOrders(updatedOrders)
+    setAllOrders(updatedOrders)
+    localStorage.setItem('orders', JSON.stringify(updatedOrders))
+    showMessage('Lead interest recorded successfully', 'success')
+  }
+
+  // Order cancellation
+  const cancelOrder = (orderId: number) => {
+    if (window.confirm('Are you sure you want to cancel this order?')) {
+      const updatedOrders = orders.filter((order) => order.id !== orderId)
+      setOrders(updatedOrders)
+      const updatedAllOrders = allOrders.map((order) =>
+        order.id === orderId ? { ...order, status: 'Cancelled' } : order
+      )
+      setAllOrders(updatedAllOrders)
+      localStorage.setItem('orders', JSON.stringify(updatedOrders))
+      showMessage('Order cancelled successfully', 'success')
+    }
+  }
+
+  // Order modification
+  const modifyOrder = (orderId: number) => {
+    const orderToModify = orders.find((order) => order.id === orderId)
+    if (orderToModify) {
+      setSelectedOrder(orderToModify)
+      setEditedItems([...orderToModify.items])
+      setOrderNotes(orderToModify.notes || '')
+      setIsEditing(true)
+      setShowOrderDetails(true)
+    }
+  }
+
+  // Save modified order
+  const saveModifiedOrder = () => {
+    if (!selectedOrder) return
+
+    const modifiedOrder = {
+      ...selectedOrder,
+      items: editedItems,
+      notes: orderNotes,
+      total: calculateTotal(editedItems)
+    }
+
+    const updatedOrders = orders.map((order) =>
+      order.id === modifiedOrder.id ? modifiedOrder : order
+    )
+
+    setOrders(updatedOrders)
+    setAllOrders(updatedOrders)
+    localStorage.setItem('orders', JSON.stringify(updatedOrders))
+    setShowOrderDetails(false)
+    setSelectedOrder(null)
+    setIsEditing(false)
+    showMessage('Order updated successfully', 'success')
+  }
+
+  // Time formatting
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = Math.floor(seconds % 60)
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+  }
+
+  // PDF generation
+  const generatePDF = () => {
+    // eslint-disable-next-line new-cap
+    const doc = new jsPDF()
+    const tableColumn = [
+      'Order #',
+      'Customer',
+      'Status',
+      'Total',
+      'Queue Time',
+      'Prep Time',
+      'Notes'
+    ]
+    const tableRows: (string | number)[][] = []
+
+    allOrders.forEach((order) => {
+      const orderData = [
+        order.id,
+        order.customerName,
+        order.status,
+        order.isComplimentary ? 'Free' : `$${order.total}`,
+        formatTime(order.queueTime),
+        order.preparationTime ? formatTime(order.preparationTime) : 'N/A',
+        order.notes || 'N/A'
+      ]
+      tableRows.push(orderData)
+    })
+
+    doc.autoTable({
+      head: [tableColumn],
+      body: tableRows,
+      startY: 20
+    })
+
+    doc.text('Buf Barista - Complete Order Report', 14, 15)
+    doc.save('buf-barista-all-orders.pdf')
+  }
+
+  // Data management functions
+  const clearAllOrders = () => {
+    setShowClearConfirmation(true)
+  }
+
+  const confirmClearAllOrders = () => {
+    const clearedOrders = allOrders.map((order) =>
+      orders.some((activeOrder) => activeOrder.id === order.id)
+        ? { ...order, status: 'Cleared' }
+        : order
+    )
+    setAllOrders(clearedOrders)
+    setOrders([])
+    setFilteredOrders([])
+    localStorage.setItem('orders', JSON.stringify([]))
+    setShowClearConfirmation(false)
+    showMessage('All orders cleared successfully', 'success')
+  }
+
+  const cancelClearAllOrders = () => {
+    setShowClearConfirmation(false)
+  }
+
+  const resetAllData = () => {
+    setShowResetConfirmation(true)
+  }
+
+  const confirmResetAllData = () => {
+    localStorage.clear()
+    setOrders([])
+    setAllOrders([])
+    setFilteredOrders([])
+    setShowResetConfirmation(false)
+    showMessage('All data reset successfully', 'success')
+    window.location.reload()
+  }
+
+  const cancelResetAllData = () => {
+    setShowResetConfirmation(false)
+  }
+
+  const exportData = () => {
+    const data = {
+      orders: allOrders,
+      preferences: JSON.parse(
+        localStorage.getItem('systemPreferences') || '{}'
+      ),
+      inventory: JSON.parse(localStorage.getItem('inventory') || '[]')
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: 'application/json'
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'buf-barista-data.json'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    showMessage('Data exported successfully', 'success')
+  }
+
+  const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target?.result as string)
+          localStorage.setItem('orders', JSON.stringify(data.orders))
+          localStorage.setItem(
+            'systemPreferences',
+            JSON.stringify(data.preferences)
+          )
+          localStorage.setItem('inventory', JSON.stringify(data.inventory))
+          loadOrders()
+          showMessage('Data imported successfully', 'success')
+        } catch (error) {
+          showMessage(
+            'Error importing data. Please check the file format.',
+            'error'
+          )
+        }
+      }
+      reader.readAsText(file)
+    }
+  }
+
+  const toggleEditNotes = (orderId: number) => {
+    const order = orders.find((o) => o.id === orderId)
+    if (order) {
+      setSelectedOrder(order)
+      setOrderNotes(order.notes || '')
+      setShowOrderDetails(true)
+    }
+  }
+
+  // Render component
+  return (
+    <PageContainer>
+    <div className="active-orders-container">
+    <h1 className="page-title">Active Orders</h1>
+
+      {isLoading && <div className="loading">Loading orders...</div>}
+      {error && <div className="error">{error}</div>}
+
+      {/* Search and Filter Section */}
+      <div className="search-section">
+        <div className="search-inputs">
+          <div className="search-field">
+            <Search size={16} />
+            <input
+              type="text"
+              placeholder="Search by customer name..."
+              value={searchFilters.customerName}
+              onChange={(e) =>
+                updateSearchFilters('customerName', e.target.value)
+              }
+              className="search-input"
+            />
+          </div>
+          <div className="search-field">
+            <Search size={16} />
+            <input
+              type="text"
+              placeholder="Search by order ID..."
+              value={searchFilters.orderId}
+              onChange={(e) => updateSearchFilters('orderId', e.target.value)}
+              className="search-input"
+            />
+          </div>
+          <div className="search-field">
+            <Search size={16} />
+            <input
+              type="text"
+              placeholder="Search by item name..."
+              value={searchFilters.itemName}
+              onChange={(e) => updateSearchFilters('itemName', e.target.value)}
+              className="search-input"
+            />
+          </div>
+        </div>
+        <div className="date-range">
+          <Calendar size={16} />
+          <input
+            type="date"
+            value={searchFilters.dateRange.start}
+            onChange={(e) =>
+              updateSearchFilters('dateRange', {
+                ...searchFilters.dateRange,
+                start: e.target.value
+              })
+            }
+            className="date-input"
+          />
+          <span>to</span>
+          <input
+            type="date"
+            value={searchFilters.dateRange.end}
+            onChange={(e) =>
+              updateSearchFilters('dateRange', {
+                ...searchFilters.dateRange,
+                end: e.target.value
+              })
+            }
+            className="date-input"
+          />
+        </div>
+      </div>
+
+      {/* Filters and Actions */}
+      <div className="filters">
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="filter-dropdown"
+        >
+          <option value="All">All Statuses</option>
+          <option value="Pending">Pending</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Completed">Completed</option>
+        </select>
+
+        <select
+          value={sortCriteria}
+          onChange={(e) => setSortCriteria(e.target.value)}
+          className="filter-dropdown"
+        >
+          <option value="timestamp">Sort by Time</option>
+          <option value="preparationTime">Sort by Prep Time</option>
+          <option value="queueTime">Sort by Queue Time</option>
+        </select>
+
+        <button
+          onClick={() =>
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+          }
+          className="sort-button"
+        >
+          <ArrowUpDown size={16} />
+          {sortDirection === 'asc' ? 'Ascending' : 'Descending'}
+        </button>
+
+        <button onClick={generatePDF} className="pdf-button">
+          <Save size={16} />
+          Save as PDF
+        </button>
+
+        {/* <button onClick={loadOrders} className="refresh-button">
+          <RefreshCw size={16} />
+          Refresh Orders
+        </button> */}
+
+        <button onClick={clearAllOrders} className="clear-button">
+          <Trash2 size={16} />
+          Clear All Orders
+        </button>
+
+        <button onClick={resetAllData} className="reset-button">
+          <RefreshCcw size={16} />
+          Reset All Data
+        </button>
+
+        <button onClick={exportData} className="export-button">
+          <Download size={16} />
+          Export Data
+        </button>
+
+        <label className="import-button">
+          <Upload size={16} />
+          Import Data
+          <input
+            type="file"
+            accept=".json"
+            style={{ display: 'none' }}
+            onChange={importData}
+          />
+        </label>
+      </div>
+
+      {/* Orders Grid */}
+      <div className="orders-grid">
+        {filteredOrders.map((order) => (
+          <div
+            key={order.id}
+            className={`order-card ${order.status.toLowerCase()}`}
+          >
+            <div className="order-header">
+              <span className="order-number">Order #{order.id}</span>
+              <span className={`order-status ${order.status.toLowerCase()}`}>
+                {order.status}
+              </span>
+            </div>
+            <div className="order-details">
+              <div className="customer-name">{order.customerName}</div>
+              <div className="order-time">
+                <Clock size={14} className="icon" />
+                {order.timestamp}
+              </div>
+            </div>
+            <div className="order-items">
+              {order.items.map((item, index) => (
+                <div key={index} className="order-item">
+                  <span>
+                    {item.name} x{item.quantity}
+                  </span>
+                  <span>
+                    {order.isComplimentary
+                      ? 'Free'
+                      : `$${(item.price * item.quantity).toFixed(2)}`}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="order-total">
+              Total: {order.isComplimentary ? 'Free' : `$${order.total}`}
+            </div>
+            <div className="order-metrics">
+              <div>Queue Time: {formatTime(order.queueTime)}</div>
+              {order.preparationTime && (
+                <div>Preparation Time: {formatTime(order.preparationTime)}</div>
+              )}
+            </div>
+
+            <div className="customer-contact">
+              {order.customerEmail && <Mail size={14} className="icon" />}
+              {order.customerPhone && <Phone size={14} className="icon" />}
+            </div>
+            {/* Order Notes Section */}
+            <div className="order-notes-section">
+              <div className="notes-header">
+                <FileText size={14} className="icon" />
+                <span>Notes</span>
+                <button
+                  onClick={() => toggleEditNotes(order.id)}
+                  className="edit-notes-button"
+                >
+                  <Edit2 size={14} />
+                </button>
+              </div>
+              <div className="notes-content">
+                {order.notes ? (
+                  <p>{order.notes}</p>
+                ) : (
+                  <p className="no-notes">No notes added</p>
+                )}
+              </div>
+            </div>
+
+            {/* Lead Interest Section */}
+            {order.status === 'Completed' &&
+              order.leadInterest === undefined && (
+                <div className="lead-interest-section">
+                  <div className="lead-interest-header">
+                    Customer interested in sales pitch?
+                  </div>
+                  <div className="lead-interest-buttons">
+                    <button
+                      onClick={() => recordLeadInterest(order.id, true)}
+                      className="lead-button yes"
+                    >
+                      <ThumbsUp size={16} className="icon" />
+                      <span>Yes</span>
+                    </button>
+                    <button
+                      onClick={() => recordLeadInterest(order.id, false)}
+                      className="lead-button no"
+                    >
+                      <ThumbsDown size={16} className="icon" />
+                      <span>No</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            {order.leadInterest !== undefined && (
+              <div
+                className={`lead-status ${
+                  order.leadInterest ? 'interested' : 'not-interested'
+                }`}
+              >
+                <div className="lead-status-content">
+                  <span className="lead-status-label">Lead Status:</span>
+                  <span className="lead-status-value">
+                    {order.leadInterest ? (
+                      <>
+                        <ThumbsUp size={16} className="icon" />
+                        Interested
+                      </>
+                    ) : (
+                      <>
+                        <ThumbsDown size={16} className="icon" />
+                        Not Interested
+                      </>
+                    )}
+                  </span>
+                </div>
+              </div>
+            )}
+            {order.status !== 'Completed' && (
+              <div className="order-actions">
+                <button
+                  onClick={() => updateOrderStatus(order.id, 'In Progress')}
+                  className="start-button"
+                  disabled={order.status === 'In Progress'}
+                >
+                  <PlayCircle size={16} className="icon" /> Start
+                </button>
+                <button
+                  onClick={() => updateOrderStatus(order.id, 'Completed')}
+                  className="complete-button"
+                >
+                  <Check size={16} className="icon" /> Complete
+                </button>
+                <button
+                  onClick={() => modifyOrder(order.id)}
+                  className="modify-button"
+                  disabled={order.status === 'Completed'}
+                >
+                  <Edit2 size={16} className="icon" /> Modify
+                </button>
+                <button
+                  onClick={() => cancelOrder(order.id)}
+                  className="cancel-button"
+                  disabled={order.status !== 'Pending'}
+                >
+                  <Trash2 size={16} className="icon" /> Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Modals */}
+      {showClearConfirmation && (
+        <div className="modal">
+          <div className="modal-content">
+            <h2>Clear All Orders</h2>
+            <p>
+              Are you sure you want to clear all orders? This action will remove
+              orders from the active list but they will still be included in the
+              PDF report.
+            </p>
+            <div className="modal-actions">
+              <button
+                onClick={confirmClearAllOrders}
+                className="confirm-button"
+              >
+                Yes, Clear All
+              </button>
+              <button onClick={cancelClearAllOrders} className="cancel-button">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showResetConfirmation && (
+        <div className="modal">
+          <div className="modal-content">
+            <h2>Reset All Data</h2>
+            <p>
+              Are you sure you want to reset all data? This action will clear
+              all orders, preferences, and inventory data. This action cannot be
+              undone.
+            </p>
+            <div className="modal-actions">
+              <button onClick={confirmResetAllData} className="confirm-button">
+                Yes, Reset All Data
+              </button>
+              <button onClick={cancelResetAllData} className="cancel-button">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Order Edit Modal */}
+      {showOrderDetails && selectedOrder && (
+        <div className="modal">
+          <div className="modal-content">
+            <h2>Modify Order</h2>
+            <div className="order-form">
+              <label>
+                Customer Name:
+                <input
+                  type="text"
+                  value={selectedOrder.customerName}
+                  onChange={(e) =>
+                    setSelectedOrder({
+                      ...selectedOrder,
+                      customerName: e.target.value
+                    })
+                  }
+                />
+              </label>
+
+              <label>
+                Order Notes:
+                <textarea
+                  value={orderNotes}
+                  onChange={(e) => setOrderNotes(e.target.value)}
+                  placeholder="Add notes about the order..."
+                  rows={3}
+                />
+              </label>
+
+              <div className="items-list">
+                <h3>Order Items</h3>
+                {editedItems.map((item, index) => (
+                  <div key={index} className="edit-item">
+                    <input
+                      type="text"
+                      value={item.name}
+                      onChange={(e) =>
+                        updateOrderItem(selectedOrder.id, item.id, {
+                          name: e.target.value
+                        })
+                      }
+                    />
+                    <input
+                      type="number"
+                      value={item.quantity}
+                      min="1"
+                      onChange={(e) =>
+                        updateOrderItem(selectedOrder.id, item.id, {
+                          quantity: parseInt(e.target.value)
+                        })
+                      }
+                    />
+                    <input
+                      type="number"
+                      value={item.price}
+                      step="0.01"
+                      min="0"
+                      onChange={(e) =>
+                        updateOrderItem(selectedOrder.id, item.id, {
+                          price: parseFloat(e.target.value)
+                        })
+                      }
+                    />
+                    <button
+                      onClick={() =>
+                        setEditedItems((prev) =>
+                          prev.filter((_, i) => i !== index)
+                        )
+                      }
+                      className="remove-item"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button onClick={saveModifiedOrder} className="confirm-button">
+                Save Changes
+              </button>
+              <button
+                onClick={() => {
+                  setShowOrderDetails(false)
+                  setSelectedOrder(null)
+                  setIsEditing(false)
+                }}
+                className="cancel-button"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success/Error Messages */}
+      {message && (
+        <div className={`message ${message.type}`}>
+          {message.type === 'success' ? (
+            <Check size={16} />
+          ) : (
+            <AlertTriangle size={16} />
+          )}
+          {message.text}
+        </div>
+      )}
+
+      {/* Navigation */}
+      <div className="nav-buttons">
+        <Link href="/pos" passHref>
+          <button className="nav-button">Go to POS</button>
+        </Link>
+        <Link href="/" passHref>
+          <button className="nav-button">Go to Reports</button>
+        </Link>
+
+      </div>
+
+
+    </div>
+    </PageContainer>
+  )
+}
+
+export default ActiveOrders
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/order/styles.css
+.nav-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+/* Container Styles */
+.active-orders-container {
+  font-family: Arial, sans-serif;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #f8f9fa;
+}
+
+/* Page Title */
+.page-title {
+  font-size: 28px;
+  color: #4a90e2;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* Loading and Error States */
+.loading,
+.error {
+  text-align: center;
+  margin-bottom: 20px;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.loading {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+.error {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+/* Search Section */
+.search-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.search-inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background-color: white;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  padding: 4px;
+}
+
+.date-range {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+}
+
+.date-input {
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+/* Filters Section */
+.filters {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.filter-dropdown,
+.sort-button,
+.pdf-button,
+.refresh-button,
+.clear-button,
+.reset-button,
+.export-button,
+.import-button {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+/* Notes Section */
+.order-notes-section {
+  margin-top: 15px;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.notes-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: #495057;
+  font-weight: 500;
+}
+
+.edit-notes-button {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.edit-notes-button:hover {
+  color: #4a90e2;
+  background-color: rgba(74, 144, 226, 0.1);
+}
+
+.notes-content {
+  font-size: 14px;
+  color: #495057;
+  line-height: 1.5;
+}
+
+.no-notes {
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Lead Interest Section */
+.lead-interest-section {
+  margin-top: 15px;
+  padding: 15px;
+  background-color: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.lead-interest-header {
+  font-size: 14px;
+  font-weight: 500;
+  color: #495057;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.lead-interest-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.lead-button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  max-width: 120px;
+}
+
+.lead-button.yes {
+  background-color: #28a745;
+  color: white;
+}
+
+.lead-button.yes:hover {
+  background-color: #218838;
+  transform: translateY(-2px);
+}
+
+.lead-button.no {
+  background-color: #dc3545;
+  color: white;
+}
+
+.lead-button.no:hover {
+  background-color: #c82333;
+  transform: translateY(-2px);
+}
+
+.lead-button:active {
+  transform: translateY(1px);
+}
+
+.lead-button .icon {
+  font-size: 16px;
+}
+
+/* Lead Status */
+.lead-status {
+  margin-top: 15px;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+}
+
+.lead-status.interested {
+  border-left: 4px solid #28a745;
+}
+
+.lead-status.not-interested {
+  border-left: 4px solid #dc3545;
+}
+
+.lead-status-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lead-status-label {
+  font-weight: 500;
+  color: #495057;
+}
+
+.lead-status-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.lead-status.interested .lead-status-value {
+  color: #28a745;
+}
+
+.lead-status.not-interested .lead-status-value {
+  color: #dc3545;
+}
+
+/* Notes Modal Enhancements */
+.order-form textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+.order-form textarea:focus {
+  outline: none;
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+.notes-label {
+  font-weight: 500;
+  color: #495057;
+  margin-bottom: 8px;
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .lead-interest-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lead-button {
+    max-width: none;
+  }
+}
+.sort-button,
+.pdf-button,
+.refresh-button,
+.export-button,
+.import-button {
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+}
+
+.clear-button {
+  background-color: #dc3545;
+  color: white;
+}
+
+.reset-button {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+/* Orders Grid */
+.orders-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.order-card {
+  background-color: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.order-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Order Card Elements */
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.order-number {
+  font-weight: bold;
+  font-size: 18px;
+  color: #333;
+}
+
+.order-status {
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.order-status.pending {
+  background-color: #ffc107;
+  color: #856404;
+}
+
+.order-status.in-progress {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.order-status.completed {
+  background-color: #28a745;
+  color: white;
+}
+
+/* Order Details */
+.order-details {
+  margin-bottom: 15px;
+}
+
+.customer-name {
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 5px;
+}
+/* Add these styles to the existing style block */
+
+/* Order Action Buttons */
+.order-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 15px;
+}
+.confirm-button,
+.start-button,
+.complete-button,
+.modify-button,
+.cancel-button,
+.nav-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  text-decoration: none;
+  width: 100%;
+}
+
+.confirm-button {
+  background-color: #007bff;
+  color: white;
+  margin-bottom: 10px;
+}
+
+.start-button {
+  background-color: #ffc107;
+  color: #856404;
+}
+
+.start-button:hover {
+  background-color: #e0a800;
+  transform: translateY(-2px);
+}
+
+.complete-button {
+  background-color: #28a745;
+  color: white;
+}
+
+.complete-button:hover {
+  background-color: #218838;
+  transform: translateY(-2px);
+}
+
+.modify-button {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.modify-button:hover {
+  background-color: #138496;
+  transform: translateY(-2px);
+}
+
+.cancel-button {
+  background-color: #dc3545;
+  color: white;
+}
+
+.cancel-button:hover {
+  background-color: #c82333;
+  transform: translateY(-2px);
+}
+
+/* Navigation Button */
+.nav-button {
+  background-color: #6c757d;
+  color: white;
+  margin-top: 20px;
+  width: auto;
+  min-width: 150px;
+  padding: 12px 24px;
+  font-size: 16px;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+}
+
+.nav-button:hover {
+  background-color: #5a6268;
+  transform: translateY(-2px);
+}
+
+/* Disabled State */
+.start-button:disabled,
+.complete-button:disabled,
+.modify-button:disabled,
+.cancel-button:disabled {
+  background-color: #e9ecef;
+  color: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+  opacity: 0.7;
+}
+
+.order-actions .icon {
+  font-size: 16px;
+}
+
+/* Add this to the media queries section */
+@media (max-width: 768px) {
+  .order-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .start-button,
+  .complete-button,
+  .modify-button,
+  .cancel-button {
+    padding: 12px 16px;
+    font-size: 16px;
+  }
+
+  .nav-button {
+    width: 100%;
+    margin-top: 30px;
+  }
+}
+
+/* Add hover effect to all buttons */
+button:active {
+  transform: translateY(1px);
+}
+
+/* Button icon alignment */
+.icon {
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.order-time {
+  font-size: 12px;
+  color: #666;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.order-notes {
+  margin-top: 10px;
+  padding: 8px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  font-size: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.order-notes .icon {
+  margin-top: 2px;
+  color: #666;
+}
+
+/* Modal Styles */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 25px;
+  border-radius: 10px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-content h2 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.order-form label {
+  display: block;
+  margin-bottom: 15px;
+}
+
+.order-form input,
+.order-form textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-top: 5px;
+}
+
+.items-list {
+  margin-top: 20px;
+}
+
+.edit-item {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+.remove-item {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px;
+  cursor: pointer;
+}
+
+/* Message Notifications */
+.message {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: white;
+  animation: slideIn 0.3s ease-out;
+  z-index: 1000;
+}
+
+.message.success {
+  background-color: #28a745;
+}
+
+.message.error {
+  background-color: #dc3545;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Media Queries */
+@media (max-width: 768px) {
+  .search-inputs {
+    grid-template-columns: 1fr;
+  }
+
+  .date-range {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filters {
+    flex-direction: column;
+  }
+
+  .filter-dropdown,
+  .sort-button,
+  .pdf-button,
+  .refresh-button,
+  .clear-button,
+  .reset-button,
+  .export-button,
+  .import-button {
+    width: 100%;
+  }
+
+  .orders-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .edit-item {
+    grid-template-columns: 1fr;
+  }
+  
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/page.tsx
 import { Metadata } from "next";
 import { PageContainer } from "@/components/layout/page-container";
 import { 
@@ -940,7 +3848,6 @@ import {
 } from "@/components/ui/select";
 import { Overview } from "@/components/dashboard/overview";
 import { ContactChart } from "@/components/dashboard/analytics/contact-chart";
-
 import { RecentSales } from "@/components/dashboard/recent-sales";
 import { Button } from "@/components/ui/button";
 import { CalendarDateRangePicker } from "@/components/dashboard/date-range";
@@ -953,11 +3860,12 @@ import {
   Users,
   UserPlus,
   UserCheck,
-  BarChart2,
-  Download,
+   Download,
+  Plus,
 } from "lucide-react";
 import Link from "next/link";
 import { DataExport } from "@/components/contacts/data-export";
+import { Contact } from "@/types/contacts";
 
 export const metadata: Metadata = {
   title: "Dashboard | BUF BARISTA CRM",
@@ -965,27 +3873,19 @@ export const metadata: Metadata = {
 };
 
 const timeFrames = [
-  {
-    value: "today",
-    label: "Today",
-  },
-  {
-    value: "week",
-    label: "This Week",
-  },
-  {
-    value: "month",
-    label: "This Month",
-  },
-  {
-    value: "quarter",
-    label: "This Quarter",
-  },
-  {
-    value: "year",
-    label: "This Year",
-  },
-];
+  { value: "today", label: "Today" },
+  { value: "week", label: "This Week" },
+  { value: "month", label: "This Month" },
+  { value: "quarter", label: "This Quarter" },
+  { value: "year", label: "This Year" },
+] as const;
+
+interface DashboardStats {
+  totalContacts: number;
+  newContacts: number;
+  convertedContacts: number;
+  qualifiedLeads: number;
+}
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -994,47 +3894,50 @@ export default async function DashboardPage() {
     redirect('/auth/login');
   }
 
-  const contacts = await getContacts();
+  const contacts: Contact[] = await getContacts();
 
-  // Calculate statistics
-  const stats = {
+  const stats: DashboardStats = {
     totalContacts: contacts.length,
     newContacts: contacts.filter(c => c.status === 'NEW').length,
     convertedContacts: contacts.filter(c => c.status === 'CONVERTED').length,
     qualifiedLeads: contacts.filter(c => c.status === 'QUALIFIED').length,
   };
 
-  // Calculate conversion rates and growth
   const conversionRate = stats.totalContacts > 0 
     ? ((stats.convertedContacts / stats.totalContacts) * 100).toFixed(1) 
     : "0.0";
 
   return (
     <PageContainer>
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <div className="flex items-center justify-between space-y-2">
-          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-          <div className="flex items-center space-x-2">
+      <div className="space-y-4 max-w-[500px] mx-auto px-2 md:max-w-full md:space-y-6 md:p-6">
+        {/* Header */}
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <h2 className="text-2xl font-bold tracking-tight md:text-3xl">Dashboard</h2>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <CalendarDateRangePicker />
-            <DataExport contacts={contacts} />
-
-            <Button>
-              <Download className="mr-2 h-4 w-4" />
-              Download
-            </Button>
-
+            <div className="flex items-center gap-2">
+              <DataExport contacts={contacts} />
+              <Button size="sm" className="h-8 md:h-9">
+                <Download className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">Download</span>
+              </Button>
+            </div>
           </div>
         </div>
 
         {/* Time Frame Filter */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center">
           <Select defaultValue="month">
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="h-8 w-[140px] text-xs md:h-9 md:w-[180px] md:text-sm">
               <SelectValue placeholder="Select time frame" />
             </SelectTrigger>
             <SelectContent>
               {timeFrames.map((timeFrame) => (
-                <SelectItem key={timeFrame.value} value={timeFrame.value}>
+                <SelectItem 
+                  key={timeFrame.value} 
+                  value={timeFrame.value}
+                  className="text-xs md:text-sm"
+                >
                   {timeFrame.label}
                 </SelectItem>
               ))}
@@ -1043,99 +3946,71 @@ export default async function DashboardPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Contacts
-              </CardTitle>
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <Card className="aspect-square overflow-hidden">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium md:text-sm">Total</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
               <div className="text-2xl font-bold">{stats.totalContacts}</div>
-              <div className="flex items-center space-x-2">
-                <ArrowUpRight className="h-4 w-4 text-emerald-500" />
-                <p className="text-xs text-muted-foreground">
-                  +20.1% from last month
-                </p>
-              </div>
-              <div className="mt-4 h-[60px]">
-                <BarChart2 className="h-[60px] w-full text-emerald-500/25" />
+              <div className="flex items-center gap-1 mt-1">
+                <ArrowUpRight className="h-3 w-3 text-emerald-500" />
+                <p className="text-[10px] text-emerald-500">+20.1%</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                New Contacts
-              </CardTitle>
+          <Card className="aspect-square overflow-hidden">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium md:text-sm">New</CardTitle>
               <UserPlus className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
               <div className="text-2xl font-bold">{stats.newContacts}</div>
-              <div className="flex items-center space-x-2">
-                <ArrowUpRight className="h-4 w-4 text-emerald-500" />
-                <p className="text-xs text-muted-foreground">
-                  +10.5% from last month
-                </p>
-              </div>
-              <div className="mt-4 h-[60px]">
-                <BarChart2 className="h-[60px] w-full text-blue-500/25" />
+              <div className="flex items-center gap-1 mt-1">
+                <ArrowUpRight className="h-3 w-3 text-emerald-500" />
+                <p className="text-[10px] text-emerald-500">+10.5%</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Qualified Leads
-              </CardTitle>
+          <Card className="aspect-square overflow-hidden">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium md:text-sm">Qualified</CardTitle>
               <UserCheck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
               <div className="text-2xl font-bold">{stats.qualifiedLeads}</div>
-              <div className="flex items-center space-x-2">
-                <ArrowUpRight className="h-4 w-4 text-emerald-500" />
-                <p className="text-xs text-muted-foreground">
-                  +12.3% from last month
-                </p>
-              </div>
-              <div className="mt-4 h-[60px]">
-                <BarChart2 className="h-[60px] w-full text-violet-500/25" />
+              <div className="flex items-center gap-1 mt-1">
+                <ArrowUpRight className="h-3 w-3 text-emerald-500" />
+                <p className="text-[10px] text-emerald-500">+12.3%</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Conversion Rate
-              </CardTitle>
+          <Card className="aspect-square overflow-hidden">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium md:text-sm">Conversion</CardTitle>
               <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
               <div className="text-2xl font-bold">{conversionRate}%</div>
-              <div className="flex items-center space-x-2">
-                <ArrowUpRight className="h-4 w-4 text-emerald-500" />
-                <p className="text-xs text-muted-foreground">
-                  +4.5% from last month
-                </p>
-              </div>
-              <div className="mt-4 h-[60px]">
-                <BarChart2 className="h-[60px] w-full text-orange-500/25" />
+              <div className="flex items-center gap-1 mt-1">
+                <ArrowUpRight className="h-3 w-3 text-emerald-500" />
+                <p className="text-[10px] text-emerald-500">+4.5%</p>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Charts and Recent Activity */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-          <Card className="col-span-4">
-            <CardHeader>
-              <CardTitle>Overview</CardTitle>
-              <CardDescription>
-                Contact acquisition and conversion overview for the current period.
+        {/* Charts */}
+        <div className="grid gap-4">
+          <Card className="overflow-hidden">
+            <CardHeader className="space-y-1 p-4">
+              <CardTitle className="text-base">Overview</CardTitle>
+              <CardDescription className="text-xs">
+                Contact acquisition and conversion overview
               </CardDescription>
             </CardHeader>
             <CardContent className="pl-2">
@@ -1143,67 +4018,60 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="col-span-3">
-            <CardHeader>
-              <CardTitle>Recent Contacts</CardTitle>
-              <CardDescription>
-                Your most recently added contacts.
+          <Card className="overflow-hidden">
+            <CardHeader className="space-y-1 p-4">
+              <CardTitle className="text-base">Recent Contacts</CardTitle>
+              <CardDescription className="text-xs">
+                Latest additions to your contacts
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4">
               <RecentSales />
             </CardContent>
           </Card>
         </div>
 
-        {/* Additional Analytics */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="col-span-1">
-            <CardHeader>
-              <CardTitle>Lead Sources</CardTitle>
-              <CardDescription>
-                Distribution of contact sources
-              </CardDescription>
+        {/* Analytics */}
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          <Card className="overflow-hidden">
+            <CardHeader className="space-y-1 p-4">
+              <CardTitle className="text-base">Lead Sources</CardTitle>
+              <CardDescription className="text-xs">Source distribution</CardDescription>
             </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[300px]">
+            <CardContent className="p-4">
+              <ScrollArea className="h-[200px]">
                 <div className="space-y-4">
-                  {/* Lead source distribution will go here */}
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
-                      <p className="text-sm font-medium leading-none">Website</p>
-                      <p className="text-sm text-muted-foreground">45%</p>
+                      <p className="text-sm font-medium">Website</p>
+                      <p className="text-xs text-muted-foreground">45%</p>
                     </div>
-                    <div className="w-[100px] h-2 bg-blue-100 rounded-full overflow-hidden">
+                    <div className="w-24 h-2 bg-blue-100 rounded-full overflow-hidden">
                       <div className="h-full w-[45%] bg-blue-500 rounded-full" />
                     </div>
                   </div>
-                  {/* Add more lead sources */}
                 </div>
                 <ScrollBar orientation="vertical" />
               </ScrollArea>
             </CardContent>
           </Card>
 
-          <Card className="col-span-1">
-            <CardHeader>
-              <CardTitle>Status Distribution</CardTitle>
-              <CardDescription>
-                Current status of all contacts
-              </CardDescription>
+          <Card className="overflow-hidden">
+            <CardHeader className="space-y-1 p-4">
+              <CardTitle className="text-base">Status Distribution</CardTitle>
+              <CardDescription className="text-xs">Contact status breakdown</CardDescription>
             </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[300px]">
+            <CardContent className="p-4">
+              <ScrollArea className="h-[200px]">
                 <div className="space-y-4">
-                  {/* Status distribution will go here */}
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
-                      <p className="text-sm font-medium leading-none">New</p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm font-medium">New</p>
+                      <p className="text-xs text-muted-foreground">
                         {stats.newContacts} contacts
                       </p>
                     </div>
-                    <div className="w-[100px] h-2 bg-emerald-100 rounded-full overflow-hidden">
+                    <div className="w-24 h-2 bg-emerald-100 rounded-full overflow-hidden">
                       <div 
                         className="h-full bg-emerald-500 rounded-full" 
                         style={{ 
@@ -1212,66 +4080,55 @@ export default async function DashboardPage() {
                       />
                     </div>
                   </div>
-                  {/* Add more statuses */}
                 </div>
                 <ScrollBar orientation="vertical" />
               </ScrollArea>
             </CardContent>
           </Card>
 
-          <Card className="col-span-1">
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>
-                Latest updates and changes
-              </CardDescription>
+          <Card className="overflow-hidden md:col-span-2 lg:col-span-1">
+            <CardHeader className="space-y-1 p-4">
+              <CardTitle className="text-base">Recent Activity</CardTitle>
+              <CardDescription className="text-xs">Latest updates</CardDescription>
             </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[300px]">
+            <CardContent className="p-4">
+              <ScrollArea className="h-[200px]">
                 <div className="space-y-4">
-                  {/* Activity items will go here */}
                   <div className="flex items-center">
-                    <div className="ml-4 space-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        New contact added
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        2 minutes ago
-                      </p>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">New contact added</p>
+                      <p className="text-xs text-muted-foreground">2 minutes ago</p>
                     </div>
                   </div>
-                  {/* Add more activity items */}
                 </div>
                 <ScrollBar orientation="vertical" />
               </ScrollArea>
             </CardContent>
           </Card>
         </div>
+
         <ContactChart contacts={contacts} />
 
         {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>
-              Common tasks and shortcuts
-            </CardDescription>
+        <Card className="overflow-hidden">
+          <CardHeader className="space-y-1 p-4">
+            <CardTitle className="text-base">Quick Actions</CardTitle>
+            <CardDescription className="text-xs">Common tasks</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <CardContent className="p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Link href="/dashboard/contacts/new">
-                <Button className="w-full">
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Add New Contact
+                <Button className="w-full h-9">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Contact
                 </Button>
               </Link>
               <Link href="/dashboard/contacts">
-                <Button variant="outline" className="w-full">
-                  <Users className="mr-2 h-4 w-4" />
-                  View All Contacts
+                <Button variant="outline" className="w-full h-9">
+                  <Users className="h-4 w-4 mr-2" />
+                  All Contacts
                 </Button>
               </Link>
-  
             </div>
           </CardContent> 
         </Card>
@@ -1279,6 +4136,2993 @@ export default async function DashboardPage() {
     </PageContainer>
   );
 }
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/pos/page.tsx
+"use client"
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import {
+  Coffee,
+  X,
+  DollarSign,
+  Gift,
+  Moon,
+  Sun,
+  Search,
+  Bell,
+  Plus,
+  Minus,
+  Trash2,
+  Star,
+  Clock,
+  CalendarDays
+} from 'lucide-react'
+import Link from 'next/link'
+import {Button} from '../../../components/ui/button'
+import { format } from 'date-fns'
+import { PageContainer } from "@/components/layout/page-container";
+import './styles.css';
+
+// Types
+interface MenuItem {
+  id: number
+  name: string
+  price: number
+  category: string
+  popular: boolean
+}
+
+interface MilkOption {
+  name: string
+  price: number
+}
+
+interface CartItem extends MenuItem {
+  quantity: number
+  flavor?: string
+  milk?: MilkOption
+}
+
+interface CustomerInfo {
+  firstName: string
+  lastInitial: string
+  organization: string
+  email: string
+  phone: string
+}
+
+// Constants
+const menuItems = [
+  { id: 1, name: 'Espresso', price: 2.5, category: 'Coffee', popular: true },
+  { id: 2, name: 'Americano', price: 3.0, category: 'Coffee', popular: false },
+  { id: 3, name: 'Latte', price: 3.5, category: 'Coffee', popular: true },
+  { id: 4, name: 'Cappuccino', price: 3.5, category: 'Coffee', popular: true },
+  {
+    id: 5,
+    name: 'Flat White',
+    price: 3.5,
+    category: 'Coffee',
+    popular: false
+  },
+  { id: 6, name: 'Cortado', price: 3.5, category: 'Coffee', popular: false },
+  {
+    id: 7,
+    name: 'Caramel Crunch Crusher',
+    price: 4.5,
+    category: 'Specialty',
+    popular: true
+  },
+  {
+    id: 8,
+    name: 'Vanilla Dream Latte',
+    price: 4.5,
+    category: 'Specialty',
+    popular: false
+  },
+  {
+    id: 9,
+    name: 'Hazelnut Heaven Cappuccino',
+    price: 4.5,
+    category: 'Specialty',
+    popular: false
+  }
+]
+
+const flavorOptions = [
+  'No Flavoring',
+  'Vanilla',
+  'Caramel',
+  'Hazelnut',
+  'Raspberry',
+  'Pumpkin Spice'
+]
+
+const milkOptions: MilkOption[] = [
+  { name: 'No Milk', price: 0 },
+  { name: 'Whole Milk', price: 0 },
+  { name: 'Oat Milk', price: 0 }
+]
+
+const BufBaristaPOS: React.FC = () => {
+  // Basic state
+  const [cart, setCart] = useState<CartItem[]>([])
+  const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
+    firstName: '',
+    lastInitial: '',
+    organization: '',
+    email: '',
+    phone: ''
+  })
+  const [orderNotes, setOrderNotes] = useState('')
+  const [orderNumber, setOrderNumber] = useState(1)
+  const [selectedCategory, setSelectedCategory] = useState('All')
+  const [isComplimentaryMode, setIsComplimentaryMode] = useState(true)
+  const [queueStartTime, setQueueStartTime] = useState<Date | null>(null)
+  const [isDarkMode, setIsDarkMode] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [runningTotal, setRunningTotal] = useState(0)
+  const [quickNotes, setQuickNotes] = useState<string[]>([])
+
+  // Modal states
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isCustomizationModalOpen, setIsCustomizationModalOpen] =
+    useState(false)
+  const [isQuickNoteModalOpen, setIsQuickNoteModalOpen] = useState(false)
+  const [notification, setNotification] = useState<string | null>(null)
+  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null)
+  const [selectedFlavor, setSelectedFlavor] = useState('')
+  const [selectedMilk, setSelectedMilk] = useState(milkOptions[0])
+  const [showPopular, setShowPopular] = useState(false)
+
+  // Load saved quick notes
+  useEffect(() => {
+    const savedQuickNotes = localStorage.getItem('quickNotes')
+    if (savedQuickNotes) {
+      setQuickNotes(JSON.parse(savedQuickNotes))
+    }
+  }, [])
+
+  // Save quick notes
+  useEffect(() => {
+    localStorage.setItem('quickNotes', JSON.stringify(quickNotes))
+  }, [quickNotes])
+
+  const categories = useMemo(
+    () => ['All', ...new Set(menuItems.map((item) => item.category))],
+    []
+  )
+
+  useEffect(() => {
+    const lastOrderNumber = localStorage.getItem('lastOrderNumber')
+    if (lastOrderNumber) {
+      setOrderNumber(parseInt(lastOrderNumber) + 1)
+    }
+
+    const savedDarkMode = localStorage.getItem('darkMode')
+    if (savedDarkMode) {
+      setIsDarkMode(JSON.parse(savedDarkMode))
+    }
+
+    const savedComplimentaryMode = localStorage.getItem('complimentaryMode')
+    if (savedComplimentaryMode) {
+      setIsComplimentaryMode(JSON.parse(savedComplimentaryMode))
+    }
+
+    setQueueStartTime(new Date())
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(isDarkMode))
+    document.body.classList.toggle('dark-mode', isDarkMode)
+  }, [isDarkMode])
+
+  useEffect(() => {
+    localStorage.setItem(
+      'complimentaryMode',
+      JSON.stringify(isComplimentaryMode)
+    )
+  }, [isComplimentaryMode])
+
+  // Helper functions and callbacks
+  const showNotification = useCallback((message: string) => {
+    setNotification(message)
+    setTimeout(() => setNotification(null), 3000)
+  }, [])
+
+  const addToCart = useCallback((item: MenuItem) => {
+    setSelectedItem(item)
+    setSelectedFlavor('No Flavoring')
+
+    // Set default milk based on specific drinks and categories
+    const noMilkDrinks = ['Espresso', 'Americano']
+    const defaultMilk = noMilkDrinks.includes(item.name)
+      ? milkOptions.find((milk) => milk.name === 'No Milk') || milkOptions[0]
+      : item.category === 'Coffee' || item.category === 'Specialty'
+      ? milkOptions.find((milk) => milk.name === 'Whole Milk') || milkOptions[0]
+      : milkOptions[0]
+
+    setSelectedMilk(defaultMilk)
+    setIsCustomizationModalOpen(true)
+  }, [])
+  const confirmCustomization = useCallback(() => {
+    if (!selectedItem) return
+
+    const newItem: CartItem = {
+      ...selectedItem,
+      flavor: selectedFlavor === 'No Flavoring' ? undefined : selectedFlavor,
+      milk: selectedMilk,
+      quantity: 1
+    }
+
+    setCart((prevCart) => {
+      const existingItemIndex = prevCart.findIndex(
+        (item) =>
+          item.id === newItem.id &&
+          item.flavor === newItem.flavor &&
+          item.milk?.name === newItem.milk?.name
+      )
+
+      if (existingItemIndex !== -1) {
+        return prevCart.map((item, index) =>
+          index === existingItemIndex
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        )
+      }
+
+      return [...prevCart, newItem]
+    })
+
+    const itemTotal = selectedItem.price + selectedMilk.price
+    setRunningTotal((prev) => prev + itemTotal)
+
+    showNotification(
+      `Added ${selectedItem.name} with ${selectedMilk.name}${
+        selectedFlavor !== 'No Flavoring' ? ` and ${selectedFlavor}` : ''
+      } to cart`
+    )
+
+    setIsCustomizationModalOpen(false)
+  }, [selectedItem, selectedFlavor, selectedMilk, showNotification])
+
+  const removeFromCart = useCallback((index: number) => {
+    setCart((prevCart) => {
+      const newCart = [...prevCart]
+      const item = newCart[index]
+      const itemTotal = item.price + (item.milk?.price || 0)
+
+      if (item.quantity > 1) {
+        newCart[index] = { ...item, quantity: item.quantity - 1 }
+      } else {
+        newCart.splice(index, 1)
+      }
+
+      setRunningTotal((prev) => prev - itemTotal)
+      return newCart
+    })
+  }, [])
+
+  const increaseQuantity = useCallback((index: number) => {
+    setCart((prevCart) => {
+      const newCart = [...prevCart]
+      const item = newCart[index]
+      const itemTotal = item.price + (item.milk?.price || 0)
+
+      newCart[index] = { ...item, quantity: item.quantity + 1 }
+      setRunningTotal((prev) => prev + itemTotal)
+      return newCart
+    })
+  }, [])
+
+  const calculateTotal = useCallback(() => {
+    return isComplimentaryMode
+      ? 0
+      : cart
+          .reduce(
+            (sum, item) =>
+              sum + (item.price + (item.milk?.price || 0)) * item.quantity,
+            0
+          )
+          .toFixed(2)
+  }, [cart, isComplimentaryMode])
+
+  const handlePlaceOrder = useCallback(() => {
+    if (cart.length === 0) return
+    setIsModalOpen(true)
+  }, [cart])
+
+  const addQuickNote = useCallback((note: string) => {
+    setOrderNotes((prev) => (prev ? `${prev}\n${note}` : note))
+  }, [])
+
+  const saveQuickNote = useCallback(
+    (note: string) => {
+      if (note && !quickNotes.includes(note)) {
+        setQuickNotes((prev) => [...prev, note])
+        showNotification('Quick note saved!')
+      }
+    },
+    [quickNotes, showNotification]
+  )
+
+  const confirmOrder = useCallback(() => {
+    if (!customerInfo.firstName || !customerInfo.lastInitial) return
+
+    const orderStartTime = new Date()
+    const newOrder = {
+      id: orderNumber,
+      customerName: `${customerInfo.firstName} ${customerInfo.lastInitial}.`,
+      customerInfo: { ...customerInfo },
+      items: [...cart],
+      notes: orderNotes,
+      timestamp: orderStartTime.toLocaleString(),
+      status: 'Pending',
+      total: calculateTotal(),
+      isComplimentary: isComplimentaryMode,
+      queueTime: queueStartTime
+        ? (orderStartTime.getTime() - queueStartTime.getTime()) / 1000
+        : 0,
+      startTime: orderStartTime
+    }
+
+    const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]')
+    const updatedOrders = [newOrder, ...existingOrders]
+    localStorage.setItem('orders', JSON.stringify(updatedOrders))
+    localStorage.setItem('lastOrderNumber', orderNumber.toString())
+
+    setCart([])
+    setCustomerInfo({
+      firstName: '',
+      lastInitial: '',
+      organization: '',
+      email: '',
+      phone: ''
+    })
+    setOrderNotes('')
+    setOrderNumber(orderNumber + 1)
+    setQueueStartTime(new Date())
+    setRunningTotal(0)
+    setIsModalOpen(false)
+    showNotification('Order placed successfully!')
+  }, [
+    customerInfo,
+    cart,
+    orderNumber,
+    calculateTotal,
+    isComplimentaryMode,
+    queueStartTime,
+    showNotification,
+    orderNotes
+  ])
+
+  const filteredMenuItems = useMemo(
+    () =>
+      menuItems.filter(
+        (item) =>
+          (selectedCategory === 'All' || item.category === selectedCategory) &&
+          item.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+          (!showPopular || item.popular)
+      ),
+    [selectedCategory, searchTerm, showPopular]
+  )
+
+  const handleKeyPress = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && e.ctrlKey) {
+        handlePlaceOrder()
+      }
+    },
+    [handlePlaceOrder]
+  )
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyPress)
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress)
+    }
+  }, [handleKeyPress])
+
+  const toggleServiceMode = useCallback(() => {
+    setIsComplimentaryMode((prev) => !prev)
+    showNotification(
+      `Switched to ${isComplimentaryMode ? 'Pop-up' : 'Complimentary'} mode`
+    )
+  }, [isComplimentaryMode, showNotification])
+  return (
+    <PageContainer>
+    <div className={`pos-container ${isDarkMode ? 'dark-mode' : ''}`}>
+    <h1 className="page-title">Point of Sale</h1>
+
+      <header className="pos-header">
+        <div className="header-left">
+          <Link href="/waste" passHref>
+            <button className="waste-button">
+              <Trash2 />
+              Waste
+            </button>
+          </Link>
+          <button onClick={toggleServiceMode} className="mode-button">
+            {isComplimentaryMode ? <Gift /> : <DollarSign />}
+            {isComplimentaryMode ? 'Complimentary' : 'Pop-up'}
+          </button>
+          <button
+            onClick={() => setShowPopular(!showPopular)}
+            className={`mode-button ${showPopular ? 'active' : ''}`}
+          >
+            <Star />
+            Popular
+          </button>
+        </div>
+
+        <div className="search-container">
+          <Search />
+          <input
+            type="text"
+            placeholder="Search menu..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
+        </div>
+
+        <div className="header-right">
+          <span className="current-time">
+            <Clock size={16} />
+            {format(new Date(), 'HH:mm')}
+          </span>
+          <span className="current-date">
+            <CalendarDays size={16} />
+            {format(new Date(), 'MMM dd, yyyy')}
+          </span>
+          <button
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className="mode-button"
+          >
+            {isDarkMode ? <Sun /> : <Moon />}
+          </button>
+        </div>
+      </header>
+
+      <main className="pos-main">
+        <section className="cart-section">
+          <h2 className="section-title">Cart</h2>
+
+          {cart.length === 0 ? (
+            <p className="empty-cart">Your cart is empty</p>
+          ) : (
+            <ul className="cart-items">
+              {cart.map((item, index) => (
+                <li key={index} className="cart-item">
+                  <span className="item-name">
+                    {item.name}
+                    {item.milk && (
+                      <span className="item-customization">
+                        {' '}
+                        ({item.milk.name})
+                      </span>
+                    )}
+                    {item.flavor && (
+                      <span className="item-customization">
+                        {' '}
+                        with {item.flavor}
+                      </span>
+                    )}
+                  </span>
+                  <div className="item-controls">
+                    <button
+                      onClick={() => removeFromCart(index)}
+                      className="quantity-button"
+                    >
+                      <Minus size={16} />
+                    </button>
+                    <span className="item-quantity">{item.quantity}</span>
+                    <button
+                      onClick={() => increaseQuantity(index)}
+                      className="quantity-button"
+                    >
+                      <Plus size={16} />
+                    </button>
+                    <span className="item-price">
+                      {isComplimentaryMode
+                        ? ''
+                        : `$${(
+                            (item.price + (item.milk?.price || 0)) *
+                            item.quantity
+                          ).toFixed(2)}`}
+                    </span>
+                    <Button
+                      onClick={() => removeFromCart(index)}
+                      className="remove-item"
+                    >
+                      <X size={16} />
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="order-notes-section">
+            <textarea
+              value={orderNotes}
+              onChange={(e) => setOrderNotes(e.target.value)}
+              placeholder="Add notes about this order..."
+              className="notes-input"
+            />
+            <div className="quick-notes">
+              <div className="quick-note-chips">
+                {quickNotes.map((note, index) => (
+                  <button
+                    key={index}
+                    onClick={() => addQuickNote(note)}
+                    className="quick-note-chip"
+                  >
+                    {note}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="cart-total">
+            <span>Total:</span>
+            <span>{isComplimentaryMode ? '' : `$${calculateTotal()}`}</span>
+          </div>
+
+          <button
+            onClick={handlePlaceOrder}
+            disabled={cart.length === 0}
+            className="place-order-button"
+          >
+            Place Order
+          </button>
+
+          <Link href="/dashboard/orders" passHref>
+            <button className="view-orders-button">View Orders</button>
+          </Link>
+          <Link href="/dashboard/sales" passHref>
+            <button className="view-orders-button">View Reports</button>
+          </Link>
+        </section>
+
+        <section className="menu-section">
+          <div className="category-filters">
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`category-button ${
+                  category === selectedCategory ? 'active' : ''
+                }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+
+          <div className="menu-grid">
+            {filteredMenuItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => addToCart(item)}
+                className="menu-item"
+              >
+                <Coffee className="item-icon" />
+                <h3 className="item-name">
+                  {item.name}
+                  {item.popular && <Star className="popular-icon" size={16} />}
+                </h3>
+                <p className="item-price">
+                  {isComplimentaryMode ? '' : `$${item.price.toFixed(2)}`}
+                </p>
+              </button>
+            ))}
+          </div>
+        </section>
+      </main>
+
+      {/* Customization Modal */}
+      {isCustomizationModalOpen && selectedItem && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3 className="modal-title">Customize {selectedItem.name}</h3>
+
+            <div className="customization-section">
+              <h4 className="section-subtitle">Select Milk</h4>
+              <div className="milk-options">
+                {milkOptions.map((milk) => (
+                  <button
+                    key={milk.name}
+                    onClick={() => setSelectedMilk(milk)}
+                    className={`milk-button ${
+                      selectedMilk.name === milk.name ? 'selected' : ''
+                    }`}
+                  >
+                    <span>{milk.name}</span>
+                    {milk.price > 0 && (
+                      <span className="milk-price">
+                        +${milk.price.toFixed(2)}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="customization-section">
+              <h4 className="section-subtitle">Select Flavor</h4>
+              {flavorOptions.map((flavor) => (
+                <button
+                  key={flavor}
+                  onClick={() => setSelectedFlavor(flavor)}
+                  className={`flavor-button ${
+                    selectedFlavor === flavor ? 'selected' : ''
+                  }`}
+                >
+                  {flavor}
+                </button>
+              ))}
+            </div>
+
+            <div className="modal-buttons">
+              <button
+                onClick={() => setIsCustomizationModalOpen(false)}
+                className="modal-button cancel"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmCustomization}
+                className="modal-button confirm"
+                disabled={!selectedFlavor}
+              >
+                Add to Cart
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Customer Information Modal */}
+      {isModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3 className="modal-title">Customer Information</h3>
+            <input
+              type="text"
+              value={customerInfo.firstName}
+              onChange={(e) =>
+                setCustomerInfo({ ...customerInfo, firstName: e.target.value })
+              }
+              placeholder="First Name"
+              className="modal-input"
+            />
+            <input
+              type="text"
+              value={customerInfo.lastInitial}
+              onChange={(e) =>
+                setCustomerInfo({
+                  ...customerInfo,
+                  lastInitial: e.target.value
+                })
+              }
+              placeholder="Last Name Initial"
+              className="modal-input"
+            />
+            <input
+              type="text"
+              value={customerInfo.organization}
+              onChange={(e) =>
+                setCustomerInfo({
+                  ...customerInfo,
+                  organization: e.target.value
+                })
+              }
+              placeholder="Organization (Optional)"
+              className="modal-input"
+            />
+            <input
+              type="email"
+              value={customerInfo.email}
+              onChange={(e) =>
+                setCustomerInfo({
+                  ...customerInfo,
+                  email: e.target.value
+                })
+              }
+              placeholder="Email (Optional)"
+              className="modal-input"
+            />
+            <input
+              type="tel"
+              value={customerInfo.phone}
+              onChange={(e) =>
+                setCustomerInfo({
+                  ...customerInfo,
+                  phone: e.target.value
+                })
+              }
+              placeholder="Phone (Optional)"
+              className="modal-input"
+            />
+            <div className="modal-buttons">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="modal-button cancel"
+              >
+                Cancel
+              </button>
+              <button onClick={confirmOrder} className="modal-button confirm">
+                Confirm Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Note Modal */}
+      {isQuickNoteModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3 className="modal-title">Add Quick Note</h3>
+            <textarea
+              placeholder="Enter a quick note to save for future use..."
+              className="modal-textarea"
+              id="quickNoteInput"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Notification */}
+      {notification && (
+        <div className="notification">
+          <Bell size={16} />
+          {notification}
+        </div>
+      )}
+    
+
+    </div>
+    </PageContainer>
+  )
+}
+export default BufBaristaPOS
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/pos/styles.css
+/* Base Variables */
+:root {
+  --primary-color: #4a90e2;
+  --secondary-color: #50e3c2;
+  --accent-color: #f5a623;
+  --background-color: #f8f9fa;
+  --text-color: #333333;
+  --border-color: #e1e4e8;
+  --success-color: #28a745;
+  --warning-color: #ffc107;
+  --danger-color: #dc3545;
+}
+
+/* Container Styles */
+.pos-container {
+  font-family: Arial, sans-serif;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: var(--background-color);
+}
+
+/* Header Styles */
+.pos-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.header-left,
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.current-time,
+.current-date {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #495057;
+  font-size: 14px;
+}
+
+.mode-button {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: var(--secondary-color);
+  color: white;
+}
+
+.waste-button {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: var(--danger-color);
+  color: white;
+}
+
+.mode-button:hover {
+  background-color: var(--accent-color);
+  transform: translateY(-2px);
+}
+
+.search-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background-color: white;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  padding: 4px;
+  min-width: 200px;
+}
+
+/* Main Layout */
+.pos-main {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 20px;
+}
+
+
+/* Menu Section */
+.menu-section {
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  align-items: center;
+}
+
+.section-title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 1.5rem;
+  color: var(--primary-color);
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+.category-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  justify-content: center;
+}
+
+.category-button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: ghostwhite;
+  color: var(--primary-color);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+.category-button.active {
+  background-color: var(--primary-color);
+  color: teal;
+  transform: translateY(-2px);
+}
+
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  background-color: white;
+  position: relative;
+}
+
+.menu-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.item-icon {
+  color: var(--primary-color);
+  margin-bottom: 0.5rem;
+}
+
+.popular-icon {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: var(--warning-color);
+}
+
+.item-name {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.item-price {
+  font-size: 14px;
+  color: var(--accent-color);
+  font-weight: bold;
+}
+
+/* Cart Section */
+.cart-section {
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.empty-cart {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  margin-top: 1rem;
+}
+
+.cart-items {
+  list-style-type: none;
+  padding: 0;
+}
+
+.cart-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.item-customization {
+  font-size: 14px;
+  color: var(--accent-color);
+  font-style: italic;
+}
+
+.item-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.quantity-button {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.quantity-button:hover {
+  background-color: var(--background-color);
+}
+
+.item-quantity {
+  font-weight: bold;
+  min-width: 24px;
+  text-align: center;
+}
+
+.remove-item {
+  color: var(--danger-color);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: none;
+  border: none;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.remove-item:hover {
+  transform: scale(1.1);
+}
+
+.cart-total {
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 2px solid var(--border-color);
+}
+
+.running-total {
+  margin-top: 1rem;
+  font-weight: bold;
+  color: var(--accent-color);
+}
+
+/* Notes Section */
+.order-notes-section {
+  margin-top: 15px;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.notes-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: #495057;
+  font-weight: 500;
+}
+
+.notes-input {
+  width: 100%;
+  min-height: 80px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.quick-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quick-note-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: #4a90e2;
+  color: white;
+}
+
+.quick-note-button:hover {
+  background-color: #357abd;
+  transform: translateY(-2px);
+}
+
+.quick-note-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quick-note-chip {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 15px;
+  background-color: #e9ecef;
+  color: #495057;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.quick-note-chip:hover {
+  background-color: #4a90e2;
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* Action Buttons */
+.place-order-button,
+.view-orders-button {
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.place-order-button {
+  background-color: #28a745;
+  color: white;
+}
+
+.place-order-button:hover {
+  background-color: #218838;
+  transform: translateY(-2px);
+}
+
+.place-order-button:disabled {
+  background-color: #e9ecef;
+  color: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.view-orders-button {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.view-orders-button:hover {
+  background-color: #138496;
+  transform: translateY(-2px);
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 25px;
+  border-radius: 10px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-title {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.section-subtitle {
+  font-size: 16px;
+  color: #495057;
+  margin-bottom: 10px;
+}
+
+.modal-input,
+.modal-textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.modal-textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.customization-section {
+  margin-bottom: 20px;
+}
+
+.milk-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.milk-button,
+.flavor-button {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #e9ecef;
+  border-radius: 5px;
+  background-color: white;
+  color: #495057;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s ease;
+  margin-bottom: 5px;
+}
+
+.milk-button:hover,
+.flavor-button:hover {
+  background-color: #f8f9fa;
+}
+
+.milk-button.selected,
+.flavor-button.selected {
+  background-color: #4a90e2;
+  color: white;
+  border-color: #4a90e2;
+}
+
+.milk-price {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.modal-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.modal-button.confirm {
+  background-color: #28a745;
+  color: white;
+}
+
+.modal-button.cancel {
+  background-color: #dc3545;
+  color: white;
+}
+
+.modal-button:hover {
+  transform: translateY(-2px);
+}
+
+.modal-button:disabled {
+  background-color: #e9ecef;
+  color: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Notification */
+.notification {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 6px;
+  background-color: #4a90e2;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  animation: slide In 0.3s ease-out;
+  z-index: 1000;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Dark Mode Styles */
+.dark-mode {
+  --background-color: #1a1a1a;
+  --text-color: #f0f0f0;
+  --border-color: #444;
+  --primary-color: #3a7bc8;
+  --secondary-color: #3cc9ac;
+  --accent-color: #f5a623;
+}
+
+.dark-mode .pos-container {
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
+.dark-mode .pos-header,
+.dark-mode .menu-section,
+.dark-mode .cart-section,
+.dark-mode .modal-content,
+.dark-mode .menu-item {
+  background-color: #2c2c2c;
+  color: var(--text-color);
+}
+
+.dark-mode .search-container {
+  background-color: #3c3c3c;
+  border-color: #444;
+}
+
+.dark-mode .search-input {
+  background-color: #3c3c3c;
+  color: var(--text-color);
+}
+
+.dark-mode .category-button {
+  background-color: #3c3c3c;
+  color: var(--text-color);
+}
+
+.dark-mode .category-button.active {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.dark-mode .order-notes-section {
+  background-color: #2c2c2c;
+  border-color: #444;
+}
+
+.dark-mode .notes-input,
+.dark-mode .modal-input,
+.dark-mode .modal-textarea {
+  background-color: #3c3c3c;
+  border-color: #444;
+  color: var(--text-color);
+}
+
+.dark-mode .quick-note-chip {
+  background-color: #3c3c3c;
+  color: #f0f0f0;
+}
+
+.dark-mode .milk-button,
+.dark-mode .flavor-button {
+  background-color: #3c3c3c;
+  border-color: #444;
+  color: var(--text-color);
+}
+
+.dark-mode .milk-button.selected,
+.dark-mode .flavor-button.selected {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.dark-mode .quantity-button {
+  color: black;
+}
+
+.dark-mode .remove-item {
+  color: #ff6b6b;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .pos-container {
+    padding: 10px;
+  }
+
+  .pos-main {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .menu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .pos-header {
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .header-left,
+  .header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .search-container {
+    width: 100%;
+  }
+
+  .menu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+
+  .cart-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .item-controls {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 8px;
+  }
+
+  .category-filters {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 10px;
+  }
+
+  .category-button {
+    flex-shrink: 0;
+  }
+
+  .modal-content {
+    width: 95%;
+    margin: 10px;
+    padding: 15px;
+  }
+
+  .modal-buttons {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .modal-button {
+    width: 100%;
+  }
+
+  .quick-note-chips {
+    max-height: 120px;
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .menu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+
+  .menu-item {
+    padding: 0.75rem;
+  }
+
+  .item-name {
+    font-size: 14px;
+  }
+
+  .modal-content {
+    padding: 15px;
+  }
+
+  .notification {
+    width: 90%;
+    left: 5%;
+    right: 5%;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .pos-container {
+    background: white;
+  }
+
+  .pos-header,
+  .menu-section,
+  .mode-button,
+  .search-container,
+  .category-filters,
+  .place-order-button,
+  .view-orders-button {
+    display: none;
+  }
+
+  .cart-section {
+    width: 100%;
+    box-shadow: none;
+  }
+
+  .cart-items {
+    border: 1px solid #ddd;
+  }
+
+  .notification {
+    display: none;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: more) {
+  :root {
+    --primary-color: #0056b3;
+    --secondary-color: #006644;
+    --accent-color: #cc7700;
+    --text-color: #000000;
+    --background-color: #ffffff;
+    --border-color: #000000;
+  }
+
+  .dark-mode {
+    --text-color: #ffffff;
+    --background-color: #000000;
+    --border-color: #ffffff;
+  }
+
+  .button,
+  .modal-button,
+  .quick-note-button {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Focus Styles */
+.button:focus,
+.modal-button:focus,
+.menu-item:focus,
+.quick-note-button:focus,
+.quick-note-chip:focus {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.search-input:focus,
+.notes-input:focus,
+.modal-input:focus,
+.modal-textarea:focus {
+  outline: 2px solid var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+/* Touch Device Optimizations */
+@media (hover: none) {
+  .button:hover,
+  .modal-button:hover,
+  .menu-item:hover,
+  .quick-note-button:hover,
+  .quick-note-chip:hover {
+    transform: none;
+  }
+
+  .menu-item,
+  .cart-item,
+  .modal-button {
+    cursor: default;
+  }
+
+  .quantity-button,
+  .remove-item {
+    padding: 8px;
+  }
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/sales/page.tsx
+"use client"
+import { PageContainer } from "@/components/layout/page-container";
+
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
+import {
+  format,
+  startOfDay,
+  endOfDay,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  startOfYear,
+  endOfYear,
+  subDays,
+  eachDayOfInterval,
+  isSameDay
+} from 'date-fns'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  ScatterChart,
+  Scatter,
+  AreaChart,
+  Area,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  ComposedChart
+} from 'recharts'
+import {
+  Download,
+  DollarSign,
+  TrendingUp,
+  Coffee,
+  Clock,
+  RefreshCw,
+  AlertTriangle,
+  Loader,
+  Users,
+  ShoppingCart,
+  Percent,
+  Award,
+} from 'lucide-react'
+import './styles.css';
+
+interface Order {
+  id: number
+  customerName: string
+  total: number
+  status: string
+  timestamp: string
+  items: Array<{
+    name: string
+    quantity: number
+    price: number
+    category: string
+  }>
+  isComplimentary: boolean
+  preparationTime?: number
+  queueTime: number
+}
+
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: unknown) => jsPDF
+  }
+}
+
+type TimeRange = 'day' | 'week' | 'month' | 'year' | 'custom'
+
+const COLORS = [
+  '#0088FE',
+  '#00C49F',
+  '#FFBB28',
+  '#FF8042',
+  '#8884D8',
+  '#82ca9d',
+  '#ffc658'
+]
+
+interface TrendMetrics {
+  date: string
+  sales: number
+  orders: number
+  movingAverageSales: number
+  movingAverageOrders: number
+  salesGrowth: number
+  ordersGrowth: number
+  trend: 'up' | 'down' | 'stable'
+}
+
+const Reports: React.FC = () => {
+  const [orders, setOrders] = useState<Order[]>([])
+  const [timeRange, setTimeRange] = useState<TimeRange>('week')
+  const [customStartDate, setCustomStartDate] = useState<Date | null>(null)
+  const [customEndDate, setCustomEndDate] = useState<Date | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedMetric, setSelectedMetric] = useState<'sales' | 'orders'>(
+    'sales'
+  )
+
+  const fetchOrders = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      const storedOrders = JSON.parse(
+        localStorage.getItem('orders') || '[]'
+      ) as Order[]
+      setOrders(storedOrders)
+    } catch (err) {
+      setError('Failed to fetch orders. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchOrders()
+  }, [fetchOrders])
+
+  const getDateRange = useCallback(() => {
+    const now = new Date()
+    switch (timeRange) {
+      case 'day':
+        return { start: startOfDay(now), end: endOfDay(now) }
+      case 'week':
+        return { start: startOfWeek(now), end: endOfWeek(now) }
+      case 'month':
+        return { start: startOfMonth(now), end: endOfMonth(now) }
+      case 'year':
+        return { start: startOfYear(now), end: endOfYear(now) }
+      case 'custom':
+        return {
+          start: customStartDate
+            ? startOfDay(customStartDate)
+            : startOfDay(now),
+          end: customEndDate ? endOfDay(customEndDate) : endOfDay(now)
+        }
+      default:
+        return { start: startOfWeek(now), end: endOfWeek(now) }
+    }
+  }, [timeRange, customStartDate, customEndDate])
+
+  const filteredOrders = useMemo(() => {
+    const { start, end } = getDateRange()
+    return orders.filter((order) => {
+      const orderDate = new Date(order.timestamp)
+      return orderDate >= start && orderDate <= end
+    })
+  }, [orders, getDateRange])
+
+  const salesData = useMemo(() => {
+    const { start, end } = getDateRange()
+    const days = eachDayOfInterval({ start, end })
+    const data: { [key: string]: { sales: number; orders: number } } = {}
+
+    days.forEach((day) => {
+      const date = format(day, 'yyyy-MM-dd')
+      data[date] = { sales: 0, orders: 0 }
+    })
+
+    filteredOrders.forEach((order) => {
+      const date = format(new Date(order.timestamp), 'yyyy-MM-dd')
+      if (!data[date]) {
+        data[date] = { sales: 0, orders: 0 }
+      }
+      data[date].sales += order.isComplimentary ? 0 : order.total
+      data[date].orders += 1
+    })
+    return Object.entries(data)
+      .map(([date, values]) => ({
+        date,
+        sales: values.sales,
+        orders: values.orders
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+  }, [filteredOrders, getDateRange])
+
+  const topSellingItems = useMemo(() => {
+    const itemCounts: { [key: string]: { quantity: number; revenue: number } } =
+      {}
+    filteredOrders.forEach((order) => {
+      order.items.forEach((item) => {
+        if (!itemCounts[item.name]) {
+          itemCounts[item.name] = { quantity: 0, revenue: 0 }
+        }
+        itemCounts[item.name].quantity += item.quantity
+        itemCounts[item.name].revenue += item.price * item.quantity
+      })
+    })
+    return Object.entries(itemCounts)
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 10)
+  }, [filteredOrders])
+
+  const totalSales = useMemo(() => {
+    return filteredOrders.reduce(
+      (sum, order) => sum + (order.isComplimentary ? 0 : order.total),
+      0
+    )
+  }, [filteredOrders])
+
+  const totalOrders = useMemo(() => filteredOrders.length, [filteredOrders])
+
+  const averageOrderValue = useMemo(() => {
+    const paidOrders = filteredOrders.filter((order) => !order.isComplimentary)
+    return paidOrders.length > 0 ? totalSales / paidOrders.length : 0
+  }, [filteredOrders, totalSales])
+
+  const averagePreparationTime = useMemo(() => {
+    const ordersWithPrepTime = filteredOrders.filter(
+      (order) => order.preparationTime !== undefined
+    )
+    if (ordersWithPrepTime.length === 0) {
+      return 0
+    }
+    return Math.round(
+      ordersWithPrepTime.reduce(
+        (sum, order) => sum + (order.preparationTime || 0),
+        0
+      ) / ordersWithPrepTime.length
+    )
+  }, [filteredOrders])
+
+  const calculateMovingAverage = (data: number[], periods: number) => {
+    return data.map((_, index) => {
+      const start = Math.max(0, index - periods + 1)
+      const values = data.slice(start, index + 1)
+      return values.reduce((sum, val) => sum + val, 0) / values.length
+    })
+  }
+
+  const enhancedSalesTrend = useMemo((): TrendMetrics[] => {
+    const baseData = salesData.map((item) => ({
+      date: item.date,
+      sales: item.sales,
+      orders: item.orders
+    }))
+
+    const salesValues = baseData.map((item) => item.sales)
+    const ordersValues = baseData.map((item) => item.orders)
+
+    const movingAverageSales = calculateMovingAverage(salesValues, 7)
+    const movingAverageOrders = calculateMovingAverage(ordersValues, 7)
+
+    return baseData.map((item, index) => {
+      const previousSales = salesValues[index - 1] || salesValues[index]
+      const previousOrders = ordersValues[index - 1] || ordersValues[index]
+
+      const salesGrowth = ((item.sales - previousSales) / previousSales) * 100
+      const ordersGrowth =
+        ((item.orders - previousOrders) / previousOrders) * 100
+
+      const trend =
+        salesGrowth > 1 ? 'up' : salesGrowth < -1 ? 'down' : 'stable'
+
+      return {
+        date: item.date,
+        sales: item.sales,
+        orders: item.orders,
+        movingAverageSales: movingAverageSales[index],
+        movingAverageOrders: movingAverageOrders[index],
+        salesGrowth,
+        ordersGrowth,
+        trend
+      }
+    })
+  }, [salesData])
+  // Add a helper function to format time in minutes:seconds
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+  }
+  const salesByCategory = useMemo(() => {
+    const categorySales: { [key: string]: number } = {}
+    filteredOrders.forEach((order) => {
+      order.items.forEach((item) => {
+        categorySales[item.category] =
+          (categorySales[item.category] || 0) + item.price * item.quantity
+      })
+    })
+    return Object.entries(categorySales).map(([name, value]) => ({
+      name,
+      value
+    }))
+  }, [filteredOrders])
+
+  const ordersByHour = useMemo(() => {
+    const hourlyOrders: { [key: number]: number } = {}
+    filteredOrders.forEach((order) => {
+      const hour = new Date(order.timestamp).getHours()
+      hourlyOrders[hour] = (hourlyOrders[hour] || 0) + 1
+    })
+    return Array.from({ length: 24 }, (_, i) => ({
+      hour: i,
+      orders: hourlyOrders[i] || 0
+    }))
+  }, [filteredOrders])
+
+  const preparationTimeVsOrderValue = useMemo(() => {
+    return filteredOrders
+      .filter((order) => order.preparationTime !== undefined)
+      .map((order) => ({
+        preparationTime: order.preparationTime || 0,
+        orderValue: order.total
+      }))
+  }, [filteredOrders])
+
+  const uniqueCustomers = useMemo(() => {
+    return new Set(filteredOrders.map((order) => order.customerName)).size
+  }, [filteredOrders])
+
+  const repeatCustomerRate = useMemo(() => {
+    const customerOrderCounts = filteredOrders.reduce((acc, order) => {
+      acc[order.customerName] = (acc[order.customerName] || 0) + 1
+      return acc
+    }, {} as { [key: string]: number })
+    const repeatCustomers = Object.values(customerOrderCounts).filter(
+      (count) => count > 1
+    ).length
+    return uniqueCustomers > 0 ? (repeatCustomers / uniqueCustomers) * 100 : 0
+  }, [filteredOrders, uniqueCustomers])
+
+  const averageItemsPerOrder = useMemo(() => {
+    const totalItems = filteredOrders.reduce(
+      (sum, order) =>
+        sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0),
+      0
+    )
+    return totalOrders > 0 ? totalItems / totalOrders : 0
+  }, [filteredOrders, totalOrders])
+
+  const salesTrend = useMemo(() => {
+    const { start, end } = getDateRange()
+    const days = eachDayOfInterval({ start, end })
+    const salesByDay: { [key: string]: number } = {}
+
+    days.forEach((day) => {
+      const date = format(day, 'yyyy-MM-dd')
+      salesByDay[date] = 0
+    })
+
+    filteredOrders.forEach((order) => {
+      const date = format(new Date(order.timestamp), 'yyyy-MM-dd')
+      salesByDay[date] += order.isComplimentary ? 0 : order.total
+    })
+
+    return Object.entries(salesByDay)
+      .map(([date, sales]) => ({ date, sales }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+  }, [filteredOrders, getDateRange])
+
+  const customerRetentionRate = useMemo(() => {
+    const { start } = getDateRange()
+    const previousPeriodStart = subDays(
+      start,
+      getDateRange().end.getTime() - start.getTime()
+    )
+
+    const currentCustomers = new Set(
+      filteredOrders.map((order) => order.customerName)
+    )
+    const previousCustomers = new Set(
+      orders
+        .filter((order) => {
+          const orderDate = new Date(order.timestamp)
+          return orderDate >= previousPeriodStart && orderDate < start
+        })
+        .map((order) => order.customerName)
+    )
+
+    const retainedCustomers = [...currentCustomers].filter((customer) =>
+      previousCustomers.has(customer)
+    ).length
+    return previousCustomers.size > 0
+      ? (retainedCustomers / previousCustomers.size) * 100
+      : 0
+  }, [filteredOrders, orders, getDateRange])
+
+  // New metrics
+  const peakHourSales = useMemo(() => {
+    const hourlyData = filteredOrders.reduce((acc, order) => {
+      const hour = new Date(order.timestamp).getHours()
+      acc[hour] = (acc[hour] || 0) + (order.isComplimentary ? 0 : order.total)
+      return acc
+    }, {} as { [key: number]: number })
+
+    if (Object.keys(hourlyData).length === 0) {
+      return { hour: 'N/A', sales: 0 }
+    }
+
+    const peakHour = Object.entries(hourlyData).reduce((a, b) =>
+      a[1] > b[1] ? a : b
+    )
+    return { hour: peakHour[0], sales: peakHour[1] }
+  }, [filteredOrders])
+  const salesGrowthRate = useMemo(() => {
+    const { start, end } = getDateRange()
+    const periodLength = end.getTime() - start.getTime()
+    const previousPeriodStart = new Date(start.getTime() - periodLength)
+
+    const currentPeriodSales = filteredOrders.reduce(
+      (sum, order) => sum + (order.isComplimentary ? 0 : order.total),
+      0
+    )
+    const previousPeriodSales = orders
+      .filter((order) => {
+        const orderDate = new Date(order.timestamp)
+        return orderDate >= previousPeriodStart && orderDate < start
+      })
+      .reduce(
+        (sum, order) => sum + (order.isComplimentary ? 0 : order.total),
+        0
+      )
+
+    return previousPeriodSales !== 0
+      ? ((currentPeriodSales - previousPeriodSales) / previousPeriodSales) * 100
+      : 100 // If previous period had no sales, consider it 100% growth
+  }, [filteredOrders, orders, getDateRange])
+
+  // New charts data
+  const categoryPerformance = useMemo(() => {
+    const categoryData: { [key: string]: { sales: number; orders: number } } =
+      {}
+    filteredOrders.forEach((order) => {
+      order.items.forEach((item) => {
+        if (!categoryData[item.category]) {
+          categoryData[item.category] = { sales: 0, orders: 0 }
+        }
+        categoryData[item.category].sales += item.price * item.quantity
+        categoryData[item.category].orders += item.quantity
+      })
+    })
+    return Object.entries(categoryData).map(([category, data]) => ({
+      category,
+      sales: data.sales,
+      orders: data.orders
+    }))
+  }, [filteredOrders])
+
+  const dailySalesAndOrders = useMemo(() => {
+    const { start, end } = getDateRange()
+    const days = eachDayOfInterval({ start, end })
+    const dailyData: {
+      [key: string]: { date: string; sales: number; orders: number }
+    } = {}
+
+    days.forEach((day) => {
+      const date = format(day, 'yyyy-MM-dd')
+      dailyData[date] = { date, sales: 0, orders: 0 }
+    })
+
+    filteredOrders.forEach((order) => {
+      const date = format(new Date(order.timestamp), 'yyyy-MM-dd')
+      dailyData[date].sales += order.isComplimentary ? 0 : order.total
+      dailyData[date].orders += 1
+    })
+
+    return Object.values(dailyData).sort((a, b) => a.date.localeCompare(b.date))
+  }, [filteredOrders, getDateRange])
+  const generateCSV = useCallback(() => {
+    // Prepare CSV headers
+    const headers = [
+      'Date',
+      'Total Sales ($)',
+      'Orders',
+      'Average Order Value ($)',
+      'Unique Customers',
+      'Preparation Time (min:sec)',
+      'Items Sold'
+    ]
+
+    // Prepare daily data
+    const csvData = dailySalesAndOrders.map((day) => {
+      const dayOrders = filteredOrders.filter((order) =>
+        isSameDay(new Date(order.timestamp), new Date(day.date))
+      )
+
+      const dayUniqueCustomers = new Set(
+        dayOrders.map((order) => order.customerName)
+      ).size
+
+      const dayAvgOrderValue = day.sales / (day.orders || 1)
+
+      const dayPrepTime = dayOrders
+        .filter((order) => order.preparationTime)
+        .reduce(
+          (avg, order, _, arr) =>
+            avg + (order.preparationTime || 0) / (arr.length || 1),
+          0
+        )
+
+      const dayItemsSold = dayOrders.reduce(
+        (sum, order) =>
+          sum +
+          order.items.reduce((itemSum, item) => itemSum + item.quantity, 0),
+        0
+      )
+
+      return [
+        day.date,
+        day.sales.toFixed(2),
+        day.orders,
+        dayAvgOrderValue.toFixed(2),
+        dayUniqueCustomers,
+        formatTime(dayPrepTime),
+        dayItemsSold
+      ]
+    })
+
+    // Add summary data
+    const summaryData = [
+      ['Summary Statistics'],
+      ['Total Period Sales ($)', totalSales.toFixed(2)],
+      ['Total Orders', totalOrders],
+      ['Average Order Value ($)', averageOrderValue.toFixed(2)],
+      ['Unique Customers', uniqueCustomers],
+      ['Customer Retention Rate (%)', customerRetentionRate.toFixed(2)],
+      ['Average Preparation Time', formatTime(averagePreparationTime)],
+      ['Repeat Customer Rate (%)', repeatCustomerRate.toFixed(2)],
+      ['Sales Growth Rate (%)', salesGrowthRate.toFixed(2)],
+      [''],
+      ['Top Selling Items'],
+      ['Item Name', 'Quantity Sold', 'Revenue ($)'],
+      ...topSellingItems.map((item) => [
+        item.name,
+        item.quantity,
+        item.revenue.toFixed(2)
+      ]),
+      [''],
+      ['Sales by Category'],
+      ['Category', 'Total Sales ($)'],
+      ...salesByCategory.map((category) => [
+        category.name,
+        category.value.toFixed(2)
+      ])
+    ]
+
+    // Combine all data
+    const allRows = [
+      ['Daily Sales Report'],
+      [
+        `Report Period: ${format(
+          getDateRange().start,
+          'yyyy-MM-dd'
+        )} to ${format(getDateRange().end, 'yyyy-MM-dd')}`
+      ],
+      [''],
+      headers,
+      ...csvData,
+      [''],
+      ...summaryData
+    ]
+
+    // Convert to CSV string
+    const csvContent = allRows.map((row) => row.join(',')).join('\n')
+
+    // Create and trigger download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `sales-report-${format(new Date(), 'yyyy-MM-dd')}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }, [
+    dailySalesAndOrders,
+    filteredOrders,
+    totalSales,
+    totalOrders,
+    averageOrderValue,
+    uniqueCustomers,
+    customerRetentionRate,
+    averagePreparationTime,
+    repeatCustomerRate,
+    salesGrowthRate,
+    topSellingItems,
+    salesByCategory,
+    getDateRange,
+    formatTime
+  ])
+  if (isLoading) {
+    return (
+      <div className="loading-container">
+        <Loader size={48} className="spin" />
+        <p>Loading report data...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="error-container">
+        <AlertTriangle size={48} />
+        <p>{error}</p>
+        <button onClick={fetchOrders} className="retry-button">
+          <RefreshCw size={16} /> Retry
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <PageContainer>
+    <div className="reports-container">
+      <h1 className="page-title">Sales Reports</h1>
+
+      <div className="controls">
+        <select
+          value={timeRange}
+          onChange={(e) => setTimeRange(e.target.value as TimeRange)}
+          className="time-range-select"
+        >
+          <option value="day">Today</option>
+          <option value="week">This Week</option>
+          <option value="month">This Month</option>
+          <option value="year">This Year</option>
+          <option value="custom">Custom Range</option>
+        </select>
+        {timeRange === 'custom' && (
+          <div className="custom-date-range">
+            <DatePicker
+              selected={customStartDate}
+              onChange={(date) => setCustomStartDate(date)}
+              selectsStart
+              startDate={customStartDate}
+              endDate={customEndDate}
+              maxDate={new Date()}
+              placeholderText="Start Date"
+              className="custom-date-input"
+            />
+            <DatePicker
+              selected={customEndDate}
+              onChange={(date) => setCustomEndDate(date)}
+              selectsEnd
+              startDate={customStartDate}
+              endDate={customEndDate}
+              minDate={customStartDate}
+              maxDate={new Date()}
+              placeholderText="End Date"
+              className="custom-date-input"
+            />
+          </div>
+        )}
+        <button onClick={fetchOrders} className="refresh-button">
+          <RefreshCw size={16} /> Refresh Data
+        </button>
+        <button onClick={generateCSV} className="download-button">
+          <Download size={16} /> Download Report
+        </button>
+      </div>
+
+      <div className="metrics-grid">
+        <div className="metric-card">
+          <div className="metric-icon">
+            <DollarSign size={24} />
+          </div>
+          <div className="metric-content">
+            <h3>Total Sales</h3>
+            <p className="metric-value">${totalSales.toFixed(2)}</p>
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-icon">
+            <Coffee size={24} />
+          </div>
+          <div className="metric-content">
+            <h3>Total Orders</h3>
+            <p className="metric-value">{totalOrders}</p>
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-icon">
+            <TrendingUp size={24} />
+          </div>
+          <div className="metric-content">
+            <h3>Average Order Value</h3>
+            <p className="metric-value">${averageOrderValue.toFixed(2)}</p>
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-icon">
+            <Clock size={24} />
+          </div>
+          <div className="metric-content">
+            <h3>Avg Preparation Time</h3>
+            <p className="metric-value">{formatTime(averagePreparationTime)}</p>
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-icon">
+            <Users size={24} />
+          </div>
+          <div className="metric-content">
+            <h3>Unique Customers</h3>
+            <p className="metric-value">{uniqueCustomers}</p>
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-icon">
+            <Percent size={24} />
+          </div>
+          <div className="metric-content">
+            <h3>Repeat Customer Rate</h3>
+            <p className="metric-value">{repeatCustomerRate.toFixed(2)}%</p>
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-icon">
+            <ShoppingCart size={24} />
+          </div>
+          <div className="metric-content">
+            <h3>Avg Items Per Order</h3>
+            <p className="metric-value">{averageItemsPerOrder.toFixed(2)}</p>
+          </div>
+        </div>
+
+        <div className="metric-card">
+          <div className="metric-icon">
+            <Award size={24} />
+          </div>
+          <div className="metric-content">
+            <h3>Peak Hour Sales</h3>
+            <p className="metric-value">
+              Hour {peakHourSales.hour}, ${peakHourSales.sales.toFixed(2)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="chart-grid">
+        <div className="chart-card advanced">
+          <h3>Sales and Orders Trend Analysis</h3>
+          <div className="chart-controls">
+            <button
+              onClick={() => setSelectedMetric('orders')}
+              className={`chart-control-button ${
+                selectedMetric === 'sales' ? 'active' : ''
+              }`}
+            >
+              Sales
+            </button>
+            <button
+              onClick={() => setSelectedMetric('orders')}
+              className={`chart-control-button ${
+                selectedMetric === 'orders' ? 'active' : ''
+              }`}
+            >
+              Orders
+            </button>
+          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <ComposedChart data={enhancedSalesTrend}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis yAxisId="left" />
+              <YAxis yAxisId="right" orientation="right" />
+              <Tooltip
+                formatter={(value, name) => {
+                  if (typeof name === 'string' && name.includes('Growth')) {
+                    return [`${Number(value).toFixed(2)}%`, name]
+                  }
+                  return [value, name]
+                }}
+              />
+              <Legend />
+              {selectedMetric === 'sales' ? (
+                <>
+                  <Bar
+                    yAxisId="left"
+                    dataKey="sales"
+                    fill="#8884d8"
+                    name="Sales"
+                  />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="movingAverageSales"
+                    stroke="#82ca9d"
+                    name="7-day Moving Average"
+                    dot={false}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="salesGrowth"
+                    stroke="#ff7300"
+                    name="Growth Rate %"
+                  />
+                </>
+              ) : (
+                <>
+                  <Bar
+                    yAxisId="left"
+                    dataKey="orders"
+                    fill="#82ca9d"
+                    name="Orders"
+                  />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="movingAverageOrders"
+                    stroke="#8884d8"
+                    name="7-day Moving Average"
+                    dot={false}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="ordersGrowth"
+                    stroke="#ff7300"
+                    name="Growth Rate %"
+                  />
+                </>
+              )}
+            </ComposedChart>
+          </ResponsiveContainer>
+          <div className="trend-indicators">
+            <div className="trend-summary">
+              <h4>Trend Analysis</h4>
+              <p>
+                7-day Moving Average:{' '}
+                {selectedMetric === 'sales'
+                  ? `$${enhancedSalesTrend[
+                      enhancedSalesTrend.length - 1
+                    ]?.movingAverageSales.toFixed(2)}`
+                  : enhancedSalesTrend[
+                      enhancedSalesTrend.length - 1
+                    ]?.movingAverageOrders.toFixed(1)}
+              </p>
+              <p>
+                Growth Rate:{' '}
+                {selectedMetric === 'sales'
+                  ? `${enhancedSalesTrend[
+                      enhancedSalesTrend.length - 1
+                    ]?.salesGrowth.toFixed(2)}%`
+                  : `${enhancedSalesTrend[
+                      enhancedSalesTrend.length - 1
+                    ]?.ordersGrowth.toFixed(2)}%`}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="chart-card">
+          <h3>Sales by Category</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={salesByCategory}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+                label={({ name, percent }) =>
+                  `${name} ${(percent * 100).toFixed(0)}%`
+                }
+              >
+                {salesByCategory.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={COLORS[index % COLORS.length]}
+                  />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="chart-card">
+          <h3>Top Selling Items</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={topSellingItems} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis type="number" />
+              <YAxis dataKey="name" type="category" width={150} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="quantity" fill="#8884d8" name="Quantity" />
+              <Bar dataKey="revenue" fill="#82ca9d" name="Revenue ($)" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="chart-card">
+          <h3>Orders by Hour</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={ordersByHour}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="hour" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="orders" fill="#8884d8" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="chart-card">
+          <h3>Preparation Time vs Order Value</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <ScatterChart>
+              <CartesianGrid />
+              <XAxis
+                type="number"
+                dataKey="preparationTime"
+                name="Preparation Time"
+                tickFormatter={(value) => formatTime(value)}
+              />
+              <YAxis
+                type="number"
+                dataKey="orderValue"
+                name="Order Value"
+                unit="$"
+              />
+              <Tooltip
+                formatter={(value, name) => {
+                  if (name === 'preparationTime') {
+                    return [formatTime(value as number), name]
+                  }
+                  return [value, name]
+                }}
+              />
+              <Scatter
+                name="Orders"
+                data={preparationTimeVsOrderValue}
+                fill="#8884d8"
+              />
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="chart-card">
+          <h3>Sales Trend</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={salesTrend}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Area
+                type="monotone"
+                dataKey="sales"
+                stroke="#8884d8"
+                fill="#8884d8"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="chart-card">
+          <h3>Category Performance</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <RadarChart
+              cx="50%"
+              cy="50%"
+              outerRadius="80%"
+              data={categoryPerformance}
+            >
+              <PolarGrid />
+              <PolarAngleAxis dataKey="category" />
+              <PolarRadiusAxis angle={30} domain={[0, 'auto']} />
+              <Radar
+                name="Sales"
+                dataKey="sales"
+                stroke="#8884d8"
+                fill="#8884d8"
+                fillOpacity={0.6}
+              />
+              <Radar
+                name="Orders"
+                dataKey="orders"
+                stroke="#82ca9d"
+                fill="#82ca9d"
+                fillOpacity={0.6}
+              />
+              <Legend />
+              <Tooltip />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="chart-card">
+          <h3>Daily Sales and Orders</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <ComposedChart data={dailySalesAndOrders}>
+              <CartesianGrid stroke="#f5f5f5" />
+              <XAxis dataKey="date" scale="band" />
+              <YAxis yAxisId="left" />
+              <YAxis yAxisId="right" orientation="right" />
+              <Tooltip />
+              <Legend />
+              <Bar
+                yAxisId="left"
+                dataKey="orders"
+                barSize={20}
+                fill="#413ea0"
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="sales"
+                stroke="#ff7300"
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+
+    </div>
+    </PageContainer>
+  )
+}
+export default Reports
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/sales/styles.css
+
+    /* Base Variables */
+    :root {
+    --primary-color: #4a90e2;
+    --secondary-color: #50e3c2;
+    --accent-color: #f5a623;
+    --background-color: #f8f9fa;
+    --text-color: #333333;
+    --border-color: #e1e4e8;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    }
+
+    .nav-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+    }
+    .nav-button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 5px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    text-decoration: none;
+    width: 100%;
+    }
+    .reports-container {
+    font-family: Arial, sans-serif;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: var(--background-color);
+
+    }
+
+    .page-title {
+    font-size: 28px;
+    color: #4a90e2;
+    margin-bottom: 20px;
+    text-align: center;
+    }
+
+    .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+    }
+
+    .time-range-select,
+    .refresh-button,
+    .download-button,
+    .custom-date-input {
+    padding: 8px 12px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+    cursor: pointer;
+    }
+
+    .custom-date-range {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    }
+
+    .refresh-button,
+    .download-button {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    transition: background-color 0.3s ease;
+    }
+
+    .refresh-button:hover,
+    .download-button:hover {
+    background-color: #357abd;
+    }
+
+    .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-bottom: 20px;
+    }
+
+    /* Add responsive breakpoint for mobile */
+    @media (max-width: 768px) {
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    }
+
+    @media (max-width: 480px) {
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+    }
+
+    .metric-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .metric-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .metric-icon {
+    background-color: #f0f0f0;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+    }
+
+    .metric-content h3 {
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+    }
+
+    .metric-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+    margin: 5px 0 0;
+    }
+
+    .chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 20px;
+    }
+
+    .chart-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .chart-card h3 {
+    font-size: 18px;
+    color: #333;
+    margin-top: 0;
+    margin-bottom: 15px;
+    }
+
+    .chart-controls {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 10px;
+    }
+
+    .chart-control-button {
+    padding: 5px 10px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    background-color: white;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    }
+
+    .chart-control-button.active {
+    background-color: #4a90e2;
+    color: white;
+    }
+
+    .loading-container,
+    .error-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    }
+
+    .loading-container p,
+    .error-container p {
+    margin-top: 20px;
+    font-size: 18px;
+    color: #666;
+    }
+
+    .spin {
+    animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+    }
+    .chart-card.advanced {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    }
+
+    .trend-indicators {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+    }
+
+    .trend-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    }
+
+    .trend-summary h4 {
+    margin: 0;
+    color: #333;
+    font-size: 16px;
+    }
+
+    .trend-summary p {
+    margin: 0;
+    color: #666;
+    font-size: 14px;
+    }
+    .quick-actions {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    }
+
+    .action-button {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 10px 15px;
+    background-color: #4a90e2;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+    flex: 1;
+    min-width: 150px;
+    justify-content: center;
+    }
+
+    .action-button:hover {
+    background-color: #357abd;
+    }
+
+    @media (max-width: 768px) {
+    .action-buttons {
+        flex-direction: column;
+    }
+
+    .action-button {
+        width: 100%;
+        min-width: unset;
+    }
+    }
+
+    .retry-button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    }
+
+
+    @media (max-width: 768px) {
+    .controls {
+        flex-direction: column;
+    }
+
+    .chart-grid {
+        grid-template-columns: 1fr;
+    }
+    }
+
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/settings/page.tsx
 import { Metadata } from "next";
@@ -1332,6 +7176,945 @@ export default function SettingsPage() {
 }
 
 ________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/waste/page.tsx
+"use client"
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import {
+  Trash2,
+  Plus,
+  Coffee,
+  Package,
+  Save,
+  AlertTriangle,
+  Minus,
+  Search,
+  X,
+  Check,
+  Moon,
+  Sun,
+  Clock,
+  CalendarDays
+} from 'lucide-react'
+import Link from 'next/link'
+import { format } from 'date-fns'
+import { PageContainer } from "@/components/layout/page-container";
+import './styles.css';
+
+interface WasteItem {
+  id: string
+  itemName: string
+  category: string
+  quantity: number
+  timestamp: string
+  cost: number
+  notes: string
+}
+
+interface WasteCategory {
+  name: string
+  items: string[]
+  unit: string
+  averageCost: number
+}
+
+interface Message {
+  type: 'success' | 'error'
+  text: string
+}
+
+interface WasteLogItem {
+  itemName: string
+  category: string
+  quantity: number
+  cost: number
+  unit: string
+}
+
+const wasteCategories: WasteCategory[] = [
+  {
+    name: 'Drinks',
+    items: ['Hot Coffee', 'Iced Coffee', 'Latte', 'Espresso', 'Tea'],
+    unit: 'cups',
+    averageCost: 3.5
+  },
+  {
+    name: 'Milk',
+    items: ['Whole Milk', '2% Milk', 'Almond Milk', 'Oat Milk', 'Soy Milk'],
+    unit: 'oz',
+    averageCost: 0.25
+  },
+  {
+    name: 'Food',
+    items: ['Pastries', 'Sandwiches', 'Cookies', 'Muffins'],
+    unit: 'pieces',
+    averageCost: 4
+  },
+  {
+    name: 'Supplies',
+    items: ['Cups', 'Lids', 'Straws', 'Napkins', 'Sleeves'],
+    unit: 'pieces',
+    averageCost: 0.15
+  },
+  {
+    name: 'Syrups',
+    items: ['Vanilla', 'Caramel', 'Hazelnut', 'Chocolate'],
+    unit: 'pumps',
+    averageCost: 0.3
+  }
+]
+
+const WasteManagement: React.FC = () => {
+  const [wasteLog, setWasteLog] = useState<WasteItem[]>([])
+  const [currentLog, setCurrentLog] = useState<WasteLogItem[]>([])
+  const [selectedCategory, setSelectedCategory] = useState('All')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [isDarkMode, setIsDarkMode] = useState(false)
+  const [message, setMessage] = useState<Message | null>(null)
+  const [notes, setNotes] = useState('')
+
+  // Load initial data
+  useEffect(() => {
+    const savedWasteLog = localStorage.getItem('wasteLog')
+    if (savedWasteLog) {
+      setWasteLog(JSON.parse(savedWasteLog))
+    }
+
+    const savedDarkMode = localStorage.getItem('wasteDarkMode')
+    if (savedDarkMode) {
+      setIsDarkMode(JSON.parse(savedDarkMode))
+    }
+  }, [])
+
+  // Handle dark mode
+  useEffect(() => {
+    localStorage.setItem('wasteDarkMode', JSON.stringify(isDarkMode))
+    document.body.classList.toggle('dark-mode', isDarkMode)
+  }, [isDarkMode])
+
+  // Save waste log
+  const saveWasteLog = useCallback((newLog: WasteItem[]) => {
+    localStorage.setItem('wasteLog', JSON.stringify(newLog))
+    setWasteLog(newLog)
+  }, [])
+
+  // Filter categories
+  const filteredCategories = useMemo(() => {
+    if (selectedCategory === 'All') {
+      return wasteCategories
+    }
+    return wasteCategories.filter(
+      (category) => category.name === selectedCategory
+    )
+  }, [selectedCategory])
+
+  // Add item to current log
+  const addToLog = useCallback((item: string, category: WasteCategory) => {
+    setCurrentLog((prev) => {
+      const existingItem = prev.find(
+        (logItem) =>
+          logItem.itemName === item && logItem.category === category.name
+      )
+
+      if (existingItem) {
+        return prev.map((logItem) =>
+          logItem.itemName === item && logItem.category === category.name
+            ? { ...logItem, quantity: logItem.quantity + 1 }
+            : logItem
+        )
+      }
+
+      return [
+        ...prev,
+        {
+          itemName: item,
+          category: category.name,
+          quantity: 1,
+          cost: category.averageCost,
+          unit: category.unit
+        }
+      ]
+    })
+  }, [])
+  // Remove item from log
+  const removeFromLog = useCallback((index: number) => {
+    setCurrentLog((prev) => {
+      const newLog = [...prev]
+      const item = newLog[index]
+
+      if (item.quantity > 1) {
+        newLog[index] = { ...item, quantity: item.quantity - 1 }
+        return newLog
+      }
+
+      return prev.filter((_, i) => i !== index)
+    })
+  }, [])
+
+  // Increase item quantity
+  const increaseQuantity = useCallback((index: number) => {
+    setCurrentLog((prev) => {
+      const newLog = [...prev]
+      const item = newLog[index]
+      newLog[index] = { ...item, quantity: item.quantity + 1 }
+      return newLog
+    })
+  }, [])
+
+  // Show notification message
+  const showMessage = useCallback((text: string, type: 'success' | 'error') => {
+    setMessage({ text, type })
+    setTimeout(() => setMessage(null), 3000)
+  }, [])
+
+  // Calculate total cost
+  const calculateTotalCost = useMemo(() => {
+    return currentLog.reduce((sum, item) => sum + item.cost * item.quantity, 0)
+  }, [currentLog])
+
+  // Handle log submission
+  const handleLogSubmit = useCallback(() => {
+    if (currentLog.length === 0) {
+      showMessage('Please add items to log', 'error')
+      return
+    }
+
+    const timestamp = new Date().toISOString()
+    const newWasteItems: WasteItem[] = currentLog.map((item) => ({
+      id: `${Date.now()}-${Math.random()}`,
+      itemName: item.itemName,
+      category: item.category,
+      quantity: item.quantity,
+      timestamp,
+      cost: item.cost * item.quantity,
+      notes
+    }))
+
+    const updatedLog = [...newWasteItems, ...wasteLog]
+    saveWasteLog(updatedLog)
+
+    setCurrentLog([])
+    setNotes('')
+    showMessage('Waste items logged successfully', 'success')
+  }, [currentLog, notes, wasteLog, saveWasteLog, showMessage])
+
+  return (
+    <PageContainer>
+    <div className={`waste-container ${isDarkMode ? 'dark-mode' : ''}`}>
+          <h1 className="page-title">Waste Management</h1>
+      <header className="waste-header">
+        <div className="header-left">
+          <button className="mode-button">
+            <Trash2 size={16} /> Total Cost: ${calculateTotalCost.toFixed(2)}
+          </button>
+        </div>
+
+        <div className="search-container">
+          <Search size={16} />
+          <input
+            type="text"
+            placeholder="Search waste items..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
+        </div>
+
+        <div className="header-right">
+          <span className="current-time">
+            <Clock size={16} />
+            {format(new Date(), 'HH:mm')}
+          </span>
+          <span className="current-date">
+            <CalendarDays size={16} />
+            {format(new Date(), 'MMM dd, yyyy')}
+          </span>
+          <button
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className="mode-button"
+          >
+            {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+        </div>
+      </header>
+
+      <main className="waste-main">
+        <section className="waste-log-section">
+          <h2 className="section-title">Current Waste Log</h2>
+
+          {!currentLog || currentLog.length === 0 ? (
+            <p className="empty-log">No items added to waste log</p>
+          ) : (
+            <ul className="waste-items">
+              {currentLog.map((item, index) => (
+                <li key={index} className="waste-item">
+                  <span className="item-name">
+                    {item.itemName}
+                    <span className="item-category">({item.category})</span>
+                  </span>
+                  <div className="item-controls">
+                    <button
+                      onClick={() => removeFromLog(index)}
+                      className="quantity-button"
+                    >
+                      <Minus size={16} />
+                    </button>
+                    <span className="item-quantity">
+                      {item.quantity} {item.unit}
+                    </span>
+                    <button
+                      onClick={() => increaseQuantity(index)}
+                      className="quantity-button"
+                    >
+                      <Plus size={16} />
+                    </button>
+                    <span className="item-cost">
+                      ${(item.cost * item.quantity).toFixed(2)}
+                    </span>
+                    <button
+                      onClick={() => removeFromLog(index)}
+                      className="remove-button"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="log-details">
+            <div className="form-group">
+              <label>Additional Notes</label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Add any additional notes..."
+                className="form-textarea"
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <div className="log-total">
+            <span>Total Cost:</span>
+            <span>${calculateTotalCost.toFixed(2)}</span>
+          </div>
+
+          <button
+            onClick={handleLogSubmit}
+            disabled={!currentLog || currentLog.length === 0}
+            className="submit-log-button"
+          >
+            <Save size={16} /> Submit Waste Log
+          </button>
+
+          <Link href="/log" passHref>
+            <button className="nav-button">
+              <Coffee size={16} /> View Waste Log History
+            </button>
+          </Link>
+
+          <Link href="/pos" passHref>
+            <button className="nav-button">
+              <Coffee size={16} /> Return to POS
+            </button>
+          </Link>
+        </section>
+        <section className="waste-menu-section">
+          <div className="category-filters">
+            {['All', ...wasteCategories.map((cat) => cat.name)].map(
+              (category) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`category-button ${
+                    category === selectedCategory ? 'active' : ''
+                  }`}
+                >
+                  {category}
+                </button>
+              )
+            )}
+          </div>
+
+          <div className="menu-grid">
+            {filteredCategories.map((category) => (
+              <div key={category.name} className="category-section">
+                <h3 className="category-title">{category.name}</h3>
+                <div className="items-grid">
+                  {category.items.map((item) => (
+                    <button
+                      key={item}
+                      onClick={() => addToLog(item, category)}
+                      className="waste-menu-item"
+                    >
+                      <Package className="item-icon" />
+                      <h3 className="item-name">{item}</h3>
+                      <p className="item-details">
+                        ${category.averageCost.toFixed(2)} per {category.unit}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
+
+      {message && (
+        <div className={`notification ${message.type}`}>
+          {message.type === 'success' ? (
+            <Check size={16} />
+          ) : (
+            <AlertTriangle size={16} />
+          )}
+          {message.text}
+        </div>
+      )}
+
+     
+    </div>
+
+  </PageContainer>
+  )
+}
+
+export default WasteManagement
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/waste/styles.css
+/* Base Variables */
+:root {
+--primary-color: #4a90e2;
+--secondary-color: #50e3c2;
+--accent-color: #f5a623;
+--background-color: #f8f9fa;
+--text-color: #333333;
+--border-color: #e1e4e8;
+--success-color: #28a745;
+--warning-color: #ffc107;
+--danger-color: #dc3545;
+}
+.waste-container {
+max-width: 1200px;
+margin: 0 auto;
+padding: 20px;
+background-color: var(--background-color);
+min-height: 100vh;
+}
+
+.waste-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 20px;
+padding: 15px;
+background-color: white;
+border-radius: 8px;
+box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+margin-top: 40px;
+}
+
+.header-left,
+.header-right {
+display: flex;
+align-items: center;
+gap: 10px;
+}
+
+.page-title {
+font-size: 24px;
+color: #4a90e2;
+margin: 0;
+}
+
+.current-time,
+.current-date {
+display: flex;
+align-items: center;
+gap: 0.5rem;
+color: #495057;
+font-size: 14px;
+}
+
+.mode-button {
+display: flex;
+align-items: center;
+gap: 5px;
+padding: 8px 16px;
+border: none;
+border-radius: 20px;
+font-size: 14px;
+cursor: pointer;
+background-color: #4a90e2;
+color: white;
+transition: background-color 0.3s ease;
+}
+
+.mode-button:hover {
+background-color: #357abd;
+}
+
+.search-container {
+display: flex;
+align-items: center;
+gap: 8px;
+padding: 8px 12px;
+border: 1px solid #ddd;
+border-radius: 6px;
+background-color: white;
+width: 300px;
+}
+
+.search-input {
+border: none;
+outline: none;
+width: 100%;
+font-size: 14px;
+}
+
+.waste-main {
+display: grid;
+grid-template-columns: 1fr 2fr;
+gap: 20px;
+}
+
+.waste-log-section {
+background-color: white;
+border-radius: 8px;
+padding: 20px;
+box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.section-title {
+font-size: 20px;
+color: #4a90e2;
+margin-bottom: 20px;
+padding-bottom: 10px;
+border-bottom: 2px solid #f0f0f0;
+}
+
+.empty-log {
+text-align: center;
+color: #666;
+font-style: italic;
+margin: 20px 0;
+}
+
+.waste-items {
+list-style: none;
+padding: 0;
+margin: 0;
+}
+
+.waste-item {
+display: flex;
+justify-content: space-between;
+align-items: center;
+padding: 10px 0;
+border-bottom: 1px solid #f0f0f0;
+}
+
+.item-controls {
+display: flex;
+align-items: center;
+gap: 8px;
+}
+
+.quantity-button {
+background: none;
+border: none;
+color: #4a90e2;
+cursor: pointer;
+padding: 4px;
+border-radius: 4px;
+display: flex;
+align-items: center;
+justify-content: center;
+}
+
+.remove-button {
+background: none;
+border: none;
+color: #dc3545;
+cursor: pointer;
+padding: 4px;
+border-radius: 4px;
+display: flex;
+align-items: center;
+justify-content: center;
+}
+
+.item-quantity {
+font-weight: bold;
+min-width: 60px;
+text-align: center;
+}
+
+.item-category {
+font-size: 12px;
+color: #666;
+margin-left: 5px;
+}
+
+.log-details {
+margin-top: 20px;
+padding: 15px;
+background-color: #f8f9fa;
+border-radius: 8px;
+}
+
+.form-group {
+margin-bottom: 15px;
+}
+
+.form-group label {
+display: block;
+margin-bottom: 5px;
+font-size: 14px;
+color: #495057;
+}
+
+.form-textarea {
+width: 100%;
+padding: 8px;
+border: 1px solid #ddd;
+border-radius: 4px;
+font-size: 14px;
+resize: vertical;
+min-height: 80px;
+font-family: inherit;
+}
+
+.log-total {
+display: flex;
+justify-content: space-between;
+font-weight: bold;
+margin: 20px 0;
+padding: 15px;
+background-color: #f8f9fa;
+border-radius: 8px;
+}
+.submit-log-button,
+.nav-button {
+width: 100%;
+padding: 12px;
+margin-top: 10px;
+border: none;
+border-radius: 4px;
+font-size: 16px;
+font-weight: bold;
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 8px;
+transition: background-color 0.3s ease;
+}
+
+.submit-log-button {
+background-color: #28a745;
+color: white;
+}
+
+.submit-log-button:hover {
+background-color: #218838;
+}
+
+.submit-log-button:disabled {
+background-color: #ccc;
+cursor: not-allowed;
+}
+
+.nav-button {
+background-color: #4a90e2;
+color: white;
+text-decoration: none;
+}
+
+.nav-button:hover {
+background-color: #357abd;
+}
+
+.waste-menu-section {
+background-color: white;
+border-radius: 8px;
+padding: 20px;
+box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.category-filters {
+display: flex;
+flex-wrap: wrap;
+gap: 10px;
+margin-bottom: 20px;
+}
+
+.category-button {
+padding: 8px 16px;
+border: none;
+border-radius: 20px;
+background-color: #f0f0f0;
+color: #495057;
+cursor: pointer;
+transition: all 0.3s ease;
+}
+
+.category-button:hover {
+background-color: #e2e6ea;
+}
+
+.category-button.active {
+background-color: #4a90e2;
+color: white;
+}
+
+.category-section {
+margin-bottom: 30px;
+}
+
+.category-title {
+font-size: 18px;
+color: #495057;
+margin-bottom: 15px;
+}
+
+.items-grid {
+display: grid;
+grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+gap: 15px;
+}
+
+.waste-menu-item {
+display: flex;
+flex-direction: column;
+align-items: center;
+padding: 15px;
+border: 1px solid #ddd;
+border-radius: 8px;
+background-color: white;
+cursor: pointer;
+transition: all 0.3s ease;
+}
+
+.waste-menu-item:hover {
+transform: translateY(-2px);
+box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.item-icon {
+color: #4a90e2;
+margin-bottom: 10px;
+}
+
+.item-name {
+font-size: 14px;
+font-weight: bold;
+text-align: center;
+margin: 0;
+}
+
+.item-details {
+font-size: 12px;
+color: #666;
+margin: 5px 0 0;
+}
+
+.notification {
+position: fixed;
+bottom: 20px;
+right: 20px;
+padding: 12px 20px;
+border-radius: 4px;
+display: flex;
+align-items: center;
+gap: 10px;
+color: white;
+animation: slideIn 0.3s ease-out;
+z-index: 1000;
+}
+
+.notification.success {
+background-color: #28a745;
+}
+
+.notification.error {
+background-color: #dc3545;
+}
+
+@keyframes slideIn {
+from {
+transform: translateY(100%);
+opacity: 0;
+}
+to {
+transform: translateY(0);
+opacity: 1;
+}
+}
+
+.dark-mode {
+--background-color: #1a1a1a;
+--text-color: #f0f0f0;
+--border-color: #444;
+}
+
+.dark-mode .waste-container {
+background-color: var(--background-color);
+color: var(--text-color);
+}
+
+.dark-mode .waste-header,
+.dark-mode .waste-log-section,
+.dark-mode .waste-menu-section,
+.dark-mode .waste-menu-item {
+background-color: #2c2c2c;
+border-color: var(--border-color);
+}
+
+.dark-mode .search-container {
+background-color: #3c3c3c;
+border-color: #444;
+}
+
+.dark-mode .search-input {
+background-color: #3c3c3c;
+color: var(--text-color);
+}
+
+.dark-mode .category-button {
+background-color: #3c3c3c;
+color: var(--text-color);
+}
+
+.dark-mode .category-button.active {
+background-color: #4a90e2;
+color: white;
+}
+
+.dark-mode .log-details {
+background-color: #3c3c3c;
+}
+
+.dark-mode .form-textarea {
+background-color: #2c2c2c;
+border-color: #444;
+color: var(--text-color);
+}
+
+.dark-mode .item-category {
+color: #aaa;
+}
+
+.dark-mode .item-details {
+color: #aaa;
+}
+
+.dark-mode .waste-item {
+border-color: #444;
+}
+
+.dark-mode .quantity-button {
+color: #4a90e2;
+}
+
+.dark-mode .remove-button {
+color: #ff6b6b;
+}
+
+.dark-mode .log-total {
+background-color: #3c3c3c;
+}
+
+@media (max-width: 1024px) {
+.waste-container {
+padding: 10px;
+}
+
+.waste-main {
+grid-template-columns: 1fr;
+}
+}
+
+@media (max-width: 768px) {
+.waste-header {
+flex-direction: column;
+gap: 10px;
+}
+
+.header-left,
+.header-right {
+width: 100%;
+justify-content: space-between;
+}
+
+.search-container {
+width: 100%;
+}
+
+.waste-menu-section {
+margin-top: 20px;
+}
+
+.items-grid {
+grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+
+.category-filters {
+overflow-x: auto;
+padding-bottom: 10px;
+-webkit-overflow-scrolling: touch;
+}
+
+.category-button {
+white-space: nowrap;
+}
+}
+
+@media (max-width: 480px) {
+.items-grid {
+grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+}
+
+.waste-menu-item {
+padding: 10px;
+}
+
+.item-name {
+font-size: 12px;
+}
+
+.notification {
+width: 90%;
+left: 5%;
+right: 5%;
+}
+}
+
+@media print {
+.waste-container {
+background: white;
+}
+
+.waste-header,
+.waste-menu-section,
+.submit-log-button,
+.nav-button {
+display: none;
+}
+
+.waste-log-section {
+width: 100%;
+box-shadow: none;
+}
+
+.notification {
+display: none;
+}
+}
+
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/globals.css
 @tailwind base;
 @tailwind components;
@@ -1376,7 +8159,36 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+.pb-safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
 
+/* Mobile viewport height fix for iOS */
+@supports (-webkit-touch-callout: none) {
+  .min-h-screen {
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* Prevent content shift when scrollbar appears */
+html {
+  width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Smooth scrolling for iOS */
+body {
+  -webkit-overflow-scrolling: touch;
+}
+
+
+
+.page-title {
+  font-size: 28px;
+  color: #4a90e2;
+  margin-bottom: 20px;
+  text-align: center;
+}
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/layout.tsx
 import type { Metadata } from "next";
@@ -3375,13 +10187,207 @@ export function MobileNav() {
   );
 }
 ________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/navigation/side-nav.tsx
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { 
+  Home, 
+  Users, 
+  Settings,
+  PlusCircle,
+  ChevronRight,
+  ChevronLeft,
+  Coffee,
+  ListOrdered,
+  ServerCrash,
+  Trash,
+
+} from "lucide-react";
+
+import { 
+  FaChartLine as SalesIcon,
+  FaCashRegister as PosIcon,
+  FaClipboardList as OrdersIcon,
+  FaTrash as WasteIcon,
+  FaBoxes as InventoryIcon,
+  FaFileAlt as ReportsIcon 
+} from "react-icons/fa"; 
+
+
+
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useSidebar } from "@/store/use-sidebar";
+import { useEffect, useState } from "react";
+
+const routes = [
+  {
+    label: "Dashboard",
+    icon: Home,
+    href: "/dashboard",
+    color: "text-sky-500"
+  },
+  {
+    label: "Contacts",
+    icon: Users,
+    href: "/dashboard/contacts",
+    color: "text-violet-500"
+  },
+  {
+    label: "Reports",
+    icon: SalesIcon, // Replace with the actual icon you want for Sales
+    href: "/dashboard/sales",
+    color: "text-red-500"
+  },
+  {
+    label: "POS",
+    icon: PosIcon, // Replace with the actual icon you want for POS
+    href: "/dashboard/pos",
+    color: "text-blue-500"
+  },
+  {
+    label: "Orders",
+    icon: OrdersIcon, // Replace with the actual icon you want for Orders
+    href: "/dashboard/order",
+    color: "text-green-500"
+  },
+  {
+    label: "Waste",
+    icon: WasteIcon, // Replace with the actual icon you want for Waste
+    href: "/dashboard/waste",
+    color: "text-yellow-500"
+  },
+
+  {
+    label: "Inventory",
+    icon: InventoryIcon, // Replace with the actual icon you want for Inventory
+    href: "/dashboard/inventory",
+    color: "text-purple-500"
+  },
+
+  {
+    label: "Settings",
+    icon: Settings,
+    href: "/dashboard/settings",
+    color: "text-orange-500"
+  }
+];
+
+export function SideNav() {
+  const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+  const { isCollapsed, toggleCollapse } = useSidebar();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
+  return (
+    <aside
+      className={cn(
+        "fixed left-0 z-50 flex h-full flex-col bg-background border-r",
+        isCollapsed ? "w-[70px]" : "w-60",
+        "transition-all duration-300 ease-in-out"
+      )}
+    >
+      <TooltipProvider delayDuration={0}>
+        <div className="flex h-16 items-center justify-between px-3 border-b">
+          {!isCollapsed && (
+            <div className="flex items-center gap-2">
+              <Coffee className="h-5 w-5" />
+              <span className="font-bold">BUF BARISTA</span>
+            </div>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn("", isCollapsed ? "ml-0" : "ml-auto")}
+            onClick={toggleCollapse}
+          >
+            {isCollapsed ? <ChevronRight /> : <ChevronLeft />}
+          </Button>
+        </div>
+
+        <div className="p-3">
+          {isCollapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href="/dashboard/contacts/new">
+                  <Button size="icon" className="w-full">
+                    <PlusCircle className="h-5 w-5" />
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                New Contact
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <Link href="/dashboard/contacts/new">
+              <Button className="w-full">
+                <PlusCircle className="mr-2 h-5 w-5" />
+                New Contact
+              </Button>
+            </Link>
+          )}
+        </div>
+
+        <ScrollArea className="flex-1 px-3">
+          <div className="space-y-2 py-2">
+            {routes.map((route) => (
+              isCollapsed ? (
+                <Tooltip key={route.href}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href={route.href}
+                      className={cn(
+                        "flex items-center justify-center rounded-md p-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                        pathname === route.href && "bg-accent text-accent-foreground"
+                      )}
+                    >
+                      <route.icon className={cn("h-5 w-5", route.color)} />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    {route.label}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <Link
+                  key={route.href}
+                  href={route.href}
+                  className={cn(
+                    "flex items-center rounded-md p-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                    pathname === route.href && "bg-accent text-accent-foreground"
+                  )}
+                >
+                  <route.icon className={cn("mr-2 h-5 w-5", route.color)} />
+                  {route.label}
+                </Link>
+              )
+            ))}
+          </div>
+        </ScrollArea>
+      </TooltipProvider>
+    </aside>
+  );
+}
+
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/navigation/top-nav.tsx
 "use client";
 
 import Link from "next/link";
 import { MobileNav } from "./mobile-nav";
 import { UserButton } from "@/components/auth/user-button";
-import { Coffee } from "lucide-react";
 
 export function TopNav() {
   return (
@@ -3389,8 +10395,6 @@ export function TopNav() {
       <div className="flex items-center gap-2">
         <MobileNav />
         <Link href="/dashboard" className="flex items-center gap-2">
-          <Coffee className="h-5 w-5" />
-          <span className="font-bold">Buf Barista</span>
         </Link>
       </div>
       <div className="flex items-center gap-4">
@@ -3560,257 +10564,6 @@ export function RecentSales() {
       </div>
     );
   }
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/side-nav.tsx
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
-import { 
-  Home, 
-  Users, 
-  Settings,
-  PlusCircle,
-  ChevronRight,
-  ChevronLeft,
-  Menu,
-  X
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-  SheetClose,
-} from "@/components/ui/sheet";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useSidebar } from "@/store/use-sidebar";
-import { useEffect, useState } from "react";
-import { useMediaQuery } from "@/hooks/use-media-query";
-
-const routes = [
-  {
-    label: "Dashboard",
-    icon: Home,
-    href: "/dashboard",
-    color: "text-sky-500"
-  },
-  {
-    label: "Contacts",
-    icon: Users,
-    href: "/dashboard/contacts",
-    color: "text-violet-500"
-  },
-  {
-    label: "Settings",
-    icon: Settings,
-    href: "/dashboard/settings",
-    color: "text-orange-500"
-  }
-];
-
-export function SideNav() {
-  const pathname = usePathname();
-  const [mounted, setMounted] = useState(false);
-  const { isCollapsed, toggleCollapse } = useSidebar();
-  const isMobile = useMediaQuery("(max-width: 768px)");
-  const [isOpen, setIsOpen] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return null;
-  }
-
-  // Mobile Navigation Bar
-  if (isMobile) {
-    return (
-      <div className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center border-b bg-background px-4">
-        <Sheet open={isOpen} onOpenChange={setIsOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Menu className="h-5 w-5" />
-              <span className="sr-only">Toggle menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-72">
-            <div className="p-6 flex items-center justify-between border-b">
-              <span className="font-bold">BUF BARISTA CRM</span>
-              <SheetClose asChild>
-                <Button variant="ghost" size="icon">
-                  <X className="h-5 w-5" />
-                </Button>
-              </SheetClose>
-            </div>
-            <ScrollArea className="h-[calc(100vh-4rem)]">
-              <div className="p-4">
-                <Link 
-                  href="/dashboard/contacts/new" 
-                  onClick={() => setIsOpen(false)}
-                >
-                  <Button className="w-full">
-                    <PlusCircle className="mr-2 h-5 w-5" />
-                    New Contact
-                  </Button>
-                </Link>
-              </div>
-              <nav className="space-y-2 px-2">
-                {routes.map((route) => (
-                  <Link
-                    key={route.href}
-                    href={route.href}
-                    onClick={() => setIsOpen(false)}
-                    className={cn(
-                      "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                      pathname === route.href 
-                        ? "bg-accent text-accent-foreground" 
-                        : "hover:bg-accent hover:text-accent-foreground"
-                    )}
-                  >
-                    <route.icon className={cn("mr-2 h-5 w-5", route.color)} />
-                    {route.label}
-                  </Link>
-                ))}
-              </nav>
-            </ScrollArea>
-          </SheetContent>
-        </Sheet>
-        <div className="flex items-center ml-4">
-          <span className="font-bold">BUF BARISTA CRM</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Desktop Sidebar
-  return (
-    <aside
-      className={cn(
-        "fixed left-0 z-50 hidden md:flex h-full w-60 flex-col bg-background border-r",
-        isCollapsed && "w-[70px]",
-        "transition-all duration-300 ease-in-out"
-      )}
-    >
-      <TooltipProvider delayDuration={0}>
-        <div className="flex h-16 items-center justify-between px-3 border-b">
-          {!isCollapsed && (
-            <span className="font-bold">BUF BARISTA CRM</span>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="ml-auto"
-            onClick={toggleCollapse}
-          >
-            {isCollapsed ? <ChevronRight /> : <ChevronLeft />}
-          </Button>
-        </div>
-
-        <div className="p-3">
-          {isCollapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link href="/dashboard/contacts/new">
-                  <Button size="icon" className="w-full">
-                    <PlusCircle className="h-5 w-5" />
-                  </Button>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                New Contact
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <Link href="/dashboard/contacts/new">
-              <Button className="w-full">
-                <PlusCircle className="mr-2 h-5 w-5" />
-                New Contact
-              </Button>
-            </Link>
-          )}
-        </div>
-
-        <ScrollArea className="flex-1 px-3">
-          <div className="space-y-2 py-2">
-            {routes.map((route) => (
-              isCollapsed ? (
-                <Tooltip key={route.href}>
-                  <TooltipTrigger asChild>
-                    <Link
-                      href={route.href}
-                      className={cn(
-                        "flex items-center justify-center rounded-md p-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        pathname === route.href && "bg-accent text-accent-foreground"
-                      )}
-                    >
-                      <route.icon className={cn("h-5 w-5", route.color)} />
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    {route.label}
-                  </TooltipContent>
-                </Tooltip>
-              ) : (
-                <Link
-                  key={route.href}
-                  href={route.href}
-                  className={cn(
-                    "flex items-center rounded-md p-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                    pathname === route.href && "bg-accent text-accent-foreground"
-                  )}
-                >
-                  <route.icon className={cn("mr-2 h-5 w-5", route.color)} />
-                  {route.label}
-                </Link>
-              )
-            ))}
-          </div>
-        </ScrollArea>
-      </TooltipProvider>
-    </aside>
-  );
-}
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/top-nav.tsx
-"use client";
-
-import { signOut } from "next-auth/react";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { User } from "lucide-react";
-
-export function TopNav() {
-  return (
-    <div className="border-b">
-      <div className="flex h-16 items-center px-4">
-        <div className="ml-auto flex items-center space-x-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <User className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => signOut()}>
-                Log out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/upcoming-tasks.tsx
 "use client";
@@ -4307,7 +11060,6 @@ export function Testimonials() {
 
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/layout/page-container.tsx
-
 "use client";
 
 import { cn } from "@/lib/utils";
@@ -4320,30 +11072,11 @@ interface PageContainerProps {
 }
 
 export function PageContainer({ children, className }: PageContainerProps) {
-  const { isCollapsed, isResetting } = useSidebar();
+  const { isCollapsed } = useSidebar();
   const [mounted, setMounted] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
 
-  // Handle mounting
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  // Handle responsive behavior
-  useEffect(() => {
-    // Initial check
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768); // 768px is typical tablet breakpoint
-    };
-
-    // Check on mount
-    checkMobile();
-
-    // Add resize listener
-    window.addEventListener('resize', checkMobile);
-
-    // Cleanup
-    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   if (!mounted) {
@@ -4353,42 +11086,12 @@ export function PageContainer({ children, className }: PageContainerProps) {
   return (
     <div
       className={cn(
-        "min-h-screen w-full transition-all duration-300 ease-in-out",
-        // Desktop styles with margins
-        !isMobile && {
-          "ml-64 mr-4": !isCollapsed,
-          "ml-16 mr-4": isCollapsed,
-          "ml-0 mr-4": isResetting,
-        },
-        // Mobile styles with equal margins
-        isMobile && "mx-4",
-        // Safe area padding for iPhone
-        "pb-safe-area-inset-bottom",
-        // Additional padding for mobile navigation
-        "sm:pb-0",
-        // Container padding with adjusted horizontal spacing
-        "px-0 md:px-6 lg:px-8", // Removed base px-4 since we're using margins
-        // Touch scrolling for mobile
-        "touch-pan-y",
+        "min-h-screen transition-all duration-300 ease-in-out",
+        isCollapsed ? "ml-[70px]" : "ml-[170px]",
         className
       )}
-      style={{
-        // Add safe area insets for iPhone
-        paddingTop: 'env(safe-area-inset-top)',
-        paddingBottom: 'env(safe-area-inset-bottom)',
-        paddingLeft: 'env(safe-area-inset-left)',
-        paddingRight: 'env(safe-area-inset-right)',
-      }}
     >
-      <div className={cn(
-        "mx-auto max-w-screen-2xl relative",
-        // Add top padding to account for mobile header
-        isMobile ? "pt-16" : "pt-0",
-        // Responsive padding with adjusted horizontal spacing
-        "py-4 md:py-6 lg:py-8",
-        // Additional right margin for desktop view
-        !isMobile && "mr-16",
-      )}>
+      <div className="mx-auto max-w-screen-2xl">
         {children}
       </div>
     </div>
@@ -7429,6 +14132,7 @@ export function useMediaQuery(query: string): boolean {
 
   return matches;
 }
+
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/activity/logger.ts
 // import { prisma } from "@/lib/db/prisma";

@@ -49,6 +49,7 @@ model Contact {
   updatedAt DateTime @updatedAt
 }
 
+
 enum Role {
   USER
   ADMIN

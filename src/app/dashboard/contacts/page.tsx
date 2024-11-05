@@ -69,13 +69,10 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
     <PageContainer>
       <div className="space-y-4 max-w-[500px] mx-auto px-2 md:max-w-full md:space-y-6 md:p-6">
         {/* Header remains the same */}
-        {/* Header Section */}
+        <h1 className="page-title">Contacts</h1>
         <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between md:space-y-0">
           <div>
-            <h1 className="text-xl font-bold tracking-tight md:text-3xl">Contacts</h1>
-            <p className="text-xs text-muted-foreground md:text-base">
-              Manage your contacts and leads effectively
-            </p>
+
           </div>
           <div className="flex items-center gap-2">
             <Link href="/dashboard/contacts/new" className="flex-1 md:flex-none">

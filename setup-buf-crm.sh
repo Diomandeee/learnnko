@@ -1,268 +1,724 @@
 #!/bin/bash
 
-cat > "src/app/dashboard/contacts/page.tsx" << 'EOF'
-import { Suspense } from "react";
-import { ContactList } from "@/components/contacts/contact-list";
-import { Search } from "@/components/contacts/search";
-import { PageContainer } from "@/components/layout/page-container";
-import { Button } from "@/components/ui/button";
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+print_colored() {
+    local color=$1
+    local message=$2
+    echo -e "${color}${message}${NC}"
+}
+
+print_colored $BLUE "Creating updated BufBaristaPOS component (Part 1/3)..."
+
+# Create the POS page component with all imports and state management
+cat > "src/app/dashboard/pos/page.tsx" << 'EOF'
+"use client"
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { getContactStats } from "@/lib/contacts";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Separator } from "@/components/ui/separator";
-import {
-  ArrowUp,
-  ArrowDown,
-  Download,
-  MoreHorizontal,
-  UserPlus,
-  Mail,
-  Share2,
-  Trash2,
-  Users,
+  Coffee,
+  X,
+  DollarSign,
+  Gift,
+  Moon,
+  Sun,
+  Search,
+  Bell,
   Plus,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import Link from "next/link";
-import { DataTableLoading } from "@/components/contacts/data-table-loading";
+  Minus,
+  Trash2,
+  Star,
+  Clock,
+  CalendarDays,
+  Loader2
+} from 'lucide-react'
+import { format } from 'date-fns'
+import Link from 'next/link'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { PageContainer } from "@/components/layout/page-container"
+import type { MenuItem, CartItem, CustomerInfo, MilkOption, QuickNote } from '@/types/pos'
+import './styles.css'
 
-interface PageProps {
-  searchParams?: {
-    [key: string]: string | undefined
+// Constants for milk options
+const milkOptions: MilkOption[] = [
+  { name: 'No Milk', price: 0 },
+  { name: 'Whole Milk', price: 0 },
+  { name: 'Oat Milk', price: 0 }
+]
+
+const flavorOptions = [
+  'No Flavoring',
+  'Vanilla',
+  'Caramel',
+  'Hazelnut',
+  'Raspberry',
+  'Pumpkin Spice'
+]
+
+const BufBaristaPOS: React.FC = () => {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+
+  // State
+  const [cart, setCart] = useState<CartItem[]>([])
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+  const [quickNotes, setQuickNotes] = useState<QuickNote[]>([])
+  const [loading, setLoading] = useState(true)
+  const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
+    firstName: '',
+    lastInitial: '',
+    organization: '',
+    email: '',
+    phone: ''
+  })
+  const [orderNotes, setOrderNotes] = useState('')
+  const [orderNumber, setOrderNumber] = useState(1)
+  const [selectedCategory, setSelectedCategory] = useState('All')
+  const [isComplimentaryMode, setIsComplimentaryMode] = useState(true)
+  const [queueStartTime, setQueueStartTime] = useState<Date | null>(null)
+  const [isDarkMode, setIsDarkMode] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [runningTotal, setRunningTotal] = useState(0)
+  const [notification, setNotification] = useState<string | null>(null)
+
+  // Modal states
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null)
+  const [selectedFlavor, setSelectedFlavor] = useState('')
+  const [selectedMilk, setSelectedMilk] = useState(milkOptions[0])
+  const [showPopular, setShowPopular] = useState(false)
+
+  // Fetch menu items and quick notes on mount
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const [menuResponse, notesResponse] = await Promise.all([
+          fetch('/api/pos/menu-items'),
+          fetch('/api/pos/quick-notes')
+        ])
+
+        if (menuResponse.ok && notesResponse.ok) {
+          const menuData = await menuResponse.json()
+          const notesData = await notesResponse.json()
+          setMenuItems(menuData)
+          setQuickNotes(notesData)
+        }
+      } catch (error) {
+        console.error('Error fetching initial data:', error)
+        showNotification('Error loading data')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (session) {
+      fetchInitialData()
+      setQueueStartTime(new Date())
+    }
+  }, [session])
+
+  // Load dark mode preference
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem('darkMode')
+    if (savedDarkMode) {
+      setIsDarkMode(JSON.parse(savedDarkMode))
+    }
+  }, [])
+
+  // Save dark mode preference
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(isDarkMode))
+    document.body.classList.toggle('dark-mode', isDarkMode)
+  }, [isDarkMode])
+
+  const showNotification = useCallback((message: string) => {
+    setNotification(message)
+    setTimeout(() => setNotification(null), 3000)
+  }, [])
+
+  const categories = useMemo(
+    () => ['All', ...new Set(menuItems.map((item) => item.category))],
+    [menuItems]
+  )
+
+  // Add item to cart
+  const addToCart = useCallback((item: MenuItem) => {
+    setSelectedItem(item)
+    setSelectedFlavor('No Flavoring')
+    setSelectedMilk(milkOptions[0])
+    setIsCustomizationModalOpen(true)
+  }, [])
+
+  // Confirm customization and add to cart
+  const confirmCustomization = useCallback(() => {
+    if (!selectedItem) return
+
+    const newItem: CartItem = {
+      ...selectedItem,
+      flavor: selectedFlavor === 'No Flavoring' ? undefined : selectedFlavor,
+      milk: selectedMilk,
+      quantity: 1
+    }
+
+    setCart((prevCart) => {
+      const existingItemIndex = prevCart.findIndex(
+        (item) =>
+          item.id === newItem.id &&
+          item.flavor === newItem.flavor &&
+          item.milk?.name === newItem.milk?.name
+      )
+
+      if (existingItemIndex !== -1) {
+        return prevCart.map((item, index) =>
+          index === existingItemIndex
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        )
+      }
+
+      return [...prevCart, newItem]
+    })
+
+    setRunningTotal((prev) => prev + selectedItem.price + selectedMilk.price)
+    showNotification(`Added ${selectedItem.name} to cart`)
+    setIsCustomizationModalOpen(false)
+  }, [selectedItem, selectedFlavor, selectedMilk, showNotification])
+EOF
+
+print_colored $BLUE "Creating part 2 of the component..."
+
+cat >> "src/app/dashboard/pos/page.tsx" << 'EOF'
+  // Remove item from cart
+  const removeFromCart = useCallback((index: number) => {
+    setCart((prevCart) => {
+      const newCart = [...prevCart]
+      const item = newCart[index]
+      const itemTotal = item.price + (item.milk?.price || 0)
+
+      if (item.quantity > 1) {
+        newCart[index] = { ...item, quantity: item.quantity - 1 }
+      } else {
+        newCart.splice(index, 1)
+      }
+
+      setRunningTotal((prev) => prev - itemTotal)
+      return newCart
+    })
+  }, [])
+
+  // Increase item quantity
+  const increaseQuantity = useCallback((index: number) => {
+    setCart((prevCart) => {
+      const newCart = [...prevCart]
+      const item = newCart[index]
+      const itemTotal = item.price + (item.milk?.price || 0)
+
+      newCart[index] = { ...item, quantity: item.quantity + 1 }
+      setRunningTotal((prev) => prev + itemTotal)
+      return newCart
+    })
+  }, [])
+
+  // Calculate total
+  const calculateTotal = useCallback(() => {
+    return isComplimentaryMode
+      ? 0
+      : cart
+          .reduce(
+            (sum, item) =>
+              sum + (item.price + (item.milk?.price || 0)) * item.quantity,
+            0
+          )
+          .toFixed(2)
+  }, [cart, isComplimentaryMode])
+
+  // Place order
+  const confirmOrder = useCallback(async () => {
+    if (!customerInfo.firstName || !customerInfo.lastInitial || !session) return
+
+    try {
+      const orderData = {
+        orderNumber,
+        customerName: `${customerInfo.firstName} ${customerInfo.lastInitial}.`,
+        customerInfo,
+        items: cart,
+        notes: orderNotes,
+        timestamp: new Date().toISOString(),
+        status: 'Pending',
+        total: parseFloat(calculateTotal()),
+        isComplimentary: isComplimentaryMode,
+        queueTime: queueStartTime
+          ? (new Date().getTime() - queueStartTime.getTime()) / 1000
+          : 0,
+        startTime: new Date()
+      }
+
+      const response = await fetch('/api/pos/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData)
+      })
+
+      if (!response.ok) throw new Error('Failed to create order')
+
+      // Reset state after successful order
+      setCart([])
+      setCustomerInfo({
+        firstName: '',
+        lastInitial: '',
+        organization: '',
+        email: '',
+        phone: ''
+      })
+      setOrderNotes('')
+      setOrderNumber((prev) => prev + 1)
+      setQueueStartTime(new Date())
+      setRunningTotal(0)
+      setIsModalOpen(false)
+      showNotification('Order placed successfully!')
+    } catch (error) {
+      console.error('Error placing order:', error)
+      showNotification('Error placing order')
+    }
+  }, [
+    customerInfo,
+    cart,
+    orderNumber,
+    orderNotes,
+    isComplimentaryMode,
+    queueStartTime,
+    session,
+    showNotification,
+    calculateTotal
+  ])
+
+  // Handle quick notes
+  const addQuickNote = useCallback((note: string) => {
+    setOrderNotes((prev) => (prev ? `${prev}\n${note}` : note))
+  }, [])
+
+  // Save quick note
+  const saveQuickNote = useCallback(async (content: string) => {
+    try {
+      const response = await fetch('/api/pos/quick-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
+      })
+
+      if (!response.ok) throw new Error('Failed to save quick note')
+
+      const newNote = await response.json()
+      setQuickNotes((prev) => [...prev, newNote])
+      showNotification('Quick note saved!')
+    } catch (error) {
+      console.error('Error saving quick note:', error)
+      showNotification('Error saving quick note')
+    }
+  }, [showNotification])
+
+  // Filter menu items
+  const filteredMenuItems = useMemo(
+    () =>
+      menuItems.filter(
+        (item) =>
+          (selectedCategory === 'All' || item.category === selectedCategory) &&
+          item.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+          (!showPopular || item.popular)
+      ),
+    [menuItems, selectedCategory, searchTerm, showPopular]
+  )
+
+EOF
+
+print_colored $BLUE "Creating the final part of the component with the render logic..."
+
+cat >> "src/app/dashboard/pos/page.tsx" << 'EOF'
+  if (status === "loading" || loading) {
+    return (
+      <PageContainer>
+        <div className="flex h-screen items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </PageContainer>
+    )
   }
-}
 
-async function getSearchParams(searchParams: PageProps['searchParams']) {
-  const params = {
-    search: searchParams?.search,
-    status: searchParams?.status,
-    sort: searchParams?.sort ?? 'newest',
-    page: searchParams?.page ? parseInt(searchParams.page) : 1
-  };
-
-  return Promise.resolve(params);
-}
-
-export default async function ContactsPage({ searchParams = {} }: PageProps) {
-  const [stats, params] = await Promise.all([
-    getContactStats(),
-    getSearchParams(searchParams)
-  ]);
+  if (status === "unauthenticated") {
+    router.push("/auth/login")
+    return null
+  }
 
   return (
     <PageContainer>
-      <div className="space-y-4 px-2 md:space-y-6 md:p-6">
-        {/* Header Section */}
-        <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between md:space-y-0">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight md:text-3xl">Contacts</h1>
-            <p className="text-xs text-muted-foreground md:text-base">
-              Manage your contacts and leads effectively
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link href="/dashboard/contacts/new" className="flex-1 md:flex-none">
-              <Button className="w-full md:w-auto">
-                <Plus className="h-4 w-4 md:mr-2" />
-                <span className="hidden md:inline">New Contact</span>
+      <div className={`pos-container ${isDarkMode ? 'dark-mode' : ''}`}>
+        <header className="pos-header">
+          <div className="header-left">
+            <Link href="/waste" passHref>
+              <Button className="waste-button">
+                <Trash2 />
+                Waste
               </Button>
             </Link>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[180px]">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Email Selected
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Share2 className="mr-2 h-4 w-4" />
-                  Share List
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Download className="mr-2 h-4 w-4" />
-                  Export CSV
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-red-600">
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Selected
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button 
+              onClick={() => {
+                setIsComplimentaryMode(!isComplimentaryMode)
+                showNotification(`Switched to ${isComplimentaryMode ? 'Pop-up' : 'Complimentary'} mode`)
+              }} 
+              className="mode-button"
+            >
+              {isComplimentaryMode ? <Gift /> : <DollarSign />}
+              {isComplimentaryMode ? 'Complimentary' : 'Pop-up'}
+            </Button>
+            <Button
+              onClick={() => setShowPopular(!showPopular)}
+              className={`mode-button ${showPopular ? 'active' : ''}`}
+            >
+              <Star />
+              Popular
+            </Button>
           </div>
-        </div>
 
-        <Separator className="my-2 md:my-4" />
+          <div className="search-container">
+            <Search />
+            <input
+              type="text"
+              placeholder="Search menu..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
+          </div>
 
-        {/* Filters - Single column on mobile */}
-        <Card className="overflow-hidden">
-          <CardHeader className="space-y-1 p-4">
-            <CardTitle className="text-base">Filter Contacts</CardTitle>
-            <CardDescription className="text-xs">
-              Refine your contact list
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 p-4">
-            <div className="flex flex-col space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium">Status</label>
-                <Select value={params.status ?? "all"}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="NEW">New</SelectItem>
-                    <SelectItem value="CONTACTED">Contacted</SelectItem>
-                    <SelectItem value="QUALIFIED">Qualified</SelectItem>
-                    <SelectItem value="CONVERTED">Converted</SelectItem>
-                    <SelectItem value="LOST">Lost</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="header-right">
+            <span className="current-time">
+              <Clock size={16} />
+              {format(new Date(), 'HH:mm')}
+            </span>
+            <span className="current-date">
+              <CalendarDays size={16} />
+              {format(new Date(), 'MMM dd, yyyy')}
+            </span>
+            <Button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="mode-button"
+            >
+              {isDarkMode ? <Sun /> : <Moon />}
+            </Button>
+          </div>
+        </header>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium">Sort By</label>
-                <Select value={params.sort}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="newest">Newest First</SelectItem>
-                    <SelectItem value="oldest">Oldest First</SelectItem>
-                    <SelectItem value="name">Name A-Z</SelectItem>
-                    <SelectItem value="name-desc">Name Z-A</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+        <main className="pos-main">
+          <section className="cart-section">
+            <h2 className="section-title">Cart</h2>
+            
+            {cart.length === 0 ? (
+              <p className="empty-cart">Your cart is empty</p>
+            ) : (
+              <ul className="cart-items">
+                {cart.map((item, index) => (
+                  <li key={index} className="cart-item">
+                    <span className="item-name">
+                      {item.name}
+                      {item.milk && (
+                        <span className="item-customization">
+                          {' '}({item.milk.name})
+                        </span>
+                      )}
+                      {item.flavor && (
+                        <span className="item-customization">
+                          {' '}with {item.flavor}
+                        </span>
+                      )}
+                    </span>
+                    <div className="item-controls">
+                      <Button
+                        onClick={() => removeFromCart(index)}
+                        className="quantity-button"
+                      >
+                        <Minus size={16} />
+                      </Button>
+                      <span className="item-quantity">{item.quantity}</span>
+                      <Button
+                        onClick={() => increaseQuantity(index)}
+                        className="quantity-button"
+                      >
+                        <Plus size={16} />
+                      </Button>
+                      <span className="item-price">
+                        {isComplimentaryMode
+                          ? ''
+                          : `$${(
+                              (item.price + (item.milk?.price || 0)) *
+                              item.quantity
+                            ).toFixed(2)}`}
+                      </span>
+                      <Button
+                        onClick={() => removeFromCart(index)}
+                        className="remove-item"
+                      >
+                        <X size={16} />
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium">Search</label>
-                <Search className="h-8" />
+            <div className="order-notes-section">
+              <textarea
+                value={orderNotes}
+                onChange={(e) => setOrderNotes(e.target.value)}
+                placeholder="Add notes about this order..."
+                className="notes-input"
+              />
+              <div className="quick-notes">
+                <div className="quick-note-chips">
+                  {quickNotes.map((note, index) => (
+                    <Button
+                      key={index}
+                      onClick={() => addQuickNote(note.content)}
+                      className="quick-note-chip"
+                    >
+                      {note.content}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Stats Cards - Single column on mobile */}
-        <div className="grid gap-3 md:grid-cols-4">
-          <Card className="relative overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium">Total</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <div className="text-lg font-bold">{stats.total.toLocaleString()}</div>
-              <div className="flex items-center space-x-1">
-                {parseFloat(stats.percentageChange) > 0 ? (
-                  <ArrowUp className="h-3 w-3 text-emerald-500" />
-                ) : (
-                  <ArrowDown className="h-3 w-3 text-red-500" />
-                )}
-                <p className={cn(
-                  "text-[10px]",
-                  parseFloat(stats.percentageChange) > 0 ? "text-emerald-500" : "text-red-500"
-                )}>
-                  {stats.percentageChange}%
-                </p>
+            <div className="cart-total">
+              <span>Total:</span>
+              <span>{isComplimentaryMode ? '' : `$${calculateTotal()}`}</span>
+            </div>
+
+            <Button
+              onClick={() => cart.length > 0 && setIsModalOpen(true)}
+              disabled={cart.length === 0}
+              className="place-order-button"
+            >
+              Place Order
+            </Button>
+
+            <div className="cart-actions">
+              <Link href="/dashboard/orders" passHref>
+                <Button className="view-orders-button">View Orders</Button>
+              </Link>
+              <Link href="/dashboard/sales" passHref>
+                <Button className="view-orders-button">View Reports</Button>
+              </Link>
+            </div>
+          </section>
+
+          <section className="menu-section">
+            <div className="category-filters">
+              {categories.map((category) => (
+                <Button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`category-button ${
+                    category === selectedCategory ? 'active' : ''
+                  }`}
+                >
+                  {category}
+                </Button>
+              ))}
+            </div>
+
+            <div className="menu-grid">
+              {filteredMenuItems.map((item) => (
+                <Button
+                  key={item.id}
+                  onClick={() => addToCart(item)}
+                  className="menu-item"
+                >
+                  <Coffee className="item-icon" />
+                  <h3 className="item-name">
+                    {item.name}
+                    {item.popular && <Star className="popular-icon" size={16} />}
+                  </h3>
+                  <p className="item-price">
+                    {isComplimentaryMode ? '' : `$${item.price.toFixed(2)}`}
+                  </p>
+                </Button>
+              ))}
+            </div>
+          </section>
+        </main>
+
+        {/* Customization Modal */}
+        {isCustomizationModalOpen && selectedItem && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <h3 className="modal-title">Customize {selectedItem.name}</h3>
+
+              <div className="customization-section">
+                <h4 className="section-subtitle">Select Milk</h4>
+                <div className="milk-options">
+                  {milkOptions.map((milk) => (
+                    <Button
+                      key={milk.name}
+                      onClick={() => setSelectedMilk(milk)}
+                      className={`milk-button ${
+                        selectedMilk.name === milk.name ? 'selected' : ''
+                      }`}
+                    >
+                      <span>{milk.name}</span>
+                      {milk.price > 0 && (
+                        <span className="milk-price">
+                          +${milk.price.toFixed(2)}
+                        </span>
+                      )}
+                    </Button>
+                  ))}
+                </div>
               </div>
-            </CardContent>
-          </Card>
 
-          <Card className="overflow-hidden md:block">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium">New</CardTitle>
-              <UserPlus className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <div className="text-lg font-bold">{stats.newThisMonth.toLocaleString()}</div>
-              <p className="text-[10px] text-muted-foreground">This month</p>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden md:block">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium">Qualified</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <div className="text-lg font-bold">
-                {(stats.byStatus?.QUALIFIED || 0).toLocaleString()}
+              <div className="customization-section">
+                <h4 className="section-subtitle">Select Flavor</h4>
+                {flavorOptions.map((flavor) => (
+                  <Button
+                    key={flavor}
+                    onClick={() => setSelectedFlavor(flavor)}
+                    className={`flavor-button ${
+                      selectedFlavor === flavor ? 'selected' : ''
+                    }`}
+                  >
+                    {flavor}
+                  </Button>
+                ))}
               </div>
-              <p className="text-[10px] text-muted-foreground">Active leads</p>
-            </CardContent>
-          </Card>
 
-          <Card className="overflow-hidden md:block">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium">Conversion</CardTitle>
-              <ArrowUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <div className="text-lg font-bold">
-                {stats.total > 0
-                  ? ((stats.byStatus?.CONVERTED || 0) / stats.total * 100).toFixed(1)
-                  : "0.0"}%
+              <div className="modal-buttons">
+                <Button
+                  onClick={() => setIsCustomizationModalOpen(false)}
+                  className="modal-button cancel"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={confirmCustomization}
+                  className="modal-button confirm"
+                  disabled={!selectedFlavor}
+                >
+                  Add to Cart
+                </Button>
               </div>
-              <p className="text-[10px] text-muted-foreground">Overall rate</p>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </div>
+        )}
 
-        {/* Contact List */}
-        <Card className="overflow-hidden">
-          <CardHeader className="space-y-1 p-4">
-            <CardTitle className="text-base">All Contacts</CardTitle>
-            <CardDescription className="text-xs">
-              Your contact list
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-0 sm:p-2">
-            <Suspense fallback={<DataTableLoading />}>
-              <ContactList
-                searchQuery={params.search}
-                statusFilter={params.status}
-                sortOrder={params.sort}
-                page={params.page}
+        {/* Customer Information Modal */}
+        {isModalOpen && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <h3 className="modal-title">Customer Information</h3>
+              <input
+                type="text"
+                value={customerInfo.firstName}
+                onChange={(e) =>
+                  setCustomerInfo({ ...customerInfo, firstName: e.target.value })
+                }
+                placeholder="First Name"
+                className="modal-input"
               />
-            </Suspense>
-          </CardContent>
-        </Card>
+              <input
+                type="text"
+                value={customerInfo.lastInitial}
+                onChange={(e) =>
+                  setCustomerInfo({
+                    ...customerInfo,
+                    lastInitial: e.target.value
+                  })
+                }
+                placeholder="Last Name Initial"
+                className="modal-input"
+              />
+              <input
+                type="text"
+                value={customerInfo.organization}
+                onChange={(e) =>
+                  setCustomerInfo({
+                    ...customerInfo,
+                    organization: e.target.value
+                  })
+                }
+                placeholder="Organization (Optional)"
+                className="modal-input"
+              />
+              <input
+                type="email"
+                value={customerInfo.email}
+                onChange={(e) =>
+                  setCustomerInfo({
+                    ...customerInfo,
+                    email: e.target.value
+                  })
+                }
+                placeholder="Email (Optional)"
+                className="modal-input"
+              />
+              <input
+                type="tel"
+                value={customerInfo.phone}
+                onChange={(e) =>
+                  setCustomerInfo({
+                    ...customerInfo,
+                    phone: e.target.value
+                  })
+                }
+                placeholder="Phone (Optional)"
+                className="modal-input"
+              />
+              <div className="modal-buttons">
+                <Button
+                  onClick={() => setIsModalOpen(false)}
+                  className="modal-button cancel"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={confirmOrder}
+                  className="modal-button confirm"
+                  disabled={!customerInfo.firstName || !customerInfo.lastInitial}
+                >
+                  Confirm Order
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Notification */}
+        {notification && (
+          <div className="notification">
+            <Bell size={16} />
+            {notification}
+          </div>
+        )}
       </div>
     </PageContainer>
-  );
+  )
 }
+
+export default BufBaristaPOS
 EOF
 
-echo "Updated contacts page with improved mobile responsiveness!"
-echo "Key changes:"
-echo "1. Stats cards now single column on mobile"
-echo "2. Filters section optimized for mobile width"
-echo "3. Reduced padding and margins to prevent horizontal scroll"
-echo "4. Improved typography scaling"
-echo "5. Better compact layout for mobile view"
+
+print_colored $GREEN "POS component creation complete!"
+print_colored $BLUE "Next steps:"
+echo "1. Add proper error handling for API calls"
+echo "2. Implement retry logic for failed operations"
+echo "3. Add offline support"
+echo "4. Add proper loading skeletons"
+echo "5. Add unit tests"
+
+Would you like me to help with any of these next steps?
+

@@ -11,9 +11,6 @@ import {
   ChevronRight,
   ChevronLeft,
   Coffee,
-  ListOrdered,
-  ServerCrash,
-  Trash,
 
 } from "lucide-react";
 
@@ -23,7 +20,6 @@ import {
   FaClipboardList as OrdersIcon,
   FaTrash as WasteIcon,
   FaBoxes as InventoryIcon,
-  FaFileAlt as ReportsIcon 
 } from "react-icons/fa"; 
 
 

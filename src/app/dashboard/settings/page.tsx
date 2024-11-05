@@ -15,12 +15,10 @@ export const metadata: Metadata = {
 export default function SettingsPage() {
   return (
     <PageContainer>
+    <h1 className="page-title">Settings</h1>
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
-        <p className="text-muted-foreground">
-          Manage your account settings and preferences.
-        </p>
+        
       </div>
       <Separator />
       <Tabs defaultValue="profile" className="space-y-4">
