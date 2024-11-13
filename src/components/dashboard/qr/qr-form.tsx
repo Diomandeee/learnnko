@@ -24,13 +24,12 @@ SelectValue,
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DeviceRuleForm } from "./device-rule-form"
 import { ScheduleRuleForm } from "./schedule-rule-form"
 import { QRDesigner } from "./designer/qr-designer"
 import { QRDesignerConfig } from "./designer/types"
 import { toast } from "@/components/ui/use-toast"
-import { Loader2, Plus, ArrowRight, CheckCircle2 } from "lucide-react"
+import { Loader2, Plus, CheckCircle2 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import {
 Dialog,
