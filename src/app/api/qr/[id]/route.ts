@@ -150,3 +150,5 @@ export async function GET(req: Request) {
     return new NextResponse("Internal Server Error", { status: 500 })
   }
 }
+
+// src/app/api/qr/[id]/route.ts

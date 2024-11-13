@@ -22,3 +22,6 @@ export async function GET(request: NextRequest) {
     return new NextResponse("Internal Server Error", { status: 500 })
   }
 }
+
+
+// src/app/api/qr/[id]/image/route.ts

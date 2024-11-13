@@ -372,7 +372,7 @@ export function QRForm({ initialData }: QRFormProps) {
 
         <TabsContent value="design">
           <QRDesigner
-            value={watchUrl || "https://example.com"}
+            value={watchUrl || ""}
             onConfigChange={setQRConfig}
             defaultConfig={{
               size: 300,
