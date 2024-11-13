@@ -50,3 +50,6 @@ export function QRPreview({ url, name }: QRPreviewProps) {
     </Card>
   )
 }
+
+
+// src/components/dashboard/qr/qr-preview.tsx

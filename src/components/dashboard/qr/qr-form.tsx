@@ -30,7 +30,7 @@ import { ScheduleRuleForm } from "./schedule-rule-form"
 import { QRDesigner } from "./designer/qr-designer"
 import { QRDesignerConfig } from "./designer/types"
 import { toast } from "@/components/ui/use-toast"
-import { Loader2, Plus } from "lucide-react"
+import { Loader2, Plus, ArrowRight } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import {
  Dialog,
@@ -55,11 +55,10 @@ const formSchema = z.object({
  defaultUrl: z.string()
    .min(1, "URL is required")
    .transform(val => {
-     let url = val.trim()
-     if (!/^https?:\/\//i.test(url)) {
-       url = `https://${url}`
-     }
-     return url
+     // Remove any protocol and trim
+     let url = val.trim().replace(/^https?:\/\//i, '')
+     // Add https:// protocol
+     return `https://${url}`
    })
    .refine(
      (val) => {
@@ -99,7 +98,7 @@ export function QRForm({ initialData }: QRFormProps) {
    resolver: zodResolver(formSchema),
    defaultValues: {
      name: initialData?.name || "",
-     defaultUrl: initialData?.defaultUrl || "",
+     defaultUrl: initialData?.defaultUrl ? initialData.defaultUrl.replace(/^https?:\/\//i, '') : "",
      folderId: initialData?.folderId || null,
    },
  })
@@ -183,9 +182,10 @@ export function QRForm({ initialData }: QRFormProps) {
    setIsLoading(true)
    
    try {
+     // Here we pass the already transformed URL from the schema
      const payload = {
        name: values.name,
-       defaultUrl: values.defaultUrl,
+       defaultUrl: values.defaultUrl, // Schema has already added https://
        folderId: values.folderId,
        design: qrConfig
      }
@@ -225,13 +225,6 @@ export function QRForm({ initialData }: QRFormProps) {
    } finally {
      setIsLoading(false)
    }
- }
-
- const getPreviewUrl = () => {
-   if (shortCode) {
-     return `${SITE_URL}/r/${shortCode}`
-   }
-   return watchUrl || "https://example.com"
  }
 
  return (
@@ -280,23 +273,32 @@ export function QRForm({ initialData }: QRFormProps) {
                name="defaultUrl"
                render={({ field }) => (
                  <FormItem>
-                   <FormLabel>Default URL</FormLabel>
+                   <FormLabel>Destination URL</FormLabel>
                    <FormControl>
-                     <Input 
-                       placeholder="example.com" 
-                       {...field} 
-                       disabled={isLoading}
-                       onChange={(e) => {
-                         let value = e.target.value.trim()
-                         if (!/^[a-zA-Z]+:\/\//i.test(value) && value.includes('://')) {
-                           value = value.split('://')[1]
-                         }
-                         field.onChange(value)
-                       }}
-                     />
+                     <div className="flex flex-col space-y-2">
+                       <div className="flex items-center space-x-2">
+                         <span className="text-sm text-muted-foreground">https://</span>
+                         <Input 
+                           placeholder="example.com" 
+                           {...field}
+                           value={field.value.replace(/^https?:\/\//i, '')}
+                           disabled={isLoading}
+                         />
+                       </div>
+                       {field.value && (
+                         <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                           <span>Redirect URL:</span>
+                           <span className="bg-muted px-2 py-1 rounded flex items-center">
+                             {SITE_URL}/r/
+                             <ArrowRight className="h-4 w-4 mx-1" />
+                             <span className="text-primary font-mono">shortcode</span>
+                           </span>
+                         </div>
+                       )}
+                     </div>
                    </FormControl>
                    <FormDescription>
-                     Enter a website URL (e.g., example.com or https://example.com)
+                     Enter the destination website URL without the protocol
                    </FormDescription>
                    <FormMessage />
                  </FormItem>
@@ -379,7 +381,7 @@ export function QRForm({ initialData }: QRFormProps) {
 
        <TabsContent value="design">
          <QRDesigner
-           value={getPreviewUrl()}
+           value={`${SITE_URL}/r/${shortCode || "example-code"}`}
            onConfigChange={setQRConfig}
            defaultConfig={{
              size: 300,
@@ -390,13 +392,6 @@ export function QRForm({ initialData }: QRFormProps) {
              errorCorrectionLevel: 'M',
            }}
          />
-         {shortCode && (
-           <div className="mt-4 p-4 bg-muted rounded-md">
-             <p className="text-sm text-muted-foreground">
-               Redirect URL: <code className="bg-background px-1 py-0.5 rounded">{getPreviewUrl()}</code>
-             </p>
-           </div>
-         )}
        </TabsContent>
 
        <TabsContent value="device">
