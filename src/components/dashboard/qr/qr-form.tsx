@@ -357,7 +357,18 @@ interface QRFormProps {
                  </FormItem>
                )}
              />
-
+     <QRDesigner
+        value={`${SITE_URL}/r/${shortCode || "example-code"}`}
+        onConfigChange={setQRConfig}
+        defaultConfig={{
+          size: 300,
+          backgroundColor: '#ffffff',
+          foregroundColor: '#000000',
+          dotStyle: 'squares',
+          margin: 10,
+          errorCorrectionLevel: 'M',
+        }}
+      />
              <Button 
                type="submit" 
                disabled={isLoading}
@@ -440,18 +451,6 @@ interface QRFormProps {
          </DialogFooter>
        </DialogContent>
      </Dialog>
-     <QRDesigner
-        value={`${SITE_URL}/r/${shortCode || "example-code"}`}
-        onConfigChange={setQRConfig}
-        defaultConfig={{
-          size: 300,
-          backgroundColor: '#ffffff',
-          foregroundColor: '#000000',
-          dotStyle: 'squares',
-          margin: 10,
-          errorCorrectionLevel: 'M',
-        }}
-      />
    </div>
  )
 }
