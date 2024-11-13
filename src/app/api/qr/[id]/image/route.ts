@@ -1,5 +1,7 @@
+// src/app/api/qr/[id]/image/route.ts
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db/prisma"
+import QRCode from 'qrcode' // Import QRCode library
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,6 +22,7 @@ export async function GET(request: NextRequest) {
     
     console.log('Generated QR URL:', redirectUrl) // Debug log
 
+    // Use the QRCode library to generate the image
     const qrDataUrl = await QRCode.toDataURL(redirectUrl, {
       width: 400,
       margin: 2,

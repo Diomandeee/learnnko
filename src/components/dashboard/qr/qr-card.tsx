@@ -50,6 +50,8 @@ interface QRCardProps {
   className?: string
 }
 
+const SITE_URL = "https://bufbarista-crm.vercel.app"
+
 export function QRCard({ 
   qrCode, 
   onDelete, 
@@ -60,7 +62,7 @@ export function QRCard({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [downloadLoading, setDownloadLoading] = useState(false)
-  const qrUrl = `${process.env.NEXT_PUBLIC_APP_URL}/r/${qrCode.shortCode}`
+  const qrUrl = `${SITE_URL}/r/${qrCode.shortCode}`
 
   const downloadQRAsImage = async () => {
     try {
@@ -315,3 +317,6 @@ export function QRCard({
     </>
   )
 }
+
+
+// src/components/dashboard/qr/qr-card.tsx

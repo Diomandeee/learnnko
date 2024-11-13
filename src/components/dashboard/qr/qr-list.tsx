@@ -285,3 +285,5 @@ export function QRCodeList({ folderId }: QRCodeListProps) {
     </>
   )
 }
+
+// src/components/dashboard/qr/qr-list.tsx

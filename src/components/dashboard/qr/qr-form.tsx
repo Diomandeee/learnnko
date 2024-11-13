@@ -30,7 +30,7 @@ import { ScheduleRuleForm } from "./schedule-rule-form"
 import { QRDesigner } from "./designer/qr-designer"
 import { QRDesignerConfig } from "./designer/types"
 import { toast } from "@/components/ui/use-toast"
-import { Loader2, Plus } from "lucide-react"
+import { Loader2, Plus, ArrowRight } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import {
  Dialog,
@@ -41,16 +41,8 @@ import {
  DialogTitle,
 } from "@/components/ui/dialog"
 
-const SITE_URL = "https://bufbarista-crm.vercel.app"
 
-const generateTempShortCode = (length: number = 6): string => {
- const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
- let result = ''
- for (let i = 0; i < length; i++) {
-   result += chars.charAt(Math.floor(Math.random() * chars.length))
- }
- return result
-}
+const SITE_URL = "https://bufbarista-crm.vercel.app"
 
 interface Folder {
  id: string
@@ -64,7 +56,9 @@ const formSchema = z.object({
  defaultUrl: z.string()
    .min(1, "URL is required")
    .transform(val => {
+     // Remove any protocol and trim
      const url = val.trim().replace(/^https?:\/\//i, '')
+     // Add https:// protocol
      return `https://${url}`
    })
    .refine(
@@ -80,41 +74,34 @@ const formSchema = z.object({
    ),
  folderId: z.string().nullable(),
 })
-
 interface QRFormProps {
- initialData?: {
-   name: string
-   defaultUrl: string
-   folderId: string | null
-   id?: string
+  initialData?: {
+    name: string
+    defaultUrl: string
+    folderId: string | null
+    id?: string
+  }
  }
-}
-
-export function QRForm({ initialData }: QRFormProps) {
- const router = useRouter()
- const [isLoading, setIsLoading] = useState(false)
- const [folders, setFolders] = useState<Folder[]>([])
- const [foldersLoading, setFoldersLoading] = useState(true)
- const [qrConfig, setQRConfig] = useState<QRDesignerConfig | null>(null)
- const [createFolderOpen, setCreateFolderOpen] = useState(false)
- const [newFolderName, setNewFolderName] = useState("")
- const [createFolderLoading, setCreateFolderLoading] = useState(false)
- const [shortCode, setShortCode] = useState<string>(generateTempShortCode())
-
- useEffect(() => {
-   if (!initialData) {
-     setShortCode(generateTempShortCode())
-   }
- }, [initialData])
+ 
+ export function QRForm({ initialData }: QRFormProps) {
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false)
+  const [folders, setFolders] = useState<Folder[]>([])
+  const [foldersLoading, setFoldersLoading] = useState(true)
+  const [qrConfig, setQRConfig] = useState<QRDesignerConfig | null>(null)
+  const [createFolderOpen, setCreateFolderOpen] = useState(false)
+  const [newFolderName, setNewFolderName] = useState("")
+  const [createFolderLoading, setCreateFolderLoading] = useState(false)
+  const [shortCode, setShortCode] = useState<string>("")
 
  const form = useForm<z.infer<typeof formSchema>>({
-   resolver: zodResolver(formSchema),
-   defaultValues: {
-     name: initialData?.name || "",
-     defaultUrl: initialData?.defaultUrl ? initialData.defaultUrl.replace(/^https?:\/\//i, '') : "",
-     folderId: initialData?.folderId || null,
-   },
- })
+  resolver: zodResolver(formSchema),
+  defaultValues: {
+    name: initialData?.name || "",
+    defaultUrl: initialData?.defaultUrl ? initialData.defaultUrl.replace(/^https?:\/\//i, '') : "",
+    folderId: initialData?.folderId || null,
+  },
+})
 
  useEffect(() => {
    async function loadFolders() {
@@ -189,20 +176,16 @@ export function QRForm({ initialData }: QRFormProps) {
    }
  }
 
- const getQRCodeUrl = () => {
-   return `${SITE_URL}/r/${shortCode}`
- }
-
  const onSubmit = async (values: z.infer<typeof formSchema>) => {
    setIsLoading(true)
    
    try {
+     // Here we pass the already transformed URL from the schema
      const payload = {
        name: values.name,
-       defaultUrl: values.defaultUrl,
+       defaultUrl: values.defaultUrl, // Schema has already added https://
        folderId: values.folderId,
-       design: qrConfig,
-       shortCode: shortCode
+       design: qrConfig
      }
 
      console.log('Submitting payload:', payload)
@@ -219,6 +202,9 @@ export function QRForm({ initialData }: QRFormProps) {
        const error = await response.json()
        throw new Error(error.error || 'Failed to create QR code')
      }
+
+     const data = await response.json()
+     setShortCode(data.shortCode)
 
      toast({
        title: "Success!",
@@ -297,12 +283,15 @@ export function QRForm({ initialData }: QRFormProps) {
                            disabled={isLoading}
                          />
                        </div>
-                       <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                         <span>QR Code URL:</span>
-                         <code className="bg-muted px-2 py-1 rounded">
-                           {getQRCodeUrl()}
-                         </code>
-                       </div>
+                       {field.value && (
+                         <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                           <span>Redirect URL:</span>
+                           <span className="bg-muted px-2 py-1 rounded flex items-center">
+                             {SITE_URL}/r/{shortCode}
+                             <ArrowRight className="h-4 w-4 mx-1" />
+                           </span>
+                         </div>
+                       )}
                      </div>
                    </FormControl>
                    <FormDescription>
@@ -388,24 +377,19 @@ export function QRForm({ initialData }: QRFormProps) {
        </TabsContent>
 
        <TabsContent value="design">
-         <QRDesigner
-           value={getQRCodeUrl()}
-           onConfigChange={setQRConfig}
-           defaultConfig={{
-             size: 300,
-             backgroundColor: '#ffffff',
-             foregroundColor: '#000000',
-             dotStyle: 'squares',
-             margin: 10,
-             errorCorrectionLevel: 'M',
-           }}
-         />
-         <div className="mt-4 p-4 bg-muted rounded-md">
-           <p className="text-sm text-muted-foreground">
-             QR Code URL: <code className="bg-background px-1 py-0.5 rounded">{getQRCodeUrl()}</code>
-           </p>
-         </div>
-       </TabsContent>
+      <QRDesigner
+        value={`${SITE_URL}/r/${shortCode || "example-code"}`}
+        onConfigChange={setQRConfig}
+        defaultConfig={{
+          size: 300,
+          backgroundColor: '#ffffff',
+          foregroundColor: '#000000',
+          dotStyle: 'squares',
+          margin: 10,
+          errorCorrectionLevel: 'M',
+        }}
+      />
+    </TabsContent>
 
        <TabsContent value="device">
          <DeviceRuleForm qrCodeId={initialData?.id} />
