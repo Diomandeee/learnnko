@@ -30,7 +30,7 @@ import { ScheduleRuleForm } from "./schedule-rule-form"
 import { QRDesigner } from "./designer/qr-designer"
 import { QRDesignerConfig } from "./designer/types"
 import { toast } from "@/components/ui/use-toast"
-import { Loader2, Plus, ArrowRight } from "lucide-react"
+import { Loader2, Plus } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import {
  Dialog,
@@ -219,8 +219,6 @@ export function QRForm({ initialData }: QRFormProps) {
        const error = await response.json()
        throw new Error(error.error || 'Failed to create QR code')
      }
-
-     const data = await response.json()
 
      toast({
        title: "Success!",
