@@ -41,6 +41,7 @@ import {
  DialogTitle,
 } from "@/components/ui/dialog"
 
+
 const SITE_URL = "https://bufbarista-crm.vercel.app"
 
 interface Folder {
@@ -56,7 +57,7 @@ const formSchema = z.object({
    .min(1, "URL is required")
    .transform(val => {
      // Remove any protocol and trim
-     let url = val.trim().replace(/^https?:\/\//i, '')
+     const url = val.trim().replace(/^https?:\/\//i, '')
      // Add https:// protocol
      return `https://${url}`
    })
@@ -73,37 +74,34 @@ const formSchema = z.object({
    ),
  folderId: z.string().nullable(),
 })
-
 interface QRFormProps {
- initialData?: {
-   name: string
-   defaultUrl: string
-   folderId: string | null
-   id?: string
+  initialData?: {
+    name: string
+    defaultUrl: string
+    folderId: string | null
+    id?: string
+  }
  }
-}
-
-export function QRForm({ initialData }: QRFormProps) {
- const router = useRouter()
- const [isLoading, setIsLoading] = useState(false)
- const [folders, setFolders] = useState<Folder[]>([])
- const [foldersLoading, setFoldersLoading] = useState(true)
- const [qrConfig, setQRConfig] = useState<QRDesignerConfig | null>(null)
- const [createFolderOpen, setCreateFolderOpen] = useState(false)
- const [newFolderName, setNewFolderName] = useState("")
- const [createFolderLoading, setCreateFolderLoading] = useState(false)
- const [shortCode, setShortCode] = useState<string>("")
+ 
+ export function QRForm({ initialData }: QRFormProps) {
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false)
+  const [folders, setFolders] = useState<Folder[]>([])
+  const [foldersLoading, setFoldersLoading] = useState(true)
+  const [qrConfig, setQRConfig] = useState<QRDesignerConfig | null>(null)
+  const [createFolderOpen, setCreateFolderOpen] = useState(false)
+  const [newFolderName, setNewFolderName] = useState("")
+  const [createFolderLoading, setCreateFolderLoading] = useState(false)
+  const [shortCode, setShortCode] = useState<string>("")
 
  const form = useForm<z.infer<typeof formSchema>>({
-   resolver: zodResolver(formSchema),
-   defaultValues: {
-     name: initialData?.name || "",
-     defaultUrl: initialData?.defaultUrl ? initialData.defaultUrl.replace(/^https?:\/\//i, '') : "",
-     folderId: initialData?.folderId || null,
-   },
- })
-
- const watchUrl = form.watch("defaultUrl")
+  resolver: zodResolver(formSchema),
+  defaultValues: {
+    name: initialData?.name || "",
+    defaultUrl: initialData?.defaultUrl ? initialData.defaultUrl.replace(/^https?:\/\//i, '') : "",
+    folderId: initialData?.folderId || null,
+  },
+})
 
  useEffect(() => {
    async function loadFolders() {
@@ -380,19 +378,19 @@ export function QRForm({ initialData }: QRFormProps) {
        </TabsContent>
 
        <TabsContent value="design">
-         <QRDesigner
-           value={`${SITE_URL}/r/${shortCode || "example-code"}`}
-           onConfigChange={setQRConfig}
-           defaultConfig={{
-             size: 300,
-             backgroundColor: '#ffffff',
-             foregroundColor: '#000000',
-             dotStyle: 'squares',
-             margin: 10,
-             errorCorrectionLevel: 'M',
-           }}
-         />
-       </TabsContent>
+      <QRDesigner
+        value={`${SITE_URL}/r/${shortCode || "example-code"}`}
+        onConfigChange={setQRConfig}
+        defaultConfig={{
+          size: 300,
+          backgroundColor: '#ffffff',
+          foregroundColor: '#000000',
+          dotStyle: 'squares',
+          margin: 10,
+          errorCorrectionLevel: 'M',
+        }}
+      />
+    </TabsContent>
 
        <TabsContent value="device">
          <DeviceRuleForm qrCodeId={initialData?.id} />
