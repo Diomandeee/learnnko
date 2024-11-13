@@ -200,7 +200,7 @@ export function QRCard({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem asChild>
-                    <Link href={`/qr/${qrCode.id}`} className="flex items-center">
+                    <Link href={`dashboard/qr/${qrCode.id}`} className="flex items-center">
                       <Edit className="mr-2 h-4 w-4" />
                       Edit
                     </Link>
