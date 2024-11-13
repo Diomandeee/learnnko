@@ -28,3 +28,5 @@ export async function generateQRCode(shortCode: string): Promise<string> {
     throw error
   }
 }
+
+// src/lib/qr.ts

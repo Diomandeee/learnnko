@@ -1,8 +1,4 @@
-const siteConfig = {
+export const siteConfig = {
   name: "BUF BARISTA CRM",
-  baseUrl: process.env.NODE_ENV === "production" 
-    ? "https://bufbarista-crm.vercel.app"
-    : "http://localhost:3000",
+  url: "https://bufbarista-crm.vercel.app"
 } as const
-
-export default siteConfig
