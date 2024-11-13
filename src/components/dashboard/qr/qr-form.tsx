@@ -376,20 +376,7 @@ interface QRFormProps {
          </Form>
        </TabsContent>
 
-       <TabsContent value="design">
-      <QRDesigner
-        value={`${SITE_URL}/r/${shortCode || "example-code"}`}
-        onConfigChange={setQRConfig}
-        defaultConfig={{
-          size: 300,
-          backgroundColor: '#ffffff',
-          foregroundColor: '#000000',
-          dotStyle: 'squares',
-          margin: 10,
-          errorCorrectionLevel: 'M',
-        }}
-      />
-    </TabsContent>
+   
 
        <TabsContent value="device">
          <DeviceRuleForm qrCodeId={initialData?.id} />
@@ -453,6 +440,18 @@ interface QRFormProps {
          </DialogFooter>
        </DialogContent>
      </Dialog>
+     <QRDesigner
+        value={`${SITE_URL}/r/${shortCode || "example-code"}`}
+        onConfigChange={setQRConfig}
+        defaultConfig={{
+          size: 300,
+          backgroundColor: '#ffffff',
+          foregroundColor: '#000000',
+          dotStyle: 'squares',
+          margin: 10,
+          errorCorrectionLevel: 'M',
+        }}
+      />
    </div>
  )
 }
