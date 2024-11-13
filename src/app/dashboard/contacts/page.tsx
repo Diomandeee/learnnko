@@ -59,6 +59,7 @@ async function getSearchParams(searchParams: PageProps['searchParams']) {
 
   return Promise.resolve(params);
 }
+
 export default async function ContactsPage({ searchParams = {} }: PageProps) {
   const [stats, params] = await Promise.all([
     getContactStats(),
@@ -67,43 +68,41 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
 
   return (
     <PageContainer>
-      <div className="space-y-4 max-w-[500px] mx-auto px-2 md:max-w-full md:space-y-6 md:p-6">
-        {/* Header remains the same */}
-        <h1 className="page-title">Contacts</h1>
+      <div className="space-y-3 w-full px-2 mx-auto md:space-y-6 md:p-6">
+        <h1 className="page-title text-xl md:text-2xl">Contacts</h1>
+        
         <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between md:space-y-0">
-          <div>
-
-          </div>
+          <div></div>
           <div className="flex items-center gap-2">
             <Link href="/dashboard/contacts/new" className="flex-1 md:flex-none">
-              <Button className="w-full md:w-auto">
-                <Plus className="h-4 w-4 md:mr-2" />
+              <Button className="w-full h-8 md:h-9 md:w-auto">
+                <Plus className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
                 <span className="hidden md:inline">New Contact</span>
               </Button>
             </Link>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9">
-                  <MoreHorizontal className="h-4 w-4" />
+                <Button variant="outline" size="icon" className="h-8 w-8 md:h-9 md:w-9">
+                  <MoreHorizontal className="h-3 w-3 md:h-4 md:w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[180px]">
+              <DropdownMenuContent align="end" className="w-[160px]">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                 <DropdownMenuItem>
-                  <Mail className="mr-2 h-4 w-4" />
+                  <Mail className="mr-2 h-3 w-3 md:h-4 md:w-4" />
                   Email Selected
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Share2 className="mr-2 h-4 w-4" />
+                  <Share2 className="mr-2 h-3 w-3 md:h-4 md:w-4" />
                   Share List
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Download className="mr-2 h-4 w-4" />
+                  <Download className="mr-2 h-3 w-3 md:h-4 md:w-4" />
                   Export CSV
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-red-600">
-                  <Trash2 className="mr-2 h-4 w-4" />
+                  <Trash2 className="mr-2 h-3 w-3 md:h-4 md:w-4" />
                   Delete Selected
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -111,23 +110,22 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
           </div>
         </div>
 
-        
-        <Separator className="my-2 md:my-4" />
+        <Separator className="my-2" />
 
-        {/* Filters - More compact */}
+        {/* Filters - More compact on mobile */}
         <Card className="overflow-hidden">
-          <CardHeader className="space-y-1 p-3">
-            <CardTitle className="text-base">Filter Contacts</CardTitle>
+          <CardHeader className="space-y-0.5 p-2 md:p-3">
+            <CardTitle className="text-sm md:text-base">Filter Contacts</CardTitle>
             <CardDescription className="text-xs">
               Refine your contact list
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 p-3">
-            <div className="flex flex-col space-y-3">
-              <div className="space-y-1">
+          <CardContent className="space-y-2 p-2 md:space-y-3 md:p-3">
+            <div className="flex flex-col space-y-2 md:space-y-3">
+              <div className="space-y-0.5">
                 <label className="text-xs font-medium">Status</label>
                 <Select value={params.status ?? "all"}>
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger className="h-7 text-xs md:h-8">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -141,10 +139,10 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
                 </Select>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <label className="text-xs font-medium">Sort By</label>
                 <Select value={params.sort}>
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger className="h-7 text-xs md:h-8">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
@@ -156,83 +154,77 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
                 </Select>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <label className="text-xs font-medium">Search</label>
-                <Search/>
+                <Search />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Stats Cards - Square layout */}
+        {/* Stats Cards - Smaller on mobile */}
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-          <Card className="aspect-square overflow-hidden">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium">Total</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
-              <div className="text-2xl font-bold">{stats.total.toLocaleString()}</div>
-              <div className="flex items-center space-x-1 mt-1">
-                {parseFloat(stats.percentageChange) > 0 ? (
-                  <ArrowUp className="h-3 w-3 text-emerald-500" />
-                ) : (
-                  <ArrowDown className="h-3 w-3 text-red-500" />
-                )}
-                <p className={cn(
-                  "text-[10px]",
-                  parseFloat(stats.percentageChange) > 0 ? "text-emerald-500" : "text-red-500"
-                )}>
-                  {stats.percentageChange}%
+          {[
+            {
+              title: "Total",
+              icon: <Users className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />,
+              value: stats.total.toLocaleString(),
+              subtitle: (
+                <div className="flex items-center space-x-1">
+                  {parseFloat(stats.percentageChange) > 0 ? (
+                    <ArrowUp className="h-2 w-2 md:h-3 md:w-3 text-emerald-500" />
+                  ) : (
+                    <ArrowDown className="h-2 w-2 md:h-3 md:w-3 text-red-500" />
+                  )}
+                  <p className={cn(
+                    "text-[8px] md:text-[10px]",
+                    parseFloat(stats.percentageChange) > 0 ? "text-emerald-500" : "text-red-500"
+                  )}>
+                    {stats.percentageChange}%
+                  </p>
+                </div>
+              )
+            },
+            {
+              title: "New",
+              icon: <UserPlus className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />,
+              value: stats.newThisMonth.toLocaleString(),
+              subtitle: "This month"
+            },
+            {
+              title: "Qualified",
+              icon: <Users className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />,
+              value: (stats.byStatus?.QUALIFIED || 0).toLocaleString(),
+              subtitle: "Active leads"
+            },
+            {
+              title: "Conversion",
+              icon: <ArrowUp className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />,
+              value: `${stats.total > 0
+                ? ((stats.byStatus?.CONVERTED || 0) / stats.total * 100).toFixed(1)
+                : "0.0"}%`,
+              subtitle: "Overall rate"
+            }
+          ].map((stat, index) => (
+            <Card key={index} className="overflow-hidden">
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 p-2 md:p-3">
+                <CardTitle className="text-[10px] md:text-xs font-medium">{stat.title}</CardTitle>
+                {stat.icon}
+              </CardHeader>
+              <CardContent className="flex flex-col justify-center items-center p-2 md:p-3">
+                <div className="text-lg md:text-2xl font-bold">{stat.value}</div>
+                <p className="text-[8px] md:text-[10px] text-muted-foreground mt-0.5 md:mt-1">
+                  {typeof stat.subtitle === 'string' ? stat.subtitle : stat.subtitle}
                 </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="aspect-square overflow-hidden">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium">New</CardTitle>
-              <UserPlus className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
-              <div className="text-2xl font-bold">{stats.newThisMonth.toLocaleString()}</div>
-              <p className="text-[10px] text-muted-foreground mt-1">This month</p>
-            </CardContent>
-          </Card>
-
-          <Card className="aspect-square overflow-hidden">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium">Qualified</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
-              <div className="text-2xl font-bold">
-                {(stats.byStatus?.QUALIFIED || 0).toLocaleString()}
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1">Active leads</p>
-            </CardContent>
-          </Card>
-
-          <Card className="aspect-square overflow-hidden">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium">Conversion</CardTitle>
-              <ArrowUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
-              <div className="text-2xl font-bold">
-                {stats.total > 0
-                  ? ((stats.byStatus?.CONVERTED || 0) / stats.total * 100).toFixed(1)
-                  : "0.0"}%
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1">Overall rate</p>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         {/* Contact List */}
         <Card className="overflow-hidden">
-          <CardHeader className="space-y-1 p-3">
-            <CardTitle className="text-base">All Contacts</CardTitle>
+          <CardHeader className="space-y-0.5 p-2 md:p-3">
+            <CardTitle className="text-sm md:text-base">All Contacts</CardTitle>
             <CardDescription className="text-xs">
               Your contact list
             </CardDescription>

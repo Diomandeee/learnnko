@@ -5,27 +5,27 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 const data = [
   {
     name: "Jan",
-    total: 1200,
+    total: 0,
   },
   {
     name: "Feb",
-    total: 1600,
+    total: 0,
   },
   {
     name: "Mar",
-    total: 1400,
+    total: 0,
   },
   {
     name: "Apr",
-    total: 1800,
+    total: 0,
   },
   {
     name: "May",
-    total: 2200,
+    total: 0,
   },
   {
     name: "Jun",
-    total: 2600,
+    total: 0,
   },
 ];
 

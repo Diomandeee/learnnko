@@ -1,612 +1,254 @@
-"use client"
-
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import {
-  Search,
-  AlertCircle,
-  Plus,
-  Edit2,
-  Trash2,
-  RefreshCw,
-  Download,
-  Upload,
-  Check,
-  X,
-  AlertTriangle,
-  ArrowUpDown,
-  Save,
-} from 'lucide-react'
+import { Suspense } from "react";
+import { ContactList } from "@/components/contacts/contact-list";
+import { Search } from "@/components/contacts/search";
 import { PageContainer } from "@/components/layout/page-container";
-import './styles.css';
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { getContactStats } from "@/lib/contacts";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
+import {
+  ArrowUp,
+  ArrowDown,
+  Download,
+  MoreHorizontal,
+  UserPlus,
+  Mail,
+  Share2,
+  Trash2,
+  Users,
+  Plus,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { DataTableLoading } from "@/components/contacts/data-table-loading";
 
-interface InventoryItem {
-  id: string
-  name: string
-  category: string
-  quantity: number
-  unit: string
-  minThreshold: number
-  maxThreshold: number
-  unitCost: number
-  lastRestocked: string
-  supplier: string
-  location: string
-  notes: string
+interface PageProps {
+  searchParams?: {
+    [key: string]: string | undefined
+  }
 }
 
-interface SortConfig {
-  key: keyof InventoryItem
-  direction: 'asc' | 'desc'
+async function getSearchParams(searchParams: PageProps['searchParams']) {
+  const params = {
+    search: searchParams?.search,
+    status: searchParams?.status,
+    sort: searchParams?.sort ?? 'newest',
+    page: searchParams?.page ? parseInt(searchParams.page) : 1
+  };
+
+  return Promise.resolve(params);
 }
 
-const InventoryManagement: React.FC = () => {
-  // State Management
-  const [inventory, setInventory] = useState<InventoryItem[]>([])
-  const [filteredInventory, setFilteredInventory] = useState<InventoryItem[]>(
-    []
-  )
-  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('All')
-  const [sortConfig, setSortConfig] = useState<SortConfig>({
-    key: 'name',
-    direction: 'asc'
-  })
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<{
-    type: 'success' | 'error'
-    text: string
-  } | null>(null)
+export default async function ContactsPage({ searchParams = {} }: PageProps) {
+  const [stats, params] = await Promise.all([
+    getContactStats(),
+    getSearchParams(searchParams)
+  ]);
 
-  // Form state for new/edit item
-  const [formData, setFormData] = useState<Partial<InventoryItem>>({
-    name: '',
-    category: '',
-    quantity: 0,
-    unit: '',
-    minThreshold: 0,
-    maxThreshold: 0,
-    unitCost: 0,
-    supplier: '',
-    location: '',
-    notes: ''
-  })
-
-  // Categories derived from inventory items
-  const categories = useMemo(() => {
-    const uniqueCategories = new Set(inventory.map((item) => item.category))
-    return ['All', ...Array.from(uniqueCategories)]
-  }, [inventory])
-
-  // Message helper - moved to the top before use
-  const showMessage = (text: string, type: 'success' | 'error') => {
-    setMessage({ text, type })
-    setTimeout(() => setMessage(null), 3000)
-  }
-
-  // Load inventory from localStorage
-  const loadInventory = useCallback(() => {
-    setIsLoading(true)
-    try {
-      const savedInventory = JSON.parse(
-        localStorage.getItem('inventory') || '[]'
-      ) as InventoryItem[]
-      setInventory(savedInventory)
-      setFilteredInventory(savedInventory)
-      setError(null)
-    } catch (err) {
-      setError('Failed to load inventory data')
-      console.error('Error loading inventory:', err)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  // Save inventory to localStorage
-  const saveInventory = useCallback((items: InventoryItem[]) => {
-    try {
-      localStorage.setItem('inventory', JSON.stringify(items))
-      setInventory(items)
-      showMessage('Inventory saved successfully', 'success')
-    } catch (err) {
-      showMessage('Failed to save inventory', 'error')
-      console.error('Error saving inventory:', err)
-    }
-  }, [])
-
-  useEffect(() => {
-    loadInventory()
-  }, [loadInventory])
-
-  // Filter and sort inventory
-  useEffect(() => {
-    let filtered = [...inventory]
-
-    // Apply category filter
-    if (selectedCategory !== 'All') {
-      filtered = filtered.filter((item) => item.category === selectedCategory)
-    }
-
-    // Apply search filter
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (item) =>
-          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.supplier.toLowerCase().includes(searchTerm.toLowerCase())
+  const statsCards = [
+    {
+      title: "Total",
+      icon: <Users className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />,
+      value: stats.total.toLocaleString(),
+      subtitle: (
+        <span className="flex items-center space-x-1">
+          {parseFloat(stats.percentageChange) > 0 ? (
+            <ArrowUp className="h-2 w-2 md:h-3 md:w-3 text-emerald-500" />
+          ) : (
+            <ArrowDown className="h-2 w-2 md:h-3 md:w-3 text-red-500" />
+          )}
+          <span
+            className={cn(
+              "text-[8px] md:text-[10px]",
+              parseFloat(stats.percentageChange) > 0 ? "text-emerald-500" : "text-red-500"
+            )}
+          >
+            {stats.percentageChange}%
+          </span>
+        </span>
       )
+    },
+    {
+      title: "New",
+      icon: <UserPlus className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />,
+      value: stats.newThisMonth.toLocaleString(),
+      subtitle: "This month"
+    },
+    {
+      title: "Qualified",
+      icon: <Users className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />,
+      value: (stats.byStatus?.QUALIFIED || 0).toLocaleString(),
+      subtitle: "Active leads"
+    },
+    {
+      title: "Conversion",
+      icon: <ArrowUp className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />,
+      value: `${stats.total > 0
+        ? ((stats.byStatus?.CONVERTED || 0) / stats.total * 100).toFixed(1)
+        : "0.0"}%`,
+      subtitle: "Overall rate"
     }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      const aValue = a[sortConfig.key]
-      const bValue = b[sortConfig.key]
-
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortConfig.direction === 'asc'
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue)
-      }
-
-      if (typeof aValue === 'number' && typeof bValue === 'number') {
-        return sortConfig.direction === 'asc'
-          ? aValue - bValue
-          : bValue - aValue
-      }
-
-      return 0
-    })
-
-    setFilteredInventory(filtered)
-  }, [inventory, selectedCategory, searchTerm, sortConfig])
-
-  // Handle sort
-  const handleSort = (key: keyof InventoryItem) => {
-    setSortConfig((prev) => ({
-      key,
-      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-    }))
-  }
-
-  // Add new item
-  const handleAddItem = () => {
-    setFormData({
-      name: '',
-      category: '',
-      quantity: 0,
-      unit: '',
-      minThreshold: 0,
-      maxThreshold: 0,
-      unitCost: 0,
-      supplier: '',
-      location: '',
-      notes: '',
-      lastRestocked: new Date().toISOString()
-    })
-    setSelectedItem(null)
-    setIsModalOpen(true)
-  }
-
-  // Edit item
-  const handleEditItem = (item: InventoryItem) => {
-    setFormData(item)
-    setSelectedItem(item)
-    setIsModalOpen(true)
-  }
-
-  // Delete item
-  const handleDeleteItem = (item: InventoryItem) => {
-    setSelectedItem(item)
-    setIsDeleteModalOpen(true)
-  }
-
-  // Confirm delete
-  const confirmDelete = () => {
-    if (selectedItem) {
-      const updatedInventory = inventory.filter(
-        (item) => item.id !== selectedItem.id
-      )
-      saveInventory(updatedInventory)
-      setIsDeleteModalOpen(false)
-      setSelectedItem(null)
-      showMessage('Item deleted successfully', 'success')
-    }
-  }
-
-  // Save item (create/update)
-  const handleSaveItem = () => {
-    if (!formData.name || !formData.category) {
-      showMessage('Name and category are required', 'error')
-      return
-    }
-
-    const newItem: InventoryItem = {
-      id: selectedItem?.id || Date.now().toString(),
-      name: formData.name || '',
-      category: formData.category || '',
-      quantity: formData.quantity || 0,
-      unit: formData.unit || '',
-      minThreshold: formData.minThreshold || 0,
-      maxThreshold: formData.maxThreshold || 0,
-      unitCost: formData.unitCost || 0,
-      supplier: formData.supplier || '',
-      location: formData.location || '',
-      notes: formData.notes || '',
-      lastRestocked: selectedItem?.lastRestocked || new Date().toISOString()
-    }
-
-    const updatedInventory = selectedItem
-      ? inventory.map((item) => (item.id === selectedItem.id ? newItem : item))
-      : [...inventory, newItem]
-
-    saveInventory(updatedInventory)
-    setIsModalOpen(false)
-    showMessage(
-      `Item ${selectedItem ? 'updated' : 'added'} successfully`,
-      'success'
-    )
-  }
-
-  // Export inventory
-  const handleExport = () => {
-    const dataStr = JSON.stringify(inventory, null, 2)
-    const dataUri =
-      'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr)
-    const exportFileDefaultName = 'inventory-data.json'
-
-    const linkElement = document.createElement('a')
-    linkElement.setAttribute('href', dataUri)
-    linkElement.setAttribute('download', exportFileDefaultName)
-    linkElement.click()
-    showMessage('Inventory exported successfully', 'success')
-  }
-
-  // Import inventory
-  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        try {
-          const importedData = JSON.parse(e.target?.result as string)
-          saveInventory(importedData)
-          showMessage('Inventory imported successfully', 'success')
-        } catch (err) {
-          showMessage('Failed to import inventory data', 'error')
-          console.error('Error importing inventory:', err)
-        }
-      }
-      reader.readAsText(file)
-    }
-  }
-
-  // Check low stock items
-  const lowStockItems = useMemo(() => {
-    return inventory.filter((item) => item.quantity <= item.minThreshold)
-  }, [inventory])
+  ];
 
   return (
     <PageContainer>
-    <div className="inventory-container">
-        <h1 className="page-title">Inventory Management</h1>
-      <header className="header">
-        <div className="header-actions">
-          <button onClick={handleAddItem} className="add-button">
-            <Plus size={16} /> Add Item
-          </button>
-          <button onClick={handleExport} className="export-button">
-            <Download size={16} /> Export
-          </button>
-          <label className="import-button">
-            <Upload size={16} /> Import
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleImport}
-              style={{ display: 'none' }}
-            />
-          </label>
-          <button onClick={loadInventory} className="refresh-button">
-            <RefreshCw size={16} /> Refresh
-          </button>
-        </div>
-      </header>
-
-      {isLoading && <div className="loading">Loading inventory data...</div>}
-      {error && (
-        <div className="error">
-          <AlertTriangle size={16} /> {error}
-        </div>
-      )}
-
-      <div className="filters">
-        <div className="search-container">
-          <Search size={16} />
-          <input
-            type="text"
-            placeholder="Search inventory..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
-          />
+      <div className="space-y-3 w-full px-2 mx-auto md:space-y-6 md:p-6">
+        <h1 className="page-title text-xl md:text-2xl">Contacts</h1>
+        
+        <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between md:space-y-0">
+          <div></div>
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/contacts/new" className="flex-1 md:flex-none">
+              <Button className="w-full h-8 md:h-9 md:w-auto">
+                <Plus className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
+                <span className="hidden md:inline">New Contact</span>
+              </Button>
+            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-8 w-8 md:h-9 md:w-9">
+                  <MoreHorizontal className="h-3 w-3 md:h-4 md:w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[160px]">
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuItem>
+                  <Mail className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                  Email Selected
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Share2 className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                  Share List
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Download className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                  Export CSV
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-red-600">
+                  <Trash2 className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                  Delete Selected
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
-        <select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="category-select"
-        >
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
+        <Separator className="my-2" />
+
+        {/* Filters */}
+        <Card className="overflow-hidden">
+          <CardHeader className="space-y-0.5 p-2 md:p-3">
+            <CardTitle className="text-sm md:text-base">Filter Contacts</CardTitle>
+            <CardDescription className="text-xs">
+              Refine your contact list
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 p-2 md:space-y-3 md:p-3">
+            <div className="flex flex-col space-y-2 md:space-y-3">
+              <div className="space-y-0.5">
+                <label className="text-xs font-medium">Status</label>
+                <Select value={params.status ?? "all"}>
+                  <SelectTrigger className="h-7 text-xs md:h-8">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="NEW">New</SelectItem>
+                    <SelectItem value="CONTACTED">Contacted</SelectItem>
+                    <SelectItem value="QUALIFIED">Qualified</SelectItem>
+                    <SelectItem value="CONVERTED">Converted</SelectItem>
+                    <SelectItem value="LOST">Lost</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-0.5">
+                <label className="text-xs font-medium">Sort By</label>
+                <Select value={params.sort}>
+                  <SelectTrigger className="h-7 text-xs md:h-8">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                    <SelectItem value="oldest">Oldest First</SelectItem>
+                    <SelectItem value="name">Name A-Z</SelectItem>
+                    <SelectItem value="name-desc">Name Z-A</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-0.5">
+                <label className="text-xs font-medium">Search</label>
+                <Search />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          {statsCards.map((stat, index) => (
+            <Card key={index} className="overflow-hidden">
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 p-2 md:p-3">
+                <CardTitle className="text-[10px] md:text-xs font-medium">
+                  {stat.title}
+                </CardTitle>
+                {stat.icon}
+              </CardHeader>
+              <CardContent className="flex flex-col justify-center items-center p-2 md:p-3">
+                <div className="text-lg md:text-2xl font-bold">
+                  {stat.value}
+                </div>
+                <span className="text-[8px] md:text-[10px] text-muted-foreground mt-0.5 md:mt-1">
+                  {stat.subtitle}
+                </span>
+              </CardContent>
+            </Card>
           ))}
-        </select>
+        </div>
+
+        {/* Contact List */}
+        <Card className="overflow-hidden">
+          <CardHeader className="space-y-0.5 p-2 md:p-3">
+            <CardTitle className="text-sm md:text-base">All Contacts</CardTitle>
+            <CardDescription className="text-xs">
+              Your contact list
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0 sm:p-2">
+            <Suspense fallback={<DataTableLoading />}>
+              <ContactList
+                searchQuery={params.search}
+                statusFilter={params.status}
+                sortOrder={params.sort}
+                page={params.page}
+              />
+            </Suspense>
+          </CardContent>
+        </Card>
       </div>
-
-      {lowStockItems.length > 0 && (
-        <div className="low-stock-alert">
-          <AlertCircle size={16} />
-          <span>{lowStockItems.length} item(s) are running low on stock</span>
-          <button
-            onClick={() => setSelectedCategory('All')}
-            className="view-all-button"
-          >
-            View All
-          </button>
-        </div>
-      )}
-
-      <div className="inventory-table-container">
-        <table className="inventory-table">
-          <thead>
-            <tr>
-              <th onClick={() => handleSort('name')}>
-                Name {sortConfig.key === 'name' && <ArrowUpDown size={16} />}
-              </th>
-              <th onClick={() => handleSort('category')}>
-                Category{' '}
-                {sortConfig.key === 'category' && <ArrowUpDown size={16} />}
-              </th>
-              <th onClick={() => handleSort('quantity')}>
-                Quantity{' '}
-                {sortConfig.key === 'quantity' && <ArrowUpDown size={16} />}
-              </th>
-              <th onClick={() => handleSort('minThreshold')}>
-                Min Threshold{' '}
-                {sortConfig.key === 'minThreshold' && <ArrowUpDown size={16} />}
-              </th>
-              <th onClick={() => handleSort('unitCost')}>
-                Unit Cost{' '}
-                {sortConfig.key === 'unitCost' && <ArrowUpDown size={16} />}
-              </th>
-              <th onClick={() => handleSort('supplier')}>
-                Supplier{' '}
-                {sortConfig.key === 'supplier' && <ArrowUpDown size={16} />}
-              </th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredInventory.map((item) => (
-              <tr
-                key={item.id}
-                className={
-                  item.quantity <= item.minThreshold ? 'low-stock' : ''
-                }
-              >
-                <td>{item.name}</td>
-                <td>{item.category}</td>
-                <td>
-                  {item.quantity} {item.unit}
-                </td>
-                <td>{item.minThreshold}</td>
-                <td>${item.unitCost.toFixed(2)}</td>
-                <td>{item.supplier}</td>
-                <td className="actions">
-                  <button
-                    onClick={() => handleEditItem(item)}
-                    className="edit-button"
-                  >
-                    <Edit2 size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteItem(item)}
-                    className="delete-button"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h2>{selectedItem ? 'Edit Item' : 'Add New Item'}</h2>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Name</label>
-                <input
-                  type="text"
-                  value={formData.name || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Category</label>
-                <input
-                  type="text"
-                  value={formData.category || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, category: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Quantity</label>
-                <input
-                  type="number"
-                  value={formData.quantity || 0}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      quantity: parseInt(e.target.value)
-                    })
-                  }
-                  min="0"
-                />
-              </div>
-              <div className="form-group">
-                <label>Unit</label>
-                <input
-                  type="text"
-                  value={formData.unit || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, unit: e.target.value })
-                  }
-                  placeholder="e.g., kg, lbs, pcs"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Min Threshold</label>
-                <input
-                  type="number"
-                  value={formData.minThreshold || 0}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      minThreshold: parseInt(e.target.value)
-                    })
-                  }
-                  min="0"
-                />
-              </div>
-              <div className="form-group">
-                <label>Max Threshold</label>
-                <input
-                  type="number"
-                  value={formData.maxThreshold || 0}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      maxThreshold: parseInt(e.target.value)
-                    })
-                  }
-                  min="0"
-                />
-              </div>
-              <div className="form-group">
-                <label>Unit Cost ($)</label>
-                <input
-                  type="number"
-                  value={formData.unitCost || 0}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      unitCost: parseFloat(e.target.value)
-                    })
-                  }
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-              <div className="form-group">
-                <label>Supplier</label>
-                <input
-                  type="text"
-                  value={formData.supplier || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, supplier: e.target.value })
-                  }
-                />
-              </div>
-              <div className="form-group">
-                <label>Location</label>
-                <input
-                  type="text"
-                  value={formData.location || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, location: e.target.value })
-                  }
-                />
-              </div>
-              <div className="form-group full-width">
-                <label>Notes</label>
-                <textarea
-                  value={formData.notes || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, notes: e.target.value })
-                  }
-                  rows={3}
-                />
-              </div>
-            </div>
-            <div className="modal-actions">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="cancel-button"
-              >
-                <X size={16} /> Cancel
-              </button>
-              <button onClick={handleSaveItem} className="save-button">
-                <Save size={16} /> Save Item
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isDeleteModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content delete-modal">
-            <h2>Confirm Delete</h2>
-            <p>
-              Are you sure you want to delete &quot;{selectedItem?.name}&quot;?
-              This action cannot be undone.
-            </p>
-            <div className="modal-actions">
-              <button
-                onClick={() => setIsDeleteModalOpen(false)}
-                className="cancel-button"
-              >
-                <X size={16} /> Cancel
-              </button>
-              <button onClick={confirmDelete} className="delete-button">
-                <Trash2 size={16} /> Delete Item
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {message && (
-        <div className={`notification ${message.type}`}>
-          {message.type === 'success' ? (
-            <Check size={16} />
-          ) : (
-            <AlertTriangle size={16} />
-          )}
-          {message.text}
-        </div>
-      )}
-
-
-      
-    </div>
     </PageContainer>
-  )
-}
-
-export default InventoryManagement
+  );
+} 

@@ -4,6 +4,9 @@ export interface MenuItem {
   price: number;
   category: string;
   popular: boolean;
+  active?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface MilkOption {
@@ -31,17 +34,25 @@ export interface Order {
   customerName: string;
   customerInfo: CustomerInfo;
   items: CartItem[];
-  notes: string;
-  timestamp: string;
+  notes?: string;
   status: string;
   total: number;
+  interested?: boolean;
   isComplimentary: boolean;
-  queueTime: number;
+  queueTime?: number;
   startTime: Date;
+  userId: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  preparationTime?: number;
 }
 
 export interface QuickNote {
   id: string;
   content: string;
-  createdAt: Date;
+  userId: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
+
+

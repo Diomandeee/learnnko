@@ -1,4 +1,3 @@
-// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,25 +8,31 @@ datasource db {
 }
 
 model User {
-  id        String     @id @default(auto()) @map("_id") @db.ObjectId
-  email     String     @unique
-  name      String?
-  password  String
-  role      Role       @default(USER)
-  contacts  Contact[]
-  bio          String?
-  phoneNumber  String?
-  preferences  Json?
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  email         String      @unique
+  name          String?
+  password      String
+  role          Role        @default(USER)
+  contacts      Contact[]
+  bio           String?
+  phoneNumber   String?
+  preferences   Json?
   notifications Json?
-  activities   Activity[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  activities    Activity[]
+  orders        Order[]
+  quickNotes    QuickNote[]
+  menuItems     MenuItem[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  qrCodes       QRCode[]
+  folders       Folder[]
 }
+
 model Activity {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   userId      String   @db.ObjectId
   user        User     @relation(fields: [userId], references: [id])
-  contactId   String   @db.ObjectId  // Add contactId field here
+  contactId   String   @db.ObjectId
   type        String
   description String
   metadata    Json?
@@ -49,6 +54,118 @@ model Contact {
   updatedAt DateTime @updatedAt
 }
 
+model MenuItem {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  price       Float
+  category    String
+  popular     Boolean   @default(false)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      String    @db.ObjectId
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  orderNumber     Int
+  customerName    String
+  status          OrderStatus @default(PENDING)
+  timestamp       DateTime  @default(now())
+  total          Float
+  isComplimentary Boolean   @default(false)
+  queueTime      Float
+  preparationTime Float?
+  startTime      DateTime?
+  customerEmail  String?
+  customerPhone  String?
+  leadInterest   Boolean?
+  notes          String?
+  items          OrderItem[]
+  userId         String    @db.ObjectId
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model OrderItem {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  menuItem    MenuItem  @relation(fields: [menuItemId], references: [id])
+  menuItemId  String    @db.ObjectId
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId     String    @db.ObjectId
+  quantity    Int
+  price       Float
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model QuickNote {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Folder {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  color     String?   @default("#94a3b8")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  qrCodes   QRCode[]
+  userId    String    @db.ObjectId
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model QRCode {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  defaultUrl    String
+  shortCode     String         @unique
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  userId        String         @db.ObjectId
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folderId      String?        @db.ObjectId
+  folder        Folder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  deviceRules   DeviceRule[]
+  scheduleRules ScheduleRule[]
+}
+
+model DeviceRule {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  qrCodeId   String   @db.ObjectId
+  qrCode     QRCode   @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  deviceType String
+  browsers   String[]
+  os         String[]
+  targetUrl  String
+  priority   Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model ScheduleRule {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  qrCodeId   String    @db.ObjectId
+  qrCode     QRCode    @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  startDate  DateTime
+  endDate    DateTime?
+  timeZone   String
+  daysOfWeek Int[]
+  startTime  String?
+  endTime    String?
+  targetUrl  String
+  priority   Int
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
 
 enum Role {
   USER
@@ -61,4 +178,11 @@ enum Status {
   QUALIFIED
   CONVERTED
   LOST
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
 }

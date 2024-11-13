@@ -10,7 +10,6 @@ module.exports = {
 }
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/prisma/schema.prisma
-// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -21,25 +20,31 @@ datasource db {
 }
 
 model User {
-  id        String     @id @default(auto()) @map("_id") @db.ObjectId
-  email     String     @unique
-  name      String?
-  password  String
-  role      Role       @default(USER)
-  contacts  Contact[]
-  bio          String?
-  phoneNumber  String?
-  preferences  Json?
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  email         String      @unique
+  name          String?
+  password      String
+  role          Role        @default(USER)
+  contacts      Contact[]
+  bio           String?
+  phoneNumber   String?
+  preferences   Json?
   notifications Json?
-  activities   Activity[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  activities    Activity[]
+  orders        Order[]
+  quickNotes    QuickNote[]
+  menuItems     MenuItem[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  qrCodes       QRCode[]
+  folders       Folder[]
 }
+
 model Activity {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   userId      String   @db.ObjectId
   user        User     @relation(fields: [userId], references: [id])
-  contactId   String   @db.ObjectId  // Add contactId field here
+  contactId   String   @db.ObjectId
   type        String
   description String
   metadata    Json?
@@ -61,6 +66,63 @@ model Contact {
   updatedAt DateTime @updatedAt
 }
 
+model MenuItem {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  price       Float
+  category    String
+  popular     Boolean   @default(false)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      String    @db.ObjectId
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  orderNumber     Int
+  customerName    String
+  status          OrderStatus @default(PENDING)
+  timestamp       DateTime  @default(now())
+  total          Float
+  isComplimentary Boolean   @default(false)
+  queueTime      Float
+  preparationTime Float?
+  startTime      DateTime?
+  customerEmail  String?
+  customerPhone  String?
+  leadInterest   Boolean?
+  notes          String?
+  items          OrderItem[]
+  userId         String    @db.ObjectId
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model OrderItem {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  menuItem    MenuItem  @relation(fields: [menuItemId], references: [id])
+  menuItemId  String    @db.ObjectId
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId     String    @db.ObjectId
+  quantity    Int
+  price       Float
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model QuickNote {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 enum Role {
   USER
   ADMIN
@@ -73,276 +135,610 @@ enum Status {
   CONVERTED
   LOST
 }
+
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+
+model Folder {
+  id        String    @id @default(cuid())
+  name      String
+  color     String?   @default("#94a3b8")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  qrCodes   QRCode[]
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model QRCode {
+  id            String         @id @default(cuid())
+  name          String
+  defaultUrl    String
+  shortCode     String         @unique
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folderId      String?
+  folder        Folder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  deviceRules   DeviceRule[]
+  scheduleRules ScheduleRule[]
+
+  @@index([shortCode])
+}
+
+model DeviceRule {
+  id         String   @id @default(cuid())
+  qrCodeId   String
+  qrCode     QRCode   @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  deviceType String
+  browsers   String[]
+  os         String[]
+  targetUrl  String
+  priority   Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model ScheduleRule {
+  id         String    @id @default(cuid())
+  qrCodeId   String
+  qrCode     QRCode    @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  startDate  DateTime
+  endDate    DateTime?
+  timeZone   String
+  daysOfWeek Int[]
+  startTime  String?
+  endTime    String?
+  targetUrl  String
+  priority   Int
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/prisma/seed.ts
+import { PrismaClient } from '@prisma/client';
+import { INITIAL_MENU_ITEMS } from '../src/constants/pos-data';
+
+const prisma = new PrismaClient();
+
+async function main() {
+ console.log('Starting seeding...');
+
+ // Seed menu items
+ for (const item of INITIAL_MENU_ITEMS) {
+   const existingItem = await prisma.menuItem.findFirst({
+     where: {
+       name: item.name,
+     },
+   });
+
+   if (!existingItem) {
+     await prisma.menuItem.create({
+       data: item,
+     });
+     console.log(`Created menu item: ${item.name}`);
+   } else {
+     console.log(`Menu item already exists: ${item.name}`);
+   }
+ }
+
+ console.log('Seeding finished.');
+}
+
+main()
+ .catch((e) => {
+   console.error(e);
+   process.exit(1);
+ })
+ .finally(async () => {
+   await prisma.$disconnect();
+ });
+
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/setup-buf-crm.sh
 #!/bin/bash
 
-cat > "src/app/dashboard/contacts/page.tsx" << 'EOF'
-import { Suspense } from "react";
-import { ContactList } from "@/components/contacts/contact-list";
-import { Search } from "@/components/contacts/search";
-import { PageContainer } from "@/components/layout/page-container";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { getContactStats } from "@/lib/contacts";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Separator } from "@/components/ui/separator";
-import {
-  ArrowUp,
-  ArrowDown,
-  Download,
-  MoreHorizontal,
-  UserPlus,
-  Mail,
-  Share2,
-  Trash2,
-  Users,
-  Plus,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import Link from "next/link";
-import { DataTableLoading } from "@/components/contacts/data-table-loading";
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-interface PageProps {
-  searchParams?: {
-    [key: string]: string | undefined
-  }
+echo -e "${BLUE}Creating complete reports implementation...${NC}"
+
+# First, let's update the prisma schema
+cat > prisma/schema.prisma << 'EOF'
+generator client {
+  provider = "prisma-client-js"
 }
 
-async function getSearchParams(searchParams: PageProps['searchParams']) {
-  const params = {
-    search: searchParams?.search,
-    status: searchParams?.status,
-    sort: searchParams?.sort ?? 'newest',
-    page: searchParams?.page ? parseInt(searchParams.page) : 1
-  };
-
-  return Promise.resolve(params);
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
-export default async function ContactsPage({ searchParams = {} }: PageProps) {
-  const [stats, params] = await Promise.all([
-    getContactStats(),
-    getSearchParams(searchParams)
-  ]);
+model User {
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  email         String      @unique
+  name          String?
+  password      String
+  role          Role        @default(USER)
+  contacts      Contact[]
+  bio           String?
+  phoneNumber   String?
+  preferences   Json?
+  notifications Json?
+  activities    Activity[]
+  orders        Order[]
+  menuItems     MenuItem[]
+  quickNotes    QuickNote[]
+  salesReports  SalesReport[]
+  metricsSnapshots MetricsSnapshot[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
 
-  return (
-    <PageContainer>
-      <div className="space-y-4 px-2 md:space-y-6 md:p-6">
-        {/* Header Section */}
-        <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between md:space-y-0">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight md:text-3xl">Contacts</h1>
-            <p className="text-xs text-muted-foreground md:text-base">
-              Manage your contacts and leads effectively
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link href="/dashboard/contacts/new" className="flex-1 md:flex-none">
-              <Button className="w-full md:w-auto">
-                <Plus className="h-4 w-4 md:mr-2" />
-                <span className="hidden md:inline">New Contact</span>
-              </Button>
-            </Link>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[180px]">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Email Selected
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Share2 className="mr-2 h-4 w-4" />
-                  Share List
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Download className="mr-2 h-4 w-4" />
-                  Export CSV
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-red-600">
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Selected
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
+model Activity {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id])
+  contactId   String   @db.ObjectId
+  type        String
+  description String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+}
 
-        <Separator className="my-2 md:my-4" />
+model Contact {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  firstName String
+  lastName  String
+  email     String
+  phone     String?
+  company   String?
+  notes     String?
+  status    Status   @default(NEW)
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
-        {/* Filters - Single column on mobile */}
-        <Card className="overflow-hidden">
-          <CardHeader className="space-y-1 p-4">
-            <CardTitle className="text-base">Filter Contacts</CardTitle>
-            <CardDescription className="text-xs">
-              Refine your contact list
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 p-4">
-            <div className="flex flex-col space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium">Status</label>
-                <Select value={params.status ?? "all"}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="NEW">New</SelectItem>
-                    <SelectItem value="CONTACTED">Contacted</SelectItem>
-                    <SelectItem value="QUALIFIED">Qualified</SelectItem>
-                    <SelectItem value="CONVERTED">Converted</SelectItem>
-                    <SelectItem value="LOST">Lost</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+model MenuItem {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  price       Float
+  category    String
+  popular     Boolean   @default(false)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      String    @db.ObjectId
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+  salesMetrics SalesItemMetrics[]
+}
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium">Sort By</label>
-                <Select value={params.sort}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="newest">Newest First</SelectItem>
-                    <SelectItem value="oldest">Oldest First</SelectItem>
-                    <SelectItem value="name">Name A-Z</SelectItem>
-                    <SelectItem value="name-desc">Name Z-A</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+model Order {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  orderNumber     Int
+  customerName    String
+  status          OrderStatus @default(PENDING)
+  timestamp       DateTime  @default(now())
+  total          Float
+  isComplimentary Boolean   @default(false)
+  queueTime      Float
+  preparationTime Float?
+  startTime      DateTime?
+  customerEmail  String?
+  customerPhone  String?
+  leadInterest   Boolean?
+  notes          String?
+  items          OrderItem[]
+  userId         String    @db.ObjectId
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  salesReport    SalesReport?  @relation(fields: [salesReportId], references: [id])
+  salesReportId  String?   @db.ObjectId
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium">Search</label>
-                <Search className="h-8" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+model OrderItem {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  menuItem    MenuItem  @relation(fields: [menuItemId], references: [id])
+  menuItemId  String    @db.ObjectId
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId     String    @db.ObjectId
+  quantity    Int
+  price       Float
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
 
-        {/* Stats Cards - Single column on mobile */}
-        <div className="grid gap-3 md:grid-cols-4">
-          <Card className="relative overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium">Total</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <div className="text-lg font-bold">{stats.total.toLocaleString()}</div>
-              <div className="flex items-center space-x-1">
-                {parseFloat(stats.percentageChange) > 0 ? (
-                  <ArrowUp className="h-3 w-3 text-emerald-500" />
-                ) : (
-                  <ArrowDown className="h-3 w-3 text-red-500" />
-                )}
-                <p className={cn(
-                  "text-[10px]",
-                  parseFloat(stats.percentageChange) > 0 ? "text-emerald-500" : "text-red-500"
-                )}>
-                  {stats.percentageChange}%
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+model QuickNote {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
-          <Card className="overflow-hidden md:block">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium">New</CardTitle>
-              <UserPlus className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <div className="text-lg font-bold">{stats.newThisMonth.toLocaleString()}</div>
-              <p className="text-[10px] text-muted-foreground">This month</p>
-            </CardContent>
-          </Card>
+model SalesReport {
+  id                    String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId                String    @db.ObjectId
+  user                  User      @relation(fields: [userId], references: [id])
+  date                  DateTime
+  totalSales           Float
+  totalOrders          Int
+  averageOrderValue    Float
+  uniqueCustomers      Int
+  repeatCustomerRate   Float
+  averagePreparationTime Float
+  customerRetentionRate Float
+  salesGrowthRate      Float
+  orders               Order[]
+  peakHourSales        Json      // Stores hour and sales data
+  categoryPerformance  Json      // Stores category-wise performance
+  topSellingItems      Json      // Stores top selling items data
+  hourlyOrders         Json      // Stores orders by hour
+  preparationTimes     Json      // Stores preparation time analytics
+  dailyMetrics         Json      // Stores daily sales and orders
+  periodComparison     Json?     // Stores comparison with previous period
+  itemMetrics          SalesItemMetrics[]
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
 
-          <Card className="overflow-hidden md:block">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium">Qualified</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <div className="text-lg font-bold">
-                {(stats.byStatus?.QUALIFIED || 0).toLocaleString()}
-              </div>
-              <p className="text-[10px] text-muted-foreground">Active leads</p>
-            </CardContent>
-          </Card>
+model SalesItemMetrics {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  menuItem        MenuItem  @relation(fields: [menuItemId], references: [id])
+  menuItemId      String    @db.ObjectId
+  salesReport     SalesReport @relation(fields: [salesReportId], references: [id])
+  salesReportId   String    @db.ObjectId
+  quantity        Int
+  revenue         Float
+  averagePrice    Float
+  popularity      Float     // Percentage of orders containing this item
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
 
-          <Card className="overflow-hidden md:block">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium">Conversion</CardTitle>
-              <ArrowUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <div className="text-lg font-bold">
-                {stats.total > 0
-                  ? ((stats.byStatus?.CONVERTED || 0) / stats.total * 100).toFixed(1)
-                  : "0.0"}%
-              </div>
-              <p className="text-[10px] text-muted-foreground">Overall rate</p>
-            </CardContent>
-          </Card>
-        </div>
+model MetricsSnapshot {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String    @db.ObjectId
+  user            User      @relation(fields: [userId], references: [id])
+  timestamp       DateTime  @default(now())
+  metrics         Json      // Stores detailed metrics data
+  type            String    // daily, weekly, monthly
+  periodStart     DateTime
+  periodEnd       DateTime
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-        {/* Contact List */}
-        <Card className="overflow-hidden">
-          <CardHeader className="space-y-1 p-4">
-            <CardTitle className="text-base">All Contacts</CardTitle>
-            <CardDescription className="text-xs">
-              Your contact list
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-0 sm:p-2">
-            <Suspense fallback={<DataTableLoading />}>
-              <ContactList
-                searchQuery={params.search}
-                statusFilter={params.status}
-                sortOrder={params.sort}
-                page={params.page}
-              />
-            </Suspense>
-          </CardContent>
-        </Card>
-      </div>
-    </PageContainer>
-  );
+  @@index([userId, type, timestamp])
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Status {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  LOST
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
 }
 EOF
 
-echo "Updated contacts page with improved mobile responsiveness!"
-echo "Key changes:"
-echo "1. Stats cards now single column on mobile"
-echo "2. Filters section optimized for mobile width"
-echo "3. Reduced padding and margins to prevent horizontal scroll"
-echo "4. Improved typography scaling"
-echo "5. Better compact layout for mobile view"
+# Create reports service with all helper functions
+mkdir -p src/lib/services
+
+cat > src/lib/services/reports-service.ts << 'EOF'
+import { 
+  Order, 
+  SalesReport, 
+  MetricsSnapshot,
+  SalesItemMetrics,
+  CategoryPerformance
+} from '@/types/pos';
+import { 
+  startOfDay,
+  endOfDay,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  subDays,
+  format 
+} from 'date-fns';
+
+interface DateRange {
+  start: Date;
+  end: Date;
+}
+
+interface SalesMetrics {
+  totalSales: number;
+  totalOrders: number;
+  averageOrderValue: number;
+  uniqueCustomers: number;
+  repeatCustomerRate: number;
+  averagePreparationTime: number;
+  customerRetentionRate: number;
+  salesGrowthRate: number;
+  peakHourSales: {
+    hour: string | number;
+    sales: number;
+  };
+  categoryPerformance: CategoryPerformance[];
+  dailyMetrics: DailyMetrics[];
+  topSellingItems: TopSellingItem[];
+  hourlyOrders: HourlyOrders[];
+  preparationTimes: PreparationTime[];
+}
+
+interface DailyMetrics {
+  date: string;
+  sales: number;
+  orders: number;
+}
+
+interface TopSellingItem {
+  name: string;
+  quantity: number;
+  revenue: number;
+}
+
+interface HourlyOrders {
+  hour: number;
+  orders: number;
+}
+
+interface PreparationTime {
+  preparationTime: number;
+  orderValue: number;
+}
+
+interface ExportOptions {
+  format: 'csv' | 'pdf' | 'json';
+  includeDetails: boolean;
+  dateRange: DateRange;
+}
+
+export const reportsService = {
+  // Main data fetching function
+  async getReports(dateRange: DateRange): Promise<Order[]> {
+    try {
+      const response = await fetch('/api/pos/reports?' + new URLSearchParams({
+        start: dateRange.start.toISOString(),
+        end: dateRange.end.toISOString()
+      }));
+      
+      if (!response.ok) throw new Error('Failed to fetch reports');
+      
+      const orders = await response.json();
+      
+      // Store in localStorage as backup
+      this.cacheReportData(dateRange.start, orders);
+      
+      return orders;
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+      return this.getBackupReportData(dateRange);
+    }
+  },
+
+  // Cache management
+  private cacheReportData(startDate: Date, data: Order[]): void {
+    const cacheKey = `cached_reports_${format(startDate, 'yyyy-MM-dd')}`;
+    const cacheData = {
+      timestamp: new Date().toISOString(),
+      orders: data
+    };
+    localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+  },
+
+  private getBackupReportData(dateRange: DateRange): Order[] {
+    // Try to get from cache first
+    const cacheKey = `cached_reports_${format(dateRange.start, 'yyyy-MM-dd')}`;
+    const cachedData = localStorage.getItem(cacheKey);
+    
+    if (cachedData) {
+      const { orders } = JSON.parse(cachedData);
+      return orders;
+    }
+    
+    // Fall back to filtering all orders
+    const allOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+    return allOrders.filter((order: Order) => {
+      const orderDate = new Date(order.timestamp);
+      return orderDate >= dateRange.start && orderDate <= dateRange.end;
+    });
+  },
+
+  // Detailed metrics generation
+  async generateDetailedReport(dateRange: DateRange): Promise<SalesReport> {
+    try {
+      const response = await fetch('/api/pos/reports/detailed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dateRange),
+      });
+      
+      if (!response.ok) throw new Error('Failed to generate detailed report');
+      
+      const report = await response.json();
+      return report;
+    } catch (error) {
+      console.error('Error generating detailed report:', error);
+      throw error;
+    }
+  },
+
+  // Metrics snapshots
+  async getMetricsSnapshot(type: 'daily' | 'weekly' | 'monthly'): Promise<MetricsSnapshot> {
+    try {
+      const response = await fetch(`/api/pos/reports/metrics/${type}`);
+      if (!response.ok) throw new Error('Failed to fetch metrics snapshot');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching metrics snapshot:', error);
+      throw error;
+    }
+  },
+
+  // Export functionality
+  async exportReportData(options: ExportOptions): Promise<Blob> {
+    try {
+      const response = await fetch('/api/pos/reports/export', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(options),
+      });
+      
+      if (!response.ok) throw new Error('Failed to export report');
+      
+      return await response.blob();
+    } catch (error) {
+      console.error('Error exporting report:', error);
+      throw error;
+    }
+  },
+
+  // Helper functions for calculations
+  calculateMetrics(orders: Order[]): SalesMetrics {
+    const totalSales = orders.reduce((sum, order) => 
+      sum + (order.isComplimentary ? 0 : order.total), 0
+    );
+
+    const totalOrders = orders.length;
+
+    const uniqueCustomers = new Set(
+      orders.map(order => order.customerName)
+    ).size;
+
+    // More calculations...
+    // This is just a partial implementation
+    return {
+      totalSales,
+      totalOrders,
+      averageOrderValue: totalOrders > 0 ? totalSales / totalOrders : 0,
+      uniqueCustomers,
+      // ... other metrics
+    } as SalesMetrics;
+  },
+
+  // Trend analysis
+  analyzeTrends(currentPeriod: Order[], previousPeriod: Order[]): any {
+    // Implement trend analysis
+    return {
+      salesGrowth: 0,
+      orderGrowth: 0,
+      // ... other trend metrics
+    };
+  },
+
+  // Time-based analysis
+  getPeriodComparison(dateRange: DateRange): Promise<any> {
+    // Implementation
+  },
+
+  // Category analysis
+  analyzeCategoryPerformance(orders: Order[]): CategoryPerformance[] {
+    // Implementation
+  }
+};
+
+EOF
+
+# Create API routes for reports
+mkdir -p src/app/api/pos/reports
+
+cat > src/app/api/pos/reports/route.ts << 'EOF'
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/options";
+
+export async function GET(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const start = searchParams.get('start');
+    const end = searchParams.get('end');
+
+    if (!start || !end) {
+      return NextResponse.json(
+        { error: "Start and end dates are required" },
+        { status: 400 }
+      );
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Get all orders for the period
+    const orders = await prisma.order.findMany({
+      where: {
+        userId: user.id,
+        timestamp: {
+          gte: new Date(start),
+          lte: new Date(end)
+        }
+      },
+      include: {
+        items: {
+          include: {
+            menuItem: true
+          }
+        }
+      },
+      orderBy: {
+        timestamp: 'asc'
+      }
+    });
+
+    return NextResponse.json(orders);
+  } catch (error) {
+    console.error("[REPORTS_GET]", error);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const session
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/auth/[...nextauth]/route.ts
 import { authOptions } from "@/lib/auth/options";
@@ -699,6 +1095,1111 @@ export async function GET() {
   }
 }
 ________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/folders/[id]/route.ts
+import { NextResponse } from "next/server"
+import { prisma } from "@/lib/db"
+import { getServerSession } from "next-auth"
+
+// DELETE handler
+export async function DELETE(request: Request) {
+  try {
+    const session = await getServerSession()
+
+    if (!session?.user?.email) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return new NextResponse("User not found", { status: 401 })
+    }
+
+    // Extract `id` from the URL
+    const url = new URL(request.url)
+    const id = url.pathname.split("/").pop()
+
+    const folder = await prisma.folder.findUnique({
+      where: { id: id as string }
+    })
+
+    if (!folder) {
+      return new NextResponse("Folder not found", { status: 404 })
+    }
+
+    if (folder.userId !== user.id) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    // Delete the folder and set any QR codes in it to have null folderId
+    await prisma.$transaction([
+      prisma.qRCode.updateMany({
+        where: { folderId: id },
+        data: { folderId: null }
+      }),
+      prisma.folder.delete({
+        where: { id: id as string }
+      })
+    ])
+
+    return new NextResponse(null, { status: 204 })
+  } catch (error) {
+    console.error("[FOLDER_DELETE]", error)
+    return new NextResponse("Internal Server Error", { status: 500 })
+  }
+}
+
+// PATCH handler
+export async function PATCH(request: Request) {
+  try {
+    const session = await getServerSession()
+
+    if (!session?.user?.email) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const json = await request.json()
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return new NextResponse("User not found", { status: 401 })
+    }
+
+    // Extract `id` from the URL
+    const url = new URL(request.url)
+    const id = url.pathname.split("/").pop()
+
+    const folder = await prisma.folder.findUnique({
+      where: { id: id as string }
+    })
+
+    if (!folder) {
+      return new NextResponse("Folder not found", { status: 404 })
+    }
+
+    if (folder.userId !== user.id) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const updatedFolder = await prisma.folder.update({
+      where: { id: id as string },
+      data: {
+        name: json.name,
+      }
+    })
+
+    return NextResponse.json(updatedFolder)
+  } catch (error) {
+    console.error("[FOLDER_UPDATE]", error)
+    return new NextResponse("Internal Server Error", { status: 500 })
+  }
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/folders/route.ts
+import { NextResponse } from "next/server"
+import { prisma } from "@/lib/db/prisma"
+import { getServerSession } from "next-auth"
+import { z } from "zod"
+
+const createFolderSchema = z.object({
+  name: z.string().min(2),
+  color: z.string().optional(),
+})
+
+export async function GET() {
+  try {
+    const session = await getServerSession()
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 401 })
+    }
+
+    const folders = await prisma.folder.findMany({
+      where: { userId: user.id },
+      include: {
+        _count: {
+          select: { qrCodes: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+
+    return NextResponse.json(folders)
+  } catch (error) {
+    console.error("[FOLDERS_GET]", error)
+    return NextResponse.json(
+      { error: "Failed to fetch folders" },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const session = await getServerSession()
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 401 })
+    }
+
+    const json = await request.json()
+    const data = createFolderSchema.parse(json)
+
+    const folder = await prisma.folder.create({
+      data: {
+        name: data.name,
+        userId: user.id,
+      },
+      include: {
+        _count: {
+          select: { qrCodes: true }
+        }
+      }
+    })
+
+    return NextResponse.json(folder)
+  } catch (error) {
+    console.error("[FOLDER_CREATE]", error)
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: error.errors[0].message },
+        { status: 400 }
+      )
+    }
+    return NextResponse.json(
+      { error: "Failed to create folder" },
+      { status: 500 }
+    )
+  }
+}
+
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/pos/menu/[id]/route.ts
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/options";
+
+export async function PATCH(
+ request: Request,
+ { params }: { params: { id: string } }
+) {
+ try {
+   const session = await getServerSession(authOptions);
+   if (!session?.user?.email) {
+     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+   }
+
+   const data = await request.json();
+   const menuItem = await prisma.menuItem.update({
+     where: { id: params.id },
+     data: {
+       name: data.name,
+       price: data.price,
+       category: data.category,
+       popular: data.popular
+     }
+   });
+
+   return NextResponse.json(menuItem);
+ } catch (error) {
+   console.error("[MENU_PATCH]", error);
+   return NextResponse.json({ error: "Internal error" }, { status: 500 });
+ }
+}
+
+export async function DELETE(
+ request: Request,
+ { params }: { params: { id: string } }
+) {
+ try {
+   const session = await getServerSession(authOptions);
+   if (!session?.user?.email) {
+     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+   }
+
+   await prisma.menuItem.update({
+     where: { id: params.id },
+     data: { active: false }
+   });
+
+   return new NextResponse(null, { status: 204 });
+ } catch (error) {
+   console.error("[MENU_DELETE]", error);
+   return NextResponse.json({ error: "Internal error" }, { status: 500 });
+ }
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/pos/menu/route.ts
+// src/app/api/pos/menu/route.ts
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/options";
+
+export async function GET(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const menuItems = await prisma.menuItem.findMany({
+      where: {
+        active: true,
+        userId: user.id
+      },
+      orderBy: {
+        category: 'asc'
+      }
+    });
+
+    return NextResponse.json(menuItems);
+  } catch (error) {
+    if (error instanceof Error) {
+      return NextResponse.json({ 
+        error: "Internal error", 
+        message: error.message 
+      }, { status: 500 });
+    }
+    return NextResponse.json({ 
+      error: "Internal error" 
+    }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const data = await request.json();
+    const menuItem = await prisma.menuItem.create({
+      data: {
+        name: data.name,
+        price: data.price,
+        category: data.category,
+        popular: data.popular,
+        active: true,
+        userId: user.id
+      }
+    });
+
+    return NextResponse.json(menuItem);
+  } catch (error) {
+    if (error instanceof Error) {
+      return NextResponse.json({ 
+        error: "Internal error", 
+        message: error.message 
+      }, { status: 500 });
+    }
+    return NextResponse.json({ 
+      error: "Internal error" 
+    }, { status: 500 });
+  }
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/pos/notes/route.ts
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/options";
+
+export async function GET() {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Query QuickNotes with proper relation
+    const notes = await prisma.quickNote.findMany({
+      where: { 
+        userId: user.id 
+      },
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
+        updatedAt: true
+      },
+      orderBy: { 
+        createdAt: "desc" 
+      }
+    });
+
+    return NextResponse.json(notes);
+  } catch (error) {
+    console.error("[NOTES_GET]", error);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const data = await request.json();
+    
+    const note = await prisma.quickNote.create({
+      data: {
+        content: data.content,
+        userId: user.id
+      }
+    });
+
+    return NextResponse.json(note);
+  } catch (error) {
+    console.error("[NOTES_POST]", error);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/pos/orders/[id]/route.ts
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/options";
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const data = await request.json();
+    const orderId = params.id;
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: data.status,
+        notes: data.notes,
+        leadInterest: data.leadInterest,
+        preparationTime: data.preparationTime,
+        items: data.items ? {
+          deleteMany: {},
+          create: data.items.map((item: any) => ({
+            menuItemId: item.id,
+            quantity: item.quantity,
+            price: item.price
+          }))
+        } : undefined
+      },
+      include: {
+        items: {
+          include: {
+            menuItem: true
+          }
+        }
+      }
+    });
+
+    // Update localStorage
+    const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+    const updatedOrders = existingOrders.map((order: any) => 
+      order.id === orderId ? updatedOrder : order
+    );
+    localStorage.setItem('orders', JSON.stringify(updatedOrders));
+
+    return NextResponse.json(updatedOrder);
+  } catch (error) {
+    console.error("[ORDERS_PATCH]", error);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const orderId = params.id;
+
+    // Set order status to cancelled instead of deleting
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { status: 'CANCELLED' }
+    });
+
+    // Update localStorage
+    const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+    const updatedOrders = existingOrders.filter((order: any) => order.id !== orderId);
+    localStorage.setItem('orders', JSON.stringify(updatedOrders));
+
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    console.error("[ORDERS_DELETE]", error);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/pos/orders/route.ts
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/options";
+
+export async function GET(request: Request) {
+  try {
+    // Get the session
+    const session = await getServerSession(authOptions);
+    
+    // Check if user is authenticated
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get the user
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Get user's orders with included items and menu items
+    const orders = await prisma.order.findMany({
+      where: {
+        userId: user.id
+      },
+      include: {
+        items: {
+          include: {
+            menuItem: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    return NextResponse.json(orders);
+  } catch (error) {
+    console.error("[ORDERS_GET]", error);
+    return NextResponse.json(
+      { error: "Internal error" }, 
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const data = await request.json();
+
+    // Create order with items
+    const order = await prisma.order.create({
+      data: {
+        orderNumber: data.orderNumber,
+        customerName: data.customerName,
+        status: data.status || 'PENDING',
+        total: data.total,
+        isComplimentary: data.isComplimentary,
+        queueTime: data.queueTime,
+        startTime: data.startTime,
+        customerEmail: data.customerEmail,
+        customerPhone: data.customerPhone,
+        notes: data.notes,
+        userId: user.id,
+        items: {
+          create: data.items.map((item: any) => ({
+            menuItemId: item.id,
+            quantity: item.quantity,
+            price: item.price
+          }))
+        }
+      },
+      include: {
+        items: {
+          include: {
+            menuItem: true
+          }
+        }
+      }
+    });
+
+    return NextResponse.json(order);
+  } catch (error) {
+    console.error("[ORDERS_POST]", error);
+    return NextResponse.json(
+      { error: "Failed to create order" }, 
+      { status: 500 }
+    );
+  }
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/pos/waste/route.ts
+// import { NextResponse } from "next/server";
+// import { prisma } from "@/lib/db/prisma";
+// import { getServerSession } from "next-auth";
+// import { authOptions } from "@/lib/auth/options";
+
+// export async function POST(request: Request) {
+//   try {
+//     const session = await getServerSession(authOptions);
+//     if (!session?.user?.email) {
+//       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//     }
+
+//     const user = await prisma.user.findUnique({
+//       where: { email: session.user.email }
+//     });
+
+//     if (!user) {
+//       return NextResponse.json({ error: "User not found" }, { status: 404 });
+//     }
+
+//     const data = await request.json();
+    
+//     const wasteLog = await prisma.wasteLog.create({
+//       data: {
+//         itemName: data.itemName,
+//         quantity: data.quantity,
+//         reason: data.reason,
+//         userId: user.id
+//       }
+//     });
+
+//     return NextResponse.json(wasteLog);
+//   } catch (error) {
+//     console.error("[WASTE_POST]", error);
+//     return NextResponse.json({ error: "Internal error" }, { status: 500 });
+//   }
+// }
+
+// export async function GET(request: Request) {
+//   try {
+//     const session = await getServerSession(authOptions);
+//     if (!session?.user?.email) {
+//       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//     }
+
+//     const wasteLogs = await prisma.wasteLog.findMany({
+//       orderBy: { createdAt: "desc" }
+//     });
+
+//     return NextResponse.json(wasteLogs);
+//   } catch (error) {
+//     console.error("[WASTE_GET]", error);
+//     return NextResponse.json({ error: "Internal error" }, { status: 500 });
+//   }
+// }
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/qr/[id]/image/route.ts
+import { NextRequest, NextResponse } from "next/server"
+import { getQRCodeById } from "@/lib/db"
+import { generateQRCode } from "@/lib/qr"
+
+export async function GET(request: NextRequest) {
+  try {
+    // Extract `id` from the URL path
+    const url = new URL(request.url)
+    const id = url.pathname.split("/").slice(-2, -1)[0] // grabs the second last part of the path
+
+    const qrCode = await getQRCodeById(id)
+
+    if (!qrCode) {
+      return new NextResponse("QR Code not found", { status: 404 })
+    }
+
+    const imageData = await generateQRCode(qrCode.shortCode)
+
+    return NextResponse.json({ imageData })
+  } catch (error) {
+    console.error("[QR_CODE_IMAGE_ERROR]", error)
+    return new NextResponse("Internal Server Error", { status: 500 })
+  }
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/qr/[id]/route.ts
+import { NextResponse } from "next/server"
+import { prisma } from "@/lib/db"
+import { getServerSession } from "next-auth"
+import { z } from "zod"
+
+// Define schema for updating QR codes
+const updateQRCodeSchema = z.object({
+  name: z.string().min(2).optional(),
+  defaultUrl: z.string().url().optional(),
+  isActive: z.boolean().optional(),
+})
+
+// PATCH handler for updating a QR code
+export async function PATCH(req: Request) {
+  try {
+    const session = await getServerSession()
+
+    if (!session?.user?.email) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const url = new URL(req.url)
+    const id = url.pathname.split("/").slice(-2, -1)[0]
+
+    const json = await req.json()
+    const body = updateQRCodeSchema.parse(json)
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const qrCode = await prisma.qRCode.findUnique({
+      where: { id },
+    })
+
+    if (!qrCode) {
+      return new NextResponse("QR Code not found", { status: 404 })
+    }
+
+    if (qrCode.userId !== user.id) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const updatedQRCode = await prisma.qRCode.update({
+      where: { id },
+      data: body,
+      include: {
+        deviceRules: true,
+        scheduleRules: true,
+      },
+    })
+
+    return NextResponse.json(updatedQRCode)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.errors[0].message }, { status: 400 })
+    }
+
+    console.error("[QR_CODE_UPDATE]", error)
+    return new NextResponse("Internal Server Error", { status: 500 })
+  }
+}
+
+// DELETE handler for deleting a QR code
+export async function DELETE(req: Request) {
+  try {
+    const session = await getServerSession()
+
+    if (!session?.user?.email) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const url = new URL(req.url)
+    const id = url.pathname.split("/").slice(-2, -1)[0]
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const qrCode = await prisma.qRCode.findUnique({
+      where: { id },
+    })
+
+    if (!qrCode) {
+      return new NextResponse("QR Code not found", { status: 404 })
+    }
+
+    if (qrCode.userId !== user.id) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    await prisma.qRCode.delete({
+      where: { id },
+    })
+
+    return new NextResponse(null, { status: 204 })
+  } catch (error) {
+    console.error("[QR_CODE_DELETE]", error)
+    return new NextResponse("Internal Server Error", { status: 500 })
+  }
+}
+
+// GET handler for fetching a QR code
+export async function GET(req: Request) {
+  try {
+    const session = await getServerSession()
+
+    if (!session?.user?.email) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const url = new URL(req.url)
+    const id = url.pathname.split("/").slice(-2, -1)[0]
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const qrCode = await prisma.qRCode.findUnique({
+      where: { id },
+      include: {
+        deviceRules: true,
+        scheduleRules: true,
+      },
+    })
+
+    if (!qrCode) {
+      return new NextResponse("QR Code not found", { status: 404 })
+    }
+
+    if (qrCode.userId !== user.id) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    return NextResponse.json(qrCode)
+  } catch (error) {
+    console.error("[QR_CODE_GET]", error)
+    return new NextResponse("Internal Server Error", { status: 500 })
+  }
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/qr/[id]/schedule-rules/route.ts
+import { NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { prisma } from "@/lib/db"
+import { z } from "zod"
+
+const scheduleRuleSchema = z.object({
+  startDate: z.string(),
+  endDate: z.string().nullable(),
+  timeZone: z.string(),
+  daysOfWeek: z.array(z.number().min(0).max(6)),
+  startTime: z.string().nullable(),
+  endTime: z.string().nullable(),
+  targetUrl: z.string().url(),
+  priority: z.number(),
+})
+
+const scheduleRulesSchema = z.array(scheduleRuleSchema)
+
+// Use this utility to retrieve params from the request URL.
+function getIdFromUrl(req: NextRequest): string | null {
+  return req.nextUrl.pathname.split("/").pop() || null
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const session = await getServerSession()
+    if (!session?.user?.email) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return new NextResponse("User not found", { status: 401 })
+    }
+
+    const id = getIdFromUrl(req)
+    if (!id) {
+      return new NextResponse("Invalid QR code ID", { status: 400 })
+    }
+
+    const qrCode = await prisma.qRCode.findUnique({
+      where: { id },
+      include: { scheduleRules: true }
+    })
+
+    if (!qrCode) {
+      return new NextResponse("QR code not found", { status: 404 })
+    }
+
+    if (qrCode.userId !== user.id) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    return NextResponse.json(qrCode.scheduleRules)
+  } catch (error) {
+    console.error("[SCHEDULE_RULES_GET]", error)
+    return new NextResponse("Internal Server Error", { status: 500 })
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const session = await getServerSession()
+    if (!session?.user?.email) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return new NextResponse("User not found", { status: 401 })
+    }
+
+    const id = getIdFromUrl(req)
+    if (!id) {
+      return new NextResponse("Invalid QR code ID", { status: 400 })
+    }
+
+    const qrCode = await prisma.qRCode.findUnique({
+      where: { id }
+    })
+
+    if (!qrCode) {
+      return new NextResponse("QR code not found", { status: 404 })
+    }
+
+    if (qrCode.userId !== user.id) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const json = await req.json()
+    const rules = scheduleRulesSchema.parse(json)
+
+    // Delete existing rules
+    await prisma.scheduleRule.deleteMany({
+      where: { qrCodeId: id }
+    })
+
+    // Create new rules
+    await prisma.scheduleRule.createMany({
+      data: rules.map(rule => ({
+        ...rule,
+        qrCodeId: id,
+        startDate: new Date(rule.startDate),
+        endDate: rule.endDate ? new Date(rule.endDate) : null,
+        timeZone: rule.timeZone || '',
+        targetUrl: '', // Add this line to explicitly define targetUrl as required
+        priority: 0 // Add this line to explicitly define priority as required
+      }))
+    })
+
+    return new NextResponse(null, { status: 200 })
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Invalid input", details: error.errors },
+        { status: 400 }
+      )
+    }
+
+    console.error("[SCHEDULE_RULES_PUT]", error)
+    return new NextResponse("Internal Server Error", { status: 500 })
+  }
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/qr/route.ts
+import { NextResponse } from "next/server"
+import { prisma } from "@/lib/db/prisma"
+import { getServerSession } from "next-auth"
+import { z } from "zod"
+
+const createQRCodeSchema = z.object({
+  name: z.string().min(2),
+  defaultUrl: z.string().url(),
+  folderId: z.string().nullable().optional(),
+})
+
+export async function GET() {
+  try {
+    const session = await getServerSession()
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 401 })
+    }
+
+    const qrCodes = await prisma.qRCode.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      include: {
+        folder: true,
+      },
+    })
+
+    return NextResponse.json(qrCodes)
+  } catch (error) {
+    console.error("[QR_CODES_GET]", error)
+    return NextResponse.json(
+      { error: "Failed to fetch QR codes" },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const session = await getServerSession()
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const json = await request.json()
+    
+    let url = json.defaultUrl.trim()
+    if (!/^https?:\/\//i.test(url)) {
+      url = `https://${url}`
+    }
+
+    const data = createQRCodeSchema.parse({
+      ...json,
+      defaultUrl: url,
+    })
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 401 })
+    }
+
+    function generateShortCode(length: number = 6) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+      let result = ''
+      for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length))
+      }
+      return result
+    }
+
+    const qrCode = await prisma.qRCode.create({
+      data: {
+        name: data.name,
+        defaultUrl: data.defaultUrl,
+        shortCode: generateShortCode(),
+        isActive: true,
+        userId: user.id,
+        folderId: data.folderId,
+      },
+      include: {
+        folder: true,
+      },
+    })
+
+    return NextResponse.json(qrCode)
+  } catch (error) {
+    console.error("[QR_CODE_CREATE]", error)
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Invalid input. Please check your URL format." },
+        { status: 400 }
+      )
+    }
+    return NextResponse.json(
+      { error: "Failed to create QR code" },
+      { status: 500 }
+    )
+  }
+}
+
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/settings/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
@@ -942,6 +2443,7 @@ async function getSearchParams(searchParams: PageProps['searchParams']) {
 
   return Promise.resolve(params);
 }
+
 export default async function ContactsPage({ searchParams = {} }: PageProps) {
   const [stats, params] = await Promise.all([
     getContactStats(),
@@ -950,46 +2452,41 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
 
   return (
     <PageContainer>
-      <div className="space-y-4 max-w-[500px] mx-auto px-2 md:max-w-full md:space-y-6 md:p-6">
-        {/* Header remains the same */}
-        {/* Header Section */}
+      <div className="space-y-3 w-full px-2 mx-auto md:space-y-6 md:p-6">
+        <h1 className="page-title text-xl md:text-2xl">Contacts</h1>
+        
         <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between md:space-y-0">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight md:text-3xl">Contacts</h1>
-            <p className="text-xs text-muted-foreground md:text-base">
-              Manage your contacts and leads effectively
-            </p>
-          </div>
+          <div></div>
           <div className="flex items-center gap-2">
             <Link href="/dashboard/contacts/new" className="flex-1 md:flex-none">
-              <Button className="w-full md:w-auto">
-                <Plus className="h-4 w-4 md:mr-2" />
+              <Button className="w-full h-8 md:h-9 md:w-auto">
+                <Plus className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
                 <span className="hidden md:inline">New Contact</span>
               </Button>
             </Link>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9">
-                  <MoreHorizontal className="h-4 w-4" />
+                <Button variant="outline" size="icon" className="h-8 w-8 md:h-9 md:w-9">
+                  <MoreHorizontal className="h-3 w-3 md:h-4 md:w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[180px]">
+              <DropdownMenuContent align="end" className="w-[160px]">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                 <DropdownMenuItem>
-                  <Mail className="mr-2 h-4 w-4" />
+                  <Mail className="mr-2 h-3 w-3 md:h-4 md:w-4" />
                   Email Selected
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Share2 className="mr-2 h-4 w-4" />
+                  <Share2 className="mr-2 h-3 w-3 md:h-4 md:w-4" />
                   Share List
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Download className="mr-2 h-4 w-4" />
+                  <Download className="mr-2 h-3 w-3 md:h-4 md:w-4" />
                   Export CSV
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-red-600">
-                  <Trash2 className="mr-2 h-4 w-4" />
+                  <Trash2 className="mr-2 h-3 w-3 md:h-4 md:w-4" />
                   Delete Selected
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -997,23 +2494,22 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
           </div>
         </div>
 
-        
-        <Separator className="my-2 md:my-4" />
+        <Separator className="my-2" />
 
-        {/* Filters - More compact */}
+        {/* Filters - More compact on mobile */}
         <Card className="overflow-hidden">
-          <CardHeader className="space-y-1 p-3">
-            <CardTitle className="text-base">Filter Contacts</CardTitle>
+          <CardHeader className="space-y-0.5 p-2 md:p-3">
+            <CardTitle className="text-sm md:text-base">Filter Contacts</CardTitle>
             <CardDescription className="text-xs">
               Refine your contact list
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 p-3">
-            <div className="flex flex-col space-y-3">
-              <div className="space-y-1">
+          <CardContent className="space-y-2 p-2 md:space-y-3 md:p-3">
+            <div className="flex flex-col space-y-2 md:space-y-3">
+              <div className="space-y-0.5">
                 <label className="text-xs font-medium">Status</label>
                 <Select value={params.status ?? "all"}>
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger className="h-7 text-xs md:h-8">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1027,10 +2523,10 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
                 </Select>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <label className="text-xs font-medium">Sort By</label>
                 <Select value={params.sort}>
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger className="h-7 text-xs md:h-8">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1042,83 +2538,77 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
                 </Select>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <label className="text-xs font-medium">Search</label>
-                <Search/>
+                <Search />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Stats Cards - Square layout */}
+        {/* Stats Cards - Smaller on mobile */}
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-          <Card className="aspect-square overflow-hidden">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium">Total</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
-              <div className="text-2xl font-bold">{stats.total.toLocaleString()}</div>
-              <div className="flex items-center space-x-1 mt-1">
-                {parseFloat(stats.percentageChange) > 0 ? (
-                  <ArrowUp className="h-3 w-3 text-emerald-500" />
-                ) : (
-                  <ArrowDown className="h-3 w-3 text-red-500" />
-                )}
-                <p className={cn(
-                  "text-[10px]",
-                  parseFloat(stats.percentageChange) > 0 ? "text-emerald-500" : "text-red-500"
-                )}>
-                  {stats.percentageChange}%
+          {[
+            {
+              title: "Total",
+              icon: <Users className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />,
+              value: stats.total.toLocaleString(),
+              subtitle: (
+                <div className="flex items-center space-x-1">
+                  {parseFloat(stats.percentageChange) > 0 ? (
+                    <ArrowUp className="h-2 w-2 md:h-3 md:w-3 text-emerald-500" />
+                  ) : (
+                    <ArrowDown className="h-2 w-2 md:h-3 md:w-3 text-red-500" />
+                  )}
+                  <p className={cn(
+                    "text-[8px] md:text-[10px]",
+                    parseFloat(stats.percentageChange) > 0 ? "text-emerald-500" : "text-red-500"
+                  )}>
+                    {stats.percentageChange}%
+                  </p>
+                </div>
+              )
+            },
+            {
+              title: "New",
+              icon: <UserPlus className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />,
+              value: stats.newThisMonth.toLocaleString(),
+              subtitle: "This month"
+            },
+            {
+              title: "Qualified",
+              icon: <Users className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />,
+              value: (stats.byStatus?.QUALIFIED || 0).toLocaleString(),
+              subtitle: "Active leads"
+            },
+            {
+              title: "Conversion",
+              icon: <ArrowUp className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />,
+              value: `${stats.total > 0
+                ? ((stats.byStatus?.CONVERTED || 0) / stats.total * 100).toFixed(1)
+                : "0.0"}%`,
+              subtitle: "Overall rate"
+            }
+          ].map((stat, index) => (
+            <Card key={index} className="overflow-hidden">
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 p-2 md:p-3">
+                <CardTitle className="text-[10px] md:text-xs font-medium">{stat.title}</CardTitle>
+                {stat.icon}
+              </CardHeader>
+              <CardContent className="flex flex-col justify-center items-center p-2 md:p-3">
+                <div className="text-lg md:text-2xl font-bold">{stat.value}</div>
+                <p className="text-[8px] md:text-[10px] text-muted-foreground mt-0.5 md:mt-1">
+                  {typeof stat.subtitle === 'string' ? stat.subtitle : stat.subtitle}
                 </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="aspect-square overflow-hidden">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium">New</CardTitle>
-              <UserPlus className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
-              <div className="text-2xl font-bold">{stats.newThisMonth.toLocaleString()}</div>
-              <p className="text-[10px] text-muted-foreground mt-1">This month</p>
-            </CardContent>
-          </Card>
-
-          <Card className="aspect-square overflow-hidden">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium">Qualified</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
-              <div className="text-2xl font-bold">
-                {(stats.byStatus?.QUALIFIED || 0).toLocaleString()}
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1">Active leads</p>
-            </CardContent>
-          </Card>
-
-          <Card className="aspect-square overflow-hidden">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium">Conversion</CardTitle>
-              <ArrowUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
-              <div className="text-2xl font-bold">
-                {stats.total > 0
-                  ? ((stats.byStatus?.CONVERTED || 0) / stats.total * 100).toFixed(1)
-                  : "0.0"}%
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1">Overall rate</p>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         {/* Contact List */}
         <Card className="overflow-hidden">
-          <CardHeader className="space-y-1 p-3">
-            <CardTitle className="text-base">All Contacts</CardTitle>
+          <CardHeader className="space-y-0.5 p-2 md:p-3">
+            <CardTitle className="text-sm md:text-base">All Contacts</CardTitle>
             <CardDescription className="text-xs">
               Your contact list
             </CardDescription>
@@ -1140,627 +2630,260 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
 }
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/inventory/page.tsx
-"use client"
-
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import {
-  Package,
-  Search,
-  AlertCircle,
-  Plus,
-  Edit2,
-  Trash2,
-  RefreshCw,
-  Download,
-  Upload,
-  Check,
-  X,
-  AlertTriangle,
-  ArrowUpDown,
-  Save,
-  Coffee
-} from 'lucide-react'
-import Link from 'next/link'
+import { Suspense } from "react";
+import { ContactList } from "@/components/contacts/contact-list";
+import { Search } from "@/components/contacts/search";
 import { PageContainer } from "@/components/layout/page-container";
-import './styles.css';
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { getContactStats } from "@/lib/contacts";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
+import {
+  ArrowUp,
+  ArrowDown,
+  Download,
+  MoreHorizontal,
+  UserPlus,
+  Mail,
+  Share2,
+  Trash2,
+  Users,
+  Plus,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { DataTableLoading } from "@/components/contacts/data-table-loading";
 
-interface InventoryItem {
-  id: string
-  name: string
-  category: string
-  quantity: number
-  unit: string
-  minThreshold: number
-  maxThreshold: number
-  unitCost: number
-  lastRestocked: string
-  supplier: string
-  location: string
-  notes: string
+interface PageProps {
+  searchParams?: {
+    [key: string]: string | undefined
+  }
 }
 
-interface SortConfig {
-  key: keyof InventoryItem
-  direction: 'asc' | 'desc'
+async function getSearchParams(searchParams: PageProps['searchParams']) {
+  const params = {
+    search: searchParams?.search,
+    status: searchParams?.status,
+    sort: searchParams?.sort ?? 'newest',
+    page: searchParams?.page ? parseInt(searchParams.page) : 1
+  };
+
+  return Promise.resolve(params);
 }
 
-const InventoryManagement: React.FC = () => {
-  // State Management
-  const [inventory, setInventory] = useState<InventoryItem[]>([])
-  const [filteredInventory, setFilteredInventory] = useState<InventoryItem[]>(
-    []
-  )
-  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('All')
-  const [sortConfig, setSortConfig] = useState<SortConfig>({
-    key: 'name',
-    direction: 'asc'
-  })
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<{
-    type: 'success' | 'error'
-    text: string
-  } | null>(null)
+export default async function ContactsPage({ searchParams = {} }: PageProps) {
+  const [stats, params] = await Promise.all([
+    getContactStats(),
+    getSearchParams(searchParams)
+  ]);
 
-  // Form state for new/edit item
-  const [formData, setFormData] = useState<Partial<InventoryItem>>({
-    name: '',
-    category: '',
-    quantity: 0,
-    unit: '',
-    minThreshold: 0,
-    maxThreshold: 0,
-    unitCost: 0,
-    supplier: '',
-    location: '',
-    notes: ''
-  })
-
-  // Categories derived from inventory items
-  const categories = useMemo(() => {
-    const uniqueCategories = new Set(inventory.map((item) => item.category))
-    return ['All', ...Array.from(uniqueCategories)]
-  }, [inventory])
-
-  // Message helper - moved to the top before use
-  const showMessage = (text: string, type: 'success' | 'error') => {
-    setMessage({ text, type })
-    setTimeout(() => setMessage(null), 3000)
-  }
-
-  // Load inventory from localStorage
-  const loadInventory = useCallback(() => {
-    setIsLoading(true)
-    try {
-      const savedInventory = JSON.parse(
-        localStorage.getItem('inventory') || '[]'
-      ) as InventoryItem[]
-      setInventory(savedInventory)
-      setFilteredInventory(savedInventory)
-      setError(null)
-    } catch (err) {
-      setError('Failed to load inventory data')
-      console.error('Error loading inventory:', err)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  // Save inventory to localStorage
-  const saveInventory = useCallback((items: InventoryItem[]) => {
-    try {
-      localStorage.setItem('inventory', JSON.stringify(items))
-      setInventory(items)
-      showMessage('Inventory saved successfully', 'success')
-    } catch (err) {
-      showMessage('Failed to save inventory', 'error')
-      console.error('Error saving inventory:', err)
-    }
-  }, [])
-
-  useEffect(() => {
-    loadInventory()
-  }, [loadInventory])
-
-  // Filter and sort inventory
-  useEffect(() => {
-    let filtered = [...inventory]
-
-    // Apply category filter
-    if (selectedCategory !== 'All') {
-      filtered = filtered.filter((item) => item.category === selectedCategory)
-    }
-
-    // Apply search filter
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (item) =>
-          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.supplier.toLowerCase().includes(searchTerm.toLowerCase())
+  const statsCards = [
+    {
+      title: "Total",
+      icon: <Users className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />,
+      value: stats.total.toLocaleString(),
+      subtitle: (
+        <span className="flex items-center space-x-1">
+          {parseFloat(stats.percentageChange) > 0 ? (
+            <ArrowUp className="h-2 w-2 md:h-3 md:w-3 text-emerald-500" />
+          ) : (
+            <ArrowDown className="h-2 w-2 md:h-3 md:w-3 text-red-500" />
+          )}
+          <span
+            className={cn(
+              "text-[8px] md:text-[10px]",
+              parseFloat(stats.percentageChange) > 0 ? "text-emerald-500" : "text-red-500"
+            )}
+          >
+            {stats.percentageChange}%
+          </span>
+        </span>
       )
+    },
+    {
+      title: "New",
+      icon: <UserPlus className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />,
+      value: stats.newThisMonth.toLocaleString(),
+      subtitle: "This month"
+    },
+    {
+      title: "Qualified",
+      icon: <Users className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />,
+      value: (stats.byStatus?.QUALIFIED || 0).toLocaleString(),
+      subtitle: "Active leads"
+    },
+    {
+      title: "Conversion",
+      icon: <ArrowUp className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />,
+      value: `${stats.total > 0
+        ? ((stats.byStatus?.CONVERTED || 0) / stats.total * 100).toFixed(1)
+        : "0.0"}%`,
+      subtitle: "Overall rate"
     }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      const aValue = a[sortConfig.key]
-      const bValue = b[sortConfig.key]
-
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortConfig.direction === 'asc'
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue)
-      }
-
-      if (typeof aValue === 'number' && typeof bValue === 'number') {
-        return sortConfig.direction === 'asc'
-          ? aValue - bValue
-          : bValue - aValue
-      }
-
-      return 0
-    })
-
-    setFilteredInventory(filtered)
-  }, [inventory, selectedCategory, searchTerm, sortConfig])
-
-  // Handle sort
-  const handleSort = (key: keyof InventoryItem) => {
-    setSortConfig((prev) => ({
-      key,
-      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-    }))
-  }
-
-  // Add new item
-  const handleAddItem = () => {
-    setFormData({
-      name: '',
-      category: '',
-      quantity: 0,
-      unit: '',
-      minThreshold: 0,
-      maxThreshold: 0,
-      unitCost: 0,
-      supplier: '',
-      location: '',
-      notes: '',
-      lastRestocked: new Date().toISOString()
-    })
-    setSelectedItem(null)
-    setIsModalOpen(true)
-  }
-
-  // Edit item
-  const handleEditItem = (item: InventoryItem) => {
-    setFormData(item)
-    setSelectedItem(item)
-    setIsModalOpen(true)
-  }
-
-  // Delete item
-  const handleDeleteItem = (item: InventoryItem) => {
-    setSelectedItem(item)
-    setIsDeleteModalOpen(true)
-  }
-
-  // Confirm delete
-  const confirmDelete = () => {
-    if (selectedItem) {
-      const updatedInventory = inventory.filter(
-        (item) => item.id !== selectedItem.id
-      )
-      saveInventory(updatedInventory)
-      setIsDeleteModalOpen(false)
-      setSelectedItem(null)
-      showMessage('Item deleted successfully', 'success')
-    }
-  }
-
-  // Save item (create/update)
-  const handleSaveItem = () => {
-    if (!formData.name || !formData.category) {
-      showMessage('Name and category are required', 'error')
-      return
-    }
-
-    const newItem: InventoryItem = {
-      id: selectedItem?.id || Date.now().toString(),
-      name: formData.name || '',
-      category: formData.category || '',
-      quantity: formData.quantity || 0,
-      unit: formData.unit || '',
-      minThreshold: formData.minThreshold || 0,
-      maxThreshold: formData.maxThreshold || 0,
-      unitCost: formData.unitCost || 0,
-      supplier: formData.supplier || '',
-      location: formData.location || '',
-      notes: formData.notes || '',
-      lastRestocked: selectedItem?.lastRestocked || new Date().toISOString()
-    }
-
-    const updatedInventory = selectedItem
-      ? inventory.map((item) => (item.id === selectedItem.id ? newItem : item))
-      : [...inventory, newItem]
-
-    saveInventory(updatedInventory)
-    setIsModalOpen(false)
-    showMessage(
-      `Item ${selectedItem ? 'updated' : 'added'} successfully`,
-      'success'
-    )
-  }
-
-  // Export inventory
-  const handleExport = () => {
-    const dataStr = JSON.stringify(inventory, null, 2)
-    const dataUri =
-      'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr)
-    const exportFileDefaultName = 'inventory-data.json'
-
-    const linkElement = document.createElement('a')
-    linkElement.setAttribute('href', dataUri)
-    linkElement.setAttribute('download', exportFileDefaultName)
-    linkElement.click()
-    showMessage('Inventory exported successfully', 'success')
-  }
-
-  // Import inventory
-  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        try {
-          const importedData = JSON.parse(e.target?.result as string)
-          saveInventory(importedData)
-          showMessage('Inventory imported successfully', 'success')
-        } catch (err) {
-          showMessage('Failed to import inventory data', 'error')
-          console.error('Error importing inventory:', err)
-        }
-      }
-      reader.readAsText(file)
-    }
-  }
-
-  // Check low stock items
-  const lowStockItems = useMemo(() => {
-    return inventory.filter((item) => item.quantity <= item.minThreshold)
-  }, [inventory])
+  ];
 
   return (
     <PageContainer>
-    <div className="inventory-container">
-        <h1 className="page-title">Inventory Management</h1>
-      <header className="header">
-        <div className="header-actions">
-          <button onClick={handleAddItem} className="add-button">
-            <Plus size={16} /> Add Item
-          </button>
-          <button onClick={handleExport} className="export-button">
-            <Download size={16} /> Export
-          </button>
-          <label className="import-button">
-            <Upload size={16} /> Import
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleImport}
-              style={{ display: 'none' }}
-            />
-          </label>
-          <button onClick={loadInventory} className="refresh-button">
-            <RefreshCw size={16} /> Refresh
-          </button>
-        </div>
-      </header>
-
-      {isLoading && <div className="loading">Loading inventory data...</div>}
-      {error && (
-        <div className="error">
-          <AlertTriangle size={16} /> {error}
-        </div>
-      )}
-
-      <div className="filters">
-        <div className="search-container">
-          <Search size={16} />
-          <input
-            type="text"
-            placeholder="Search inventory..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
-          />
+      <div className="space-y-3 w-full px-2 mx-auto md:space-y-6 md:p-6">
+        <h1 className="page-title text-xl md:text-2xl">Contacts</h1>
+        
+        <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between md:space-y-0">
+          <div></div>
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/contacts/new" className="flex-1 md:flex-none">
+              <Button className="w-full h-8 md:h-9 md:w-auto">
+                <Plus className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
+                <span className="hidden md:inline">New Contact</span>
+              </Button>
+            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-8 w-8 md:h-9 md:w-9">
+                  <MoreHorizontal className="h-3 w-3 md:h-4 md:w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[160px]">
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuItem>
+                  <Mail className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                  Email Selected
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Share2 className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                  Share List
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Download className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                  Export CSV
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-red-600">
+                  <Trash2 className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                  Delete Selected
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
-        <select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="category-select"
-        >
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
+        <Separator className="my-2" />
+
+        {/* Filters */}
+        <Card className="overflow-hidden">
+          <CardHeader className="space-y-0.5 p-2 md:p-3">
+            <CardTitle className="text-sm md:text-base">Filter Contacts</CardTitle>
+            <CardDescription className="text-xs">
+              Refine your contact list
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 p-2 md:space-y-3 md:p-3">
+            <div className="flex flex-col space-y-2 md:space-y-3">
+              <div className="space-y-0.5">
+                <label className="text-xs font-medium">Status</label>
+                <Select value={params.status ?? "all"}>
+                  <SelectTrigger className="h-7 text-xs md:h-8">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="NEW">New</SelectItem>
+                    <SelectItem value="CONTACTED">Contacted</SelectItem>
+                    <SelectItem value="QUALIFIED">Qualified</SelectItem>
+                    <SelectItem value="CONVERTED">Converted</SelectItem>
+                    <SelectItem value="LOST">Lost</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-0.5">
+                <label className="text-xs font-medium">Sort By</label>
+                <Select value={params.sort}>
+                  <SelectTrigger className="h-7 text-xs md:h-8">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                    <SelectItem value="oldest">Oldest First</SelectItem>
+                    <SelectItem value="name">Name A-Z</SelectItem>
+                    <SelectItem value="name-desc">Name Z-A</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-0.5">
+                <label className="text-xs font-medium">Search</label>
+                <Search />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          {statsCards.map((stat, index) => (
+            <Card key={index} className="overflow-hidden">
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 p-2 md:p-3">
+                <CardTitle className="text-[10px] md:text-xs font-medium">
+                  {stat.title}
+                </CardTitle>
+                {stat.icon}
+              </CardHeader>
+              <CardContent className="flex flex-col justify-center items-center p-2 md:p-3">
+                <div className="text-lg md:text-2xl font-bold">
+                  {stat.value}
+                </div>
+                <span className="text-[8px] md:text-[10px] text-muted-foreground mt-0.5 md:mt-1">
+                  {stat.subtitle}
+                </span>
+              </CardContent>
+            </Card>
           ))}
-        </select>
+        </div>
+
+        {/* Contact List */}
+        <Card className="overflow-hidden">
+          <CardHeader className="space-y-0.5 p-2 md:p-3">
+            <CardTitle className="text-sm md:text-base">All Contacts</CardTitle>
+            <CardDescription className="text-xs">
+              Your contact list
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0 sm:p-2">
+            <Suspense fallback={<DataTableLoading />}>
+              <ContactList
+                searchQuery={params.search}
+                statusFilter={params.status}
+                sortOrder={params.sort}
+                page={params.page}
+              />
+            </Suspense>
+          </CardContent>
+        </Card>
       </div>
-
-      {lowStockItems.length > 0 && (
-        <div className="low-stock-alert">
-          <AlertCircle size={16} />
-          <span>{lowStockItems.length} item(s) are running low on stock</span>
-          <button
-            onClick={() => setSelectedCategory('All')}
-            className="view-all-button"
-          >
-            View All
-          </button>
-        </div>
-      )}
-
-      <div className="inventory-table-container">
-        <table className="inventory-table">
-          <thead>
-            <tr>
-              <th onClick={() => handleSort('name')}>
-                Name {sortConfig.key === 'name' && <ArrowUpDown size={16} />}
-              </th>
-              <th onClick={() => handleSort('category')}>
-                Category{' '}
-                {sortConfig.key === 'category' && <ArrowUpDown size={16} />}
-              </th>
-              <th onClick={() => handleSort('quantity')}>
-                Quantity{' '}
-                {sortConfig.key === 'quantity' && <ArrowUpDown size={16} />}
-              </th>
-              <th onClick={() => handleSort('minThreshold')}>
-                Min Threshold{' '}
-                {sortConfig.key === 'minThreshold' && <ArrowUpDown size={16} />}
-              </th>
-              <th onClick={() => handleSort('unitCost')}>
-                Unit Cost{' '}
-                {sortConfig.key === 'unitCost' && <ArrowUpDown size={16} />}
-              </th>
-              <th onClick={() => handleSort('supplier')}>
-                Supplier{' '}
-                {sortConfig.key === 'supplier' && <ArrowUpDown size={16} />}
-              </th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredInventory.map((item) => (
-              <tr
-                key={item.id}
-                className={
-                  item.quantity <= item.minThreshold ? 'low-stock' : ''
-                }
-              >
-                <td>{item.name}</td>
-                <td>{item.category}</td>
-                <td>
-                  {item.quantity} {item.unit}
-                </td>
-                <td>{item.minThreshold}</td>
-                <td>${item.unitCost.toFixed(2)}</td>
-                <td>{item.supplier}</td>
-                <td className="actions">
-                  <button
-                    onClick={() => handleEditItem(item)}
-                    className="edit-button"
-                  >
-                    <Edit2 size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteItem(item)}
-                    className="delete-button"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h2>{selectedItem ? 'Edit Item' : 'Add New Item'}</h2>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Name</label>
-                <input
-                  type="text"
-                  value={formData.name || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Category</label>
-                <input
-                  type="text"
-                  value={formData.category || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, category: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Quantity</label>
-                <input
-                  type="number"
-                  value={formData.quantity || 0}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      quantity: parseInt(e.target.value)
-                    })
-                  }
-                  min="0"
-                />
-              </div>
-              <div className="form-group">
-                <label>Unit</label>
-                <input
-                  type="text"
-                  value={formData.unit || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, unit: e.target.value })
-                  }
-                  placeholder="e.g., kg, lbs, pcs"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Min Threshold</label>
-                <input
-                  type="number"
-                  value={formData.minThreshold || 0}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      minThreshold: parseInt(e.target.value)
-                    })
-                  }
-                  min="0"
-                />
-              </div>
-              <div className="form-group">
-                <label>Max Threshold</label>
-                <input
-                  type="number"
-                  value={formData.maxThreshold || 0}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      maxThreshold: parseInt(e.target.value)
-                    })
-                  }
-                  min="0"
-                />
-              </div>
-              <div className="form-group">
-                <label>Unit Cost ($)</label>
-                <input
-                  type="number"
-                  value={formData.unitCost || 0}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      unitCost: parseFloat(e.target.value)
-                    })
-                  }
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-              <div className="form-group">
-                <label>Supplier</label>
-                <input
-                  type="text"
-                  value={formData.supplier || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, supplier: e.target.value })
-                  }
-                />
-              </div>
-              <div className="form-group">
-                <label>Location</label>
-                <input
-                  type="text"
-                  value={formData.location || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, location: e.target.value })
-                  }
-                />
-              </div>
-              <div className="form-group full-width">
-                <label>Notes</label>
-                <textarea
-                  value={formData.notes || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, notes: e.target.value })
-                  }
-                  rows={3}
-                />
-              </div>
-            </div>
-            <div className="modal-actions">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="cancel-button"
-              >
-                <X size={16} /> Cancel
-              </button>
-              <button onClick={handleSaveItem} className="save-button">
-                <Save size={16} /> Save Item
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isDeleteModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content delete-modal">
-            <h2>Confirm Delete</h2>
-            <p>
-              Are you sure you want to delete &quot;{selectedItem?.name}&quot;?
-              This action cannot be undone.
-            </p>
-            <div className="modal-actions">
-              <button
-                onClick={() => setIsDeleteModalOpen(false)}
-                className="cancel-button"
-              >
-                <X size={16} /> Cancel
-              </button>
-              <button onClick={confirmDelete} className="delete-button">
-                <Trash2 size={16} /> Delete Item
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {message && (
-        <div className={`notification ${message.type}`}>
-          {message.type === 'success' ? (
-            <Check size={16} />
-          ) : (
-            <AlertTriangle size={16} />
-          )}
-          {message.text}
-        </div>
-      )}
-
-      <div className="quick-actions">
-        <Link href="/pos" className="action-button">
-          <Coffee size={20} /> New Order
-        </Link>
-      </div>
-
-      
-    </div>
     </PageContainer>
-  )
-}
-
-export default InventoryManagement
-
+  );
+} 
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/inventory/styles.css
 .inventory-container {
@@ -2184,692 +3307,1057 @@ export default function DashboardLayout({
 }
 
 ________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/management/page.tsx
+"use client"
+
+import { useState, useEffect } from 'react'
+import { MenuItem } from '@/types/pos'
+import { posService } from '@/lib/services/pos-service'
+import { CATEGORIES } from '@/constants/pos-data'
+import { PageContainer } from "@/components/layout/page-container"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+ Table,
+ TableBody,
+ TableCell,
+ TableHead,
+ TableHeader,
+ TableRow,
+} from "@/components/ui/table"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import {
+ Dialog,
+ DialogContent,
+ DialogDescription,
+ DialogHeader,
+ DialogTitle,
+ DialogTrigger,
+} from "@/components/ui/dialog"
+import { 
+ Select,
+ SelectContent,
+ SelectItem,
+ SelectTrigger,
+ SelectValue,
+} from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { toast } from "@/components/ui/use-toast"
+import { Plus, Edit2, Trash2, Save, Coffee, Search } from 'lucide-react'
+import { Label } from "@/components/ui/label"
+
+export default function ManagementPage() {
+ const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+ const [loading, setLoading] = useState(true)
+ const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+ const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
+ const [searchTerm, setSearchTerm] = useState("")
+ const [filterCategory, setFilterCategory] = useState<string>("All")
+ 
+ const [newItem, setNewItem] = useState({
+   name: '',
+   price: '',
+   category: '',
+   popular: false,
+ })
+
+ useEffect(() => {
+   loadMenuItems()
+ }, [])
+
+ const loadMenuItems = async () => {
+   try {
+     setLoading(true)
+     const items = await posService.getMenuItems()
+     setMenuItems(items)
+   } catch (error) {
+     toast({
+       title: "Error",
+       description: "Failed to load menu items",
+       variant: "destructive",
+     })
+   } finally {
+     setLoading(false)
+   }
+ }
+
+ const handleAddItem = async () => {
+   try {
+     if (!newItem.name || !newItem.price || !newItem.category) {
+       toast({
+         title: "Error",
+         description: "Please fill in all required fields",
+         variant: "destructive",
+       })
+       return
+     }
+
+     await posService.createMenuItem({
+       name: newItem.name,
+       price: parseFloat(newItem.price),
+       category: newItem.category,
+       popular: newItem.popular,
+       active: true
+     })
+
+     setNewItem({
+       name: '',
+       price: '',
+       category: '',
+       popular: false,
+     })
+
+     setIsAddDialogOpen(false)
+     await loadMenuItems()
+
+     toast({
+       title: "Success",
+       description: "Menu item added successfully",
+     })
+   } catch (error) {
+     toast({
+       title: "Error",
+       description: "Failed to add menu item",
+       variant: "destructive",
+     })
+   }
+ }
+
+ const handleUpdateItem = async (item: MenuItem) => {
+   try {
+     await posService.updateMenuItem(item.id, item)
+     setEditingItem(null)
+     await loadMenuItems()
+
+     toast({
+       title: "Success",
+       description: "Menu item updated successfully",
+     })
+   } catch (error) {
+     toast({
+       title: "Error",
+       description: "Failed to update menu item",
+       variant: "destructive",
+     })
+   }
+ }
+
+ const handleDeleteItem = async (id: string) => {
+   if (!confirm('Are you sure you want to delete this item?')) return
+
+   try {
+     await posService.deleteMenuItem(id)
+     await loadMenuItems()
+
+     toast({
+       title: "Success",
+       description: "Menu item deleted successfully",
+     })
+   } catch (error) {
+     toast({
+       title: "Error",
+       description: "Failed to delete menu item",
+       variant: "destructive",
+     })
+   }
+ }
+
+ const filteredItems = menuItems.filter(item => {
+   const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase())
+   const matchesCategory = filterCategory === "All" || item.category === filterCategory
+   return matchesSearch && matchesCategory
+ })
+
+ return (
+   <PageContainer>
+     <div className="p-8">
+       <Card>
+         <CardHeader>
+           <div className="flex justify-between items-center">
+             <div>
+               <CardTitle>Menu Management</CardTitle>
+               <CardDescription>Manage your menu items, categories, and prices</CardDescription>
+             </div>
+             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+               <DialogTrigger asChild>
+                 <Button>
+                   <Plus className="mr-2 h-4 w-4" />
+                   Add Menu Item
+                 </Button>
+               </DialogTrigger>
+               <DialogContent className="sm:max-w-[425px]">
+                 <DialogHeader>
+                   <DialogTitle>Add New Menu Item</DialogTitle>
+                   <DialogDescription>
+                     Add a new item to your menu. Fill in all the required information.
+                   </DialogDescription>
+                 </DialogHeader>
+                 <div className="grid gap-4 py-4">
+                   <div className="grid gap-2">
+                     <Label htmlFor="name">Name</Label>
+                     <Input
+                       id="name"
+                       value={newItem.name}
+                       onChange={e => setNewItem({...newItem, name: e.target.value})}
+                       placeholder="Item name"
+                     />
+                   </div>
+                   <div className="grid gap-2">
+                     <Label htmlFor="price">Price</Label>
+                     <Input
+                       id="price"
+                       type="number"
+                       step="0.01"
+                       value={newItem.price}
+                       onChange={e => setNewItem({...newItem, price: e.target.value})}
+                       placeholder="0.00"
+                     />
+                   </div>
+                   <div className="grid gap-2">
+                     <Label htmlFor="category">Category</Label>
+                     <Select
+                       value={newItem.category}
+                       onValueChange={value => setNewItem({...newItem, category: value})}
+                     >
+                       <SelectTrigger id="category">
+                         <SelectValue placeholder="Select category" />
+                       </SelectTrigger>
+                       <SelectContent>
+                         {CATEGORIES.map(category => (
+                           <SelectItem key={category} value={category}>
+                             {category}
+                           </SelectItem>
+                         ))}
+                       </SelectContent>
+                     </Select>
+                   </div>
+                   <div className="flex items-center gap-2">
+                     <Label htmlFor="popular">Popular Item</Label>
+                     <Switch
+                       id="popular"
+                       checked={newItem.popular}
+                       onCheckedChange={checked => setNewItem({...newItem, popular: checked})}
+                     />
+                   </div>
+                 </div>
+                 <div className="flex justify-end gap-2">
+                   <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                     Cancel
+                   </Button>
+                   <Button onClick={handleAddItem}>
+                     Add Item
+                   </Button>
+                 </div>
+               </DialogContent>
+             </Dialog>
+           </div>
+         </CardHeader>
+         <CardContent>
+           <div className="mb-4 flex gap-4">
+             <div className="flex-1">
+               <div className="relative">
+                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                 <Input
+                   placeholder="Search menu items..."
+                   value={searchTerm}
+                   onChange={(e) => setSearchTerm(e.target.value)}
+                   className="pl-8"
+                 />
+               </div>
+             </div>
+             <Select
+               value={filterCategory}
+               onValueChange={setFilterCategory}
+             >
+               <SelectTrigger className="w-[180px]">
+                 <SelectValue placeholder="Select category" />
+               </SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="All">All Categories</SelectItem>
+                 {CATEGORIES.map(category => (
+                   <SelectItem key={category} value={category}>
+                     {category}
+                   </SelectItem>
+                 ))}
+               </SelectContent>
+             </Select>
+           </div>
+
+           {loading ? (
+             <div className="flex items-center justify-center p-8">
+               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+             </div>
+           ) : (
+             <div className="rounded-md border">
+               <Table>
+                 <TableHeader>
+                   <TableRow>
+                     <TableHead className="w-[300px]">Name</TableHead>
+                     <TableHead>Category</TableHead>
+                     <TableHead className="w-[100px]">Price</TableHead>
+                     <TableHead className="w-[100px]">Popular</TableHead>
+                     <TableHead className="text-right w-[100px]">Actions</TableHead>
+                   </TableRow>
+                 </TableHeader>
+                 <TableBody>
+                   {filteredItems.map((item) => (
+                     <TableRow key={item.id}>
+                       <TableCell>
+                         {editingItem?.id === item.id ? (
+                           <Input
+                             value={editingItem.name}
+                             onChange={e => setEditingItem({...editingItem, name: e.target.value})}
+                           />
+                         ) : (
+                           <div className="flex items-center gap-2">
+                             <Coffee className="h-4 w-4 text-muted-foreground" />
+                             {item.name}
+                           </div>
+                         )}
+                       </TableCell>
+                       <TableCell>
+                         {editingItem?.id === item.id ? (
+                           <Select
+                             value={editingItem.category}
+                             onValueChange={value => setEditingItem({...editingItem, category: value})}
+                           >
+                             <SelectTrigger>
+                               <SelectValue placeholder="Select category" />
+                             </SelectTrigger>
+                             <SelectContent>
+                               {CATEGORIES.map(category => (
+                                 <SelectItem key={category} value={category}>
+                                   {category}
+                                 </SelectItem>
+                               ))}
+                             </SelectContent>
+                           </Select>
+                         ) : (
+                           item.category
+                         )}
+                       </TableCell>
+                       <TableCell>
+                         {editingItem?.id === item.id ? (
+                           <Input
+                             type="number"
+                             step="0.01"
+                             value={editingItem.price}
+                             onChange={e => setEditingItem({...editingItem, price: parseFloat(e.target.value)})}
+                             className="w-[100px]"
+                           />
+                         ) : (
+                           `$${item.price.toFixed(2)}`
+                         )}
+                       </TableCell>
+                       <TableCell>
+                         <Switch
+                           checked={editingItem?.id === item.id ? editingItem.popular : item.popular}
+                           onCheckedChange={checked => {
+                             if (editingItem?.id === item.id) {
+                               setEditingItem({...editingItem, popular: checked})
+                             } else {
+                               handleUpdateItem({...item, popular: checked})
+                             }
+                           }}
+                         />
+                       </TableCell>
+                       <TableCell className="text-right">
+                         {editingItem?.id === item.id ? (
+                           <div className="flex justify-end gap-2">
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => setEditingItem(null)}
+                             >
+                               Cancel
+                             </Button>
+                             <Button
+                               size="sm"
+                               onClick={() => handleUpdateItem(editingItem)}
+                             >
+                               <Save className="h-4 w-4" />
+                             </Button>
+                           </div>
+                         ) : (
+                           <div className="flex justify-end gap-2">
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => setEditingItem(item)}
+                             >
+                               <Edit2 className="h-4 w-4" />
+                             </Button>
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => handleDeleteItem(item.id)}
+                             >
+                               <Trash2 className="h-4 w-4 text-red-500" />
+                             </Button>
+                           </div>
+                         )}
+                       </TableCell>
+                     </TableRow>
+                   ))}
+                   {filteredItems.length === 0 && (
+                     <TableRow>
+                       <TableCell colSpan={5} className="h-24 text-center">
+                         No menu items found.
+                       </TableCell>
+                     </TableRow>
+                   )}
+                 </TableBody>
+               </Table>
+             </div>
+           )}
+         </CardContent>
+       </Card>
+     </div>
+   </PageContainer>
+ )
+}
+
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/order/page.tsx
 "use client"
 import React, { useState, useEffect, useCallback } from 'react'
 import {
-  Clock,
-  Check,
-  PlayCircle,
-  ThumbsUp,
-  ThumbsDown,
-  Mail,
-  Phone,
-  ArrowUpDown,
-  Trash2,
-  Edit2,
-  Save,
-  Download,
-  Upload,
-  RefreshCcw,
-  Search,
-  Calendar,
-  FileText,
-  AlertTriangle
+ Clock,
+ Check,
+ PlayCircle,
+ ThumbsUp,
+ ThumbsDown,
+ Mail,
+ Phone,
+ ArrowUpDown,
+ Trash2,
+ Edit2,
+ Save,
+ Download,
+ Upload,
+ RefreshCcw,
+ Search,
+ Calendar,
+ FileText,
+ AlertTriangle,
 } from 'lucide-react'
 import { jsPDF } from 'jspdf'
 import 'jspdf-autotable'
-import Link from 'next/link'
-import { PageContainer } from "@/components/layout/page-container";
-import './styles.css';
+import { PageContainer } from "@/components/layout/page-container"
+import { orderService } from '@/lib/services/order-service'
+import './styles.css'
 
 interface OrderItem {
-  id: string
-  name: string
-  quantity: number
-  price: number
+ id: string
+ menuItem: {
+   id: string
+   name: string
+ }
+ quantity: number
+ price: number
 }
 
 interface Order {
-  id: number
-  customerName: string
-  status: string
-  timestamp: string
-  items: OrderItem[]
-  total: number
-  isComplimentary: boolean
-  queueTime: number
-  preparationTime?: number
-  customerEmail?: string
-  customerPhone?: string
-  leadInterest?: boolean
-  startTime?: string
-  notes?: string
+ id: string
+ orderNumber: number
+ customerName: string
+ status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+ timestamp: string
+ items: OrderItem[]
+ total: number
+ isComplimentary: boolean
+ queueTime: number
+ preparationTime?: number
+ customerEmail?: string
+ customerPhone?: string
+ leadInterest?: boolean
+ startTime?: string
+ notes?: string
 }
 
 interface SearchFilters {
-  customerName: string
-  orderId: string
-  itemName: string
-  dateRange: {
-    start: string
-    end: string
-  }
+ customerName: string
+ orderId: string
+ itemName: string
+ dateRange: {
+   start: string
+   end: string
+ }
 }
 
 const ActiveOrders: React.FC = () => {
-  // Basic state
-  const [orders, setOrders] = useState<Order[]>([])
-  const [allOrders, setAllOrders] = useState<Order[]>([])
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
-  const [statusFilter, setStatusFilter] = useState('All')
-  const [sortCriteria, setSortCriteria] = useState('timestamp')
-  const [sortDirection, setSortDirection] = useState('desc')
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+ // Basic state
+ const [orders, setOrders] = useState<Order[]>([])
+ const [allOrders, setAllOrders] = useState<Order[]>([])
+ const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
+ const [statusFilter, setStatusFilter] = useState('All')
+ const [sortCriteria, setSortCriteria] = useState('timestamp')
+ const [sortDirection, setSortDirection] = useState('desc')
+ const [isLoading, setIsLoading] = useState(true)
+ const [error, setError] = useState<string | null>(null)
 
-  // Modal states
-  const [showClearConfirmation, setShowClearConfirmation] = useState(false)
-  const [showResetConfirmation, setShowResetConfirmation] = useState(false)
-  const [showOrderDetails, setShowOrderDetails] = useState(false)
+ // Modal states
+ const [showClearConfirmation, setShowClearConfirmation] = useState(false)
+ const [showResetConfirmation, setShowResetConfirmation] = useState(false)
+ const [showOrderDetails, setShowOrderDetails] = useState(false)
 
-  // Search and filter states
-  const [searchFilters, setSearchFilters] = useState<SearchFilters>({
-    customerName: '',
-    orderId: '',
-    itemName: '',
-    dateRange: {
-      start: '',
-      end: ''
-    }
-  })
+ // Search and filter states
+ const [searchFilters, setSearchFilters] = useState<SearchFilters>({
+   customerName: '',
+   orderId: '',
+   itemName: '',
+   dateRange: {
+     start: '',
+     end: ''
+   }
+ })
 
-  // Order editing states
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
-  const [editedItems, setEditedItems] = useState<OrderItem[]>([])
-  const [orderNotes, setOrderNotes] = useState('')
-  const [isEditing, setIsEditing] = useState(false)
-  const [showEditConfirmation, setShowEditConfirmation] = useState(false)
+ // Order editing states
+ const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+ const [editedItems, setEditedItems] = useState<OrderItem[]>([])
+ const [orderNotes, setOrderNotes] = useState('')
 
-  // Message state for user feedback
-  const [message, setMessage] = useState<{
-    type: 'success' | 'error'
-    text: string
-  } | null>(null)
+ // Message state for user feedback
+ const [message, setMessage] = useState<{
+   type: 'success' | 'error'
+   text: string
+ } | null>(null)
 
-  // Helper function to show messages
-  const showMessage = useCallback((text: string, type: 'success' | 'error') => {
-    setMessage({ text, type })
-    setTimeout(() => setMessage(null), 3000)
-  }, [])
+ // Helper function to show messages
+ const showMessage = useCallback((text: string, type: 'success' | 'error') => {
+   setMessage({ text, type })
+   setTimeout(() => setMessage(null), 3000)
+ }, [])
 
-  // Load orders from localStorage
-  const loadOrders = useCallback(() => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const loadedOrders = JSON.parse(
-        localStorage.getItem('orders') || '[]'
-      ) as Order[]
-      setOrders(loadedOrders)
-      setAllOrders(loadedOrders)
-      setFilteredOrders(loadedOrders)
-    } catch (err) {
-      setError('Failed to load orders. Please try again.')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
+ // Load orders from API with localStorage fallback
+ const loadOrders = useCallback(async () => {
+   setIsLoading(true)
+   setError(null)
+   try {
+     const loadedOrders = await orderService.getOrders()
+     setOrders(loadedOrders)
+     setAllOrders(loadedOrders)
+     setFilteredOrders(loadedOrders)
+   } catch (error) {
+     setError('Error loading orders. Using cached data.')
+     // Fallback to localStorage
+     const cachedOrders = JSON.parse(localStorage.getItem('orders') || '[]')
+     setOrders(cachedOrders)
+     setAllOrders(cachedOrders)
+     setFilteredOrders(cachedOrders)
+   }
+   setIsLoading(false)
+ }, [])
 
-  // Filter and sort orders based on search criteria and filters
-  const filterAndSortOrders = useCallback(() => {
-    let filtered = orders
+ // Filter and sort orders based on search criteria and filters
+ const filterAndSortOrders = useCallback(() => {
+   let filtered = orders
 
-    // Apply status filter
-    if (statusFilter !== 'All') {
-      filtered = filtered.filter((order) => order.status === statusFilter)
-    }
+   if (statusFilter !== 'All') {
+     filtered = filtered.filter((order) => order.status === statusFilter)
+   }
 
-    // Apply search filters
-    if (searchFilters.customerName) {
-      filtered = filtered.filter((order) =>
-        order.customerName
-          .toLowerCase()
-          .includes(searchFilters.customerName.toLowerCase())
-      )
-    }
+   if (searchFilters.customerName) {
+     filtered = filtered.filter((order) =>
+       order.customerName
+         .toLowerCase()
+         .includes(searchFilters.customerName.toLowerCase())
+     )
+   }
 
-    if (searchFilters.orderId) {
-      filtered = filtered.filter((order) =>
-        order.id.toString().includes(searchFilters.orderId)
-      )
-    }
+   if (searchFilters.orderId) {
+     filtered = filtered.filter((order) =>
+       order.orderNumber.toString().includes(searchFilters.orderId)
+     )
+   }
 
-    if (searchFilters.itemName) {
-      filtered = filtered.filter((order) =>
-        order.items.some((item) =>
-          item.name.toLowerCase().includes(searchFilters.itemName.toLowerCase())
-        )
-      )
-    }
+   if (searchFilters.itemName) {
+     filtered = filtered.filter((order) =>
+       order.items.some((item) =>
+         item.menuItem.name.toLowerCase().includes(searchFilters.itemName.toLowerCase())
+       )
+     )
+   }
 
-    // Apply date range filter
-    if (searchFilters.dateRange.start && searchFilters.dateRange.end) {
-      const startDate = new Date(searchFilters.dateRange.start)
-      const endDate = new Date(searchFilters.dateRange.end)
-      filtered = filtered.filter((order) => {
-        const orderDate = new Date(order.timestamp)
-        return orderDate >= startDate && orderDate <= endDate
-      })
-    }
+   if (searchFilters.dateRange.start && searchFilters.dateRange.end) {
+     const startDate = new Date(searchFilters.dateRange.start)
+     const endDate = new Date(searchFilters.dateRange.end)
+     filtered = filtered.filter((order) => {
+       const orderDate = new Date(order.timestamp)
+       return orderDate >= startDate && orderDate <= endDate
+     })
+   }
 
-    // Sort filtered orders
-    const sorted = [...filtered].sort((a, b) => {
-      if (sortCriteria === 'timestamp') {
-        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      } else if (sortCriteria === 'preparationTime') {
-        return (b.preparationTime || 0) - (a.preparationTime || 0)
-      } else if (sortCriteria === 'queueTime') {
-        return b.queueTime - a.queueTime
-      }
-      return 0
-    })
+   // Sort filtered orders
+   const sorted = [...filtered].sort((a, b) => {
+     if (sortCriteria === 'timestamp') {
+       return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+     } else if (sortCriteria === 'preparationTime') {
+       return (b.preparationTime || 0) - (a.preparationTime || 0)
+     } else if (sortCriteria === 'queueTime') {
+       return b.queueTime - a.queueTime
+     }
+     return 0
+   })
 
-    if (sortDirection === 'asc') {
-      sorted.reverse()
-    }
+   if (sortDirection === 'asc') {
+     sorted.reverse()
+   }
 
-    setFilteredOrders(sorted)
-  }, [orders, statusFilter, searchFilters, sortCriteria, sortDirection])
+   setFilteredOrders(sorted)
+ }, [orders, statusFilter, searchFilters, sortCriteria, sortDirection])
 
-  // Update filters
-  const updateSearchFilters = (
-    field: keyof SearchFilters,
-    value: string | { start: string; end: string }
-  ) => {
-    setSearchFilters((prev) => ({
-      ...prev,
-      [field]: value
-    }))
-  }
+ // Update filters
+ const updateSearchFilters = (
+   field: keyof SearchFilters,
+   value: string | { start: string; end: string }
+ ) => {
+   setSearchFilters((prev) => ({
+     ...prev,
+     [field]: value
+   }))
+ }
 
-  // Handle order notes
-  const updateOrderNotes = (orderId: number, notes: string) => {
-    const updatedOrders = orders.map((order) =>
-      order.id === orderId ? { ...order, notes } : order
-    )
-    setOrders(updatedOrders)
-    setAllOrders(updatedOrders)
-    localStorage.setItem('orders', JSON.stringify(updatedOrders))
-    showMessage('Order notes updated successfully', 'success')
-  }
+ // Calculate new total based on items
+ const calculateTotal = (items: OrderItem[]) => {
+   return items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+ }
 
-  // Calculate new total based on items
-  const calculateTotal = (items: OrderItem[]) => {
-    return items.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  }
+ // Handle item editing
+ const updateOrderItem = (
+   orderId: string,
+   itemId: string,
+   updates: Partial<OrderItem>
+ ) => {
+   if (!selectedOrder) return
 
-  // Handle item editing
-  const updateOrderItem = (
-    orderId: number,
-    itemId: string,
-    updates: Partial<OrderItem>
-  ) => {
-    if (!selectedOrder) return
+   const updatedItems = selectedOrder.items.map((item) =>
+     item.id === itemId ? { ...item, ...updates } : item
+   )
 
-    const updatedItems = selectedOrder.items.map((item) =>
-      item.id === itemId ? { ...item, ...updates } : item
-    )
+   const newTotal = calculateTotal(updatedItems)
 
-    const newTotal = calculateTotal(updatedItems)
+   setSelectedOrder({
+     ...selectedOrder,
+     items: updatedItems,
+     total: newTotal
+   })
+ }
 
-    setSelectedOrder({
-      ...selectedOrder,
-      items: updatedItems,
-      total: newTotal
-    })
-  }
-  // Effect hooks for initial load and filtering
-  useEffect(() => {
-    loadOrders()
-  }, [loadOrders])
+ // Effect hooks for initial load and filtering
+ useEffect(() => {
+   loadOrders()
+ }, [loadOrders])
 
-  useEffect(() => {
-    filterAndSortOrders()
-  }, [filterAndSortOrders])
+ useEffect(() => {
+   filterAndSortOrders()
+ }, [filterAndSortOrders])
 
-  // Order status management
-  const updateOrderStatus = (orderId: number, newStatus: string) => {
-    const updatedOrders = orders.map((order) => {
-      if (order.id === orderId) {
-        const updatedOrder = { ...order, status: newStatus }
-        if (newStatus === 'Completed' && order.startTime) {
-          const endTime = new Date()
-          const startTime = new Date(order.startTime)
-          updatedOrder.preparationTime =
-            (endTime.getTime() - startTime.getTime()) / 1000
-        }
-        return updatedOrder
-      }
-      return order
-    })
+ // Order status management
+ const updateOrderStatus = async (orderId: string, newStatus: string) => {
+   try {
+     const preparationTime = newStatus === 'COMPLETED' && selectedOrder?.startTime
+       ? (Date.now() - new Date(selectedOrder.startTime).getTime()) / 1000
+       : undefined
 
-    setOrders(updatedOrders)
-    setAllOrders(updatedOrders)
-    localStorage.setItem('orders', JSON.stringify(updatedOrders))
-    showMessage('Order status updated successfully', 'success')
-  }
+     const updatedOrder = await orderService.updateOrderStatus(orderId, newStatus, preparationTime)
+     await loadOrders()
+     showMessage('Order status updated successfully', 'success')
+   } catch (error) {
+     showMessage('Failed to update order status', 'error')
+   }
+ }
 
-  // Lead interest tracking
-  const recordLeadInterest = (orderId: number, interested: boolean) => {
-    const updatedOrders = orders.map((order) =>
-      order.id === orderId ? { ...order, leadInterest: interested } : order
-    )
+ // Handle updating order notes
+ const handleUpdateOrderNotes = async (orderId: string, notes: string) => {
+   try {
+     await orderService.updateOrderNotes(orderId, notes)
+     await loadOrders()
+     showMessage('Order notes updated successfully', 'success')
+   } catch (error) {
+     showMessage('Failed to update order notes', 'error')
+   }
+ }
 
-    setOrders(updatedOrders)
-    setAllOrders(updatedOrders)
-    localStorage.setItem('orders', JSON.stringify(updatedOrders))
-    showMessage('Lead interest recorded successfully', 'success')
-  }
+ // Lead interest tracking
+ const recordLeadInterest = async (orderId: string, interested: boolean) => {
+   try {
+     await orderService.updateLeadInterest(orderId, interested)
+     await loadOrders()
+     showMessage('Lead interest recorded successfully', 'success')
+   } catch (error) {
+     showMessage('Failed to record lead interest', 'error')
+   }
+ }
 
-  // Order cancellation
-  const cancelOrder = (orderId: number) => {
-    if (window.confirm('Are you sure you want to cancel this order?')) {
-      const updatedOrders = orders.filter((order) => order.id !== orderId)
-      setOrders(updatedOrders)
-      const updatedAllOrders = allOrders.map((order) =>
-        order.id === orderId ? { ...order, status: 'Cancelled' } : order
-      )
-      setAllOrders(updatedAllOrders)
-      localStorage.setItem('orders', JSON.stringify(updatedOrders))
-      showMessage('Order cancelled successfully', 'success')
-    }
-  }
+ // Order cancellation
+ const cancelOrder = async (orderId: string) => {
+   if (window.confirm('Are you sure you want to cancel this order?')) {
+     try {
+       await orderService.updateOrderStatus(orderId, 'CANCELLED')
+       await loadOrders()
+       showMessage('Order cancelled successfully', 'success')
+     } catch (error) {
+       showMessage('Failed to cancel order', 'error')
+     }
+   }
+ }
 
-  // Order modification
-  const modifyOrder = (orderId: number) => {
-    const orderToModify = orders.find((order) => order.id === orderId)
-    if (orderToModify) {
-      setSelectedOrder(orderToModify)
-      setEditedItems([...orderToModify.items])
-      setOrderNotes(orderToModify.notes || '')
-      setIsEditing(true)
-      setShowOrderDetails(true)
-    }
-  }
+ // Order modification
+ const modifyOrder = (orderId: string) => {
+   const orderToModify = orders.find((order) => order.id === orderId)
+   if (orderToModify) {
+     setSelectedOrder(orderToModify)
+     setEditedItems([...orderToModify.items])
+     setOrderNotes(orderToModify.notes || '')
+     setShowOrderDetails(true)
+   }
+ }
 
-  // Save modified order
-  const saveModifiedOrder = () => {
-    if (!selectedOrder) return
+ // Save modified order
+ const saveModifiedOrder = async () => {
+   if (!selectedOrder) return
 
-    const modifiedOrder = {
-      ...selectedOrder,
-      items: editedItems,
-      notes: orderNotes,
-      total: calculateTotal(editedItems)
-    }
+   try {
+     const modifiedOrder = {
+       ...selectedOrder,
+       items: editedItems,
+       notes: orderNotes,
+       total: calculateTotal(editedItems)
+     }
 
-    const updatedOrders = orders.map((order) =>
-      order.id === modifiedOrder.id ? modifiedOrder : order
-    )
+     await orderService.updateOrder(selectedOrder.id, modifiedOrder)
+     await loadOrders()
+     
+     setShowOrderDetails(false)
+     setSelectedOrder(null)
+     showMessage('Order updated successfully', 'success')
+   } catch (error) {
+     showMessage('Failed to update order', 'error')
+   }
+ }
 
-    setOrders(updatedOrders)
-    setAllOrders(updatedOrders)
-    localStorage.setItem('orders', JSON.stringify(updatedOrders))
-    setShowOrderDetails(false)
-    setSelectedOrder(null)
-    setIsEditing(false)
-    showMessage('Order updated successfully', 'success')
-  }
+ // Time formatting
+ const formatTime = (seconds: number) => {
+   const minutes = Math.floor(seconds / 60)
+   const remainingSeconds = Math.floor(seconds % 60)
+   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+ }
 
-  // Time formatting
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60)
-    const remainingSeconds = Math.floor(seconds % 60)
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
-  }
+ // PDF generation
+ const generatePDF = () => {
+   const doc = new jsPDF()
+   const tableColumn = [
+     'Order #',
+     'Customer',
+     'Status',
+     'Total',
+     'Queue Time',
+     'Prep Time',
+     'Notes'
+   ]
+   const tableRows: (string | number)[][] = []
 
-  // PDF generation
-  const generatePDF = () => {
-    // eslint-disable-next-line new-cap
-    const doc = new jsPDF()
-    const tableColumn = [
-      'Order #',
-      'Customer',
-      'Status',
-      'Total',
-      'Queue Time',
-      'Prep Time',
-      'Notes'
-    ]
-    const tableRows: (string | number)[][] = []
+   allOrders.forEach((order) => {
+     const orderData = [
+       order.orderNumber,
+       order.customerName,
+       order.status,
+       order.isComplimentary ? 'Free' : `$${order.total}`,
+       formatTime(order.queueTime),
+       order.preparationTime ? formatTime(order.preparationTime) : 'N/A',
+       order.notes || 'N/A'
+     ]
+     tableRows.push(orderData)
+   })
 
-    allOrders.forEach((order) => {
-      const orderData = [
-        order.id,
-        order.customerName,
-        order.status,
-        order.isComplimentary ? 'Free' : `$${order.total}`,
-        formatTime(order.queueTime),
-        order.preparationTime ? formatTime(order.preparationTime) : 'N/A',
-        order.notes || 'N/A'
-      ]
-      tableRows.push(orderData)
-    })
+   doc.autoTable({
+     head: [tableColumn],
+     body: tableRows,
+     startY: 20
+   })
 
-    doc.autoTable({
-      head: [tableColumn],
-      body: tableRows,
-      startY: 20
-    })
+   doc.text('Buf Barista - Complete Order Report', 14, 15)
+   doc.save('buf-barista-all-orders.pdf')
+ }
 
-    doc.text('Buf Barista - Complete Order Report', 14, 15)
-    doc.save('buf-barista-all-orders.pdf')
-  }
+ // Data management functions
+ const clearAllOrders = async () => {
+   try {
+     await orderService.clearAllOrders()
+     await loadOrders()
+     showMessage('All orders cleared successfully', 'success')
+   } catch (error) {
+     showMessage('Failed to clear orders', 'error')
+   }
+ }
 
-  // Data management functions
-  const clearAllOrders = () => {
-    setShowClearConfirmation(true)
-  }
+ const resetAllData = async () => {
+   try {
+     await orderService.resetAllData()
+     await loadOrders()
+     showMessage('All data reset successfully', 'success')
+     window.location.reload()
+   } catch (error) {
+     showMessage('Failed to reset data', 'error')
+   }
+ }
 
-  const confirmClearAllOrders = () => {
-    const clearedOrders = allOrders.map((order) =>
-      orders.some((activeOrder) => activeOrder.id === order.id)
-        ? { ...order, status: 'Cleared' }
-        : order
-    )
-    setAllOrders(clearedOrders)
-    setOrders([])
-    setFilteredOrders([])
-    localStorage.setItem('orders', JSON.stringify([]))
-    setShowClearConfirmation(false)
-    showMessage('All orders cleared successfully', 'success')
-  }
+ const exportData = async () => {
+   try {
+     const data = await orderService.exportOrders()
+     const blob = new Blob([data], { type: 'application/json' })
+     const url = URL.createObjectURL(blob)
+     const a = document.createElement('a')
+     a.href = url
+     a.download = 'buf-barista-data.json'
+     document.body.appendChild(a)
+     a.click()
+     document.body.removeChild(a)
+     URL.revokeObjectURL(url)
+     showMessage('Data exported successfully', 'success')
+   } catch (error) {
+     showMessage('Failed to export data', 'error')
+   }
+ }
 
-  const cancelClearAllOrders = () => {
-    setShowClearConfirmation(false)
-  }
+ const importData = async (event: React.ChangeEvent<HTMLInputElement>) => {
+   const file = event.target.files?.[0]
+   if (!file) return
 
-  const resetAllData = () => {
-    setShowResetConfirmation(true)
-  }
+   try {
+     const reader = new FileReader()
+     reader.onload = async (e) => {
+       const content = e.target?.result as string
+       await orderService.importOrders(content)
+       await loadOrders()
+       showMessage('Data imported successfully', 'success')
+     }
+     reader.readAsText(file)
+   } catch (error) {
+     showMessage('Failed to import data', 'error')
+   }
+ }
 
-  const confirmResetAllData = () => {
-    localStorage.clear()
-    setOrders([])
-    setAllOrders([])
-    setFilteredOrders([])
-    setShowResetConfirmation(false)
-    showMessage('All data reset successfully', 'success')
-    window.location.reload()
-  }
-
-  const cancelResetAllData = () => {
-    setShowResetConfirmation(false)
-  }
-
-  const exportData = () => {
-    const data = {
-      orders: allOrders,
-      preferences: JSON.parse(
-        localStorage.getItem('systemPreferences') || '{}'
-      ),
-      inventory: JSON.parse(localStorage.getItem('inventory') || '[]')
-    }
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: 'application/json'
-    })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'buf-barista-data.json'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    showMessage('Data exported successfully', 'success')
-  }
-
-  const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        try {
-          const data = JSON.parse(e.target?.result as string)
-          localStorage.setItem('orders', JSON.stringify(data.orders))
-          localStorage.setItem(
-            'systemPreferences',
-            JSON.stringify(data.preferences)
-          )
-          localStorage.setItem('inventory', JSON.stringify(data.inventory))
-          loadOrders()
-          showMessage('Data imported successfully', 'success')
-        } catch (error) {
-          showMessage(
-            'Error importing data. Please check the file format.',
-            'error'
-          )
-        }
-      }
-      reader.readAsText(file)
-    }
-  }
-
-  const toggleEditNotes = (orderId: number) => {
-    const order = orders.find((o) => o.id === orderId)
-    if (order) {
-      setSelectedOrder(order)
-      setOrderNotes(order.notes || '')
-      setShowOrderDetails(true)
-    }
-  }
-
+ // Toggle notes editing
+ const toggleEditNotes = (orderId: string) => {
+   const order = orders.find((o) => o.id === orderId)
+   if (order) {
+     setSelectedOrder(order)
+     setOrderNotes(order.notes || '')
+     setShowOrderDetails(true)
+   }
+ }
   // Render component
   return (
     <PageContainer>
-    <div className="active-orders-container">
-    <h1 className="page-title">Active Orders</h1>
+      <div className="active-orders-container">
+        <h1 className="page-title">Active Orders</h1>
 
-      {isLoading && <div className="loading">Loading orders...</div>}
-      {error && <div className="error">{error}</div>}
+        {isLoading && <div className="loading">Loading orders...</div>}
+        {error && <div className="error">{error}</div>}
 
-      {/* Search and Filter Section */}
-      <div className="search-section">
-        <div className="search-inputs">
-          <div className="search-field">
-            <Search size={16} />
+        {/* Search and Filter Section */}
+        <div className="search-section">
+          <div className="search-inputs">
+            <div className="search-field">
+              <Search size={16} />
+              <input
+                type="text"
+                placeholder="Search by customer name..."
+                value={searchFilters.customerName}
+                onChange={(e) =>
+                  updateSearchFilters('customerName', e.target.value)
+                }
+                className="search-input"
+              />
+            </div>
+            <div className="search-field">
+              <Search size={16} />
+              <input
+                type="text"
+                placeholder="Search by order ID..."
+                value={searchFilters.orderId}
+                onChange={(e) => updateSearchFilters('orderId', e.target.value)}
+                className="search-input"
+              />
+            </div>
+            <div className="search-field">
+              <Search size={16} />
+              <input
+                type="text"
+                placeholder="Search by item name..."
+                value={searchFilters.itemName}
+                onChange={(e) => updateSearchFilters('itemName', e.target.value)}
+                className="search-input"
+              />
+            </div>
+          </div>
+          <div className="date-range">
+            <Calendar size={16} />
             <input
-              type="text"
-              placeholder="Search by customer name..."
-              value={searchFilters.customerName}
+              type="date"
+              value={searchFilters.dateRange.start}
               onChange={(e) =>
-                updateSearchFilters('customerName', e.target.value)
+                updateSearchFilters('dateRange', {
+                  ...searchFilters.dateRange,
+                  start: e.target.value
+                })
               }
-              className="search-input"
+              className="date-input"
             />
-          </div>
-          <div className="search-field">
-            <Search size={16} />
+            <span>to</span>
             <input
-              type="text"
-              placeholder="Search by order ID..."
-              value={searchFilters.orderId}
-              onChange={(e) => updateSearchFilters('orderId', e.target.value)}
-              className="search-input"
-            />
-          </div>
-          <div className="search-field">
-            <Search size={16} />
-            <input
-              type="text"
-              placeholder="Search by item name..."
-              value={searchFilters.itemName}
-              onChange={(e) => updateSearchFilters('itemName', e.target.value)}
-              className="search-input"
+              type="date"
+              value={searchFilters.dateRange.end}
+              onChange={(e) =>
+                updateSearchFilters('dateRange', {
+                  ...searchFilters.dateRange,
+                  end: e.target.value
+                })
+              }
+              className="date-input"
             />
           </div>
         </div>
-        <div className="date-range">
-          <Calendar size={16} />
-          <input
-            type="date"
-            value={searchFilters.dateRange.start}
-            onChange={(e) =>
-              updateSearchFilters('dateRange', {
-                ...searchFilters.dateRange,
-                start: e.target.value
-              })
-            }
-            className="date-input"
-          />
-          <span>to</span>
-          <input
-            type="date"
-            value={searchFilters.dateRange.end}
-            onChange={(e) =>
-              updateSearchFilters('dateRange', {
-                ...searchFilters.dateRange,
-                end: e.target.value
-              })
-            }
-            className="date-input"
-          />
-        </div>
-      </div>
 
-      {/* Filters and Actions */}
-      <div className="filters">
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="filter-dropdown"
-        >
-          <option value="All">All Statuses</option>
-          <option value="Pending">Pending</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Completed">Completed</option>
-        </select>
-
-        <select
-          value={sortCriteria}
-          onChange={(e) => setSortCriteria(e.target.value)}
-          className="filter-dropdown"
-        >
-          <option value="timestamp">Sort by Time</option>
-          <option value="preparationTime">Sort by Prep Time</option>
-          <option value="queueTime">Sort by Queue Time</option>
-        </select>
-
-        <button
-          onClick={() =>
-            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
-          }
-          className="sort-button"
-        >
-          <ArrowUpDown size={16} />
-          {sortDirection === 'asc' ? 'Ascending' : 'Descending'}
-        </button>
-
-        <button onClick={generatePDF} className="pdf-button">
-          <Save size={16} />
-          Save as PDF
-        </button>
-
-        {/* <button onClick={loadOrders} className="refresh-button">
-          <RefreshCw size={16} />
-          Refresh Orders
-        </button> */}
-
-        <button onClick={clearAllOrders} className="clear-button">
-          <Trash2 size={16} />
-          Clear All Orders
-        </button>
-
-        <button onClick={resetAllData} className="reset-button">
-          <RefreshCcw size={16} />
-          Reset All Data
-        </button>
-
-        <button onClick={exportData} className="export-button">
-          <Download size={16} />
-          Export Data
-        </button>
-
-        <label className="import-button">
-          <Upload size={16} />
-          Import Data
-          <input
-            type="file"
-            accept=".json"
-            style={{ display: 'none' }}
-            onChange={importData}
-          />
-        </label>
-      </div>
-
-      {/* Orders Grid */}
-      <div className="orders-grid">
-        {filteredOrders.map((order) => (
-          <div
-            key={order.id}
-            className={`order-card ${order.status.toLowerCase()}`}
+        {/* Filters and Actions */}
+        <div className="filters">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="filter-dropdown"
           >
-            <div className="order-header">
-              <span className="order-number">Order #{order.id}</span>
-              <span className={`order-status ${order.status.toLowerCase()}`}>
-                {order.status}
-              </span>
-            </div>
-            <div className="order-details">
-              <div className="customer-name">{order.customerName}</div>
-              <div className="order-time">
-                <Clock size={14} className="icon" />
-                {order.timestamp}
-              </div>
-            </div>
-            <div className="order-items">
-              {order.items.map((item, index) => (
-                <div key={index} className="order-item">
-                  <span>
-                    {item.name} x{item.quantity}
-                  </span>
-                  <span>
-                    {order.isComplimentary
-                      ? 'Free'
-                      : `$${(item.price * item.quantity).toFixed(2)}`}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="order-total">
-              Total: {order.isComplimentary ? 'Free' : `$${order.total}`}
-            </div>
-            <div className="order-metrics">
-              <div>Queue Time: {formatTime(order.queueTime)}</div>
-              {order.preparationTime && (
-                <div>Preparation Time: {formatTime(order.preparationTime)}</div>
-              )}
-            </div>
+            <option value="All">All Statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+          </select>
 
-            <div className="customer-contact">
-              {order.customerEmail && <Mail size={14} className="icon" />}
-              {order.customerPhone && <Phone size={14} className="icon" />}
-            </div>
-            {/* Order Notes Section */}
-            <div className="order-notes-section">
-              <div className="notes-header">
-                <FileText size={14} className="icon" />
-                <span>Notes</span>
-                <button
-                  onClick={() => toggleEditNotes(order.id)}
-                  className="edit-notes-button"
-                >
-                  <Edit2 size={14} />
-                </button>
+          <select
+            value={sortCriteria}
+            onChange={(e) => setSortCriteria(e.target.value)}
+            className="filter-dropdown"
+          >
+            <option value="timestamp">Sort by Time</option>
+            <option value="preparationTime">Sort by Prep Time</option>
+            <option value="queueTime">Sort by Queue Time</option>
+          </select>
+
+          <button
+            onClick={() =>
+              setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+            }
+            className="sort-button"
+          >
+            <ArrowUpDown size={16} />
+            {sortDirection === 'asc' ? 'Ascending' : 'Descending'}
+          </button>
+
+          <button onClick={generatePDF} className="pdf-button">
+            <Save size={16} />
+            Save as PDF
+          </button>
+
+          <button onClick={clearAllOrders} className="clear-button">
+            <Trash2 size={16} />
+            Clear All Orders
+          </button>
+
+          <button onClick={resetAllData} className="reset-button">
+            <RefreshCcw size={16} />
+            Reset All Data
+          </button>
+
+          <button onClick={exportData} className="export-button">
+            <Download size={16} />
+            Export Data
+          </button>
+
+          <label className="import-button">
+            <Upload size={16} />
+            Import Data
+            <input
+              type="file"
+              accept=".json"
+              style={{ display: 'none' }}
+              onChange={importData}
+            />
+          </label>
+        </div>
+
+        {/* Orders Grid */}
+        <div className="orders-grid">
+          {filteredOrders.map((order) => (
+            <div
+              key={order.id}
+              className={`order-card ${order.status.toLowerCase()}`}
+            >
+              <div className="order-header">
+                <span className="order-number">Order #{order.id}</span>
+                <span className={`order-status ${order.status.toLowerCase()}`}>
+                  {order.status}
+                </span>
               </div>
-              <div className="notes-content">
-                {order.notes ? (
-                  <p>{order.notes}</p>
-                ) : (
-                  <p className="no-notes">No notes added</p>
+              <div className="order-details">
+                <div className="customer-name">{order.customerName}</div>
+                <div className="order-time">
+                  <Clock size={14} className="icon" />
+                  {order.timestamp}
+                </div>
+              </div>
+              <div className="order-items">
+                {order.items.map((item, index) => (
+                  <div key={index} className="order-item">
+                    <span>
+                      {item.name} x{item.quantity}
+                    </span>
+                    <span>
+                      {order.isComplimentary
+                        ? 'Free'
+                        : `$${(item.price * item.quantity).toFixed(2)}`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="order-total">
+                Total: {order.isComplimentary ? 'Free' : `$${order.total}`}
+              </div>
+              <div className="order-metrics">
+                <div>Queue Time: {formatTime(order.queueTime)}</div>
+                {order.preparationTime && (
+                  <div>Preparation Time: {formatTime(order.preparationTime)}</div>
                 )}
               </div>
-            </div>
 
-            {/* Lead Interest Section */}
-            {order.status === 'Completed' &&
-              order.leadInterest === undefined && (
+              <div className="customer-contact">
+                {order.customerEmail && <Mail size={14} className="icon" />}
+                {order.customerPhone && <Phone size={14} className="icon" />}
+              </div>
+
+              {/* Order Notes Section */}
+              <div className="order-notes-section">
+                <div className="notes-header">
+                  <FileText size={14} className="icon" />
+                  <span>Notes</span>
+                  <button
+                    onClick={() => toggleEditNotes(order.id)}
+                    className="edit-notes-button"
+                  >
+                    <Edit2 size={14} />
+                  </button>
+                </div>
+                <div className="notes-content">
+                  {order.notes ? (
+                    <p>{order.notes}</p>
+                  ) : (
+                    <p className="no-notes">No notes added</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Lead Interest Section */}
+              {order.status === 'Completed' && order.leadInterest === undefined && (
                 <div className="lead-interest-section">
                   <div className="lead-interest-header">
                     Customer interested in sales pitch?
@@ -2892,238 +4380,227 @@ const ActiveOrders: React.FC = () => {
                   </div>
                 </div>
               )}
-            {order.leadInterest !== undefined && (
-              <div
-                className={`lead-status ${
-                  order.leadInterest ? 'interested' : 'not-interested'
-                }`}
-              >
-                <div className="lead-status-content">
-                  <span className="lead-status-label">Lead Status:</span>
-                  <span className="lead-status-value">
-                    {order.leadInterest ? (
-                      <>
-                        <ThumbsUp size={16} className="icon" />
-                        Interested
-                      </>
-                    ) : (
-                      <>
-                        <ThumbsDown size={16} className="icon" />
-                        Not Interested
-                      </>
-                    )}
-                  </span>
+
+              {order.leadInterest !== undefined && (
+                <div
+                  className={`lead-status ${
+                    order.leadInterest ? 'interested' : 'not-interested'
+                  }`}
+                >
+                  <div className="lead-status-content">
+                    <span className="lead-status-label">Lead Status:</span>
+                    <span className="lead-status-value">
+                      {order.leadInterest ? (
+                        <>
+                          <ThumbsUp size={16} className="icon" />
+                          Interested
+                        </>
+                      ) : (
+                        <>
+                          <ThumbsDown size={16} className="icon" />
+                          Not Interested
+                        </>
+                      )}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {order.status !== 'Completed' && (
+                <div className="order-actions">
+                  <button
+                    onClick={() => updateOrderStatus(order.id, 'In Progress')}
+                    className="start-button"
+                    disabled={order.status === 'In Progress'}
+                  >
+                    <PlayCircle size={16} className="icon" /> Start
+                  </button>
+                  <button
+                    onClick={() => updateOrderStatus(order.id, 'Completed')}
+                    className="complete-button"
+                  >
+                    <Check size={16} className="icon" /> Complete
+                  </button>
+                  <button
+                    onClick={() => modifyOrder(order.id)}
+                    className="modify-button"
+                    disabled={order.status === 'Completed'}
+                  >
+                    <Edit2 size={16} className="icon" /> Modify
+                  </button>
+                  <button
+                    onClick={() => cancelOrder(order.id)}
+                    className="cancel-button"
+                    disabled={order.status !== 'Pending'}
+                  >
+                    <Trash2 size={16} className="icon" /> Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Modals */}
+        {showClearConfirmation && (
+          <div className="modal">
+            <div className="modal-content">
+              <h2>Clear All Orders</h2>
+              <p>
+                Are you sure you want to clear all orders? This action will remove
+                orders from the active list but they will still be included in the
+                PDF report.
+              </p>
+              <div className="modal-actions">
+                <button
+                  onClick={confirmClearAllOrders}
+                  className="confirm-button"
+                >
+                  Yes, Clear All
+                </button>
+                <button onClick={cancelClearAllOrders} className="cancel-button">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showResetConfirmation && (
+          <div className="modal">
+            <div className="modal-content">
+              <h2>Reset All Data</h2>
+              <p>
+                Are you sure you want to reset all data? This action will clear
+                all orders, preferences, and inventory data. This action cannot be
+                undone.
+              </p>
+              <div className="modal-actions">
+                <button onClick={confirmResetAllData} className="confirm-button">
+                  Yes, Reset All Data
+                </button>
+                <button onClick={cancelResetAllData} className="cancel-button">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Order Edit Modal */}
+        {showOrderDetails && selectedOrder && (
+          <div className="modal">
+            <div className="modal-content">
+              <h2>Modify Order</h2>
+              <div className="order-form">
+                <label>
+                  Customer Name:
+                  <input
+                    type="text"
+                    value={selectedOrder.customerName}
+                    onChange={(e) =>
+                      setSelectedOrder({
+                        ...selectedOrder,
+                        customerName: e.target.value
+                      })
+                    }
+                  />
+                </label>
+
+                <label>
+                  Order Notes:
+                  <textarea
+                    value={orderNotes}
+                    onChange={(e) => setOrderNotes(e.target.value)}
+                    placeholder="Add notes about the order..."
+                    rows={3}
+                  />
+                </label>
+
+                <div className="items-list">
+                  <h3>Order Items</h3>
+                  {editedItems.map((item, index) => (
+                    <div key={index} className="edit-item">
+                      <input
+                        type="text"
+                        value={item.name}
+                        onChange={(e) =>
+                          updateOrderItem(selectedOrder.id, item.id, {
+                            name: e.target.value
+                          })
+                        }
+                      />
+                      <input
+                        type="number"
+                        value={item.quantity}
+                        min="1"
+                        onChange={(e) =>
+                          updateOrderItem(selectedOrder.id, item.id, {
+                            quantity: parseInt(e.target.value)
+                          })
+                        }
+                      />
+                      <input
+                        type="number"
+                        value={item.price}
+                        step="0.01"
+                        min="0"
+                        onChange={(e) =>
+                          updateOrderItem(selectedOrder.id, item.id, {
+                            price: parseFloat(e.target.value)
+                          })
+                        }
+                      />
+                      <button
+                        onClick={() =>
+                          setEditedItems((prev) =>
+                            prev.filter((_, i) => i !== index)
+                          )
+                        }
+                        className="remove-item"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
-            )}
-            {order.status !== 'Completed' && (
-              <div className="order-actions">
-                <button
-                  onClick={() => updateOrderStatus(order.id, 'In Progress')}
-                  className="start-button"
-                  disabled={order.status === 'In Progress'}
-                >
-                  <PlayCircle size={16} className="icon" /> Start
+              <div className="modal-actions">
+                <button onClick={saveModifiedOrder} className="confirm-button">
+                  Save Changes
                 </button>
                 <button
-                  onClick={() => updateOrderStatus(order.id, 'Completed')}
-                  className="complete-button"
-                >
-                  <Check size={16} className="icon" /> Complete
-                </button>
-                <button
-                  onClick={() => modifyOrder(order.id)}
-                  className="modify-button"
-                  disabled={order.status === 'Completed'}
-                >
-                  <Edit2 size={16} className="icon" /> Modify
-                </button>
-                <button
-                  onClick={() => cancelOrder(order.id)}
+                  onClick={() => {
+                    setShowOrderDetails(false)
+                    setSelectedOrder(null)
+                  }}
                   className="cancel-button"
-                  disabled={order.status !== 'Pending'}
                 >
-                  <Trash2 size={16} className="icon" /> Cancel
+                  Cancel
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Success/Error Messages */}
+        {message && (
+          <div className={`message ${message.type}`}>
+            {message.type === 'success' ? (
+              <Check size={16} />
+            ) : (
+              <AlertTriangle size={16} />
             )}
+            {message.text}
           </div>
-        ))}
+        )}
       </div>
-
-      {/* Modals */}
-      {showClearConfirmation && (
-        <div className="modal">
-          <div className="modal-content">
-            <h2>Clear All Orders</h2>
-            <p>
-              Are you sure you want to clear all orders? This action will remove
-              orders from the active list but they will still be included in the
-              PDF report.
-            </p>
-            <div className="modal-actions">
-              <button
-                onClick={confirmClearAllOrders}
-                className="confirm-button"
-              >
-                Yes, Clear All
-              </button>
-              <button onClick={cancelClearAllOrders} className="cancel-button">
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showResetConfirmation && (
-        <div className="modal">
-          <div className="modal-content">
-            <h2>Reset All Data</h2>
-            <p>
-              Are you sure you want to reset all data? This action will clear
-              all orders, preferences, and inventory data. This action cannot be
-              undone.
-            </p>
-            <div className="modal-actions">
-              <button onClick={confirmResetAllData} className="confirm-button">
-                Yes, Reset All Data
-              </button>
-              <button onClick={cancelResetAllData} className="cancel-button">
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Order Edit Modal */}
-      {showOrderDetails && selectedOrder && (
-        <div className="modal">
-          <div className="modal-content">
-            <h2>Modify Order</h2>
-            <div className="order-form">
-              <label>
-                Customer Name:
-                <input
-                  type="text"
-                  value={selectedOrder.customerName}
-                  onChange={(e) =>
-                    setSelectedOrder({
-                      ...selectedOrder,
-                      customerName: e.target.value
-                    })
-                  }
-                />
-              </label>
-
-              <label>
-                Order Notes:
-                <textarea
-                  value={orderNotes}
-                  onChange={(e) => setOrderNotes(e.target.value)}
-                  placeholder="Add notes about the order..."
-                  rows={3}
-                />
-              </label>
-
-              <div className="items-list">
-                <h3>Order Items</h3>
-                {editedItems.map((item, index) => (
-                  <div key={index} className="edit-item">
-                    <input
-                      type="text"
-                      value={item.name}
-                      onChange={(e) =>
-                        updateOrderItem(selectedOrder.id, item.id, {
-                          name: e.target.value
-                        })
-                      }
-                    />
-                    <input
-                      type="number"
-                      value={item.quantity}
-                      min="1"
-                      onChange={(e) =>
-                        updateOrderItem(selectedOrder.id, item.id, {
-                          quantity: parseInt(e.target.value)
-                        })
-                      }
-                    />
-                    <input
-                      type="number"
-                      value={item.price}
-                      step="0.01"
-                      min="0"
-                      onChange={(e) =>
-                        updateOrderItem(selectedOrder.id, item.id, {
-                          price: parseFloat(e.target.value)
-                        })
-                      }
-                    />
-                    <button
-                      onClick={() =>
-                        setEditedItems((prev) =>
-                          prev.filter((_, i) => i !== index)
-                        )
-                      }
-                      className="remove-item"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="modal-actions">
-              <button onClick={saveModifiedOrder} className="confirm-button">
-                Save Changes
-              </button>
-              <button
-                onClick={() => {
-                  setShowOrderDetails(false)
-                  setSelectedOrder(null)
-                  setIsEditing(false)
-                }}
-                className="cancel-button"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Success/Error Messages */}
-      {message && (
-        <div className={`message ${message.type}`}>
-          {message.type === 'success' ? (
-            <Check size={16} />
-          ) : (
-            <AlertTriangle size={16} />
-          )}
-          {message.text}
-        </div>
-      )}
-
-      {/* Navigation */}
-      <div className="nav-buttons">
-        <Link href="/pos" passHref>
-          <button className="nav-button">Go to POS</button>
-        </Link>
-        <Link href="/" passHref>
-          <button className="nav-button">Go to Reports</button>
-        </Link>
-
-      </div>
-
-
-    </div>
     </PageContainer>
   )
 }
 
 export default ActiveOrders
+
 
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/order/styles.css
@@ -3856,10 +5333,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/options";
 import { redirect } from "next/navigation";
 import {
-  ArrowUpRight,
   Users,
-  UserPlus,
-  UserCheck,
    Download,
   Plus,
 } from "lucide-react";
@@ -3903,16 +5377,13 @@ export default async function DashboardPage() {
     qualifiedLeads: contacts.filter(c => c.status === 'QUALIFIED').length,
   };
 
-  const conversionRate = stats.totalContacts > 0 
-    ? ((stats.convertedContacts / stats.totalContacts) * 100).toFixed(1) 
-    : "0.0";
-
   return (
     <PageContainer>
       <div className="space-y-4 max-w-[500px] mx-auto px-2 md:max-w-full md:space-y-6 md:p-6">
         {/* Header */}
+          <h1 className="page-title">Dashboard</h1>
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <h2 className="text-2xl font-bold tracking-tight md:text-3xl">Dashboard</h2>
+
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <CalendarDateRangePicker />
             <div className="flex items-center gap-2">
@@ -3943,65 +5414,6 @@ export default async function DashboardPage() {
               ))}
             </SelectContent>
           </Select>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-          <Card className="aspect-square overflow-hidden">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium md:text-sm">Total</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
-              <div className="text-2xl font-bold">{stats.totalContacts}</div>
-              <div className="flex items-center gap-1 mt-1">
-                <ArrowUpRight className="h-3 w-3 text-emerald-500" />
-                <p className="text-[10px] text-emerald-500">+20.1%</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="aspect-square overflow-hidden">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium md:text-sm">New</CardTitle>
-              <UserPlus className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
-              <div className="text-2xl font-bold">{stats.newContacts}</div>
-              <div className="flex items-center gap-1 mt-1">
-                <ArrowUpRight className="h-3 w-3 text-emerald-500" />
-                <p className="text-[10px] text-emerald-500">+10.5%</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="aspect-square overflow-hidden">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium md:text-sm">Qualified</CardTitle>
-              <UserCheck className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
-              <div className="text-2xl font-bold">{stats.qualifiedLeads}</div>
-              <div className="flex items-center gap-1 mt-1">
-                <ArrowUpRight className="h-3 w-3 text-emerald-500" />
-                <p className="text-[10px] text-emerald-500">+12.3%</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="aspect-square overflow-hidden">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium md:text-sm">Conversion</CardTitle>
-              <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
-              <div className="text-2xl font-bold">{conversionRate}%</div>
-              <div className="flex items-center gap-1 mt-1">
-                <ArrowUpRight className="h-3 w-3 text-emerald-500" />
-                <p className="text-[10px] text-emerald-500">+4.5%</p>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Charts */}
@@ -4142,750 +5554,687 @@ ________________________________________________________________________________
 "use client"
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
-  Coffee,
-  X,
-  DollarSign,
-  Gift,
-  Moon,
-  Sun,
-  Search,
-  Bell,
-  Plus,
-  Minus,
-  Trash2,
-  Star,
-  Clock,
-  CalendarDays
+ Coffee,
+ X,
+ DollarSign,
+ Gift,
+ Moon,
+ Sun,
+ Search,
+ Bell,
+ Plus,
+ Minus,
+ Trash2,
+ Star,
+ Clock,
+ CalendarDays,
+ Loader2
 } from 'lucide-react'
 import Link from 'next/link'
-import {Button} from '../../../components/ui/button'
+import {Button} from '@/components/ui/button'
 import { format } from 'date-fns'
-import { PageContainer } from "@/components/layout/page-container";
-import './styles.css';
-
-// Types
-interface MenuItem {
-  id: number
-  name: string
-  price: number
-  category: string
-  popular: boolean
-}
-
-interface MilkOption {
-  name: string
-  price: number
-}
-
-interface CartItem extends MenuItem {
-  quantity: number
-  flavor?: string
-  milk?: MilkOption
-}
-
-interface CustomerInfo {
-  firstName: string
-  lastInitial: string
-  organization: string
-  email: string
-  phone: string
-}
+import { PageContainer } from "@/components/layout/page-container"
+import { posService } from '@/lib/services/pos-service'
+import './styles.css'
+import { MenuItem, MilkOption, CartItem, CustomerInfo } from '@/types/pos'
 
 // Constants
-const menuItems = [
-  { id: 1, name: 'Espresso', price: 2.5, category: 'Coffee', popular: true },
-  { id: 2, name: 'Americano', price: 3.0, category: 'Coffee', popular: false },
-  { id: 3, name: 'Latte', price: 3.5, category: 'Coffee', popular: true },
-  { id: 4, name: 'Cappuccino', price: 3.5, category: 'Coffee', popular: true },
-  {
-    id: 5,
-    name: 'Flat White',
-    price: 3.5,
-    category: 'Coffee',
-    popular: false
-  },
-  { id: 6, name: 'Cortado', price: 3.5, category: 'Coffee', popular: false },
-  {
-    id: 7,
-    name: 'Caramel Crunch Crusher',
-    price: 4.5,
-    category: 'Specialty',
-    popular: true
-  },
-  {
-    id: 8,
-    name: 'Vanilla Dream Latte',
-    price: 4.5,
-    category: 'Specialty',
-    popular: false
-  },
-  {
-    id: 9,
-    name: 'Hazelnut Heaven Cappuccino',
-    price: 4.5,
-    category: 'Specialty',
-    popular: false
-  }
-]
-
 const flavorOptions = [
-  'No Flavoring',
-  'Vanilla',
-  'Caramel',
-  'Hazelnut',
-  'Raspberry',
-  'Pumpkin Spice'
+ 'No Flavoring',
+ 'Vanilla',
+ 'Caramel',
+ 'Hazelnut',
+ 'Raspberry',
+ 'Pumpkin Spice'
 ]
 
 const milkOptions: MilkOption[] = [
-  { name: 'No Milk', price: 0 },
-  { name: 'Whole Milk', price: 0 },
-  { name: 'Oat Milk', price: 0 }
+ { name: 'No Milk', price: 0 },
+ { name: 'Whole Milk', price: 0 },
+ { name: 'Oat Milk', price: 0 }
 ]
 
 const BufBaristaPOS: React.FC = () => {
-  // Basic state
-  const [cart, setCart] = useState<CartItem[]>([])
-  const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
-    firstName: '',
-    lastInitial: '',
-    organization: '',
-    email: '',
-    phone: ''
-  })
-  const [orderNotes, setOrderNotes] = useState('')
-  const [orderNumber, setOrderNumber] = useState(1)
-  const [selectedCategory, setSelectedCategory] = useState('All')
-  const [isComplimentaryMode, setIsComplimentaryMode] = useState(true)
-  const [queueStartTime, setQueueStartTime] = useState<Date | null>(null)
-  const [isDarkMode, setIsDarkMode] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [runningTotal, setRunningTotal] = useState(0)
-  const [quickNotes, setQuickNotes] = useState<string[]>([])
+ // Basic state
+ const [cart, setCart] = useState<CartItem[]>([])
+ const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+ const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
+   firstName: '',
+   lastInitial: '',
+   organization: '',
+   email: '',
+   phone: ''
+ })
+ const [orderNotes, setOrderNotes] = useState('')
+ const [orderNumber, setOrderNumber] = useState(1)
+ const [selectedCategory, setSelectedCategory] = useState('All')
+ const [isComplimentaryMode, setIsComplimentaryMode] = useState(true)
+ const [queueStartTime, setQueueStartTime] = useState<Date | null>(null)
+ const [isDarkMode, setIsDarkMode] = useState(false)
+ const [searchTerm, setSearchTerm] = useState('')
+ const [quickNotes, setQuickNotes] = useState<string[]>([])
+ const [isLoading, setIsLoading] = useState(true)
 
-  // Modal states
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isCustomizationModalOpen, setIsCustomizationModalOpen] =
-    useState(false)
-  const [isQuickNoteModalOpen, setIsQuickNoteModalOpen] = useState(false)
-  const [notification, setNotification] = useState<string | null>(null)
-  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null)
-  const [selectedFlavor, setSelectedFlavor] = useState('')
-  const [selectedMilk, setSelectedMilk] = useState(milkOptions[0])
-  const [showPopular, setShowPopular] = useState(false)
+ // Modal states
+ const [isModalOpen, setIsModalOpen] = useState(false)
+ const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState(false)
+ const [notification, setNotification] = useState<string | null>(null)
+ const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null)
+ const [selectedFlavor, setSelectedFlavor] = useState('')
+ const [selectedMilk, setSelectedMilk] = useState(milkOptions[0])
+ const [showPopular, setShowPopular] = useState(false)
 
-  // Load saved quick notes
-  useEffect(() => {
-    const savedQuickNotes = localStorage.getItem('quickNotes')
-    if (savedQuickNotes) {
-      setQuickNotes(JSON.parse(savedQuickNotes))
-    }
-  }, [])
+ // Initial data loading
+ useEffect(() => {
+   const loadInitialData = async () => {
+     setIsLoading(true)
+    const prefs = {
+      lastOrderNumber: 1,
+      darkMode: false,
+      complimentaryMode: true
+    };
 
-  // Save quick notes
-  useEffect(() => {
-    localStorage.setItem('quickNotes', JSON.stringify(quickNotes))
-  }, [quickNotes])
+    try {
+      const lastOrderNumber = prefs.lastOrderNumber || 1;
+      setOrderNumber((lastOrderNumber as number) + 1);
+      setIsDarkMode(prefs.darkMode || false);
+      setIsComplimentaryMode(prefs.complimentaryMode || true);
 
-  const categories = useMemo(
-    () => ['All', ...new Set(menuItems.map((item) => item.category))],
-    []
-  )
+      setQueueStartTime(new Date());
+    } catch (error) {
+       console.error('Error loading initial data:', error)
+       showNotification('Error loading some data. Using fallback options.')
+       
+       // Load from localStorage as fallback
+       const savedQuickNotes = localStorage.getItem('quickNotes')
+       if (savedQuickNotes) {
+         setQuickNotes(JSON.parse(savedQuickNotes))
+       }
 
-  useEffect(() => {
-    const lastOrderNumber = localStorage.getItem('lastOrderNumber')
-    if (lastOrderNumber) {
-      setOrderNumber(parseInt(lastOrderNumber) + 1)
-    }
+       const lastOrderNumber = localStorage.getItem('lastOrderNumber')
+       if (lastOrderNumber) {
+         setOrderNumber(parseInt(lastOrderNumber) + 1)
+       }
 
-    const savedDarkMode = localStorage.getItem('darkMode')
-    if (savedDarkMode) {
-      setIsDarkMode(JSON.parse(savedDarkMode))
-    }
+       const savedDarkMode = localStorage.getItem('darkMode')
+       if (savedDarkMode) {
+         setIsDarkMode(JSON.parse(savedDarkMode))
+       }
 
-    const savedComplimentaryMode = localStorage.getItem('complimentaryMode')
-    if (savedComplimentaryMode) {
-      setIsComplimentaryMode(JSON.parse(savedComplimentaryMode))
-    }
+       const savedComplimentaryMode = localStorage.getItem('complimentaryMode')
+       if (savedComplimentaryMode) {
+         setIsComplimentaryMode(JSON.parse(savedComplimentaryMode))
+       }
+     } finally {
+       setIsLoading(false)
+     }
+   }
 
-    setQueueStartTime(new Date())
-  }, [])
+   loadInitialData()
+ }, [])
 
-  useEffect(() => {
-    localStorage.setItem('darkMode', JSON.stringify(isDarkMode))
-    document.body.classList.toggle('dark-mode', isDarkMode)
-  }, [isDarkMode])
+ // Save preferences
+ useEffect(() => {
+   posService.savePreference('darkMode', isDarkMode)
+   document.body.classList.toggle('dark-mode', isDarkMode)
+ }, [isDarkMode])
 
-  useEffect(() => {
-    localStorage.setItem(
-      'complimentaryMode',
-      JSON.stringify(isComplimentaryMode)
-    )
-  }, [isComplimentaryMode])
+ useEffect(() => {
+   posService.savePreference('complimentaryMode', isComplimentaryMode)
+ }, [isComplimentaryMode])
 
-  // Helper functions and callbacks
-  const showNotification = useCallback((message: string) => {
-    setNotification(message)
-    setTimeout(() => setNotification(null), 3000)
-  }, [])
+ const categories = useMemo(
+   () => ['All', ...new Set(menuItems.map((item) => item.category))],
+   [menuItems]
+ )
 
-  const addToCart = useCallback((item: MenuItem) => {
-    setSelectedItem(item)
-    setSelectedFlavor('No Flavoring')
+ const showNotification = useCallback((message: string) => {
+   setNotification(message)
+   setTimeout(() => setNotification(null), 3000)
+ }, [])
 
-    // Set default milk based on specific drinks and categories
-    const noMilkDrinks = ['Espresso', 'Americano']
-    const defaultMilk = noMilkDrinks.includes(item.name)
-      ? milkOptions.find((milk) => milk.name === 'No Milk') || milkOptions[0]
-      : item.category === 'Coffee' || item.category === 'Specialty'
-      ? milkOptions.find((milk) => milk.name === 'Whole Milk') || milkOptions[0]
-      : milkOptions[0]
+ const addToCart = useCallback((item: MenuItem) => {
+   setSelectedItem(item)
+   setSelectedFlavor('No Flavoring')
 
-    setSelectedMilk(defaultMilk)
-    setIsCustomizationModalOpen(true)
-  }, [])
-  const confirmCustomization = useCallback(() => {
-    if (!selectedItem) return
+   // Set default milk based on specific drinks and categories
+   const noMilkDrinks = ['Espresso', 'Americano']
+   const defaultMilk = noMilkDrinks.includes(item.name)
+     ? milkOptions.find((milk) => milk.name === 'No Milk') || milkOptions[0]
+     : item.category === 'Coffee' || item.category === 'Specialty'
+     ? milkOptions.find((milk) => milk.name === 'Whole Milk') || milkOptions[0]
+     : milkOptions[0]
 
-    const newItem: CartItem = {
-      ...selectedItem,
-      flavor: selectedFlavor === 'No Flavoring' ? undefined : selectedFlavor,
-      milk: selectedMilk,
-      quantity: 1
-    }
+   setSelectedMilk(defaultMilk)
+   setIsCustomizationModalOpen(true)
+ }, [])
 
-    setCart((prevCart) => {
-      const existingItemIndex = prevCart.findIndex(
-        (item) =>
-          item.id === newItem.id &&
-          item.flavor === newItem.flavor &&
-          item.milk?.name === newItem.milk?.name
-      )
+ const confirmCustomization = useCallback(() => {
+   if (!selectedItem) return
 
-      if (existingItemIndex !== -1) {
-        return prevCart.map((item, index) =>
-          index === existingItemIndex
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
-      }
+   const newItem: CartItem = {
+     ...selectedItem,
+     flavor: selectedFlavor === 'No Flavoring' ? undefined : selectedFlavor,
+     milk: selectedMilk,
+     quantity: 1
+   }
 
-      return [...prevCart, newItem]
-    })
+   setCart((prevCart) => {
+     const existingItemIndex = prevCart.findIndex(
+       (item) =>
+         item.id === newItem.id &&
+         item.flavor === newItem.flavor &&
+         item.milk?.name === newItem.milk?.name
+     )
 
-    const itemTotal = selectedItem.price + selectedMilk.price
-    setRunningTotal((prev) => prev + itemTotal)
+     if (existingItemIndex !== -1) {
+       return prevCart.map((item, index) =>
+         index === existingItemIndex
+           ? { ...item, quantity: item.quantity + 1 }
+           : item
+       )
+     }
 
-    showNotification(
-      `Added ${selectedItem.name} with ${selectedMilk.name}${
-        selectedFlavor !== 'No Flavoring' ? ` and ${selectedFlavor}` : ''
-      } to cart`
-    )
+     return [...prevCart, newItem]
+   })
 
-    setIsCustomizationModalOpen(false)
-  }, [selectedItem, selectedFlavor, selectedMilk, showNotification])
+   showNotification(
+     `Added ${selectedItem.name} with ${selectedMilk.name}${
+       selectedFlavor !== 'No Flavoring' ? ` and ${selectedFlavor}` : ''
+     } to cart`
+   )
 
-  const removeFromCart = useCallback((index: number) => {
-    setCart((prevCart) => {
-      const newCart = [...prevCart]
-      const item = newCart[index]
-      const itemTotal = item.price + (item.milk?.price || 0)
+   setIsCustomizationModalOpen(false)
+ }, [selectedItem, selectedFlavor, selectedMilk, showNotification])
 
-      if (item.quantity > 1) {
-        newCart[index] = { ...item, quantity: item.quantity - 1 }
-      } else {
-        newCart.splice(index, 1)
-      }
+ const removeFromCart = useCallback((index: number) => {
+   setCart((prevCart) => {
+     const newCart = [...prevCart]
+     if (newCart[index].quantity > 1) {
+       newCart[index] = { ...newCart[index], quantity: newCart[index].quantity - 1 }
+     } else {
+       newCart.splice(index, 1)
+     }
+     return newCart
+   })
+ }, [])
 
-      setRunningTotal((prev) => prev - itemTotal)
-      return newCart
-    })
-  }, [])
+ const increaseQuantity = useCallback((index: number) => {
+   setCart((prevCart) => {
+     const newCart = [...prevCart]
+     newCart[index] = { ...newCart[index], quantity: newCart[index].quantity + 1 }
+     return newCart
+   })
+ }, [])
 
-  const increaseQuantity = useCallback((index: number) => {
-    setCart((prevCart) => {
-      const newCart = [...prevCart]
-      const item = newCart[index]
-      const itemTotal = item.price + (item.milk?.price || 0)
+ const calculateTotal = useCallback(() => {
+   return isComplimentaryMode
+      ? '0.00'
+      : cart.reduce(
+          (total, item) =>
+            total + (item.price + (item.milk?.price || 0)) * item.quantity,
+          0
+        ).toFixed(2)
+  }
+, [cart, isComplimentaryMode])
 
-      newCart[index] = { ...item, quantity: item.quantity + 1 }
-      setRunningTotal((prev) => prev + itemTotal)
-      return newCart
-    })
-  }, [])
+ const handlePlaceOrder = useCallback(() => {
+   if (cart.length === 0) return
+   setIsModalOpen(true)
+ }, [cart])
 
-  const calculateTotal = useCallback(() => {
-    return isComplimentaryMode
-      ? 0
-      : cart
-          .reduce(
-            (sum, item) =>
-              sum + (item.price + (item.milk?.price || 0)) * item.quantity,
-            0
-          )
-          .toFixed(2)
-  }, [cart, isComplimentaryMode])
+ const addQuickNote = useCallback(async (note: string) => {
+   setOrderNotes((prev) => (prev ? `${prev}\n${note}` : note))
+   try {
+     await posService.createQuickNote(note)
+     const notes = await posService.getQuickNotes()
+     setQuickNotes(notes.map(note => note.content))
+   } catch (error) {
+     console.error('Error saving quick note:', error)
+   }
+ }, [])
 
-  const handlePlaceOrder = useCallback(() => {
-    if (cart.length === 0) return
-    setIsModalOpen(true)
-  }, [cart])
+ const confirmOrder = useCallback(async () => {
+   if (!customerInfo.firstName || !customerInfo.lastInitial) return
 
-  const addQuickNote = useCallback((note: string) => {
-    setOrderNotes((prev) => (prev ? `${prev}\n${note}` : note))
-  }, [])
+   const orderStartTime = new Date()
+   const newOrder = {
+     orderNumber,
+     customerName: `${customerInfo.firstName} ${customerInfo.lastInitial}.`,
+     customerInfo,
+     items: cart,
+     notes: orderNotes,
+     status: 'PENDING',
+     total: parseFloat(calculateTotal()),
+     isComplimentary: isComplimentaryMode,
+     queueTime: queueStartTime
+       ? (orderStartTime.getTime() - queueStartTime.getTime()) / 1000
+       : 0,
+     startTime: orderStartTime
+   }
 
-  const saveQuickNote = useCallback(
-    (note: string) => {
-      if (note && !quickNotes.includes(note)) {
-        setQuickNotes((prev) => [...prev, note])
-        showNotification('Quick note saved!')
-      }
-    },
-    [quickNotes, showNotification]
-  )
+   try {
+     await posService.createOrder({ ...newOrder, id: '', userId: '' })
+     
+     setCart([])
+     setCustomerInfo({
+       firstName: '',
+       lastInitial: '',
+       organization: '',
+       email: '',
+       phone: ''
+     })
+     setOrderNotes('')
+     setOrderNumber(orderNumber + 1)
+     setQueueStartTime(new Date())
+     setIsModalOpen(false)
+     showNotification('Order placed successfully!')
+   } catch (error) {
+     console.error('Error creating order:', error)
+     showNotification('Error creating order. Please try again.')
+   }
+ }, [
+   customerInfo,
+   cart,
+   orderNumber,
+   calculateTotal,
+   isComplimentaryMode,
+   queueStartTime,
+   showNotification,
+   orderNotes
+ ])
 
-  const confirmOrder = useCallback(() => {
-    if (!customerInfo.firstName || !customerInfo.lastInitial) return
+ const filteredMenuItems = useMemo(
+   () =>
+     menuItems.filter(
+       (item) =>
+         (selectedCategory === 'All' || item.category === selectedCategory) &&
+         item.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+         (!showPopular || item.popular)
+     ),
+   [selectedCategory, searchTerm, showPopular, menuItems]
+ )
 
-    const orderStartTime = new Date()
-    const newOrder = {
-      id: orderNumber,
-      customerName: `${customerInfo.firstName} ${customerInfo.lastInitial}.`,
-      customerInfo: { ...customerInfo },
-      items: [...cart],
-      notes: orderNotes,
-      timestamp: orderStartTime.toLocaleString(),
-      status: 'Pending',
-      total: calculateTotal(),
-      isComplimentary: isComplimentaryMode,
-      queueTime: queueStartTime
-        ? (orderStartTime.getTime() - queueStartTime.getTime()) / 1000
-        : 0,
-      startTime: orderStartTime
-    }
+ const handleKeyPress = useCallback(
+   (e: KeyboardEvent) => {
+     if (e.key === 'Enter' && e.ctrlKey) {
+       handlePlaceOrder()
+     }
+   },
+   [handlePlaceOrder]
+ )
 
-    const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]')
-    const updatedOrders = [newOrder, ...existingOrders]
-    localStorage.setItem('orders', JSON.stringify(updatedOrders))
-    localStorage.setItem('lastOrderNumber', orderNumber.toString())
+ useEffect(() => {
+   window.addEventListener('keydown', handleKeyPress)
+   return () => {
+     window.removeEventListener('keydown', handleKeyPress)
+   }
+ }, [handleKeyPress])
 
-    setCart([])
-    setCustomerInfo({
-      firstName: '',
-      lastInitial: '',
-      organization: '',
-      email: '',
-      phone: ''
-    })
-    setOrderNotes('')
-    setOrderNumber(orderNumber + 1)
-    setQueueStartTime(new Date())
-    setRunningTotal(0)
-    setIsModalOpen(false)
-    showNotification('Order placed successfully!')
-  }, [
-    customerInfo,
-    cart,
-    orderNumber,
-    calculateTotal,
-    isComplimentaryMode,
-    queueStartTime,
-    showNotification,
-    orderNotes
-  ])
+ const toggleServiceMode = useCallback(() => {
+   setIsComplimentaryMode((prev) => !prev)
+   showNotification(
+     `Switched to ${isComplimentaryMode ? 'Pop-up' : 'Complimentary'} mode`
+   )
+ }, [isComplimentaryMode, showNotification])
 
-  const filteredMenuItems = useMemo(
-    () =>
-      menuItems.filter(
-        (item) =>
-          (selectedCategory === 'All' || item.category === selectedCategory) &&
-          item.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-          (!showPopular || item.popular)
-      ),
-    [selectedCategory, searchTerm, showPopular]
-  )
+ if (isLoading) {
+   return (
+     <PageContainer>
+       <div className="flex items-center justify-center min-h-screen">
+         <div className="flex flex-col items-center space-y-4">
+           <Loader2 className="w-8 h-8 animate-spin" />
+           <p className="text-lg">Loading POS system...</p>
+         </div>
+       </div>
+     </PageContainer>
+   )
+ }
 
-  const handleKeyPress = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && e.ctrlKey) {
-        handlePlaceOrder()
-      }
-    },
-    [handlePlaceOrder]
-  )
+ return (
+   <PageContainer>
+     <div className={`pos-container ${isDarkMode ? 'dark-mode' : ''}`}>
+       <h1 className="page-title">Point of Sale</h1>
 
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyPress)
-    return () => {
-      window.removeEventListener('keydown', handleKeyPress)
-    }
-  }, [handleKeyPress])
+       <header className="pos-header">
+         <div className="header-left">
+           <Link href="/waste" passHref>
+             <button className="waste-button">
+               <Trash2 />
+               Waste
+             </button>
+           </Link>
+           <button onClick={toggleServiceMode} className="mode-button">
+             {isComplimentaryMode ? <Gift /> : <DollarSign />}
+             {isComplimentaryMode ? 'Complimentary' : 'Pop-up'}
+           </button>
+           <button
+             onClick={() => setShowPopular(!showPopular)}
+             className={`mode-button ${showPopular ? 'active' : ''}`}
+           >
+             <Star />
+             Popular
+           </button>
+         </div>
 
-  const toggleServiceMode = useCallback(() => {
-    setIsComplimentaryMode((prev) => !prev)
-    showNotification(
-      `Switched to ${isComplimentaryMode ? 'Pop-up' : 'Complimentary'} mode`
-    )
-  }, [isComplimentaryMode, showNotification])
-  return (
-    <PageContainer>
-    <div className={`pos-container ${isDarkMode ? 'dark-mode' : ''}`}>
-    <h1 className="page-title">Point of Sale</h1>
+         <div className="search-container">
+           <Search />
+           <input
+             type="text"
+             placeholder="Search menu..."
+             value={searchTerm}
+             onChange={(e) => setSearchTerm(e.target.value)}
+             className="search-input"
+           />
+         </div>
 
-      <header className="pos-header">
-        <div className="header-left">
-          <Link href="/waste" passHref>
-            <button className="waste-button">
-              <Trash2 />
-              Waste
-            </button>
-          </Link>
-          <button onClick={toggleServiceMode} className="mode-button">
-            {isComplimentaryMode ? <Gift /> : <DollarSign />}
-            {isComplimentaryMode ? 'Complimentary' : 'Pop-up'}
-          </button>
-          <button
-            onClick={() => setShowPopular(!showPopular)}
-            className={`mode-button ${showPopular ? 'active' : ''}`}
-          >
-            <Star />
-            Popular
-          </button>
-        </div>
+         <div className="header-right">
+           <span className="current-time">
+             <Clock size={16} />
+             {format(new Date(), 'HH:mm')}
+           </span>
+           <span className="current-date">
+             <CalendarDays size={16} />
+             {format(new Date(), 'MMM dd, yyyy')}
+           </span>
+           <button
+             onClick={() => setIsDarkMode(!isDarkMode)}
+             className="mode-button"
+           >
+             {isDarkMode ? <Sun /> : <Moon />}
+           </button>
+         </div>
+       </header>
 
-        <div className="search-container">
-          <Search />
-          <input
-            type="text"
-            placeholder="Search menu..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
-          />
-        </div>
+       <main className="pos-main">
+         <section className="cart-section">
+           <h2 className="section-title">Cart</h2>
 
-        <div className="header-right">
-          <span className="current-time">
-            <Clock size={16} />
-            {format(new Date(), 'HH:mm')}
-          </span>
-          <span className="current-date">
-            <CalendarDays size={16} />
-            {format(new Date(), 'MMM dd, yyyy')}
-          </span>
-          <button
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            className="mode-button"
-          >
-            {isDarkMode ? <Sun /> : <Moon />}
-          </button>
-        </div>
-      </header>
+           {cart.length === 0 ? (
+             <p className="empty-cart">Your cart is empty</p>
+           ) : (
+             <ul className="cart-items">
+               {cart.map((item, index) => (
+                 <li key={index} className="cart-item">
+                   <span className="item-name">
+                     {item.name}
+                     {item.milk && (
+                       <span className="item-customization">
+                         {' '}
+                         ({item.milk.name})
+                       </span>
+                     )}
+                     {item.flavor && (
+                       <span className="item-customization">
+                         {' '}
+                         with {item.flavor}
+                       </span>
+                     )}
+                   </span>
+                   <div className="item-controls">
+                     <button
+                       onClick={() => removeFromCart(index)}
+                       className="quantity-button"
+                     >
+                       <Minus size={16} />
+                       </button>
+                     <span className="item-quantity">{item.quantity}</span>
+                     <button
+                       onClick={() => increaseQuantity(index)}
+                       className="quantity-button"
+                     >
+                       <Plus size={16} />
+                     </button>
+                     <span className="item-price">
+                       {isComplimentaryMode
+                         ? ''
+                         : `$${(
+                             (item.price + (item.milk?.price || 0)) *
+                             item.quantity
+                           ).toFixed(2)}`}
+                     </span>
+                     <Button
+                       onClick={() => removeFromCart(index)}
+                       className="remove-item"
+                     >
+                       <X size={16} />
+                     </Button>
+                   </div>
+                 </li>
+               ))}
+             </ul>
+           )}
 
-      <main className="pos-main">
-        <section className="cart-section">
-          <h2 className="section-title">Cart</h2>
+           <div className="order-notes-section">
+             <textarea
+               value={orderNotes}
+               onChange={(e) => setOrderNotes(e.target.value)}
+               placeholder="Add notes about this order..."
+               className="notes-input"
+             />
+             <div className="quick-notes">
+               <div className="quick-note-chips">
+                 {quickNotes.map((note, index) => (
+                   <button
+                     key={index}
+                     onClick={() => addQuickNote(note)}
+                     className="quick-note-chip"
+                   >
+                     {note}
+                   </button>
+                 ))}
+               </div>
+             </div>
+           </div>
 
-          {cart.length === 0 ? (
-            <p className="empty-cart">Your cart is empty</p>
-          ) : (
-            <ul className="cart-items">
-              {cart.map((item, index) => (
-                <li key={index} className="cart-item">
-                  <span className="item-name">
-                    {item.name}
-                    {item.milk && (
-                      <span className="item-customization">
-                        {' '}
-                        ({item.milk.name})
-                      </span>
-                    )}
-                    {item.flavor && (
-                      <span className="item-customization">
-                        {' '}
-                        with {item.flavor}
-                      </span>
-                    )}
-                  </span>
-                  <div className="item-controls">
-                    <button
-                      onClick={() => removeFromCart(index)}
-                      className="quantity-button"
-                    >
-                      <Minus size={16} />
-                    </button>
-                    <span className="item-quantity">{item.quantity}</span>
-                    <button
-                      onClick={() => increaseQuantity(index)}
-                      className="quantity-button"
-                    >
-                      <Plus size={16} />
-                    </button>
-                    <span className="item-price">
-                      {isComplimentaryMode
-                        ? ''
-                        : `$${(
-                            (item.price + (item.milk?.price || 0)) *
-                            item.quantity
-                          ).toFixed(2)}`}
-                    </span>
-                    <Button
-                      onClick={() => removeFromCart(index)}
-                      className="remove-item"
-                    >
-                      <X size={16} />
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+           <div className="cart-total">
+             <span>Total:</span>
+             <span>{isComplimentaryMode ? '' : `$${calculateTotal()}`}</span>
+           </div>
 
-          <div className="order-notes-section">
-            <textarea
-              value={orderNotes}
-              onChange={(e) => setOrderNotes(e.target.value)}
-              placeholder="Add notes about this order..."
-              className="notes-input"
-            />
-            <div className="quick-notes">
-              <div className="quick-note-chips">
-                {quickNotes.map((note, index) => (
-                  <button
-                    key={index}
-                    onClick={() => addQuickNote(note)}
-                    className="quick-note-chip"
-                  >
-                    {note}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+           <button
+             onClick={handlePlaceOrder}
+             disabled={cart.length === 0}
+             className="place-order-button"
+           >
+             Place Order
+           </button>
 
-          <div className="cart-total">
-            <span>Total:</span>
-            <span>{isComplimentaryMode ? '' : `$${calculateTotal()}`}</span>
-          </div>
+           <Link href="/dashboard/orders" passHref>
+             <button className="view-orders-button">View Orders</button>
+           </Link>
+           <Link href="/dashboard/sales" passHref>
+             <button className="view-orders-button">View Reports</button>
+           </Link>
+         </section>
 
-          <button
-            onClick={handlePlaceOrder}
-            disabled={cart.length === 0}
-            className="place-order-button"
-          >
-            Place Order
-          </button>
+         <section className="menu-section">
+           <div className="category-filters">
+             {categories.map((category) => (
+               <button
+                 key={category}
+                 onClick={() => setSelectedCategory(category)}
+                 className={`category-button ${
+                   category === selectedCategory ? 'active' : ''
+                 }`}
+               >
+                 {category}
+               </button>
+             ))}
+           </div>
 
-          <Link href="/dashboard/orders" passHref>
-            <button className="view-orders-button">View Orders</button>
-          </Link>
-          <Link href="/dashboard/sales" passHref>
-            <button className="view-orders-button">View Reports</button>
-          </Link>
-        </section>
+           <div className="menu-grid">
+             {filteredMenuItems.map((item) => (
+               <button
+                 key={item.id}
+                 onClick={() => addToCart(item)}
+                 className="menu-item"
+               >
+                 <Coffee className="item-icon" />
+                 <h3 className="item-name">
+                   {item.name}
+                   {item.popular && <Star className="popular-icon" size={16} />}
+                 </h3>
+                 <p className="item-price">
+                   {isComplimentaryMode ? '' : `$${item.price.toFixed(2)}`}
+                 </p>
+               </button>
+             ))}
+           </div>
+         </section>
+       </main>
 
-        <section className="menu-section">
-          <div className="category-filters">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`category-button ${
-                  category === selectedCategory ? 'active' : ''
-                }`}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
+       {/* Customer Information Modal */}
+       {isModalOpen && (
+         <div className="modal-overlay">
+           <div className="modal-content">
+             <h3 className="modal-title">Customer Information</h3>
+             <input
+               type="text"
+               value={customerInfo.firstName}
+               onChange={(e) =>
+                 setCustomerInfo({ ...customerInfo, firstName: e.target.value })
+               }
+               placeholder="First Name"
+               className="modal-input"
+             />
+             <input
+               type="text"
+               value={customerInfo.lastInitial}
+               onChange={(e) =>
+                 setCustomerInfo({
+                   ...customerInfo,
+                   lastInitial: e.target.value
+                 })
+               }
+               placeholder="Last Name Initial"
+               className="modal-input"
+             />
+             <input
+               type="text"
+               value={customerInfo.organization}
+               onChange={(e) =>
+                 setCustomerInfo({
+                   ...customerInfo,
+                   organization: e.target.value
+                 })
+               }
+               placeholder="Organization (Optional)"
+               className="modal-input"
+             />
+             <input
+               type="email"
+               value={customerInfo.email}
+               onChange={(e) =>
+                 setCustomerInfo({
+                   ...customerInfo,
+                   email: e.target.value
+                 })
+               }
+               placeholder="Email (Optional)"
+               className="modal-input"
+             />
+             <input
+               type="tel"
+               value={customerInfo.phone}
+               onChange={(e) =>
+                 setCustomerInfo({
+                   ...customerInfo,
+                   phone: e.target.value
+                 })
+               }
+               placeholder="Phone (Optional)"
+               className="modal-input"
+             />
+             <div className="modal-buttons">
+               <button
+                 onClick={() => setIsModalOpen(false)}
+                 className="modal-button cancel"
+               >
+                 Cancel
+               </button>
+               <button onClick={confirmOrder} className="modal-button confirm">
+                 Confirm Order
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
 
-          <div className="menu-grid">
-            {filteredMenuItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => addToCart(item)}
-                className="menu-item"
-              >
-                <Coffee className="item-icon" />
-                <h3 className="item-name">
-                  {item.name}
-                  {item.popular && <Star className="popular-icon" size={16} />}
-                </h3>
-                <p className="item-price">
-                  {isComplimentaryMode ? '' : `$${item.price.toFixed(2)}`}
-                </p>
-              </button>
-            ))}
-          </div>
-        </section>
-      </main>
+       {/* Customization Modal */}
+       {isCustomizationModalOpen && selectedItem && (
+         <div className="modal-overlay">
+           <div className="modal-content">
+             <h3 className="modal-title">Customize {selectedItem.name}</h3>
 
-      {/* Customization Modal */}
-      {isCustomizationModalOpen && selectedItem && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3 className="modal-title">Customize {selectedItem.name}</h3>
+             <div className="customization-section">
+               <h4 className="section-subtitle">Select Milk</h4>
+               <div className="milk-options">
+                 {milkOptions.map((milk) => (
+                   <button
+                     key={milk.name}
+                     onClick={() => setSelectedMilk(milk)}
+                     className={`milk-button ${
+                       selectedMilk.name === milk.name ? 'selected' : ''
+                     }`}
+                   >
+                     <span>{milk.name}</span>
+                     {milk.price > 0 && (
+                       <span className="milk-price">
+                         +${milk.price.toFixed(2)}
+                       </span>
+                     )}
+                   </button>
+                 ))}
+               </div>
+             </div>
 
-            <div className="customization-section">
-              <h4 className="section-subtitle">Select Milk</h4>
-              <div className="milk-options">
-                {milkOptions.map((milk) => (
-                  <button
-                    key={milk.name}
-                    onClick={() => setSelectedMilk(milk)}
-                    className={`milk-button ${
-                      selectedMilk.name === milk.name ? 'selected' : ''
-                    }`}
-                  >
-                    <span>{milk.name}</span>
-                    {milk.price > 0 && (
-                      <span className="milk-price">
-                        +${milk.price.toFixed(2)}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
+             <div className="customization-section">
+               <h4 className="section-subtitle">Select Flavor</h4>
+               {flavorOptions.map((flavor) => (
+                 <button
+                   key={flavor}
+                   onClick={() => setSelectedFlavor(flavor)}
+                   className={`flavor-button ${
+                     selectedFlavor === flavor ? 'selected' : ''
+                   }`}
+                 >
+                   {flavor}
+                 </button>
+               ))}
+             </div>
 
-            <div className="customization-section">
-              <h4 className="section-subtitle">Select Flavor</h4>
-              {flavorOptions.map((flavor) => (
-                <button
-                  key={flavor}
-                  onClick={() => setSelectedFlavor(flavor)}
-                  className={`flavor-button ${
-                    selectedFlavor === flavor ? 'selected' : ''
-                  }`}
-                >
-                  {flavor}
-                </button>
-              ))}
-            </div>
+             <div className="modal-buttons">
+               <button
+                 onClick={() => setIsCustomizationModalOpen(false)}
+                 className="modal-button cancel"
+               >
+                 Cancel
+               </button>
+               <button
+                 onClick={confirmCustomization}
+                 className="modal-button confirm"
+                 disabled={!selectedFlavor}
+               >
+                 Add to Cart
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
 
-            <div className="modal-buttons">
-              <button
-                onClick={() => setIsCustomizationModalOpen(false)}
-                className="modal-button cancel"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmCustomization}
-                className="modal-button confirm"
-                disabled={!selectedFlavor}
-              >
-                Add to Cart
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Customer Information Modal */}
-      {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3 className="modal-title">Customer Information</h3>
-            <input
-              type="text"
-              value={customerInfo.firstName}
-              onChange={(e) =>
-                setCustomerInfo({ ...customerInfo, firstName: e.target.value })
-              }
-              placeholder="First Name"
-              className="modal-input"
-            />
-            <input
-              type="text"
-              value={customerInfo.lastInitial}
-              onChange={(e) =>
-                setCustomerInfo({
-                  ...customerInfo,
-                  lastInitial: e.target.value
-                })
-              }
-              placeholder="Last Name Initial"
-              className="modal-input"
-            />
-            <input
-              type="text"
-              value={customerInfo.organization}
-              onChange={(e) =>
-                setCustomerInfo({
-                  ...customerInfo,
-                  organization: e.target.value
-                })
-              }
-              placeholder="Organization (Optional)"
-              className="modal-input"
-            />
-            <input
-              type="email"
-              value={customerInfo.email}
-              onChange={(e) =>
-                setCustomerInfo({
-                  ...customerInfo,
-                  email: e.target.value
-                })
-              }
-              placeholder="Email (Optional)"
-              className="modal-input"
-            />
-            <input
-              type="tel"
-              value={customerInfo.phone}
-              onChange={(e) =>
-                setCustomerInfo({
-                  ...customerInfo,
-                  phone: e.target.value
-                })
-              }
-              placeholder="Phone (Optional)"
-              className="modal-input"
-            />
-            <div className="modal-buttons">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="modal-button cancel"
-              >
-                Cancel
-              </button>
-              <button onClick={confirmOrder} className="modal-button confirm">
-                Confirm Order
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Quick Note Modal */}
-      {isQuickNoteModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3 className="modal-title">Add Quick Note</h3>
-            <textarea
-              placeholder="Enter a quick note to save for future use..."
-              className="modal-textarea"
-              id="quickNoteInput"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Notification */}
-      {notification && (
-        <div className="notification">
-          <Bell size={16} />
-          {notification}
-        </div>
-      )}
-    
-
-    </div>
-    </PageContainer>
-  )
+       {/* Notification */}
+       {notification && (
+         <div className="notification">
+           <Bell size={16} />
+           {notification}
+         </div>
+       )}
+     </div>
+   </PageContainer>
+ )
 }
+
 export default BufBaristaPOS
 
 ________________________________________________________________________________
@@ -5767,10 +7116,279 @@ ________________________________________________________________________________
 }
 
 ________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/qr/[id]/error.tsx
+// src/app/(app)/qr/[id]/error.tsx
+"use client"
+
+import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { ChevronLeft } from "lucide-react"
+
+export default function Error() {
+  return (
+    <div className="flex-1 p-8">
+      <Card className="p-6">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-destructive">Error</h2>
+          <p className="mt-2 text-muted-foreground">
+            Failed to load QR code
+          </p>
+          <Link href="/qr" className="mt-4 inline-block">
+            <Button variant="outline">
+              <ChevronLeft className="mr-2 h-4 w-4" />
+              Back to QR Codes
+            </Button>
+          </Link>
+        </div>
+      </Card>
+    </div>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/qr/[id]/loading.tsx
+// src/app/(app)/qr/[id]/loading.tsx
+import { Card } from "@/components/ui/card"
+
+export default function Loading() {
+  return (
+    <div className="flex-1 p-8">
+      <Card className="p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-64 rounded bg-muted" />
+          <div className="h-4 w-32 rounded bg-muted" />
+          <div className="space-y-2">
+            <div className="h-10 rounded bg-muted" />
+            <div className="h-10 w-3/4 rounded bg-muted" />
+            <div className="h-10 w-1/2 rounded bg-muted" />
+          </div>
+        </div>
+      </Card>
+    </div>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/qr/[id]/not-found.tsx
+// src/app/(app)/qr/[id]/not-found.tsx
+import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { ChevronLeft } from "lucide-react"
+
+export default function NotFound() {
+  return (
+    <div className="flex-1 p-8">
+      <Card className="p-6">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold">QR Code Not Found</h2>
+          <p className="mt-2 text-muted-foreground">
+            The QR code you&apos;re looking for doesn&apos;t exist or has been deleted.
+          </p>
+          <Link href="/qr" className="mt-4 inline-block">
+            <Button variant="outline">
+              <ChevronLeft className="mr-2 h-4 w-4" />
+              Back to QR Codes
+            </Button>
+          </Link>
+        </div>
+      </Card>
+    </div>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/qr/[id]/page.tsx
+import { Metadata } from "next"
+import { notFound } from "next/navigation"
+import { QRForm } from "@/components/dashboard/qr/qr-form"
+import { getQRCodeById } from "@/lib/db"
+import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { ChevronLeft } from "lucide-react"
+
+// @ts-ignore
+export default async function QRCodePage({ params }) {
+  let qrCode = null
+  
+  try {
+    qrCode = await getQRCodeById(params.id)
+  } catch {
+    if (process.env.NODE_ENV === 'production') {
+      console.error("Error loading QR code:", params.id)
+    }
+  }
+
+  if (!qrCode) {
+    notFound()
+  }
+
+  return (
+    <div className="flex-1 space-y-4 p-8 pt-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Edit QR Code</h2>
+          <p className="text-muted-foreground">
+            Update your QR code settings and rules
+          </p>
+        </div>
+        <Link href="/qr">
+          <Button variant="outline" size="sm">
+            <ChevronLeft className="mr-2 h-4 w-4" />
+            Back to QR Codes
+          </Button>
+        </Link>
+      </div>
+
+      <Card className="p-6">
+        <QRForm initialData={qrCode} />
+      </Card>
+    </div>
+  )
+}
+
+// @ts-ignore
+export async function generateMetadata({ params }): Promise<Metadata> {
+  let qrCode = null
+  
+  try {
+    qrCode = await getQRCodeById(params.id)
+  } catch {
+    return {
+      title: "QR Code Not Found | Chain Works",
+      description: "The requested QR code could not be found.",
+    }
+  }
+
+  if (!qrCode) {
+    return {
+      title: "QR Code Not Found | Chain Works",
+      description: "The requested QR code could not be found.",
+    }
+  }
+
+  return {
+    title: `Edit ${qrCode.name} | Chain Works`,
+    description: `Update settings and rules for QR code: ${qrCode.name}`,
+    openGraph: {
+      title: `Edit ${qrCode.name} | Chain Works`,
+      description: `Update settings and rules for QR code: ${qrCode.name}`,
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary',
+      title: `Edit ${qrCode.name} | Chain Works`,
+      description: `Update settings and rules for QR code: ${qrCode.name}`,
+    },
+  }
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/qr/new/error.tsx
+"use client"
+
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+
+export default function Error() {
+  return (
+    <div className="flex-1 space-y-4 p-8 pt-6">
+      <div className="flex flex-col items-center justify-center space-y-4">
+        <h2 className="text-2xl font-bold">Something went wrong</h2>
+        <p className="text-muted-foreground">
+          Failed to create QR code. Please try again.
+        </p>
+        <Link href="/dashboard/qr">
+          <Button>Back to QR Codes</Button>
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/qr/new/loading.tsx
+import { Loader2 } from "lucide-react"
+
+export default function Loading() {
+  return (
+    <div className="flex-1 space-y-4 p-8 pt-6">
+      <div className="flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    </div>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/qr/new/page.tsx
+import { Metadata } from "next"
+import { QRForm } from "@/components/dashboard/qr/qr-form"
+
+export const metadata: Metadata = {
+  title: "Create QR Code | Chain Works",
+  description: "Create a new QR code",
+}
+
+export default function NewQRCodePage() {
+  return (
+    <div className="flex-1">
+      <QRForm />
+    </div>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/qr/page.tsx
+// src/app/(app)/qr/page.tsx
+"use client"
+
+import { useState } from "react"
+import { FolderList } from "@/components/dashboard/qr/folder-list"
+import { QRView } from "@/components/dashboard/qr/qr-view"
+import { Button } from "@/components/ui/button"
+import { Plus } from "lucide-react"
+import Link from "next/link"
+import { PageContainer } from "@/components/layout/page-container"
+
+export default function QRCodesPage() {
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
+
+  return (
+       <PageContainer>
+
+    <div className="flex-1 space-y-4 p-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">QR Codes</h2>
+          <p className="text-muted-foreground">
+            Create and manage your dynamic QR codes
+          </p>
+        </div>
+        <Link href="/qr/new">
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Create QR Code
+          </Button>
+        </Link>
+      </div>
+
+      <div className="flex gap-8">
+        <div className="w-64">
+          <FolderList
+            selectedFolderId={selectedFolderId}
+            onFolderSelect={setSelectedFolderId}
+          />
+        </div>
+        <div className="flex-1">
+          <QRView folderId={selectedFolderId} />
+        </div>
+      </div>
+    </div>
+  </PageContainer>
+  )
+}
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/sales/page.tsx
 "use client"
-import { PageContainer } from "@/components/layout/page-container";
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
@@ -5786,7 +7404,6 @@ import {
   endOfYear,
   subDays,
   eachDayOfInterval,
-  isSameDay
 } from 'date-fns'
 import {
   BarChart,
@@ -5826,7 +7443,8 @@ import {
   Percent,
   Award,
 } from 'lucide-react'
-import './styles.css';
+import { PageContainer } from "@/components/layout/page-container"
+import './styles.css'
 
 interface Order {
   id: number
@@ -5853,16 +7471,6 @@ declare module 'jspdf' {
 
 type TimeRange = 'day' | 'week' | 'month' | 'year' | 'custom'
 
-const COLORS = [
-  '#0088FE',
-  '#00C49F',
-  '#FFBB28',
-  '#FF8042',
-  '#8884D8',
-  '#82ca9d',
-  '#ffc658'
-]
-
 interface TrendMetrics {
   date: string
   sales: number
@@ -5874,7 +7482,18 @@ interface TrendMetrics {
   trend: 'up' | 'down' | 'stable'
 }
 
+const COLORS = [
+  '#0088FE',
+  '#00C49F',
+  '#FFBB28',
+  '#FF8042',
+  '#8884D8',
+  '#82ca9d',
+  '#ffc658'
+]
+
 const Reports: React.FC = () => {
+  // State declarations
   const [orders, setOrders] = useState<Order[]>([])
   const [timeRange, setTimeRange] = useState<TimeRange>('week')
   const [customStartDate, setCustomStartDate] = useState<Date | null>(null)
@@ -5885,6 +7504,22 @@ const Reports: React.FC = () => {
     'sales'
   )
 
+  // Memoized helper functions
+  const formatTime = useCallback((seconds: number) => {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+  }, [])
+
+  const calculateMovingAverage = useCallback((data: number[], periods: number) => {
+    return data.map((_, index) => {
+      const start = Math.max(0, index - periods + 1)
+      const values = data.slice(start, index + 1)
+      return values.reduce((sum, val) => sum + val, 0) / values.length
+    })
+  }, [])
+
+  // Data fetching
   const fetchOrders = useCallback(async () => {
     setIsLoading(true)
     setError(null)
@@ -5894,8 +7529,12 @@ const Reports: React.FC = () => {
         localStorage.getItem('orders') || '[]'
       ) as Order[]
       setOrders(storedOrders)
-    } catch (err) {
-      setError('Failed to fetch orders. Please try again.')
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to fetch orders. Please try again.'
+      )
     } finally {
       setIsLoading(false)
     }
@@ -5905,6 +7544,7 @@ const Reports: React.FC = () => {
     fetchOrders()
   }, [fetchOrders])
 
+  // Date range handling
   const getDateRange = useCallback(() => {
     const now = new Date()
     switch (timeRange) {
@@ -5928,6 +7568,7 @@ const Reports: React.FC = () => {
     }
   }, [timeRange, customStartDate, customEndDate])
 
+  // Filtered data
   const filteredOrders = useMemo(() => {
     const { start, end } = getDateRange()
     return orders.filter((order) => {
@@ -5936,6 +7577,7 @@ const Reports: React.FC = () => {
     })
   }, [orders, getDateRange])
 
+  // Sales data calculations
   const salesData = useMemo(() => {
     const { start, end } = getDateRange()
     const days = eachDayOfInterval({ start, end })
@@ -5963,61 +7605,7 @@ const Reports: React.FC = () => {
       .sort((a, b) => a.date.localeCompare(b.date))
   }, [filteredOrders, getDateRange])
 
-  const topSellingItems = useMemo(() => {
-    const itemCounts: { [key: string]: { quantity: number; revenue: number } } =
-      {}
-    filteredOrders.forEach((order) => {
-      order.items.forEach((item) => {
-        if (!itemCounts[item.name]) {
-          itemCounts[item.name] = { quantity: 0, revenue: 0 }
-        }
-        itemCounts[item.name].quantity += item.quantity
-        itemCounts[item.name].revenue += item.price * item.quantity
-      })
-    })
-    return Object.entries(itemCounts)
-      .map(([name, data]) => ({ name, ...data }))
-      .sort((a, b) => b.quantity - a.quantity)
-      .slice(0, 10)
-  }, [filteredOrders])
-
-  const totalSales = useMemo(() => {
-    return filteredOrders.reduce(
-      (sum, order) => sum + (order.isComplimentary ? 0 : order.total),
-      0
-    )
-  }, [filteredOrders])
-
-  const totalOrders = useMemo(() => filteredOrders.length, [filteredOrders])
-
-  const averageOrderValue = useMemo(() => {
-    const paidOrders = filteredOrders.filter((order) => !order.isComplimentary)
-    return paidOrders.length > 0 ? totalSales / paidOrders.length : 0
-  }, [filteredOrders, totalSales])
-
-  const averagePreparationTime = useMemo(() => {
-    const ordersWithPrepTime = filteredOrders.filter(
-      (order) => order.preparationTime !== undefined
-    )
-    if (ordersWithPrepTime.length === 0) {
-      return 0
-    }
-    return Math.round(
-      ordersWithPrepTime.reduce(
-        (sum, order) => sum + (order.preparationTime || 0),
-        0
-      ) / ordersWithPrepTime.length
-    )
-  }, [filteredOrders])
-
-  const calculateMovingAverage = (data: number[], periods: number) => {
-    return data.map((_, index) => {
-      const start = Math.max(0, index - periods + 1)
-      const values = data.slice(start, index + 1)
-      return values.reduce((sum, val) => sum + val, 0) / values.length
-    })
-  }
-
+  // Enhanced sales trend calculation
   const enhancedSalesTrend = useMemo((): TrendMetrics[] => {
     const baseData = salesData.map((item) => ({
       date: item.date,
@@ -6053,344 +7641,313 @@ const Reports: React.FC = () => {
         trend
       }
     })
-  }, [salesData])
-  // Add a helper function to format time in minutes:seconds
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60)
-    const remainingSeconds = seconds % 60
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
-  }
-  const salesByCategory = useMemo(() => {
-    const categorySales: { [key: string]: number } = {}
-    filteredOrders.forEach((order) => {
-      order.items.forEach((item) => {
-        categorySales[item.category] =
-          (categorySales[item.category] || 0) + item.price * item.quantity
-      })
-    })
-    return Object.entries(categorySales).map(([name, value]) => ({
-      name,
-      value
-    }))
-  }, [filteredOrders])
+  }, [salesData, calculateMovingAverage])
 
-  const ordersByHour = useMemo(() => {
-    const hourlyOrders: { [key: number]: number } = {}
-    filteredOrders.forEach((order) => {
-      const hour = new Date(order.timestamp).getHours()
-      hourlyOrders[hour] = (hourlyOrders[hour] || 0) + 1
-    })
-    return Array.from({ length: 24 }, (_, i) => ({
-      hour: i,
-      orders: hourlyOrders[i] || 0
-    }))
-  }, [filteredOrders])
-
-  const preparationTimeVsOrderValue = useMemo(() => {
-    return filteredOrders
-      .filter((order) => order.preparationTime !== undefined)
-      .map((order) => ({
-        preparationTime: order.preparationTime || 0,
-        orderValue: order.total
-      }))
-  }, [filteredOrders])
-
-  const uniqueCustomers = useMemo(() => {
-    return new Set(filteredOrders.map((order) => order.customerName)).size
-  }, [filteredOrders])
-
-  const repeatCustomerRate = useMemo(() => {
-    const customerOrderCounts = filteredOrders.reduce((acc, order) => {
-      acc[order.customerName] = (acc[order.customerName] || 0) + 1
-      return acc
-    }, {} as { [key: string]: number })
-    const repeatCustomers = Object.values(customerOrderCounts).filter(
-      (count) => count > 1
-    ).length
-    return uniqueCustomers > 0 ? (repeatCustomers / uniqueCustomers) * 100 : 0
-  }, [filteredOrders, uniqueCustomers])
-
-  const averageItemsPerOrder = useMemo(() => {
-    const totalItems = filteredOrders.reduce(
-      (sum, order) =>
-        sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0),
-      0
-    )
-    return totalOrders > 0 ? totalItems / totalOrders : 0
-  }, [filteredOrders, totalOrders])
-
-  const salesTrend = useMemo(() => {
-    const { start, end } = getDateRange()
-    const days = eachDayOfInterval({ start, end })
-    const salesByDay: { [key: string]: number } = {}
-
-    days.forEach((day) => {
-      const date = format(day, 'yyyy-MM-dd')
-      salesByDay[date] = 0
-    })
-
-    filteredOrders.forEach((order) => {
-      const date = format(new Date(order.timestamp), 'yyyy-MM-dd')
-      salesByDay[date] += order.isComplimentary ? 0 : order.total
-    })
-
-    return Object.entries(salesByDay)
-      .map(([date, sales]) => ({ date, sales }))
-      .sort((a, b) => a.date.localeCompare(b.date))
-  }, [filteredOrders, getDateRange])
-
-  const customerRetentionRate = useMemo(() => {
-    const { start } = getDateRange()
-    const previousPeriodStart = subDays(
-      start,
-      getDateRange().end.getTime() - start.getTime()
-    )
-
-    const currentCustomers = new Set(
-      filteredOrders.map((order) => order.customerName)
-    )
-    const previousCustomers = new Set(
-      orders
-        .filter((order) => {
-          const orderDate = new Date(order.timestamp)
-          return orderDate >= previousPeriodStart && orderDate < start
-        })
-        .map((order) => order.customerName)
-    )
-
-    const retainedCustomers = [...currentCustomers].filter((customer) =>
-      previousCustomers.has(customer)
-    ).length
-    return previousCustomers.size > 0
-      ? (retainedCustomers / previousCustomers.size) * 100
-      : 0
-  }, [filteredOrders, orders, getDateRange])
-
-  // New metrics
-  const peakHourSales = useMemo(() => {
-    const hourlyData = filteredOrders.reduce((acc, order) => {
-      const hour = new Date(order.timestamp).getHours()
-      acc[hour] = (acc[hour] || 0) + (order.isComplimentary ? 0 : order.total)
-      return acc
-    }, {} as { [key: number]: number })
-
-    if (Object.keys(hourlyData).length === 0) {
-      return { hour: 'N/A', sales: 0 }
-    }
-
-    const peakHour = Object.entries(hourlyData).reduce((a, b) =>
-      a[1] > b[1] ? a : b
-    )
-    return { hour: peakHour[0], sales: peakHour[1] }
-  }, [filteredOrders])
-  const salesGrowthRate = useMemo(() => {
-    const { start, end } = getDateRange()
-    const periodLength = end.getTime() - start.getTime()
-    const previousPeriodStart = new Date(start.getTime() - periodLength)
-
-    const currentPeriodSales = filteredOrders.reduce(
+  // Additional metrics calculations
+  const totalSales = useMemo(() => {
+    return filteredOrders.reduce(
       (sum, order) => sum + (order.isComplimentary ? 0 : order.total),
       0
     )
-    const previousPeriodSales = orders
+  }, [filteredOrders])
+
+  const totalOrders = useMemo(() => filteredOrders.length, [filteredOrders])
+
+  const averageOrderValue = useMemo(() => {
+    const paidOrders = filteredOrders.filter((order) => !order.isComplimentary)
+    return paidOrders.length > 0 ? totalSales / paidOrders.length : 0
+  }, [filteredOrders, totalSales])
+
+// Average preparation time calculation
+const averagePreparationTime = useMemo(() => {
+  const ordersWithPrepTime = filteredOrders.filter(
+    (order) => order.preparationTime !== undefined
+  )
+  if (ordersWithPrepTime.length === 0) {
+    return 0
+  }
+  return Math.round(
+    ordersWithPrepTime.reduce(
+      (sum, order) => sum + (order.preparationTime || 0),
+      0
+    ) / ordersWithPrepTime.length
+  )
+}, [filteredOrders])
+
+// Sales by category calculation
+const salesByCategory = useMemo(() => {
+  const categorySales: { [key: string]: number } = {}
+  filteredOrders.forEach((order) => {
+    order.items.forEach((item) => {
+      categorySales[item.category] =
+        (categorySales[item.category] || 0) + item.price * item.quantity
+    })
+  })
+  return Object.entries(categorySales).map(([name, value]) => ({
+    name,
+    value
+  }))
+}, [filteredOrders])
+
+// Top selling items calculation
+const topSellingItems = useMemo(() => {
+  const itemCounts: { [key: string]: { quantity: number; revenue: number } } =
+    {}
+  filteredOrders.forEach((order) => {
+    order.items.forEach((item) => {
+      if (!itemCounts[item.name]) {
+        itemCounts[item.name] = { quantity: 0, revenue: 0 }
+      }
+      itemCounts[item.name].quantity += item.quantity
+      itemCounts[item.name].revenue += item.price * item.quantity
+    })
+  })
+  return Object.entries(itemCounts)
+    .map(([name, data]) => ({ name, ...data }))
+    .sort((a, b) => b.quantity - a.quantity)
+    .slice(0, 10)
+}, [filteredOrders])
+
+// Orders by hour calculation
+const ordersByHour = useMemo(() => {
+  const hourlyOrders: { [key: number]: number } = {}
+  filteredOrders.forEach((order) => {
+    const hour = new Date(order.timestamp).getHours()
+    hourlyOrders[hour] = (hourlyOrders[hour] || 0) + 1
+  })
+  return Array.from({ length: 24 }, (_, i) => ({
+    hour: i,
+    orders: hourlyOrders[i] || 0
+  }))
+}, [filteredOrders])
+
+// Preparation time vs order value calculation
+const preparationTimeVsOrderValue = useMemo(() => {
+  return filteredOrders
+    .filter((order) => order.preparationTime !== undefined)
+    .map((order) => ({
+      preparationTime: order.preparationTime || 0,
+      orderValue: order.total
+    }))
+}, [filteredOrders])
+
+// Customer metrics calculations
+const uniqueCustomers = useMemo(() => {
+  return new Set(filteredOrders.map((order) => order.customerName)).size
+}, [filteredOrders])
+
+const repeatCustomerRate = useMemo(() => {
+  const customerOrderCounts = filteredOrders.reduce((acc, order) => {
+    acc[order.customerName] = (acc[order.customerName] || 0) + 1
+    return acc
+  }, {} as { [key: string]: number })
+  const repeatCustomers = Object.values(customerOrderCounts).filter(
+    (count) => count > 1
+  ).length
+  return uniqueCustomers > 0 ? (repeatCustomers / uniqueCustomers) * 100 : 0
+}, [filteredOrders, uniqueCustomers])
+
+// Average items per order calculation
+const averageItemsPerOrder = useMemo(() => {
+  const totalItems = filteredOrders.reduce(
+    (sum, order) =>
+      sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0),
+    0
+  )
+  return totalOrders > 0 ? totalItems / totalOrders : 0
+}, [filteredOrders, totalOrders])
+
+// Sales trend calculation
+const salesTrend = useMemo(() => {
+  const { start, end } = getDateRange()
+  const days = eachDayOfInterval({ start, end })
+  const salesByDay: { [key: string]: number } = {}
+
+  days.forEach((day) => {
+    const date = format(day, 'yyyy-MM-dd')
+    salesByDay[date] = 0
+  })
+
+  filteredOrders.forEach((order) => {
+    const date = format(new Date(order.timestamp), 'yyyy-MM-dd')
+    salesByDay[date] += order.isComplimentary ? 0 : order.total
+  })
+
+  return Object.entries(salesByDay)
+    .map(([date, sales]) => ({ date, sales }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+}, [filteredOrders, getDateRange])
+
+// Customer retention rate calculation
+const customerRetentionRate = useMemo(() => {
+  const { start } = getDateRange()
+  const previousPeriodStart = subDays(
+    start,
+    getDateRange().end.getTime() - start.getTime()
+  )
+
+  const currentCustomers = new Set(
+    filteredOrders.map((order) => order.customerName)
+  )
+  const previousCustomers = new Set(
+    orders
       .filter((order) => {
         const orderDate = new Date(order.timestamp)
         return orderDate >= previousPeriodStart && orderDate < start
       })
-      .reduce(
-        (sum, order) => sum + (order.isComplimentary ? 0 : order.total),
-        0
-      )
+      .map((order) => order.customerName)
+  )
 
-    return previousPeriodSales !== 0
-      ? ((currentPeriodSales - previousPeriodSales) / previousPeriodSales) * 100
-      : 100 // If previous period had no sales, consider it 100% growth
-  }, [filteredOrders, orders, getDateRange])
+  const retainedCustomers = [...currentCustomers].filter((customer) =>
+    previousCustomers.has(customer)
+  ).length
+  return previousCustomers.size > 0
+    ? (retainedCustomers / previousCustomers.size) * 100
+    : 0
+}, [filteredOrders, orders, getDateRange])
 
-  // New charts data
-  const categoryPerformance = useMemo(() => {
-    const categoryData: { [key: string]: { sales: number; orders: number } } =
-      {}
-    filteredOrders.forEach((order) => {
-      order.items.forEach((item) => {
-        if (!categoryData[item.category]) {
-          categoryData[item.category] = { sales: 0, orders: 0 }
-        }
-        categoryData[item.category].sales += item.price * item.quantity
-        categoryData[item.category].orders += item.quantity
-      })
+// Peak hour sales calculation
+const peakHourSales = useMemo(() => {
+  const hourlyData = filteredOrders.reduce((acc, order) => {
+    const hour = new Date(order.timestamp).getHours()
+    acc[hour] = (acc[hour] || 0) + (order.isComplimentary ? 0 : order.total)
+    return acc
+  }, {} as { [key: number]: number })
+
+  if (Object.keys(hourlyData).length === 0) {
+    return { hour: 'N/A', sales: 0 }
+  }
+
+  const peakHour = Object.entries(hourlyData).reduce((a, b) =>
+    a[1] > b[1] ? a : b
+  )
+  return { hour: peakHour[0], sales: peakHour[1] }
+}, [filteredOrders])
+
+// Sales growth rate calculation
+const salesGrowthRate = useMemo(() => {
+  const { start, end } = getDateRange()
+  const periodLength = end.getTime() - start.getTime()
+  const previousPeriodStart = new Date(start.getTime() - periodLength)
+
+  const currentPeriodSales = filteredOrders.reduce(
+    (sum, order) => sum + (order.isComplimentary ? 0 : order.total),
+    0
+  )
+  const previousPeriodSales = orders
+    .filter((order) => {
+      const orderDate = new Date(order.timestamp)
+      return orderDate >= previousPeriodStart && orderDate < start
     })
-    return Object.entries(categoryData).map(([category, data]) => ({
-      category,
-      sales: data.sales,
-      orders: data.orders
-    }))
-  }, [filteredOrders])
+    .reduce(
+      (sum, order) => sum + (order.isComplimentary ? 0 : order.total),
+      0
+    )
 
-  const dailySalesAndOrders = useMemo(() => {
-    const { start, end } = getDateRange()
-    const days = eachDayOfInterval({ start, end })
-    const dailyData: {
-      [key: string]: { date: string; sales: number; orders: number }
-    } = {}
+  return previousPeriodSales !== 0
+    ? ((currentPeriodSales - previousPeriodSales) / previousPeriodSales) * 100
+    : 100
+}, [filteredOrders, orders, getDateRange])
 
-    days.forEach((day) => {
-      const date = format(day, 'yyyy-MM-dd')
-      dailyData[date] = { date, sales: 0, orders: 0 }
+// Category performance calculation
+const categoryPerformance = useMemo(() => {
+  const categoryData: { [key: string]: { sales: number; orders: number } } =
+    {}
+  filteredOrders.forEach((order) => {
+    order.items.forEach((item) => {
+      if (!categoryData[item.category]) {
+        categoryData[item.category] = { sales: 0, orders: 0 }
+      }
+      categoryData[item.category].sales += item.price * item.quantity
+      categoryData[item.category].orders += item.quantity
     })
+  })
+  return Object.entries(categoryData).map(([category, data]) => ({
+    category,
+    sales: data.sales,
+    orders: data.orders
+  }))
+}, [filteredOrders])
 
-    filteredOrders.forEach((order) => {
-      const date = format(new Date(order.timestamp), 'yyyy-MM-dd')
-      dailyData[date].sales += order.isComplimentary ? 0 : order.total
-      dailyData[date].orders += 1
-    })
+// Daily sales and orders calculation
+const dailySalesAndOrders = useMemo(() => {
+  const { start, end } = getDateRange()
+  const days = eachDayOfInterval({ start, end })
+  const dailyData: {
+    [key: string]: { date: string; sales: number; orders: number }
+  } = {}
 
-    return Object.values(dailyData).sort((a, b) => a.date.localeCompare(b.date))
-  }, [filteredOrders, getDateRange])
-  const generateCSV = useCallback(() => {
-    // Prepare CSV headers
-    const headers = [
-      'Date',
-      'Total Sales ($)',
-      'Orders',
-      'Average Order Value ($)',
-      'Unique Customers',
-      'Preparation Time (min:sec)',
-      'Items Sold'
-    ]
+  days.forEach((day) => {
+    const date = format(day, 'yyyy-MM-dd')
+    dailyData[date] = { date, sales: 0, orders: 0 }
+  })
 
-    // Prepare daily data
-    const csvData = dailySalesAndOrders.map((day) => {
-      const dayOrders = filteredOrders.filter((order) =>
-        isSameDay(new Date(order.timestamp), new Date(day.date))
-      )
+  filteredOrders.forEach((order) => {
+    const date = format(new Date(order.timestamp), 'yyyy-MM-dd')
+    dailyData[date].sales += order.isComplimentary ? 0 : order.total
+    dailyData[date].orders += 1
+  })
 
-      const dayUniqueCustomers = new Set(
-        dayOrders.map((order) => order.customerName)
-      ).size
+  return Object.values(dailyData).sort((a, b) => a.date.localeCompare(b.date))
+}, [filteredOrders, getDateRange])
 
-      const dayAvgOrderValue = day.sales / (day.orders || 1)
-
-      const dayPrepTime = dayOrders
-        .filter((order) => order.preparationTime)
-        .reduce(
-          (avg, order, _, arr) =>
-            avg + (order.preparationTime || 0) / (arr.length || 1),
-          0
-        )
-
-      const dayItemsSold = dayOrders.reduce(
-        (sum, order) =>
-          sum +
-          order.items.reduce((itemSum, item) => itemSum + item.quantity, 0),
-        0
-      )
-
-      return [
-        day.date,
-        day.sales.toFixed(2),
-        day.orders,
-        dayAvgOrderValue.toFixed(2),
-        dayUniqueCustomers,
-        formatTime(dayPrepTime),
-        dayItemsSold
-      ]
-    })
-
-    // Add summary data
-    const summaryData = [
-      ['Summary Statistics'],
-      ['Total Period Sales ($)', totalSales.toFixed(2)],
-      ['Total Orders', totalOrders],
-      ['Average Order Value ($)', averageOrderValue.toFixed(2)],
-      ['Unique Customers', uniqueCustomers],
-      ['Customer Retention Rate (%)', customerRetentionRate.toFixed(2)],
-      ['Average Preparation Time', formatTime(averagePreparationTime)],
-      ['Repeat Customer Rate (%)', repeatCustomerRate.toFixed(2)],
-      ['Sales Growth Rate (%)', salesGrowthRate.toFixed(2)],
-      [''],
-      ['Top Selling Items'],
-      ['Item Name', 'Quantity Sold', 'Revenue ($)'],
-      ...topSellingItems.map((item) => [
-        item.name,
-        item.quantity,
-        item.revenue.toFixed(2)
-      ]),
-      [''],
-      ['Sales by Category'],
-      ['Category', 'Total Sales ($)'],
-      ...salesByCategory.map((category) => [
-        category.name,
-        category.value.toFixed(2)
+// CSV generation
+const generateCSV = useCallback(() => {
+  import('jspdf').then((module) => {
+    const { jsPDF } = module
+    const doc = new jsPDF()
+    doc.autoTable({
+      head: [['Date', 'Sales', 'Orders']],
+      body: dailySalesAndOrders.map((data) => [
+        data.date,
+        data.sales.toFixed(2),
+        data.orders
       ])
-    ]
+    })
+    doc.save('sales-report.pdf')
+  })
+}, [
+  dailySalesAndOrders,
+  filteredOrders,
+  totalSales,
+  totalOrders,
+  averageOrderValue,
+  uniqueCustomers,
+  customerRetentionRate,
+  averagePreparationTime,
+  repeatCustomerRate,
+  salesGrowthRate,
+  topSellingItems,
+  salesByCategory,
+  getDateRange,
+  formatTime
+])
 
-    // Combine all data
-    const allRows = [
-      ['Daily Sales Report'],
-      [
-        `Report Period: ${format(
-          getDateRange().start,
-          'yyyy-MM-dd'
-        )} to ${format(getDateRange().end, 'yyyy-MM-dd')}`
-      ],
-      [''],
-      headers,
-      ...csvData,
-      [''],
-      ...summaryData
-    ]
-
-    // Convert to CSV string
-    const csvContent = allRows.map((row) => row.join(',')).join('\n')
-
-    // Create and trigger download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = `sales-report-${format(new Date(), 'yyyy-MM-dd')}.csv`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }, [
-    dailySalesAndOrders,
-    filteredOrders,
-    totalSales,
-    totalOrders,
-    averageOrderValue,
-    uniqueCustomers,
-    customerRetentionRate,
-    averagePreparationTime,
-    repeatCustomerRate,
-    salesGrowthRate,
-    topSellingItems,
-    salesByCategory,
-    getDateRange,
-    formatTime
-  ])
-  if (isLoading) {
-    return (
-      <div className="loading-container">
-        <Loader size={48} className="spin" />
-        <p>Loading report data...</p>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="error-container">
-        <AlertTriangle size={48} />
-        <p>{error}</p>
-        <button onClick={fetchOrders} className="retry-button">
-          <RefreshCw size={16} /> Retry
-        </button>
-      </div>
-    )
-  }
-
+// Loading state
+if (isLoading) {
   return (
-    <PageContainer>
+    <div className="loading-container">
+      <Loader size={48} className="spin" />
+      <p>Loading report data...</p>
+    </div>
+  )
+}
+
+// Error state
+if (error) {
+  return (
+    <div className="error-container">
+      <AlertTriangle size={48} />
+      <p>{error}</p>
+      <button onClick={fetchOrders} className="retry-button">
+        <RefreshCw size={16} /> Retry
+      </button>
+    </div>
+  )
+}
+
+return (
+  <PageContainer>
     <div className="reports-container">
       <h1 className="page-title">Sales Reports</h1>
 
@@ -6412,8 +7969,8 @@ const Reports: React.FC = () => {
               selected={customStartDate}
               onChange={(date) => setCustomStartDate(date)}
               selectsStart
-              startDate={customStartDate}
-              endDate={customEndDate}
+              startDate={customStartDate as Date | undefined}
+              endDate={customEndDate as Date | undefined}
               maxDate={new Date()}
               placeholderText="Start Date"
               className="custom-date-input"
@@ -6422,9 +7979,9 @@ const Reports: React.FC = () => {
               selected={customEndDate}
               onChange={(date) => setCustomEndDate(date)}
               selectsEnd
-              startDate={customStartDate}
-              endDate={customEndDate}
-              minDate={customStartDate}
+              startDate={customStartDate as Date | undefined}
+              endDate={customEndDate as Date | undefined}
+              minDate={customStartDate as Date | undefined}
               maxDate={new Date()}
               placeholderText="End Date"
               className="custom-date-input"
@@ -6503,7 +8060,6 @@ const Reports: React.FC = () => {
             <p className="metric-value">{averageItemsPerOrder.toFixed(2)}</p>
           </div>
         </div>
-
         <div className="metric-card">
           <div className="metric-icon">
             <Award size={24} />
@@ -6522,7 +8078,7 @@ const Reports: React.FC = () => {
           <h3>Sales and Orders Trend Analysis</h3>
           <div className="chart-controls">
             <button
-              onClick={() => setSelectedMetric('orders')}
+              onClick={() => setSelectedMetric('sales')}
               className={`chart-control-button ${
                 selectedMetric === 'sales' ? 'active' : ''
               }`}
@@ -6630,178 +8186,181 @@ const Reports: React.FC = () => {
             </div>
           </div>
         </div>
-
         <div className="chart-card">
-          <h3>Sales by Category</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={salesByCategory}
+            <h3>Sales by Category</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={salesByCategory}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                  label={({ name, percent }) =>
+                    `${name} ${(percent * 100).toFixed(0)}%`
+                  }
+                >
+                  {salesByCategory.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="chart-card">
+            <h3>Top Selling Items</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={topSellingItems} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis dataKey="name" type="category" width={150} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="quantity" fill="#8884d8" name="Quantity" />
+                <Bar dataKey="revenue" fill="#82ca9d" name="Revenue ($)" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="chart-card">
+            <h3>Orders by Hour</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={ordersByHour}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="hour" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="orders" fill="#8884d8" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="chart-card">
+            <h3>Preparation Time vs Order Value</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <ScatterChart>
+                <CartesianGrid />
+                <XAxis
+                  type="number"
+                  dataKey="preparationTime"
+                  name="Preparation Time"
+                  tickFormatter={(value) => formatTime(value)}
+                />
+                <YAxis
+                  type="number"
+                  dataKey="orderValue"
+                  name="Order Value"
+                  unit="$"
+                />
+                <Tooltip
+                  formatter={(value, name) => {
+                    if (name === 'preparationTime') {
+                      return [formatTime(value as number), name]
+                    }
+                    return [value, name]
+                  }}
+                />
+                <Scatter
+                  name="Orders"
+                  data={preparationTimeVsOrderValue}
+                  fill="#8884d8"
+                />
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="chart-card">
+            <h3>Sales Trend</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={salesTrend}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Area
+                  type="monotone"
+                  dataKey="sales"
+                  stroke="#8884d8"
+                  fill="#8884d8"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="chart-card">
+            <h3>Category Performance</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <RadarChart
                 cx="50%"
                 cy="50%"
-                labelLine={false}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-                label={({ name, percent }) =>
-                  `${name} ${(percent * 100).toFixed(0)}%`
-                }
+                outerRadius="80%"
+                data={categoryPerformance}
               >
-                {salesByCategory.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={COLORS[index % COLORS.length]}
-                  />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="chart-card">
-          <h3>Top Selling Items</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={topSellingItems} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" />
-              <YAxis dataKey="name" type="category" width={150} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="quantity" fill="#8884d8" name="Quantity" />
-              <Bar dataKey="revenue" fill="#82ca9d" name="Revenue ($)" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="chart-card">
-          <h3>Orders by Hour</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={ordersByHour}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="hour" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="orders" fill="#8884d8" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="chart-card">
-          <h3>Preparation Time vs Order Value</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <ScatterChart>
-              <CartesianGrid />
-              <XAxis
-                type="number"
-                dataKey="preparationTime"
-                name="Preparation Time"
-                tickFormatter={(value) => formatTime(value)}
-              />
-              <YAxis
-                type="number"
-                dataKey="orderValue"
-                name="Order Value"
-                unit="$"
-              />
-              <Tooltip
-                formatter={(value, name) => {
-                  if (name === 'preparationTime') {
-                    return [formatTime(value as number), name]
-                  }
-                  return [value, name]
-                }}
-              />
-              <Scatter
-                name="Orders"
-                data={preparationTimeVsOrderValue}
-                fill="#8884d8"
-              />
-            </ScatterChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="chart-card">
-          <h3>Sales Trend</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={salesTrend}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Area
-                type="monotone"
-                dataKey="sales"
-                stroke="#8884d8"
-                fill="#8884d8"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="chart-card">
-          <h3>Category Performance</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <RadarChart
-              cx="50%"
-              cy="50%"
-              outerRadius="80%"
-              data={categoryPerformance}
-            >
-              <PolarGrid />
-              <PolarAngleAxis dataKey="category" />
-              <PolarRadiusAxis angle={30} domain={[0, 'auto']} />
-              <Radar
-                name="Sales"
-                dataKey="sales"
-                stroke="#8884d8"
-                fill="#8884d8"
-                fillOpacity={0.6}
-              />
-              <Radar
-                name="Orders"
-                dataKey="orders"
-                stroke="#82ca9d"
-                fill="#82ca9d"
-                fillOpacity={0.6}
-              />
-              <Legend />
-              <Tooltip />
-            </RadarChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="chart-card">
-          <h3>Daily Sales and Orders</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart data={dailySalesAndOrders}>
-              <CartesianGrid stroke="#f5f5f5" />
-              <XAxis dataKey="date" scale="band" />
-              <YAxis yAxisId="left" />
-              <YAxis yAxisId="right" orientation="right" />
-              <Tooltip />
-              <Legend />
-              <Bar
-                yAxisId="left"
-                dataKey="orders"
-                barSize={20}
-                fill="#413ea0"
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="sales"
-                stroke="#ff7300"
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
+                <PolarGrid />
+                <PolarAngleAxis dataKey="category" />
+                <PolarRadiusAxis angle={30} domain={[0, 'auto']} />
+                <Radar
+                  name="Sales"
+                  dataKey="sales"
+                  stroke="#8884d8"
+                  fill="#8884d8"
+                  fillOpacity={0.6}
+                />
+                <Radar
+                  name="Orders"
+                  dataKey="orders"
+                  stroke="#82ca9d"
+                  fill="#82ca9d"
+                  fillOpacity={0.6}
+                />
+                <Legend />
+                <Tooltip />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="chart-card">
+            <h3>Daily Sales and Orders</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <ComposedChart data={dailySalesAndOrders}>
+                <CartesianGrid stroke="#f5f5f5" />
+                <XAxis dataKey="date" scale="band" />
+                <YAxis yAxisId="left" />
+                <YAxis yAxisId="right" orientation="right" />
+                <Tooltip />
+                <Legend />
+                <Bar
+                  yAxisId="left"
+                  dataKey="orders"
+                  barSize={20}
+                  fill="#413ea0"
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="sales"
+                  stroke="#ff7300"
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
-
-
-    </div>
     </PageContainer>
   )
 }
-export default Reports
 
+export default Reports
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/sales/styles.css
 
@@ -7142,12 +8701,10 @@ export const metadata: Metadata = {
 export default function SettingsPage() {
   return (
     <PageContainer>
+    <h1 className="page-title">Settings</h1>
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
-        <p className="text-muted-foreground">
-          Manage your account settings and preferences.
-        </p>
+        
       </div>
       <Separator />
       <Tabs defaultValue="profile" className="space-y-4">
@@ -10201,10 +11758,6 @@ import {
   ChevronRight,
   ChevronLeft,
   Coffee,
-  ListOrdered,
-  ServerCrash,
-  Trash,
-
 } from "lucide-react";
 
 import { 
@@ -10213,10 +11766,7 @@ import {
   FaClipboardList as OrdersIcon,
   FaTrash as WasteIcon,
   FaBoxes as InventoryIcon,
-  FaFileAlt as ReportsIcon 
 } from "react-icons/fa"; 
-
-
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -10239,36 +11789,34 @@ const routes = [
   },
   {
     label: "Reports",
-    icon: SalesIcon, // Replace with the actual icon you want for Sales
+    icon: SalesIcon,
     href: "/dashboard/sales",
     color: "text-red-500"
   },
   {
     label: "POS",
-    icon: PosIcon, // Replace with the actual icon you want for POS
+    icon: PosIcon,
     href: "/dashboard/pos",
     color: "text-blue-500"
   },
   {
     label: "Orders",
-    icon: OrdersIcon, // Replace with the actual icon you want for Orders
+    icon: OrdersIcon,
     href: "/dashboard/order",
     color: "text-green-500"
   },
   {
     label: "Waste",
-    icon: WasteIcon, // Replace with the actual icon you want for Waste
+    icon: WasteIcon,
     href: "/dashboard/waste",
     color: "text-yellow-500"
   },
-
   {
     label: "Inventory",
-    icon: InventoryIcon, // Replace with the actual icon you want for Inventory
+    icon: InventoryIcon,
     href: "/dashboard/inventory",
     color: "text-purple-500"
   },
-
   {
     label: "Settings",
     icon: Settings,
@@ -10294,16 +11842,16 @@ export function SideNav() {
     <aside
       className={cn(
         "fixed left-0 z-50 flex h-full flex-col bg-background border-r",
-        isCollapsed ? "w-[70px]" : "w-60",
+        isCollapsed ? "w-[50px]" : "w-48",
         "transition-all duration-300 ease-in-out"
       )}
     >
       <TooltipProvider delayDuration={0}>
-        <div className="flex h-16 items-center justify-between px-3 border-b">
+        <div className="flex h-14 items-center justify-between px-2 border-b">
           {!isCollapsed && (
             <div className="flex items-center gap-2">
-              <Coffee className="h-5 w-5" />
-              <span className="font-bold">BUF BARISTA</span>
+              <Coffee className="h-4 w-4" />
+              <span className="font-bold text-sm">BUF BARISTA</span>
             </div>
           )}
           <Button
@@ -10316,13 +11864,13 @@ export function SideNav() {
           </Button>
         </div>
 
-        <div className="p-3">
+        <div className="p-2">
           {isCollapsed ? (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link href="/dashboard/contacts/new">
                   <Button size="icon" className="w-full">
-                    <PlusCircle className="h-5 w-5" />
+                    <PlusCircle className="h-4 w-4" />
                   </Button>
                 </Link>
               </TooltipTrigger>
@@ -10333,15 +11881,15 @@ export function SideNav() {
           ) : (
             <Link href="/dashboard/contacts/new">
               <Button className="w-full">
-                <PlusCircle className="mr-2 h-5 w-5" />
+                <PlusCircle className="mr-2 h-4 w-4" />
                 New Contact
               </Button>
             </Link>
           )}
         </div>
 
-        <ScrollArea className="flex-1 px-3">
-          <div className="space-y-2 py-2">
+        <ScrollArea className="flex-1 px-2">
+          <div className="space-y-1 py-2">
             {routes.map((route) => (
               isCollapsed ? (
                 <Tooltip key={route.href}>
@@ -10349,11 +11897,11 @@ export function SideNav() {
                     <Link
                       href={route.href}
                       className={cn(
-                        "flex items-center justify-center rounded-md p-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                        "flex items-center justify-center rounded-md p-1.5 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
                         pathname === route.href && "bg-accent text-accent-foreground"
                       )}
                     >
-                      <route.icon className={cn("h-5 w-5", route.color)} />
+                      <route.icon className={cn("h-4 w-4", route.color)} />
                     </Link>
                   </TooltipTrigger>
                   <TooltipContent side="right">
@@ -10365,11 +11913,11 @@ export function SideNav() {
                   key={route.href}
                   href={route.href}
                   className={cn(
-                    "flex items-center rounded-md p-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                    "flex items-center rounded-md p-1.5 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
                     pathname === route.href && "bg-accent text-accent-foreground"
                   )}
                 >
-                  <route.icon className={cn("mr-2 h-5 w-5", route.color)} />
+                  <route.icon className={cn("mr-2 h-4 w-4", route.color)} />
                   {route.label}
                 </Link>
               )
@@ -10380,7 +11928,6 @@ export function SideNav() {
     </aside>
   );
 }
-
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/navigation/top-nav.tsx
 "use client";
@@ -10412,27 +11959,27 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 const data = [
   {
     name: "Jan",
-    total: 1200,
+    total: 0,
   },
   {
     name: "Feb",
-    total: 1600,
+    total: 0,
   },
   {
     name: "Mar",
-    total: 1400,
+    total: 0,
   },
   {
     name: "Apr",
-    total: 1800,
+    total: 0,
   },
   {
     name: "May",
-    total: 2200,
+    total: 0,
   },
   {
     name: "Jun",
-    total: 2600,
+    total: 0,
   },
 ];
 
@@ -10465,6 +12012,4644 @@ export function Overview() {
   );
 }
 
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/designer/download-utils.ts
+import html2canvas from 'html2canvas';
+import { generateUUID } from '@/lib/generate-uuid';
+
+export const downloadQRCode = async (
+  qrRef: HTMLDivElement | null,
+  format: 'svg' | 'png',
+  filename: string = 'qr-code'
+) => {
+  return new Promise(async (resolve, reject) => {
+    if (!qrRef) {
+      reject(new Error('QR code reference not found'));
+      return;
+    }
+
+    try {
+      const uuid = generateUUID();
+      const fullFilename = `${filename}-${uuid}`;
+      
+      // Get the container with all styles
+      const container = qrRef;
+      
+      if (format === 'png') {
+        // For PNG, capture the entire styled container
+        const canvas = await html2canvas(container as HTMLElement, {
+          scale: 3,
+          backgroundColor: null,
+          logging: false,
+          useCORS: true,
+          allowTaint: true,
+          onclone: () => {
+            // Any additional processing of cloned document if needed
+            console.log('Cloned document ready for capture');
+          }
+        });
+
+        const link = document.createElement('a');
+        link.download = `${fullFilename}.png`;
+        link.href = canvas.toDataURL('image/png');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        resolve(true);
+      } else {
+        // For SVG, create a new SVG containing both QR code and styling
+        const canvas = container.querySelector('canvas');
+        if (!canvas) {
+          throw new Error('Canvas element not found');
+        }
+
+        // Get the canvas data
+        const canvasData = canvas.toDataURL('image/png');
+        
+        // Create a new SVG
+        let svgString = `
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            width="${canvas.width}" 
+            height="${canvas.height}"
+            viewBox="0 0 ${canvas.width} ${canvas.height}"
+          >
+            <style>
+              .qr-wrapper {
+                width: 100%;
+                height: 100%;
+              }
+              .qr-image {
+                width: 100%;
+                height: 100%;
+                image-rendering: pixelated;
+              }
+            </style>
+            <g class="qr-wrapper">
+              <image 
+                class="qr-image"
+                width="100%" 
+                height="100%" 
+                href="${canvasData}"
+                preserveAspectRatio="none"
+              />
+            </g>
+        `;
+
+        // Add logo if available
+        const logoImg = container.querySelector('.logo-wrapper img') as HTMLImageElement;
+        if (logoImg) {
+          const logoStyles = window.getComputedStyle(logoImg);
+          const logoWrapper = logoImg.parentElement;
+          const wrapperStyles = logoWrapper ? window.getComputedStyle(logoWrapper) : null;
+
+          svgString += `
+            <g class="logo-wrapper" transform="${wrapperStyles?.transform || ''}">
+              <image
+                x="${wrapperStyles?.left || '0'}"
+                y="${wrapperStyles?.top || '0'}"
+                width="${logoStyles.width}"
+                height="${logoStyles.height}"
+                style="
+                  opacity: ${logoStyles.opacity};
+                  mix-blend-mode: ${logoStyles.mixBlendMode};
+                  filter: ${logoStyles.filter};
+                  border-radius: ${logoStyles.borderRadius};
+                  ${logoStyles.backgroundColor !== 'transparent' ? `background-color: ${logoStyles.backgroundColor};` : ''}
+                "
+                href="${logoImg.src}"
+              />
+            </g>
+          `;
+        }
+
+        svgString += '</svg>';
+
+        // Create and download the SVG file
+        const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        const svgUrl = URL.createObjectURL(svgBlob);
+        const link = document.createElement('a');
+        link.href = svgUrl;
+        link.download = `${fullFilename}.svg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(svgUrl);
+        resolve(true);
+      }
+    } catch (error) {
+      console.error('Download processing error:', error);
+      reject(error);
+    }
+  });
+};
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/designer/index.ts
+export * from './qr-designer'
+export * from './types'
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/designer/logo-controls.tsx
+"use client"
+
+import React, { useState } from "react"
+import { Label } from "@/components/ui/label"
+import { Slider } from "@/components/ui/slider"
+import { Switch } from "@/components/ui/switch"
+import { ChromePicker } from 'react-color'
+import { LogoControlsProps, LogoPosition, BlendMode } from './types'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+const LOGO_POSITIONS: { value: LogoPosition; label: string }[] = [
+  { value: 'center', label: 'Center' },
+  { value: 'top-left', label: 'Top Left' },
+  { value: 'top-right', label: 'Top Right' },
+  { value: 'bottom-left', label: 'Bottom Left' },
+  { value: 'bottom-right', label: 'Bottom Right' },
+]
+
+const BLEND_MODES: BlendMode[] = [
+  'normal',
+  'multiply',
+  'screen',
+  'overlay',
+  'darken',
+  'lighten',
+  'color-dodge',
+  'color-burn',
+  'hard-light',
+  'soft-light',
+  'difference',
+  'exclusion'
+]
+
+export function LogoControls({
+  value,
+  onChange,
+  logoWidth,
+  logoHeight,
+  onLogoSizeChange,
+  maintainAspectRatio,
+  onAspectRatioChange,
+  originalAspectRatio,
+}: LogoControlsProps) {
+  const [showBorderColor, setShowBorderColor] = useState(false)
+  const [showShadowColor, setShowShadowColor] = useState(false)
+
+  const updateStyle = (updates: Partial<typeof value>) => {
+    onChange({
+      ...value,
+      ...updates,
+      // Ensure numeric values are properly converted
+      rotation: typeof updates.rotation === 'number' ? updates.rotation : value.rotation,
+      blurRadius: typeof updates.blurRadius === 'number' ? updates.blurRadius : value.blurRadius,
+      brightness: typeof updates.brightness === 'number' ? updates.brightness : value.brightness,
+      contrast: typeof updates.contrast === 'number' ? updates.contrast : value.contrast,
+      opacity: typeof updates.opacity === 'number' ? updates.opacity : value.opacity,
+      borderWidth: typeof updates.borderWidth === 'number' ? updates.borderWidth : value.borderWidth,
+      borderRadius: typeof updates.borderRadius === 'number' ? updates.borderRadius : value.borderRadius,
+      shadowBlur: typeof updates.shadowBlur === 'number' ? updates.shadowBlur : value.shadowBlur,
+      shadowOffsetX: typeof updates.shadowOffsetX === 'number' ? updates.shadowOffsetX : value.shadowOffsetX,
+      shadowOffsetY: typeof updates.shadowOffsetY === 'number' ? updates.shadowOffsetY : value.shadowOffsetY,
+    })
+  }
+
+  return (
+    <Accordion type="single" collapsible defaultValue="size" className="w-full">
+      <AccordionItem value="size">
+        <AccordionTrigger>Size & Position</AccordionTrigger>
+        <AccordionContent>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label>Maintain Aspect Ratio</Label>
+              <Switch
+                checked={maintainAspectRatio}
+                onCheckedChange={onAspectRatioChange}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Width: {logoWidth}px</Label>
+              <Slider
+                value={[logoWidth]}
+                min={20}
+                max={300}
+                step={1}
+                onValueChange={([width]) => {
+                  if (maintainAspectRatio) {
+                    const height = Math.round(width / originalAspectRatio)
+                    onLogoSizeChange(width, height)
+                  } else {
+                    onLogoSizeChange(width, logoHeight)
+                  }
+                }}
+              />
+            </div>
+
+            {!maintainAspectRatio && (
+              <div className="space-y-2">
+                <Label>Height: {logoHeight}px</Label>
+                <Slider
+                  value={[logoHeight]}
+                  min={20}
+                  max={300}
+                  step={1}
+                  onValueChange={([height]) => onLogoSizeChange(logoWidth, height)}
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>Position</Label>
+              <Select 
+                value={value.position}
+                onValueChange={(v) => updateStyle({ position: v as LogoPosition })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LOGO_POSITIONS.map(({ value, label }) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Rotation: {value.rotation}°</Label>
+              <Slider
+                value={[value.rotation]}
+                min={0}
+                max={360}
+                step={1}
+                onValueChange={([v]) => updateStyle({ rotation: v })}
+              />
+            </div>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      <AccordionItem value="effects">
+        <AccordionTrigger>Effects</AccordionTrigger>
+        <AccordionContent>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Opacity: {value.opacity}%</Label>
+              <Slider
+                value={[value.opacity]}
+                min={0}
+                max={100}
+                step={1}
+                onValueChange={([v]) => updateStyle({ opacity: v })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Blur: {value.blurRadius}px</Label>
+              <Slider
+                value={[value.blurRadius]}
+                min={0}
+                max={20}
+                step={0.5}
+                onValueChange={([v]) => updateStyle({ blurRadius: v })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Brightness: {value.brightness}%</Label>
+              <Slider
+                value={[value.brightness]}
+                min={0}
+                max={200}
+                step={1}
+                onValueChange={([v]) => updateStyle({ brightness: v })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Contrast: {value.contrast}%</Label>
+              <Slider
+                value={[value.contrast]}
+                min={0}
+                max={200}
+                step={1}
+                onValueChange={([v]) => updateStyle({ contrast: v })}
+              />
+            </div>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      <AccordionItem value="border">
+        <AccordionTrigger>Border</AccordionTrigger>
+        <AccordionContent>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Border Width: {value.borderWidth}px</Label>
+              <Slider
+                value={[value.borderWidth]}
+                min={0}
+                max={20}
+                step={1}
+                onValueChange={([v]) => updateStyle({ borderWidth: v })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Border Radius: {value.borderRadius}px</Label>
+              <Slider
+                value={[value.borderRadius]}
+                min={0}
+                max={50}
+                step={1}
+                onValueChange={([v]) => updateStyle({ borderRadius: v })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Border Color</Label>
+              <div className="relative">
+                <div
+                  className="w-full h-10 rounded-md border cursor-pointer"
+                  style={{ backgroundColor: value.borderColor }}
+                  onClick={() => setShowBorderColor(!showBorderColor)}
+                />
+                {showBorderColor && (
+                  <div className="absolute z-10">
+                    <div 
+                      className="fixed inset-0" 
+                      onClick={() => setShowBorderColor(false)} 
+                    />
+                    <ChromePicker
+                      color={value.borderColor}
+                      onChange={(color) => updateStyle({ borderColor: color.hex })}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      <AccordionItem value="shadow">
+        <AccordionTrigger>Shadow</AccordionTrigger>
+        <AccordionContent>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Shadow Color</Label>
+              <div className="relative">
+                <div
+                  className="w-full h-10 rounded-md border cursor-pointer"
+                  style={{ backgroundColor: value.shadowColor }}
+                  onClick={() => setShowShadowColor(!showShadowColor)}
+                />
+                {showShadowColor && (
+                  <div className="absolute z-10">
+                    <div 
+                      className="fixed inset-0" 
+                      onClick={() => setShowShadowColor(false)} 
+                    />
+                    <ChromePicker
+                      color={value.shadowColor}
+                      onChange={(color) => updateStyle({ shadowColor: color.hex })}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Shadow Blur: {value.shadowBlur}px</Label>
+              <Slider
+                value={[value.shadowBlur]}
+                min={0}
+                max={50}
+                step={1}
+                onValueChange={([v]) => updateStyle({ shadowBlur: v })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Shadow Offset X: {value.shadowOffsetX}px</Label>
+              <Slider
+                value={[value.shadowOffsetX]}
+                min={-50}
+                max={50}
+                step={1}
+                onValueChange={([v]) => updateStyle({ shadowOffsetX: v })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Shadow Offset Y: {value.shadowOffsetY}px</Label>
+              <Slider
+                value={[value.shadowOffsetY]}
+                min={-50}
+                max={50}
+                step={1}
+                onValueChange={([v]) => updateStyle({ shadowOffsetY: v })}
+              />
+            </div>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      <AccordionItem value="blend">
+        <AccordionTrigger>Blend Mode</AccordionTrigger>
+        <AccordionContent>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label>Enable Blending</Label>
+              <Switch
+                checked={value.blend}
+                onCheckedChange={(checked) => updateStyle({ blend: checked })}
+              />
+            </div>
+
+            {value.blend && (
+              <div className="space-y-2">
+                <Label>Blend Mode</Label>
+                <Select
+                  value={value.blendMode}
+                  onValueChange={(v) => updateStyle({ blendMode: v as BlendMode })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BLEND_MODES.map((mode) => (
+                      <SelectItem key={mode} value={mode}>
+                        {mode.split('-').map(word => 
+                          word.charAt(0).toUpperCase() + word.slice(1)
+                        ).join(' ')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/designer/qr-designer.tsx
+"use client"
+
+import React, { useState, useEffect, useRef } from 'react'
+import { QRCode } from './qr-wrapper'
+import { TabsList, TabsTrigger, Tabs, TabsContent } from "@/components/ui/tabs"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+import { Slider } from "@/components/ui/slider"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Card, CardContent } from "@/components/ui/card"
+import { ChromePicker } from 'react-color'
+import { StyleControls } from './style-controls'
+import { LogoControls } from './logo-controls'
+import { QRDownloadButton } from './qr-download-button'
+import { 
+  QRDesignerProps, 
+  QRDotType, 
+  DEFAULT_CONFIG,
+  QRDesignerConfig
+} from './types'
+import { toast } from '@/components/ui/use-toast'
+import {  Grid } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import styles from './styles.module.css'
+
+export function QRDesigner({ 
+  value, 
+  onConfigChange, 
+  defaultConfig, 
+  className 
+}: QRDesignerProps) {
+  const [config, setConfig] = useState<QRDesignerConfig>(() => ({
+    ...DEFAULT_CONFIG,
+    ...defaultConfig,
+  }))
+  const [showFgPicker, setShowFgPicker] = useState(false)
+  const [showBgPicker, setShowBgPicker] = useState(false)
+  const [showLogoBgPicker, setShowLogoBgPicker] = useState(false)
+  const [previewScale, setPreviewScale] = useState(1)
+  const [showGrid, setShowGrid] = useState(true)
+  const [maintainAspectRatio, setMaintainAspectRatio] = useState(true)
+  const [originalAspectRatio, setOriginalAspectRatio] = useState(1)
+  const qrRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    onConfigChange?.(config)
+  }, [config, onConfigChange])
+
+  // Initialize logo style when a logo is added
+  useEffect(() => {
+    if (config.logoImage && !config.logoStyle) {
+      setConfig(prev => ({
+        ...prev,
+        logoStyle: {
+          ...DEFAULT_CONFIG.logoStyle,
+          rotation: 0,
+          blurRadius: 0,
+          brightness: 100,
+          contrast: 100,
+          opacity: 100,
+          borderWidth: 0,
+          borderRadius: 0,
+          shadowBlur: 0,
+          shadowOffsetX: 0,
+          shadowOffsetY: 0,
+          backgroundColor: 'transparent',
+          removeBackground: true,
+          blend: false,
+          blendMode: 'normal',
+          position: 'center',
+          scale: 1,
+        }
+      }))
+    }
+  }, [config.logoImage])
+
+  const generateFilterString = () => {
+    const filters = []
+    if (config.style.blurRadius) filters.push(`blur(${config.style.blurRadius}px)`)
+    if (config.style.brightness !== 100) filters.push(`brightness(${config.style.brightness}%)`)
+    if (config.style.contrast !== 100) filters.push(`contrast(${config.style.contrast}%)`)
+    if (config.style.opacity !== 100) filters.push(`opacity(${config.style.opacity}%)`)
+    return filters.join(' ')
+  } 
+
+  const generateBackground = () => {
+    if (config.style.gradientType === 'linear') {
+      return `linear-gradient(${config.style.gradientRotation}deg, ${config.style.gradientStart}, ${config.style.gradientEnd})`
+    }
+    if (config.style.gradientType === 'radial') {
+      return `radial-gradient(circle, ${config.style.gradientStart}, ${config.style.gradientEnd})`
+    }
+    return config.backgroundColor
+  }
+
+  const getQrStyles = () => ({
+    filter: generateFilterString(),
+    background: generateBackground(),
+    borderRadius: `${config.style.borderRadius}px`,
+    border: config.style.borderWidth ? `${config.style.borderWidth}px solid ${config.style.borderColor}` : undefined,
+    boxShadow: config.style.shadowBlur ? 
+      `${config.style.shadowOffsetX}px ${config.style.shadowOffsetY}px ${config.style.shadowBlur}px ${config.style.shadowColor}` : 
+      undefined,
+    mixBlendMode: config.style.blend ? config.style.blendMode : undefined,
+    padding: `${config.style.padding}px`,
+    transform: `scale(${previewScale})`,
+    transformOrigin: 'center',
+    transition: 'all 0.3s ease',
+  })
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast({
+          title: "Error",
+          description: "Logo image must be smaller than 2MB",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const reader = new FileReader()
+      reader.onload = () => {
+        const img = new Image()
+        img.onload = () => {
+          const aspectRatio = img.width / img.height
+          setOriginalAspectRatio(aspectRatio)
+          const defaultSize = 100
+          setConfig(prev => ({
+            ...prev,
+            logoImage: reader.result as string,
+            logoWidth: defaultSize,
+            logoHeight: maintainAspectRatio ? Math.round(defaultSize / aspectRatio) : defaultSize,
+          }))
+        }
+        img.src = reader.result as string
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  return (
+    <div className={className}>
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="space-y-4">
+          <Card>
+            <CardContent className="p-0">
+              <div className={styles.preview} style={{ background: config.backgroundColor }}>
+                {showGrid && <div className={styles.grid} />}
+                <div ref={qrRef} className={styles.wrapper} style={getQrStyles()}>
+                <QRCode
+                  value={value}
+                  size={config.size}
+                  bgColor={config.backgroundColor}
+                  fgColor={config.foregroundColor}
+                  level={config.errorCorrectionLevel}
+                  logoImage={config.logoImage}
+                  logoWidth={config.logoWidth}
+                  logoHeight={config.logoHeight}
+                  logoStyle={config.logoStyle}
+                  imageStyle={{ display: "block" }}
+/>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex flex-wrap gap-2">
+            <QRDownloadButton qrRef={qrRef} format="svg" />
+            <QRDownloadButton qrRef={qrRef} format="png" />
+            <Button variant="outline" onClick={() => setShowGrid(!showGrid)}>
+              <Grid className="mr-2 h-4 w-4" />
+              {showGrid ? 'Hide' : 'Show'} Grid
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Preview Scale: {Math.round(previewScale * 100)}%</Label>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPreviewScale(1)}
+              >
+                Reset
+              </Button>
+            </div>
+            <Slider
+              value={[previewScale]}
+              min={0.5}
+              max={2}
+              step={0.1}
+              onValueChange={([value]) => setPreviewScale(value)}
+            />
+          </div>
+        </div>
+
+        <Tabs defaultValue="style" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="style">Style</TabsTrigger>
+            <TabsTrigger value="logo">Logo</TabsTrigger>
+            <TabsTrigger value="colors">Colors</TabsTrigger>
+            <TabsTrigger value="effects">Effects</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="style">
+            <StyleControls
+              value={config.style}
+              onChange={(style) => {
+                setConfig(prev => ({ ...prev, style }))
+              }}
+            />
+          </TabsContent>
+
+          <TabsContent value="logo">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Logo Image</Label>
+                <div className="flex items-center gap-4">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="flex-1"
+                  />
+                  {config.logoImage && (
+                    <Button 
+                      variant="outline"
+                      onClick={() => setConfig(prev => ({ ...prev, logoImage: undefined }))}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {config.logoImage && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Remove Background</Label>
+                    <Switch
+                      checked={config.logoStyle?.removeBackground}
+                      onCheckedChange={(checked) => {
+                        setConfig(prev => ({
+                          ...prev,
+                          logoStyle: {
+                            ...prev.logoStyle,
+                            removeBackground: checked,
+                          }
+                        }))
+                      }}
+                    />
+                  </div>
+
+                  {!config.logoStyle?.removeBackground && (
+                    <div className="space-y-2">
+                      <Label>Background Color</Label>
+                      <div className="relative">
+                        <div
+                          className="h-10 rounded-md border cursor-pointer"
+                          style={{ backgroundColor: config.logoStyle?.backgroundColor }}
+                          onClick={() => setShowLogoBgPicker(!showLogoBgPicker)}
+                        />
+                        {showLogoBgPicker && (
+                          <div className="absolute z-10">
+                            <div 
+                              className="fixed inset-0" 
+                              onClick={() => setShowLogoBgPicker(false)}
+                            />
+                            <ChromePicker
+                              color={config.logoStyle?.backgroundColor}
+                              onChange={color => {
+                                setConfig(prev => ({
+                                  ...prev,
+                                  logoStyle: {
+                                    ...prev.logoStyle,
+                                    backgroundColor: color.hex,
+                                  }
+                                }))
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <LogoControls
+                    value={config.logoStyle}
+                    onChange={(logoStyle) => {
+                      setConfig(prev => ({ ...prev, logoStyle }))
+                    }}
+                    logoWidth={config.logoWidth}
+                    logoHeight={config.logoHeight}
+                    onLogoSizeChange={(width, height) => {
+                      setConfig(prev => ({
+                        ...prev,
+                        logoWidth: width,
+                        logoHeight: height
+                      }))
+                    }}
+                    maintainAspectRatio={maintainAspectRatio}
+                    onAspectRatioChange={setMaintainAspectRatio}
+                    originalAspectRatio={originalAspectRatio}
+                  />
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="colors">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Foreground Color</Label>
+                <div className="relative">
+                  <div
+                    className="h-10 rounded-md border cursor-pointer"
+                    style={{ backgroundColor: config.foregroundColor }}
+                    onClick={() => setShowFgPicker(!showFgPicker)}
+                  />
+                  {showFgPicker && (
+                    <>
+                      <div
+                        className="fixed inset-0"
+                        onClick={() => setShowFgPicker(false)}
+                      />
+                      <div className="absolute z-10">
+                        <ChromePicker
+                          color={config.foregroundColor}
+                          onChange={color => 
+                            setConfig(prev => ({ 
+                              ...prev, 
+                              foregroundColor: color.hex 
+                            }))
+                          }
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Background Color</Label>
+                <div className="relative">
+                  <div
+                    className="h-10 rounded-md border cursor-pointer"
+                    style={{ backgroundColor: config.backgroundColor }}
+                    onClick={() => setShowBgPicker(!showBgPicker)}
+                  />
+                  {showBgPicker && (
+                    <>
+                      <div
+                        className="fixed inset-0"
+                        onClick={() => setShowBgPicker(false)}
+                      />
+                      <div className="absolute z-10">
+                        <ChromePicker
+                          color={config.backgroundColor}
+                          onChange={color => 
+                            setConfig(prev => ({ 
+                              ...prev, 
+                              backgroundColor: color.hex 
+                            }))
+                          }
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="effects">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>QR Code Size: {config.size}px</Label>
+                <Slider
+                  value={[config.size]}
+                  min={100}
+                  max={1000}
+                  step={10}
+                  onValueChange={([value]) => 
+                    setConfig(prev => ({ ...prev, size: value }))
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Error Correction Level</Label>
+                <Select
+                  value={config.errorCorrectionLevel}
+                  onValueChange={(value: QRDesignerConfig["errorCorrectionLevel"]) =>
+                    setConfig(prev => ({ 
+                      ...prev, 
+                      errorCorrectionLevel: value 
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="L">Low (7%)</SelectItem>
+                    <SelectItem value="M">Medium (15%)</SelectItem>
+                    <SelectItem value="Q">Quartile (25%)</SelectItem>
+                    <SelectItem value="H">High (30%)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+              <Label>Margin: {config.style.padding}px</Label>
+                <Slider
+                  value={[config.style.padding]}
+                  min={0}
+                  max={50}
+                  step={1}
+                  onValueChange={([value]) => 
+                    setConfig(prev => ({
+                      ...prev,
+                      style: { ...prev.style, padding: value }
+                    }))
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Quality</Label>
+                <Select
+                  value={config.dotStyle}
+                  onValueChange={(value: QRDotType) => 
+                    setConfig(prev => ({ 
+                      ...prev, 
+                      dotStyle: value 
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="squares">Squares</SelectItem>
+                    <SelectItem value="dots">Dots</SelectItem>
+                    <SelectItem value="rounded">Rounded</SelectItem>
+                    <SelectItem value="classy">Classy</SelectItem>
+                    <SelectItem value="classy-rounded">Classy Rounded</SelectItem>
+                    <SelectItem value="extra-rounded">Extra Rounded</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/designer/qr-download-button.tsx
+import { Button } from "@/components/ui/button"
+import { Download } from "lucide-react"
+import html2canvas from 'html2canvas'
+import { toast } from "@/components/ui/use-toast"
+
+interface QRDownloadButtonProps {
+  qrRef: React.RefObject<HTMLDivElement>
+  format: 'svg' | 'png'
+}
+
+export function QRDownloadButton({ qrRef, format }: QRDownloadButtonProps) {
+  const downloadQRCode = async () => {
+    if (!qrRef.current) return
+
+    try {
+      if (format === 'svg') {
+        // Download as SVG
+        const svg = qrRef.current.querySelector('svg')
+        if (!svg) throw new Error('SVG element not found')
+
+        const svgData = new XMLSerializer().serializeToString(svg)
+        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
+        const svgUrl = URL.createObjectURL(svgBlob)
+
+        const link = document.createElement('a')
+        link.href = svgUrl
+        link.download = `qr-code-${Date.now()}.svg`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(svgUrl)
+      } else {
+        // Download as PNG
+        const canvas = await html2canvas(qrRef.current, {
+          backgroundColor: null,
+          scale: 4,
+          logging: false,
+          useCORS: true,
+          allowTaint: true,
+        })
+
+        const pngUrl = canvas.toDataURL('image/png')
+        const link = document.createElement('a')
+        link.href = pngUrl
+        link.download = `qr-code-${Date.now()}.png`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      }
+
+      toast({
+        title: 'Success',
+        description: `QR code downloaded as ${format.toUpperCase()}`,
+      })
+    } catch (error) {
+      console.error('Error downloading QR code:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to download QR code',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  return (
+    <Button variant="outline" onClick={downloadQRCode}>
+      <Download className="mr-2 h-4 w-4" />
+      Download {format.toUpperCase()}
+    </Button>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/designer/qr-wrapper.tsx
+"use client"
+
+import { QRCodeCanvas } from 'qrcode.react'
+import { forwardRef } from 'react'
+import { cn } from "@/lib/utils"
+import { QRWrapperProps } from './types'
+import Image from 'next/image'
+export const QRCode = forwardRef<HTMLDivElement, QRWrapperProps>((props, ref) => {
+  const {
+    className,
+    containerStyle,
+    imageStyle,
+    logoImage,
+    logoWidth,
+    logoHeight,
+    logoStyle,
+    ...qrProps
+  } = props
+  
+  const getLogoFilterString = () => {
+    const filters = []
+    if (logoStyle?.blurRadius) filters.push(`blur(${logoStyle.blurRadius}px)`)
+    if (logoStyle?.brightness !== 100) filters.push(`brightness(${logoStyle.brightness}%)`)
+    if (logoStyle?.contrast !== 100) filters.push(`contrast(${logoStyle.contrast}%)`)
+    return filters.join(' ')
+  }
+
+  const getLogoShadow = () => {
+    if (logoStyle?.shadowBlur) {
+      return `${logoStyle.shadowOffsetX}px ${logoStyle.shadowOffsetY}px ${logoStyle.shadowBlur}px ${logoStyle.shadowColor}`
+    }
+    return 'none'
+  }
+  
+  return (
+    <div 
+      ref={ref}
+      className={cn("relative", className)}
+      style={{
+        width: props.size,
+        height: props.size,
+        ...containerStyle
+      }}
+    >
+      <QRCodeCanvas
+        {...qrProps}
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'block',
+          ...imageStyle
+        }}
+      />
+      {logoImage && (
+        <div
+          className="logo-wrapper absolute"
+          style={{
+            top: '50%',
+            left: '50%',
+            transform: `translate(-50%, -50%) rotate(${logoStyle?.rotation || 0}deg)`,
+            width: logoWidth,
+            height: logoHeight,
+            zIndex: logoStyle?.blend ? 1 : 2,
+          }}
+        >
+          <Image
+            src={logoImage}
+            alt="Logo"
+            className="w-full h-full object-contain"
+            style={{
+              borderRadius: `${logoStyle?.borderRadius || 0}px`,
+              border: logoStyle?.borderWidth ? 
+                `${logoStyle.borderWidth}px solid ${logoStyle.borderColor}` : 
+                undefined,
+              boxShadow: getLogoShadow(),
+              filter: getLogoFilterString(),
+              opacity: (logoStyle?.opacity || 100) / 100,
+              mixBlendMode: logoStyle?.blend ? logoStyle.blendMode : 'normal',
+              backgroundColor: logoStyle?.removeBackground ? 
+                'transparent' : 
+                logoStyle?.backgroundColor,
+            }}
+          />
+        </div>
+      )}
+    </div>
+  )
+})
+
+QRCode.displayName = 'QRCode'
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/designer/style-controls.tsx
+"use client"
+
+import React, { useState } from "react"
+import { Label } from "@/components/ui/label"
+import { Slider } from "@/components/ui/slider"
+import { Switch } from "@/components/ui/switch"
+import { ChromePicker } from 'react-color'
+import { StyleControlsProps, BlendMode } from './types'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+const BLEND_MODES: BlendMode[] = [
+  'normal',
+  'multiply',
+  'screen',
+  'overlay',
+  'darken',
+  'lighten',
+  'color-dodge',
+  'color-burn',
+  'hard-light',
+  'soft-light',
+  'difference',
+  'exclusion'
+]
+
+export function StyleControls({ value, onChange }: StyleControlsProps) {
+  const [showGradientStartPicker, setShowGradientStartPicker] = useState(false)
+  const [showGradientEndPicker, setShowGradientEndPicker] = useState(false)
+  const [showShadowColorPicker, setShowShadowColorPicker] = useState(false)
+  const [showBorderColorPicker, setShowBorderColorPicker] = useState(false)
+
+  const updateStyle = (updates: Partial<StyleControlsProps['value']>) => {
+    onChange({ ...value, ...updates })
+  }
+
+  const handleClickOutside = () => {
+    setShowGradientStartPicker(false)
+    setShowGradientEndPicker(false)
+    setShowShadowColorPicker(false)
+    setShowBorderColorPicker(false)
+  }
+
+  return (
+    <Accordion type="single" collapsible className="w-full">
+      <AccordionItem value="basic">
+        <AccordionTrigger>Basic Effects</AccordionTrigger>
+        <AccordionContent>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Opacity: {value.opacity}%</Label>
+              <Slider
+                value={[value.opacity]}
+                min={0}
+                max={100}
+                step={1}
+                onValueChange={([v]) => updateStyle({ opacity: v })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Blur: {value.blurRadius}px</Label>
+              <Slider
+                value={[value.blurRadius]}
+                min={0}
+                max={20}
+                step={0.5}
+                onValueChange={([v]) => updateStyle({ blurRadius: v })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Brightness: {value.brightness}%</Label>
+              <Slider
+                value={[value.brightness]}
+                min={0}
+                max={200}
+                step={1}
+                onValueChange={([v]) => updateStyle({ brightness: v })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Contrast: {value.contrast}%</Label>
+              <Slider
+                value={[value.contrast]}
+                min={0}
+                max={200}
+                step={1}
+                onValueChange={([v]) => updateStyle({ contrast: v })}
+              />
+            </div>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      <AccordionItem value="shadow">
+        <AccordionTrigger>Shadow</AccordionTrigger>
+        <AccordionContent>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Shadow Color</Label>
+              <div className="relative">
+                <div
+                  className="h-10 rounded-md border cursor-pointer"
+                  style={{ backgroundColor: value.shadowColor }}
+                  onClick={() => setShowShadowColorPicker(true)}
+                />
+                {showShadowColorPicker && (
+                  <>
+                    <div className="fixed inset-0" onClick={handleClickOutside} />
+                    <div className="absolute z-10">
+                      <ChromePicker
+                        color={value.shadowColor}
+                        onChange={color => updateStyle({ shadowColor: color.hex })}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Blur: {value.shadowBlur}px</Label>
+              <Slider
+                value={[value.shadowBlur]}
+                min={0}
+                max={50}
+                step={1}
+                onValueChange={([v]) => updateStyle({ shadowBlur: v })}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Offset X: {value.shadowOffsetX}px</Label>
+                <Slider
+                  value={[value.shadowOffsetX]}
+                  min={-50}
+                  max={50}
+                  step={1}
+                  onValueChange={([v]) => updateStyle({ shadowOffsetX: v })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Offset Y: {value.shadowOffsetY}px</Label>
+                <Slider
+                  value={[value.shadowOffsetY]}
+                  min={-50}
+                  max={50}
+                  step={1}
+                  onValueChange={([v]) => updateStyle({ shadowOffsetY: v })}
+                />
+              </div>
+            </div>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      <AccordionItem value="gradient">
+        <AccordionTrigger>Gradient</AccordionTrigger>
+        <AccordionContent>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Type</Label>
+              <Select
+                value={value.gradientType}
+                onValueChange={(v) => 
+                  updateStyle({ 
+                    gradientType: v as 'none' | 'linear' | 'radial' 
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="linear">Linear</SelectItem>
+                  <SelectItem value="radial">Radial</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {value.gradientType !== 'none' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Start Color</Label>
+                  <div className="relative">
+                    <div
+                      className="h-10 rounded-md border cursor-pointer"
+                      style={{ backgroundColor: value.gradientStart }}
+                      onClick={() => setShowGradientStartPicker(true)}
+                    />
+                    {showGradientStartPicker && (
+                      <>
+                        <div className="fixed inset-0" onClick={handleClickOutside} />
+                        <div className="absolute z-10">
+                          <ChromePicker
+                            color={value.gradientStart}
+                            onChange={color => 
+                              updateStyle({ gradientStart: color.hex })
+                            }
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>End Color</Label>
+                  <div className="relative">
+                    <div
+                      className="h-10 rounded-md border cursor-pointer"
+                      style={{ backgroundColor: value.gradientEnd }}
+                      onClick={() => setShowGradientEndPicker(true)}
+                    />
+                    {showGradientEndPicker && (
+                      <>
+                        <div className="fixed inset-0" onClick={handleClickOutside} />
+                        <div className="absolute z-10">
+                          <ChromePicker
+                            color={value.gradientEnd}
+                            onChange={color => 
+                              updateStyle({ gradientEnd: color.hex })
+                            }
+                                                      />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {value.gradientType === 'linear' && (
+                  <div className="space-y-2">
+                    <Label>Angle: {value.gradientRotation}°</Label>
+                    <Slider
+                      value={[value.gradientRotation]}
+                      min={0}
+                      max={360}
+                      step={1}
+                      onValueChange={([v]) => updateStyle({ gradientRotation: v })}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      <AccordionItem value="border">
+        <AccordionTrigger>Border</AccordionTrigger>
+        <AccordionContent>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Width: {value.borderWidth}px</Label>
+              <Slider
+                value={[value.borderWidth]}
+                min={0}
+                max={20}
+                step={1}
+                onValueChange={([v]) => updateStyle({ borderWidth: v })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Radius: {value.borderRadius}px</Label>
+              <Slider
+                value={[value.borderRadius]}
+                min={0}
+                max={50}
+                step={1}
+                onValueChange={([v]) => updateStyle({ borderRadius: v })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Color</Label>
+              <div className="relative">
+                <div
+                  className="h-10 rounded-md border cursor-pointer"
+                  style={{ backgroundColor: value.borderColor }}
+                  onClick={() => setShowBorderColorPicker(true)}
+                />
+                {showBorderColorPicker && (
+                  <>
+                    <div className="fixed inset-0" onClick={handleClickOutside} />
+                    <div className="absolute z-10">
+                      <ChromePicker
+                        color={value.borderColor}
+                        onChange={color => updateStyle({ borderColor: color.hex })}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      <AccordionItem value="blend">
+        <AccordionTrigger>Blend Mode</AccordionTrigger>
+        <AccordionContent>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label>Enable Blending</Label>
+              <Switch
+                checked={value.blend}
+                onCheckedChange={(checked) => updateStyle({ blend: checked })}
+              />
+            </div>
+
+            {value.blend && (
+              <div className="space-y-2">
+                <Label>Mode</Label>
+                <Select
+                  value={value.blendMode}
+                  onValueChange={(v) => updateStyle({ blendMode: v as BlendMode })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BLEND_MODES.map((mode) => (
+                      <SelectItem key={mode} value={mode}>
+                        {mode.split('-').map(word => 
+                          word.charAt(0).toUpperCase() + word.slice(1)
+                        ).join(' ')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/designer/styles.module.css
+.container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+  width: 100%;
+  height: 100%;
+}
+
+.wrapper {
+  position: relative;
+  width: fit-content;
+  height: fit-content;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qrCodeWrapper {
+  position: relative;
+  z-index: 1;
+}
+
+.qrCode {
+  position: relative;
+  z-index: 2;
+  mix-blend-mode: multiply;
+}
+
+.logoWrapper {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+.logoImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: all 0.3s ease;
+}
+
+.previewGrid {
+  background-size: 20px 20px;
+  background-image: 
+    linear-gradient(to right, rgba(128, 128, 128, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(128, 128, 128, 0.1) 1px, transparent 1px);
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.preview {
+  position: relative;
+  width: 100%;
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.controls {
+  position: relative;
+  z-index: 10;
+}
+
+.colorPicker {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  left: 0;
+  margin-top: 8px;
+}
+
+.colorPickerOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 19;
+}
+
+.blendPreview {
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.blendPreview::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    linear-gradient(45deg, #eee 25%, transparent 25%),
+    linear-gradient(-45deg, #eee 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #eee 75%),
+    linear-gradient(-45deg, transparent 75%, #eee 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+/* Position variants for logo */
+.logoPosition-center {
+  top: 50%;
+  left: 50%;
+}
+
+.logoPosition-topLeft {
+  top: 0;
+  left: 0;
+  transform: translate(var(--logo-padding), var(--logo-padding));
+}
+
+.logoPosition-topRight {
+  top: 0;
+  right: 0;
+  transform: translate(calc(-1 * var(--logo-padding)), var(--logo-padding));
+}
+
+.logoPosition-bottomLeft {
+  bottom: 0;
+  left: 0;
+  transform: translate(var(--logo-padding), calc(-1 * var(--logo-padding)));
+}
+
+.logoPosition-bottomRight {
+  bottom: 0;
+  right: 0;
+  transform: translate(calc(-1 * var(--logo-padding)), calc(-1 * var(--logo-padding)));
+}
+
+/* Animation classes */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from { 
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to { 
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.fadeIn {
+  animation: fade-in 0.2s ease-out forwards;
+}
+
+.scaleIn {
+  animation: scale-in 0.2s ease-out forwards;
+}
+
+/* Style control sections */
+.styleSection {
+  padding: 16px;
+  border-radius: 8px;
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.styleSection:last-child {
+  margin-bottom: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .preview {
+    min-height: 300px;
+  }
+  
+  .controls {
+    margin-top: 16px;
+  }
+}
+
+/* Accessibility improvements */
+.focusRing {
+  outline: none;
+  transition: box-shadow 0.2s ease;
+}
+
+.focusRing:focus-visible {
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+}
+
+/* Dark mode adjustments */
+:global(.dark) .previewGrid {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+}
+
+.logoWrapper {
+  position: absolute;
+  transition: all 0.3s ease;
+}
+
+.logoWrapper.center {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.logoWrapper.top-left {
+  top: 10%;
+  left: 10%;
+  transform: translate(-50%, -50%);
+}
+
+.logoWrapper.top-right {
+  top: 10%;
+  right: 10%;
+  transform: translate(50%, -50%);
+}
+
+.logoWrapper.bottom-left {
+  bottom: 10%;
+  left: 10%;
+  transform: translate(-50%, 50%);
+}
+
+.logoWrapper.bottom-right {
+  bottom: 10%;
+  right: 10%;
+  transform: translate(50%, 50%);
+}
+
+.logoImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: all 0.3s ease;
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/designer/types.ts
+export type BlendMode = 
+  | 'normal' 
+  | 'multiply' 
+  | 'screen' 
+  | 'overlay' 
+  | 'darken' 
+  | 'lighten' 
+  | 'color-dodge' 
+  | 'color-burn' 
+  | 'hard-light' 
+  | 'soft-light' 
+  | 'difference' 
+  | 'exclusion'
+
+export type LogoPosition = 
+  | 'center' 
+  | 'top-left' 
+  | 'top-right' 
+  | 'bottom-left' 
+  | 'bottom-right'
+
+export interface QRStyleOptions {
+  opacity: number
+  blurRadius: number
+  brightness: number
+  contrast: number
+  borderRadius: number
+  borderWidth: number
+  borderColor: string
+  shadowColor: string
+  shadowBlur: number
+  shadowOffsetX: number
+  shadowOffsetY: number
+  gradientType: 'none' | 'linear' | 'radial'
+  gradientStart: string
+  gradientEnd: string
+  gradientRotation: number
+  padding: number
+  blend: boolean
+  blendMode: BlendMode
+}
+
+export interface LogoStyleOptions {
+  opacity: number
+  blurRadius: number
+  brightness: number
+  contrast: number
+  borderRadius: number
+  borderWidth: number
+  borderColor: string
+  shadowColor: string
+  shadowBlur: number
+  shadowOffsetX: number
+  shadowOffsetY: number
+  padding: number
+  backgroundColor: string
+  removeBackground: boolean
+  position: LogoPosition
+  rotation: number
+  blend: boolean
+  blendMode: BlendMode
+  scale: number
+}
+
+export type QRDotType = 'squares' | 'dots' | 'rounded' | 'classy' | 'classy-rounded' | 'extra-rounded'
+export type ErrorCorrectionLevel = 'L' | 'M' | 'Q' | 'H'
+
+export interface QRDesignerConfig {
+  size: number
+  backgroundColor: string
+  foregroundColor: string
+  logoImage?: string
+  logoWidth: number
+  logoHeight: number
+  dotStyle: QRDotType
+  margin: number
+  errorCorrectionLevel: ErrorCorrectionLevel
+  style: QRStyleOptions
+  logoStyle: LogoStyleOptions
+  imageRendering: 'auto' | 'crisp-edges' | 'pixelated'
+}
+
+export interface QRDesignerProps {
+  value: string
+  onConfigChange?: (config: QRDesignerConfig) => void
+  defaultConfig?: Partial<QRDesignerConfig>
+  className?: string
+}
+
+export interface StyleControlsProps {
+  value: QRStyleOptions
+  onChange: (value: QRStyleOptions) => void
+  title?: string
+}
+
+export interface LogoControlsProps {
+  value: LogoStyleOptions
+  onChange: (value: LogoStyleOptions) => void
+  logoWidth: number
+  logoHeight: number
+  onLogoSizeChange: (width: number, height: number) => void
+  maintainAspectRatio: boolean
+  onAspectRatioChange: (maintain: boolean) => void
+  originalAspectRatio: number
+}
+
+export interface QRWrapperProps {
+  value: string
+  size: number
+  bgColor: string
+  fgColor: string
+  level: ErrorCorrectionLevel
+  logoImage?: string
+  logoWidth?: number
+  logoHeight?: number
+  logoStyle?: LogoStyleOptions
+  className?: string
+  containerStyle?: React.CSSProperties
+  imageStyle?: React.CSSProperties
+}
+
+export const DEFAULT_CONFIG: QRDesignerConfig = {
+  size: 300,
+  backgroundColor: '#FFFFFF',
+  foregroundColor: '#000000',
+  logoWidth: 100,
+  logoHeight: 100,
+  dotStyle: 'squares',
+  margin: 20,
+  errorCorrectionLevel: 'M',
+  imageRendering: 'auto',
+  style: {
+    opacity: 100,
+    blurRadius: 0,
+    brightness: 100,
+    contrast: 100,
+    borderRadius: 0,
+    borderWidth: 0,
+    borderColor: '#000000',
+    shadowColor: 'rgba(0, 0, 0, 0.5)',
+    shadowBlur: 0,
+    shadowOffsetX: 0,
+    shadowOffsetY: 0,
+    gradientType: 'none',
+    gradientStart: '#000000',
+    gradientEnd: '#FFFFFF',
+    gradientRotation: 0,
+    padding: 0,
+    blend: false,
+    blendMode: 'normal'
+  },
+  logoStyle: {
+    opacity: 100,
+    blurRadius: 0,
+    brightness: 100,
+    contrast: 100,
+    borderRadius: 0,
+    borderWidth: 0,
+    borderColor: '#000000',
+    shadowColor: 'rgba(0, 0, 0, 0.5)',
+    shadowBlur: 0,
+    shadowOffsetX: 0,
+    shadowOffsetY: 0,
+    padding: 0,
+    backgroundColor: '#FFFFFF',
+    removeBackground: false,
+    position: 'center',
+    rotation: 0,
+    blend: false,
+    blendMode: 'normal',
+    scale: 1
+  }
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/device-rule-form.tsx
+import { useState, useEffect } from "react"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { toast } from "@/components/ui/use-toast"
+import { Plus, Trash2, Loader2 } from "lucide-react"
+
+// Define interfaces for our types
+interface DeviceRule {
+  id?: string
+  deviceType: 'ALL' | 'MOBILE' | 'TABLET' | 'DESKTOP'
+  targetUrl: string
+  priority: number
+  browsers: string[]
+  os: string[]
+}
+
+interface DeviceRuleFormProps {
+  qrCodeId?: string
+  initialRules?: DeviceRule[]
+  onChange?: (rules: DeviceRule[]) => void
+}
+
+export function DeviceRuleForm({ qrCodeId, initialRules, onChange }: DeviceRuleFormProps) {
+  const [rules, setRules] = useState<DeviceRule[]>(initialRules || [])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (qrCodeId) {
+      fetchRules()
+    } else {
+      setLoading(false)
+    }
+  }, [qrCodeId])
+
+  const fetchRules = async () => {
+    try {
+      const response = await fetch(`/api/qr/${qrCodeId}/device-rules`)
+      if (!response.ok) throw new Error('Failed to fetch rules')
+      const data = await response.json()
+      setRules(data)
+    } catch (error) {
+      console.error('Error fetching rules:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load device rules",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const addRule = () => {
+    const newRule: DeviceRule = {
+      deviceType: "ALL",
+      targetUrl: "",
+      priority: rules.length + 1,
+      browsers: [],
+      os: [],
+    }
+    const updatedRules = [...rules, newRule]
+    setRules(updatedRules)
+    onChange?.(updatedRules)
+  }
+
+  const removeRule = (index: number) => {
+    const updatedRules = rules.filter((_, i) => i !== index)
+    setRules(updatedRules)
+    onChange?.(updatedRules)
+  }
+
+  const updateRule = (index: number, updates: Partial<DeviceRule>) => {
+    const updatedRules = [...rules]
+    updatedRules[index] = { ...updatedRules[index], ...updates }
+    setRules(updatedRules)
+    onChange?.(updatedRules)
+  }
+
+  const validateRules = (rules: DeviceRule[]): boolean => {
+    for (const rule of rules) {
+      if (!rule.targetUrl) {
+        toast({
+          title: "Validation Error",
+          description: "Target URL is required for all rules",
+          variant: "destructive",
+        })
+        return false
+      }
+
+      try {
+        new URL(rule.targetUrl)
+      } catch {
+        toast({
+          title: "Validation Error",
+          description: "Please enter valid URLs",
+          variant: "destructive",
+        })
+        return false
+      }
+    }
+    return true
+  }
+
+  const saveRules = async () => {
+    if (!qrCodeId) return
+    if (!validateRules(rules)) return
+
+    setSaving(true)
+    try {
+      const response = await fetch(`/api/qr/${qrCodeId}/device-rules`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(rules),
+      })
+
+      if (!response.ok) throw new Error('Failed to save rules')
+
+      toast({
+        title: "Success",
+        description: "Device rules saved successfully",
+      })
+    } catch (error) {
+      console.error('Error saving rules:', error)
+      toast({
+        title: "Error",
+        description: "Failed to save device rules",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Device Rules</CardTitle>
+          <CardDescription>
+            Redirect users based on their device type. Rules are processed in order of priority.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {rules.map((rule, index) => (
+            <div key={index} className="space-y-4 pt-4 first:pt-0">
+              <div className="flex items-end gap-4">
+                <div className="flex-1 space-y-2">
+                  <Select
+                    value={rule.deviceType}
+                    onValueChange={(value: DeviceRule['deviceType']) => {
+                      updateRule(index, { deviceType: value })
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select device type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All Devices</SelectItem>
+                      <SelectItem value="MOBILE">Mobile</SelectItem>
+                      <SelectItem value="TABLET">Tablet</SelectItem>
+                      <SelectItem value="DESKTOP">Desktop</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-[2] space-y-2">
+                  <Input
+                    placeholder="Target URL"
+                    value={rule.targetUrl}
+                    onChange={(e) => updateRule(index, { targetUrl: e.target.value })}
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => removeRule(index)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
+          <Button
+            variant="outline"
+            onClick={addRule}
+            className="w-full"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Rule
+          </Button>
+          {rules.length > 0 && (
+            <Button 
+              onClick={saveRules}
+              className="w-full"
+              disabled={saving}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Rules"
+              )}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/folder-list.tsx
+"use client"
+
+import { useState, useEffect } from "react"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { toast } from "@/components/ui/use-toast"
+import { Folder, Plus, Loader2 } from "lucide-react"
+
+interface Folder {
+  id: string
+  name: string
+  _count: {
+    qrCodes: number
+  }
+}
+
+interface FolderListProps {
+  className?: string
+  selectedFolderId?: string | null
+  onFolderSelect: (folderId: string | null) => void
+}
+
+export function FolderList({ className, selectedFolderId, onFolderSelect }: FolderListProps) {
+  const [folders, setFolders] = useState<Folder[]>([])
+  const [loading, setLoading] = useState(true)
+  const [isCreating, setIsCreating] = useState(false)
+  const [createLoading, setCreateLoading] = useState(false)
+  const [newFolderName, setNewFolderName] = useState("")
+
+  async function fetchFolders() {
+    try {1
+      const response = await fetch('/api/folders')
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to fetch folders')
+      }
+      const data = await response.json()
+      setFolders(data)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to fetch folders",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchFolders()
+  }, [])
+
+  async function createFolder() {
+    if (!newFolderName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a folder name",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setCreateLoading(true)
+    try {
+      const response = await fetch('/api/folders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newFolderName.trim(),
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create folder')
+      }
+
+      const folder = await response.json()
+      setFolders(prev => [folder, ...prev])
+      setIsCreating(false)
+      setNewFolderName("")
+      
+      toast({
+        title: "Success",
+        description: "Folder created successfully",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create folder",
+        variant: "destructive",
+      })
+    } finally {
+      setCreateLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  return (
+    <div className={cn("space-y-4", className)}>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium">Folders</h3>
+        <Dialog open={isCreating} onOpenChange={setIsCreating}>
+          <DialogTrigger asChild>
+            <Button variant="ghost" size="sm">
+              <Plus className="h-4 w-4" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create Folder</DialogTitle>
+              <DialogDescription>
+                Create a new folder to organize your QR codes
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  placeholder="My Folder"
+                />
+              </div>
+   
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsCreating(false)}
+                disabled={createLoading}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={createFolder}
+                disabled={createLoading}
+              >
+                {createLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create Folder"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+      
+      <div className="space-y-1">
+        <Button
+          variant="ghost"
+          className={cn(
+            "w-full justify-start",
+            !selectedFolderId && "bg-accent"
+          )}
+          onClick={() => onFolderSelect(null)}
+        >
+          <Folder className="mr-2 h-4 w-4" />
+          All QR Codes
+        </Button>
+        {folders.map((folder) => (
+          <Button
+            key={folder.id}
+            variant="ghost"
+            className={cn(
+              "w-full justify-start",
+              selectedFolderId === folder.id && "bg-accent"
+            )}
+            onClick={() => onFolderSelect(folder.id)}
+          >
+    
+            {folder.name}
+            <span className="ml-auto text-xs text-muted-foreground">
+              {folder._count.qrCodes}
+            </span>
+          </Button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/folder-menu.tsx
+"use client"
+
+import { useState } from "react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { toast } from "@/components/ui/use-toast"
+import { MoreHorizontal, Edit, Trash2 } from "lucide-react"
+
+interface FolderMenuProps {
+  folder: {
+    id: string
+    name: string
+  }
+  onFolderDeleted: () => void
+  onFolderUpdated: () => void
+}
+
+export function FolderMenu({ folder, onFolderDeleted, onFolderUpdated }: FolderMenuProps) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [name, setName] = useState(folder.name)
+
+  async function updateFolder() {
+    try {
+      const response = await fetch(`/api/folders/${folder.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+
+      if (!response.ok) throw new Error('Failed to update folder')
+
+      toast({
+        title: "Success",
+        description: "Folder updated successfully",
+      })
+
+      setIsEditing(false)
+      onFolderUpdated()
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to update folder",
+        variant: "destructive",
+      })
+    }
+  }
+
+  async function deleteFolder() {
+    try {
+      const response = await fetch(`/api/folders/${folder.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) throw new Error('Failed to delete folder')
+
+      toast({
+        title: "Success",
+        description: "Folder deleted successfully",
+      })
+
+      setIsDeleting(false)
+      onFolderDeleted()
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to delete folder",
+        variant: "destructive",
+      })
+    }
+  }
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setIsEditing(true)}>
+            <Edit className="mr-2 h-4 w-4" />
+            Edit Folder
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem 
+            className="text-red-600"
+            onClick={() => setIsDeleting(true)}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete Folder
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog open={isEditing} onOpenChange={setIsEditing}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Folder</DialogTitle>
+            <DialogDescription>
+              Update folder name
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+    
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditing(false)}>
+              Cancel
+            </Button>
+            <Button onClick={updateFolder}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDeleting} onOpenChange={setIsDeleting}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Folder</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this folder? QR codes in this folder will be moved to &quot;All QR Codes&quot;.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleting(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={deleteFolder}>
+              Delete Folder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/qr-analytics.tsx
+"use client"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts"
+
+interface QRAnalyticsProps {
+  qrCodeId: string
+}
+
+// Mock data - replace with real data fetch
+const mockData = [
+  { date: "2024-01-01", scans: 45 },
+  { date: "2024-01-02", scans: 67 },
+  { date: "2024-01-03", scans: 32 },
+  { date: "2024-01-04", scans: 89 },
+  { date: "2024-01-05", scans: 102 },
+  { date: "2024-01-06", scans: 78 },
+  { date: "2024-01-07", scans: 56 },
+]
+
+export function QRAnalytics({  }: QRAnalyticsProps) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Scan Analytics</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={mockData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="date"
+                stroke="#888888"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                stroke="#888888"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => `${value}`}
+              />
+              <Tooltip />
+              <Line
+                type="monotone"
+                dataKey="scans"
+                stroke="#4f46e5"
+                strokeWidth={2}
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/qr-card.tsx
+// QRCard.tsx
+import { useState } from "react"
+import Link from "next/link"
+import QRCode from "react-qr-code"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { 
+  Edit, 
+  FileDown, 
+  ExternalLink, 
+  Trash2, 
+  MoreHorizontal,
+  Loader2 
+} from "lucide-react"
+import { formatDistanceToNow } from "date-fns"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
+import { toast } from "@/components/ui/use-toast"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { cn } from "@/lib/utils"
+
+interface QRCodeData {
+  id: string
+  name: string
+  shortCode: string
+  defaultUrl: string
+  scans: number
+  isActive: boolean
+  createdAt: Date
+}
+
+interface QRCardProps {
+  qrCode: QRCodeData
+  onDelete?: (qrCode: QRCodeData) => Promise<void>
+  selected?: boolean
+  onSelect?: () => void
+  className?: string
+}
+
+export function QRCard({ 
+  qrCode, 
+  onDelete, 
+  selected,
+  onSelect,
+  className 
+}: QRCardProps) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [downloadLoading, setDownloadLoading] = useState(false)
+  const qrUrl = `${process.env.NEXT_PUBLIC_APP_URL}/r/${qrCode.shortCode}`
+
+  const downloadQRAsImage = async () => {
+    try {
+      setDownloadLoading(true)
+      const svg = document.getElementById(`qr-${qrCode.id}`) as unknown as SVGElement | null
+      if (!svg) throw new Error('QR code element not found')
+
+      const canvas = document.createElement("canvas")
+      const ctx = canvas.getContext("2d")
+      if (!ctx) throw new Error('Could not get canvas context')
+      
+      const multiplier = 4
+      canvas.width = 150 * multiplier
+      canvas.height = 150 * multiplier
+      
+      const svgData = new XMLSerializer().serializeToString(svg)
+      const img = new Image()
+      
+      img.onload = () => {
+        ctx.fillStyle = "white"
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        
+        const pngFile = canvas.toDataURL("image/png")
+        
+        const downloadLink = document.createElement("a")
+        downloadLink.download = `${qrCode.name}-qr.png`
+        downloadLink.href = pngFile
+        document.body.appendChild(downloadLink)
+        downloadLink.click()
+        document.body.removeChild(downloadLink)
+        setDownloadLoading(false)
+        
+        toast({
+          title: "Success",
+          description: "QR code downloaded as PNG",
+        })
+      }
+      
+      img.src = 'data:image/svg+xml;base64,' + btoa(svgData)
+      
+    } catch (error) {
+      console.error("Error downloading QR code:", error)
+      toast({
+        title: "Error",
+        description: "Failed to download QR code",
+        variant: "destructive",
+      })
+      setDownloadLoading(false)
+    }
+  }
+
+  const downloadQRAsSVG = async () => {
+    try {
+      setDownloadLoading(true)
+      const svg = document.getElementById(`qr-${qrCode.id}`) as unknown as SVGElement | null
+      if (!svg) throw new Error('QR code element not found')
+
+      const svgData = new XMLSerializer().serializeToString(svg)
+      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" })
+      const svgUrl = URL.createObjectURL(svgBlob)
+
+      const downloadLink = document.createElement("a")
+      downloadLink.href = svgUrl
+      downloadLink.download = `${qrCode.name}-qr.svg`
+      document.body.appendChild(downloadLink)
+      downloadLink.click()
+      document.body.removeChild(downloadLink)
+      URL.revokeObjectURL(svgUrl)
+      setDownloadLoading(false)
+
+      toast({
+        title: "Success",
+        description: "QR code downloaded as SVG",
+      })
+    } catch (error) {
+      console.error("Error downloading QR code:", error)
+      toast({
+        title: "Error",
+        description: "Failed to download QR code",
+        variant: "destructive",
+      })
+      setDownloadLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!onDelete) return
+    setDeleteLoading(true)
+    try {
+      await onDelete(qrCode)
+      setDeleteDialogOpen(false)
+    } catch (error) {
+      console.error("Error deleting QR code:", error)
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <Card 
+        className={cn(
+          "transition-all duration-200",
+          selected && "ring-2 ring-primary",
+          "cursor-pointer hover:shadow-md",
+          className
+        )}
+        onClick={(e) => {
+          // Don't trigger selection when clicking interactive elements
+          if (
+            (e.target as HTMLElement).closest('button') ||
+            (e.target as HTMLElement).closest('a')
+          ) {
+            return;
+          }
+          onSelect?.();
+        }}
+      >
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>{qrCode.name}</span>
+            <div className="flex items-center gap-2">
+              <Badge variant={qrCode.isActive ? "default" : "secondary"}>
+                {qrCode.isActive ? "Active" : "Inactive"}
+              </Badge>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="h-8 w-8 p-0">
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="sr-only">Open menu</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link href={`/qr/${qrCode.id}`} className="flex items-center">
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link 
+                      href={`/r/${qrCode.shortCode}`} 
+                      target="_blank"
+                      className="flex items-center"
+                    >
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      View live
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={downloadQRAsImage}
+                    disabled={downloadLoading}
+                  >
+                    {downloadLoading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <FileDown className="mr-2 h-4 w-4" />
+                    )}
+                    Download PNG
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={downloadQRAsSVG}
+                    disabled={downloadLoading}
+                  >
+                    {downloadLoading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <FileDown className="mr-2 h-4 w-4" />
+                    )}
+                    Download SVG
+                  </DropdownMenuItem>
+                  {onDelete && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        className="text-red-600"
+                        onClick={() => setDeleteDialogOpen(true)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-center bg-white p-4 rounded-lg">
+            <QRCode
+              id={`qr-${qrCode.id}`}
+              value={qrUrl}
+              level="M"
+              size={150}
+            />
+          </div>
+          <div className="mt-4 space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Short Code</span>
+              <span className="font-medium">{qrCode.shortCode}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Scans</span>
+              <span className="font-medium">{qrCode.scans || 0}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Created</span>
+              <span className="font-medium">
+                {formatDistanceToNow(new Date(qrCode.createdAt), { addSuffix: true })}
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete QR Code</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this QR code? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleteLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/qr-codes-table.tsx
+import { useState, useEffect } from "react"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Badge } from "@/components/ui/badge"
+import { toast } from "@/components/ui/use-toast"
+import { 
+  Loader2, 
+  Pencil, 
+  Save, 
+  X,
+  FolderEdit,
+} from "lucide-react"
+import { formatDistanceToNow } from "date-fns"
+
+interface QRCode {
+  id: string
+  name: string
+  shortCode: string
+  defaultUrl: string
+  isActive: boolean
+  createdAt: string
+  folderId: string | null
+  folder?: {
+    id: string
+    name: string
+  }
+}
+
+interface Folder {
+  id: string
+  name: string
+}
+
+interface QRCodesTableProps {
+  folderId?: string | null
+}
+
+export function QRCodesTable({ folderId }: QRCodesTableProps) {
+  const [qrCodes, setQrCodes] = useState<QRCode[]>([])
+  const [folders, setFolders] = useState<Folder[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedQRs, setSelectedQRs] = useState<Set<string>>(new Set())
+  const [editingRows, setEditingRows] = useState<Set<string>>(new Set())
+  const [editedValues, setEditedValues] = useState<Record<string, Partial<QRCode>>>({})
+  const [bulkEditDialog, setBulkEditDialog] = useState(false)
+  const [bulkEditValues, setBulkEditValues] = useState<{
+    defaultUrl?: string
+    folderId?: string | null
+  }>({})
+  const [savingBulk, setSavingBulk] = useState(false)
+
+  // Fetch QR codes and folders
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [qrResponse, folderResponse] = await Promise.all([
+          fetch('/api/qr'),
+          fetch('/api/folders')
+        ])
+
+        if (!qrResponse.ok || !folderResponse.ok) {
+          throw new Error('Failed to fetch data')
+        }
+
+        const qrData = await qrResponse.json()
+        const folderData = await folderResponse.json()
+
+        const filteredQRs = folderId
+          ? qrData.filter((qr: QRCode) => qr.folderId === folderId)
+          : qrData
+
+        setQrCodes(filteredQRs)
+        setFolders(folderData)
+      } catch (error) {
+        console.error('Error fetching data:', error)
+        toast({
+          title: "Error",
+          description: "Failed to fetch data",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [folderId])
+
+  const toggleQRSelection = (id: string) => {
+    const newSelected = new Set(selectedQRs)
+    if (newSelected.has(id)) {
+      newSelected.delete(id)
+    } else {
+      newSelected.add(id)
+    }
+    setSelectedQRs(newSelected)
+  }
+
+  const toggleAllQRs = () => {
+    if (selectedQRs.size === qrCodes.length) {
+      setSelectedQRs(new Set())
+    } else {
+      setSelectedQRs(new Set(qrCodes.map(qr => qr.id)))
+    }
+  }
+
+  const startEditing = (id: string) => {
+    setEditingRows(new Set([...editingRows, id]))
+    const qr = qrCodes.find(q => q.id === id)
+    if (qr) {
+      setEditedValues(prev => ({
+        ...prev,
+        [id]: {
+          defaultUrl: qr.defaultUrl,
+          folderId: qr.folderId
+        }
+      }))
+    }
+  }
+
+  const stopEditing = (id: string) => {
+    const newEditingRows = new Set(editingRows)
+    newEditingRows.delete(id)
+    setEditingRows(newEditingRows)
+    setEditedValues(prev => {
+      const newValues = { ...prev }
+      delete newValues[id]
+      return newValues
+    })
+  }
+
+  const updateEditedValue = (id: string, field: keyof QRCode, value: string) => {
+    setEditedValues(prev => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        [field]: value
+      }
+    }))
+  }
+
+  const saveRow = async (id: string) => {
+    const values = editedValues[id]
+    if (!values) return
+
+    try {
+      const response = await fetch(`/api/qr/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values)
+      })
+
+      if (!response.ok) throw new Error('Failed to update QR code')
+
+      const updatedQR = await response.json()
+      setQrCodes(prev => prev.map(qr => qr.id === id ? updatedQR : qr))
+      stopEditing(id)
+      toast({
+        title: "Success",
+        description: "QR code updated successfully"
+      })
+    } catch (error) {
+      console.error('Error updating QR code:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update QR code",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const saveBulkEdit = async () => {
+    if (!selectedQRs.size || !Object.keys(bulkEditValues).length) return
+
+    setSavingBulk(true)
+    try {
+      const updatePromises = Array.from(selectedQRs).map(id =>
+        fetch(`/api/qr/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bulkEditValues)
+        })
+      )
+
+      const results = await Promise.allSettled(updatePromises)
+      const successCount = results.filter(r => r.status === 'fulfilled').length
+      const failCount = results.filter(r => r.status === 'rejected').length
+
+      const response = await fetch('/api/qr')
+      if (response.ok) {
+        const data = await response.json()
+        setQrCodes(folderId ? data.filter((qr: QRCode) => qr.folderId === folderId) : data)
+      }
+
+      setBulkEditDialog(false)
+      setSelectedQRs(new Set())
+      setBulkEditValues({})
+
+      if (failCount === 0) {
+        toast({
+          title: "Success",
+          description: `Updated ${successCount} QR codes successfully`
+        })
+      } else {
+        toast({
+          title: "Partial Success",
+          description: `Updated ${successCount} QR codes, failed to update ${failCount}`,
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error('Error in bulk update:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update QR codes",
+        variant: "destructive"
+      })
+    } finally {
+      setSavingBulk(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between bg-background/95 sticky top-0 z-10 py-4">
+          <div className="flex items-center gap-2">
+            <Checkbox 
+              id="select-all"
+              checked={selectedQRs.size === qrCodes.length && qrCodes.length > 0}
+              onCheckedChange={toggleAllQRs}
+              aria-label="Select all QR codes"
+            />
+            <label
+              htmlFor="select-all"
+              className="text-sm text-muted-foreground select-none"
+            >
+              {selectedQRs.size === 0 
+                ? "Select items" 
+                : `${selectedQRs.size} selected`}
+            </label>
+          </div>
+          {selectedQRs.size > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => setBulkEditDialog(true)}
+            >
+              <FolderEdit className="h-4 w-4 mr-2" />
+              Bulk Edit
+            </Button>
+          )}
+        </div>
+
+        <div className="border rounded-lg">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12">
+                  <span className="sr-only">Selection</span>
+                </TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Default URL</TableHead>
+                <TableHead>Folder</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead className="w-12">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {qrCodes.map(qr => (
+                <TableRow key={qr.id}>
+                  <TableCell className="p-0 text-center">
+                    <Checkbox
+                      checked={selectedQRs.has(qr.id)}
+                      onCheckedChange={() => toggleQRSelection(qr.id)}
+                      aria-label={`Select QR code ${qr.name}`}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm font-medium">{qr.name}</span>
+                    <br />
+                    <Badge className="mt-0.5">
+                      /{qr.shortCode}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {editingRows.has(qr.id) ? (
+                      <Input
+                        type="url"
+                        value={editedValues[qr.id]?.defaultUrl || ""}
+                        onChange={(e) =>
+                          updateEditedValue(qr.id, "defaultUrl", e.target.value)
+                        }
+                        placeholder="https://example.com"
+                      />
+                    ) : (
+                      qr.defaultUrl
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editingRows.has(qr.id) ? (
+                      <Select
+                        onValueChange={(value) =>
+                          updateEditedValue(
+                            qr.id,
+                            "folderId",
+                            value === "none" ? null : value
+                          )
+                        }
+                        value={
+                          editedValues[qr.id]?.folderId || qr.folderId || "none"
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No folder</SelectItem>
+                          {folders.map((folder) => (
+                            <SelectItem key={folder.id} value={folder.id}>
+                              {folder.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      qr.folder?.name || <span className="italic">No folder</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={qr.isActive ? "outline" : "secondary"}>
+                      {qr.isActive ? "Active" : "Inactive"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(qr.createdAt), {
+                        addSuffix: true,
+                      })}
+                    </span>
+                  </TableCell>
+                  <TableCell className="p-0 text-center">
+                    {editingRows.has(qr.id) ? (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => saveRow(qr.id)}
+                        >
+                          <Save className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => stopEditing(qr.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => startEditing(qr.id)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      <Dialog open={bulkEditDialog} onOpenChange={setBulkEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bulk Edit QR Codes</DialogTitle>
+            <DialogDescription>
+              Apply changes to the selected QR codes.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Default URL</label>
+              <Input
+                type="url"
+                value={bulkEditValues.defaultUrl || ""}
+                onChange={(e) =>
+                  setBulkEditValues((prev) => ({
+                    ...prev,
+                    defaultUrl: e.target.value,
+                  }))
+                }
+                placeholder="https://example.com"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Folder</label>
+              <Select
+                onValueChange={(value) =>
+                  setBulkEditValues((prev) => ({
+                    ...prev,
+                    folderId: value === "none" ? null : value,
+                  }))
+                }
+                value={bulkEditValues.folderId || "none"}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select folder" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No folder</SelectItem>
+                  {folders.map((folder) => (
+                    <SelectItem key={folder.id} value={folder.id}>
+                      {folder.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkEditDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={saveBulkEdit} disabled={savingBulk}>
+              {savingBulk && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/qr-empty-state.tsx
+import { Card, CardDescription, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { QrCode, Plus } from "lucide-react"
+import Link from "next/link"
+
+export function QRCodeEmptyState() {
+  return (
+    <Card className="flex flex-col items-center justify-center p-12 text-center">
+      <div className="rounded-full bg-muted p-3 mb-4">
+        <QrCode className="h-12 w-12 text-muted-foreground" />
+      </div>
+      <CardTitle className="mb-2">No QR Codes Yet</CardTitle>
+      <CardDescription className="mb-4 max-w-sm">
+        Create your first QR code to get started with dynamic redirects and analytics.
+      </CardDescription>
+      <Link href="/qr/new">
+        <Button size="lg">
+          <Plus className="mr-2 h-5 w-5" />
+          Create Your First QR Code
+        </Button>
+      </Link>
+    </Card>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/qr-form.tsx
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import * as z from "zod"
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { DeviceRuleForm } from "./device-rule-form"
+import { ScheduleRuleForm } from "./schedule-rule-form"
+import { QRDesigner } from "./designer/qr-designer"
+import { QRDesignerConfig } from "./designer/types"
+import { toast } from "@/components/ui/use-toast"
+import { Loader2, Plus } from "lucide-react"
+import { Separator } from "@/components/ui/separator"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+
+interface Folder {
+  id: string
+  name: string
+}
+
+const formSchema = z.object({
+  name: z.string().min(2, {
+    message: "Name must be at least 2 characters.",
+  }),
+  defaultUrl: z.string()
+    .min(1, "URL is required")
+    .transform(val => {
+      let url = val.trim()
+      if (!/^https?:\/\//i.test(url)) {
+        url = `https://${url}`
+      }
+      return url
+    })
+    .refine(
+      (val) => {
+        try {
+          new URL(val)
+          return true
+        } catch {
+          return false
+        }
+      },
+      "Please enter a valid URL"
+    ),
+  folderId: z.string().nullable(),
+})
+
+interface QRFormProps {
+  initialData?: {
+
+    name: string
+    defaultUrl: string
+    folderId: string | null
+    id?: string
+  }
+}
+
+export function QRForm({ initialData }: QRFormProps) {
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false)
+  const [folders, setFolders] = useState<Folder[]>([])
+  const [foldersLoading, setFoldersLoading] = useState(true)
+  const [qrConfig, setQRConfig] = useState<QRDesignerConfig | null>(null)
+  const [createFolderOpen, setCreateFolderOpen] = useState(false)
+  const [newFolderName, setNewFolderName] = useState("")
+  const [createFolderLoading, setCreateFolderLoading] = useState(false)
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: initialData?.name || "",
+      defaultUrl: initialData?.defaultUrl || "",
+      folderId: initialData?.folderId || null,
+    },
+  })
+
+  const watchUrl = form.watch("defaultUrl")
+
+  useEffect(() => {
+    async function loadFolders() {
+      try {
+        const response = await fetch('/api/folders')
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.message || 'Failed to fetch folders')
+        }
+        const data = await response.json()
+        setFolders(data)
+      } catch (error) {
+        console.error('Error loading folders:', error)
+        toast({
+          title: "Error",
+          description: "Failed to load folders",
+          variant: "destructive",
+        })
+      } finally {
+        setFoldersLoading(false)
+      }
+    }
+
+    loadFolders()
+  }, [])
+
+  const createFolder = async () => {
+    if (!newFolderName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a folder name",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setCreateFolderLoading(true)
+    try {
+      const response = await fetch('/api/folders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newFolderName.trim(),
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create folder')
+      }
+
+      const newFolder = await response.json()
+      
+      // Update folders list with new folder
+      setFolders(prev => [...prev, newFolder])
+      
+      // Update form's folder selection
+      form.setValue('folderId', newFolder.id)
+      
+      // Close dialog and reset state
+      setCreateFolderOpen(false)
+      setNewFolderName("")
+      
+      toast({
+        title: "Success",
+        description: "Folder created and selected",
+      })
+    } catch (error) {
+      console.error('Error creating folder:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create folder",
+        variant: "destructive",
+      })
+    } finally {
+      setCreateFolderLoading(false)
+    }
+  }
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsLoading(true)
+    
+    try {
+      const payload = {
+        name: values.name,
+        defaultUrl: values.defaultUrl,
+        folderId: values.folderId,
+        design: qrConfig
+      }
+
+      console.log('Submitting payload:', payload)
+
+      const response = await fetch('/api/qr', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create QR code')
+      }
+
+      toast({
+        title: "Success!",
+        description: "QR code created successfully.",
+      })
+
+      router.push('/qr')
+      router.refresh()
+    } catch (error) {
+      console.error("Error creating QR code:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create QR code",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6 p-6">
+      <div>
+        <h3 className="text-lg font-medium">Create QR Code</h3>
+        <p className="text-sm text-muted-foreground">
+          Fill in the details below to create your QR code.
+        </p>
+      </div>
+
+      <Tabs defaultValue="basic" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="basic">Basic Info</TabsTrigger>
+          <TabsTrigger value="design">Design</TabsTrigger>
+          <TabsTrigger value="device">Device Rules</TabsTrigger>
+          <TabsTrigger value="schedule">Schedule Rules</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="basic">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="My QR Code" 
+                        {...field} 
+                        disabled={isLoading}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      A name to help you identify this QR code.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="defaultUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Default URL</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="example.com" 
+                        {...field} 
+                        disabled={isLoading}
+                        onChange={(e) => {
+                          let value = e.target.value.trim()
+                          if (!/^[a-zA-Z]+:\/\//i.test(value) && value.includes('://')) {
+                            value = value.split('://')[1]
+                          }
+                          field.onChange(value)
+                        }}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Enter a website URL (e.g., example.com or https://example.com)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="folderId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Folder (Optional)</FormLabel>
+                    <Select
+                      disabled={foldersLoading}
+                      onValueChange={(value) => {
+                        if (value === "new") {
+                          setCreateFolderOpen(true)
+                          return;
+                        }
+                        field.onChange(value === "none" ? null : value)
+                      }}
+                      value={field.value || "none"}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a folder">
+                            {field.value === null
+                              ? "No folder"
+                              : folders.find(f => f.id === field.value)?.name || "Select a folder"}
+                          </SelectValue>
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">No folder</SelectItem>
+                        <Separator className="my-2" />
+                        {folders.map((folder) => (
+                          <SelectItem key={folder.id} value={folder.id}>
+                            {folder.name}
+                          </SelectItem>
+                        ))}
+                        <Separator className="my-2" />
+                        <Button
+                          variant="ghost"
+                          className="relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            setCreateFolderOpen(true)
+                          }}
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Create New Folder
+                        </Button>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Organize your QR code in a folder
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button 
+                type="submit" 
+                disabled={isLoading}
+                className="w-full"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create QR Code"
+                )}
+              </Button>
+            </form>
+          </Form>
+        </TabsContent>
+
+        <TabsContent value="design">
+          <QRDesigner
+            value={watchUrl || "https://example.com"}
+            onConfigChange={setQRConfig}
+            defaultConfig={{
+              size: 300,
+              backgroundColor: '#ffffff',
+              foregroundColor: '#000000',
+              dotStyle: 'squares',
+              margin: 10,
+              errorCorrectionLevel: 'M',
+            }}
+          />
+        </TabsContent>
+
+        <TabsContent value="device">
+          <DeviceRuleForm qrCodeId={initialData?.id} />
+        </TabsContent>
+
+        <TabsContent value="schedule">
+          <ScheduleRuleForm qrCodeId={initialData?.id} />
+        </TabsContent>
+      </Tabs>
+
+      <Dialog open={createFolderOpen} onOpenChange={setCreateFolderOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Folder</DialogTitle>
+            <DialogDescription>
+              Enter a name for your new folder.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Folder Name</Label>
+              <Input
+                id="folderName"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder="My Folder"
+                autoComplete="off"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    createFolder()
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCreateFolderOpen(false)
+                setNewFolderName("")
+              }}
+              disabled={createFolderLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={createFolder}
+              disabled={createFolderLoading || !newFolderName.trim()}
+            >
+              {createFolderLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create Folder"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/qr-list.tsx
+"use client"
+
+import { useState, useEffect } from "react"
+import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { QRCard } from "./qr-card"
+import { toast } from "@/components/ui/use-toast"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Loader2, Trash2, Plus } from "lucide-react"
+import Link from "next/link"
+
+// Update interface to match QRCard's QRCodeData interface
+interface QRCode {
+  id: string
+  name: string
+  shortCode: string
+  defaultUrl: string
+  isActive: boolean
+  createdAt: Date
+  folderId: string | null
+  scans: number
+}
+
+interface QRCodeListProps {
+  folderId?: string | null
+  className?: string
+}
+
+export function QRCodeList({ folderId }: QRCodeListProps) {
+  const [qrCodes, setQrCodes] = useState<QRCode[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedQRs, setSelectedQRs] = useState<Set<string>>(new Set())
+  const [bulkDeleteDialog, setBulkDeleteDialog] = useState(false)
+  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false)
+
+  useEffect(() => {
+    async function fetchQRCodes() {
+      try {
+        const response = await fetch('/api/qr')
+        if (!response.ok) {
+          throw new Error('Failed to fetch QR codes')
+        }
+
+        const data = await response.json()
+        
+        // Transform the data to match our interface
+        const transformedData = data.map((qr: any) => ({
+          ...qr,
+          createdAt: new Date(qr.createdAt), // Ensure createdAt is a Date object
+          scans: qr.scans || 0 // Ensure scans has a default value
+        }))
+        
+        const filteredData = folderId
+          ? transformedData.filter((qr: QRCode) => qr.folderId === folderId)
+          : transformedData
+
+        setQrCodes(filteredData)
+      } catch (error) {
+        console.error('Error fetching QR codes:', error)
+        toast({
+          title: "Error",
+          description: "Failed to fetch QR codes",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchQRCodes()
+  }, [folderId])
+
+  const toggleQRSelection = (id: string) => {
+    const newSelected = new Set(selectedQRs)
+    if (newSelected.has(id)) {
+      newSelected.delete(id)
+    } else {
+      newSelected.add(id)
+    }
+    setSelectedQRs(newSelected)
+  }
+
+  const toggleAllQRs = () => {
+    if (selectedQRs.size === qrCodes.length) {
+      setSelectedQRs(new Set())
+    } else {
+      setSelectedQRs(new Set(qrCodes.map(qr => qr.id)))
+    }
+  }
+
+  const deleteQRCode = async (qrCode: QRCode) => {
+    try {
+      const response = await fetch(`/api/qr/${qrCode.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) throw new Error('Failed to delete QR code')
+
+      setQrCodes(prev => prev.filter(qr => qr.id !== qrCode.id))
+      setSelectedQRs(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(qrCode.id)
+        return newSet
+      })
+
+      toast({
+        title: "Success",
+        description: "QR code deleted successfully",
+      })
+    } catch (error) {
+      console.error('Error deleting QR code:', error)
+      toast({
+        title: "Error",
+        description: "Failed to delete QR code",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const bulkDeleteQRCodes = async () => {
+    setBulkDeleteLoading(true)
+    try {
+      const deletePromises = Array.from(selectedQRs).map(id =>
+        fetch(`/api/qr/${id}`, { method: 'DELETE' })
+      )
+      
+      const results = await Promise.allSettled(deletePromises)
+      
+      const successCount = results.filter(result => result.status === 'fulfilled').length
+      const failCount = results.filter(result => result.status === 'rejected').length
+
+      setQrCodes(prevCodes => prevCodes.filter(qr => !selectedQRs.has(qr.id)))
+      setSelectedQRs(new Set())
+      setBulkDeleteDialog(false)
+
+      if (failCount === 0) {
+        toast({
+          title: "Success",
+          description: `Successfully deleted ${successCount} QR code${successCount !== 1 ? 's' : ''}`
+        })
+      } else {
+        toast({
+          title: "Partial Success",
+          description: `Deleted ${successCount} QR codes, but failed to delete ${failCount}`,
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error('Error in bulk delete:', error)
+      toast({
+        title: "Error",
+        description: "Failed to delete QR codes",
+        variant: "destructive"
+      })
+    } finally {
+      setBulkDeleteLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (qrCodes.length === 0) {
+    return (
+      <Card>
+        <div className="flex min-h-[300px] flex-col items-center justify-center gap-4">
+          <p className="text-sm text-muted-foreground">
+            {folderId 
+              ? "Add QR codes to this folder to see them here."
+              : "Create your first QR code to get started with dynamic redirects and analytics."}
+          </p>
+          <Link href="/qr/new">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Create {folderId ? "a" : "your first"} QR code
+            </Button>
+          </Link>
+        </div>
+      </Card>
+    )
+  }
+
+  return (
+    <>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between bg-background/95 sticky top-0 z-10 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="flex items-center gap-2">
+            <Checkbox 
+              id="select-all"
+              checked={selectedQRs.size === qrCodes.length && qrCodes.length > 0}
+              onCheckedChange={toggleAllQRs}
+              aria-label="Select all QR codes"
+            />
+            <label
+              htmlFor="select-all"
+              className="text-sm text-muted-foreground select-none"
+            >
+              {selectedQRs.size === 0 
+                ? "Select items" 
+                : `${selectedQRs.size} selected`}
+            </label>
+          </div>
+          <div className="flex items-center gap-2">
+            {selectedQRs.size > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setBulkDeleteDialog(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Selected
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {qrCodes.map((qrCode) => (
+            <div key={qrCode.id} className="relative group">
+              <div className="absolute top-2 left-2 z-10">
+                <Checkbox
+                  id={`select-${qrCode.id}`}
+                  checked={selectedQRs.has(qrCode.id)}
+                  onCheckedChange={() => toggleQRSelection(qrCode.id)}
+                  aria-label={`Select ${qrCode.name}`}
+                />
+              </div>
+              <QRCard
+                qrCode={qrCode}
+                onDelete={deleteQRCode}
+                selected={selectedQRs.has(qrCode.id)}
+                onSelect={() => toggleQRSelection(qrCode.id)}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Dialog open={bulkDeleteDialog} onOpenChange={setBulkDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete QR Codes</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {selectedQRs.size} QR code{selectedQRs.size !== 1 ? 's' : ''}? 
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBulkDeleteDialog(false)}
+              disabled={bulkDeleteLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={bulkDeleteQRCodes}
+              disabled={bulkDeleteLoading}
+            >
+              {bulkDeleteLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Selected"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/qr-preview.tsx
+"use client"
+
+import QRCode from "react-qr-code"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Download } from "lucide-react"
+
+interface QRPreviewProps {
+  url: string
+  name: string
+}
+
+export function QRPreview({ url, name }: QRPreviewProps) {
+  const downloadQR = () => {
+    const svg = document.getElementById("qr-preview")
+    const svgData = new XMLSerializer().serializeToString(svg!)
+    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" })
+    const svgUrl = URL.createObjectURL(svgBlob)
+
+    const link = document.createElement("a")
+    link.href = svgUrl
+    link.download = `${name}-qr.svg`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(svgUrl)
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>QR Code Preview</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col items-center space-y-4">
+          <div className="bg-white p-4 rounded-lg">
+            <QRCode
+              id="qr-preview"
+              value={url}
+              level="M"
+              size={200}
+            />
+          </div>
+          <Button variant="outline" onClick={downloadQR}>
+            <Download className="mr-2 h-4 w-4" />
+            Download QR Code
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/qr-skeleton.tsx
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+
+export function QRCodeSkeleton() {
+  return (
+    <Card className="animate-pulse">
+      <CardHeader>
+        <div className="space-y-2">
+          <div className="h-4 bg-muted rounded w-3/4" />
+          <div className="h-3 bg-muted rounded w-1/2" />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          <div className="h-3 bg-muted rounded" />
+          <div className="h-3 bg-muted rounded w-4/5" />
+          <div className="flex justify-end space-x-2 pt-2">
+            <div className="h-8 w-8 bg-muted rounded" />
+            <div className="h-8 w-8 bg-muted rounded" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/qr-view.tsx
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { QRCodeList } from "./qr-list"
+import { QRCodesTable } from "./qr-codes-table"
+import { LayoutGrid, Table2 } from "lucide-react"
+
+interface QRViewProps {
+  folderId?: string | null
+}
+
+export function QRView({ folderId }: QRViewProps) {
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <div className="inline-flex items-center rounded-lg border bg-background p-1">
+          <Button
+            variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('grid')}
+            className="px-2"
+          >
+            <LayoutGrid className="h-4 w-4 mr-2" />
+            Grid
+          </Button>
+          <Button
+            variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('table')}
+            className="px-2"
+          >
+            <Table2 className="h-4 w-4 mr-2" />
+            Table
+          </Button>
+        </div>
+      </div>
+
+      {viewMode === 'grid' ? (
+        <QRCodeList folderId={folderId} />
+      ) : (
+        <QRCodesTable folderId={folderId} />
+      )}
+    </div>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/schedule-rule-form.tsx
+import { useState, useEffect, useCallback } from "react"
+import { format } from "date-fns"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import { toast } from "@/components/ui/use-toast"
+import { Plus, Trash2, Loader2 } from "lucide-react"
+
+interface ScheduleRule {
+  id?: string
+  startDate: string
+  endDate: string | null
+  timeZone: string
+  daysOfWeek: number[]
+  startTime: string | null
+  endTime: string | null
+  targetUrl: string
+  priority: number
+}
+
+interface ScheduleRuleFormProps {
+  qrCodeId?: string
+}
+
+const DAYS_OF_WEEK = [
+  { value: 0, label: "Sunday" },
+  { value: 1, label: "Monday" },
+  { value: 2, label: "Tuesday" },
+  { value: 3, label: "Wednesday" },
+  { value: 4, label: "Thursday" },
+  { value: 5, label: "Friday" },
+  { value: 6, label: "Saturday" },
+]
+
+const TIME_ZONES = [
+  { value: "UTC", label: "UTC" },
+  { value: "America/New_York", label: "Eastern Time" },
+  { value: "America/Chicago", label: "Central Time" },
+  { value: "America/Denver", label: "Mountain Time" },
+  { value: "America/Los_Angeles", label: "Pacific Time" },
+  { value: "Europe/London", label: "London" },
+  { value: "Europe/Paris", label: "Paris" },
+  { value: "Asia/Tokyo", label: "Tokyo" },
+]
+
+export function ScheduleRuleForm({ qrCodeId }: ScheduleRuleFormProps) {
+  const [rules, setRules] = useState<ScheduleRule[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  const fetchRules = useCallback(async () => {
+    if (!qrCodeId) return
+    
+    try {
+      const response = await fetch(`/api/qr/${qrCodeId}/schedule-rules`)
+      if (!response.ok) throw new Error('Failed to fetch rules')
+      const data = await response.json()
+      setRules(data)
+    } catch (error) {
+      console.error('Error fetching rules:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load schedule rules",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }, [qrCodeId])
+
+  useEffect(() => {
+    if (qrCodeId) {
+      fetchRules()
+    } else {
+      setLoading(false)
+    }
+  }, [fetchRules, qrCodeId])
+
+  const addRule = () => {
+    const newRule: ScheduleRule = {
+      startDate: format(new Date(), 'yyyy-MM-dd'),
+      endDate: null,
+      timeZone: "UTC",
+      daysOfWeek: [],
+      startTime: null,
+      endTime: null,
+      targetUrl: "",
+      priority: rules.length + 1,
+    }
+    setRules([...rules, newRule])
+  }
+
+  const removeRule = (index: number) => {
+    setRules(rules.filter((_, i) => i !== index))
+  }
+
+  const updateRule = (index: number, updates: Partial<ScheduleRule>) => {
+    const newRules = [...rules]
+    newRules[index] = { ...newRules[index], ...updates }
+    setRules(newRules)
+  }
+
+  const toggleDayOfWeek = (index: number, day: number) => {
+    const rule = rules[index]
+    const daysOfWeek = rule.daysOfWeek.includes(day)
+      ? rule.daysOfWeek.filter(d => d !== day)
+      : [...rule.daysOfWeek, day]
+    updateRule(index, { daysOfWeek })
+  }
+
+  const validateRules = (rules: ScheduleRule[]): boolean => {
+    for (const rule of rules) {
+      if (!rule.targetUrl) {
+        toast({
+          title: "Validation Error",
+          description: "Target URL is required for all rules",
+          variant: "destructive",
+        })
+        return false
+      }
+
+      if (!rule.startDate) {
+        toast({
+          title: "Validation Error",
+          description: "Start date is required for all rules",
+          variant: "destructive",
+        })
+        return false
+      }
+
+      try {
+        new URL(rule.targetUrl)
+      } catch {
+        toast({
+          title: "Validation Error",
+          description: "Please enter valid URLs",
+          variant: "destructive",
+        })
+        return false
+      }
+    }
+    return true
+  }
+
+  const saveRules = async () => {
+    if (!qrCodeId) return
+    if (!validateRules(rules)) return
+
+    setSaving(true)
+    try {
+      const response = await fetch(`/api/qr/${qrCodeId}/schedule-rules`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(rules),
+      })
+
+      if (!response.ok) throw new Error('Failed to save rules')
+
+      toast({
+        title: "Success",
+        description: "Schedule rules saved successfully",
+      })
+    } catch (error) {
+      console.error('Error saving rules:', error)
+      toast({
+        title: "Error",
+        description: "Failed to save schedule rules",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Schedule Rules</CardTitle>
+          <CardDescription>
+            Redirect users based on date and time. Rules are processed in order of priority.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {rules.map((rule, index) => (
+            <div key={index} className="space-y-4 pt-4 first:pt-0">
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Start Date</label>
+                    <Input
+                      type="date"
+                      value={rule.startDate}
+                      onChange={(e) => updateRule(index, { startDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">End Date (Optional)</label>
+                    <Input
+                      type="date"
+                      value={rule.endDate || ""}
+                      onChange={(e) => updateRule(index, { endDate: e.target.value || null })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Start Time (Optional)</label>
+                    <Input
+                      type="time"
+                      value={rule.startTime || ""}
+                      onChange={(e) => updateRule(index, { startTime: e.target.value || null })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">End Time (Optional)</label>
+                    <Input
+                      type="time"
+                      value={rule.endTime || ""}
+                      onChange={(e) => updateRule(index, { endTime: e.target.value || null })}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Time Zone</label>
+                  <Select
+                    value={rule.timeZone}
+                    onValueChange={(value) => updateRule(index, { timeZone: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select timezone" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIME_ZONES.map((tz) => (
+                        <SelectItem key={tz.value} value={tz.value}>
+                          {tz.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Days of Week</label>
+                  <div className="flex flex-wrap gap-2">
+                    {DAYS_OF_WEEK.map((day) => (
+                      <div key={day.value} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`day-${index}-${day.value}`}
+                          checked={rule.daysOfWeek.includes(day.value)}
+                          onCheckedChange={() => toggleDayOfWeek(index, day.value)}
+                        />
+                        <label
+                          htmlFor={`day-${index}-${day.value}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {day.label}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Target URL</label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="https://example.com"
+                      value={rule.targetUrl}
+                      onChange={(e) => updateRule(index, { targetUrl: e.target.value })}
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => removeRule(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          <Button
+            variant="outline"
+            onClick={addRule}
+            className="w-full"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Schedule Rule
+          </Button>
+
+          {rules.length > 0 && (
+            <Button 
+              onClick={saveRules}
+              className="w-full"
+              disabled={saving}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Rules"
+              )}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/recent-activities.tsx
 "use client";
@@ -13157,7 +19342,7 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border bg-white text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         position === "popper" &&
           "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
         className
@@ -13168,7 +19353,7 @@ const SelectContent = React.forwardRef<
       <SelectScrollUpButton />
       <SelectPrimitive.Viewport
         className={cn(
-          "p-1",
+          "p-1 bg-white",
           position === "popper" &&
             "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
         )}
@@ -13240,7 +19425,6 @@ export {
   SelectScrollUpButton,
   SelectScrollDownButton,
 }
-
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/separator.tsx
 "use client"
@@ -14108,6 +20292,48 @@ function useToast() {
 export { useToast, toast }
 
 ________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/constants/pos-data.ts
+import { MenuItem, MilkOption } from '@/types/pos';
+
+export const INITIAL_MENU_ITEMS: Omit<MenuItem, 'id' | 'createdAt' | 'updatedAt'>[] = [
+ { name: 'Espresso', price: 2.5, category: 'Coffee', popular: true, active: true },
+ { name: 'Americano', price: 3.0, category: 'Coffee', popular: false, active: true },
+ { name: 'Latte', price: 3.5, category: 'Coffee', popular: true, active: true },
+ { name: 'Cappuccino', price: 3.5, category: 'Coffee', popular: true, active: true },
+ { name: 'Flat White', price: 3.5, category: 'Coffee', popular: false, active: true },
+ { name: 'Cortado', price: 3.5, category: 'Coffee', popular: false, active: true },
+ { name: 'Caramel Crunch Crusher', price: 4.5, category: 'Specialty', popular: true, active: true },
+ { name: 'Vanilla Dream Latte', price: 4.5, category: 'Specialty', popular: false, active: true },
+ { name: 'Hazelnut Heaven Cappuccino', price: 4.5, category: 'Specialty', popular: false, active: true }
+];
+
+export const FLAVOR_OPTIONS = [
+ 'No Flavoring',
+ 'Vanilla',
+ 'Caramel',
+ 'Hazelnut',
+ 'Raspberry',
+ 'Pumpkin Spice'
+] as const;
+
+export const MILK_OPTIONS: MilkOption[] = [
+ { name: 'No Milk', price: 0 },
+ { name: 'Whole Milk', price: 0 },
+ { name: 'Oat Milk', price: 0 }
+];
+
+export const CATEGORIES = [
+ 'Coffee',
+ 'Specialty',
+ 'Tea',
+ 'Cold Drinks',
+ 'Food'
+] as const;
+
+export type Category = typeof CATEGORIES[number];
+export type FlavorOption = typeof FLAVOR_OPTIONS[number];
+
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/hooks/use-media-query.ts
 import { useState, useEffect } from "react";
 
@@ -14349,6 +20575,73 @@ export async function getContactStats(): Promise<ContactStats> {
   }
 }
 ________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/db/db-utils.ts
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import { prisma } from "./prisma";
+
+export const dbUtils = {
+  async createOrder(data: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    return await prisma.order.create({
+      data
+    });
+  },
+
+  async getOrders() {
+    return await prisma.order.findMany({
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+  },
+
+  async getMenuItems() {
+    return await prisma.menuItem.findMany({
+      where: {
+        active: true
+      },
+      orderBy: {
+        name: 'asc'
+      }
+    });
+  },
+
+  async createQuickNote(content: string, userId: string) {
+    return await prisma.quickNote.create({
+      data: {
+        content,
+        userId
+      }
+    });
+  },
+
+  async getQuickNotes(userId: string) {
+    return await prisma.quickNote.findMany({
+      where: {
+        userId
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+  },
+
+  async updateMenuItem(id: string, data: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    return await prisma.menuItem.update({
+      where: { id },
+      data
+    });
+  },
+
+  async deleteMenuItem(id: string) {
+    return await prisma.menuItem.update({
+      where: { id },
+      data: { active: false }
+    });
+  }
+};
+
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/db/prisma.ts
 import { PrismaClient } from '@prisma/client'
 
@@ -14362,6 +20655,28 @@ export const prisma =
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
+
+export async function getQRCodeById(id: string) {
+  try {
+    const qrCode = await prisma.qRCode.findUnique({
+      where: { id },
+      include: {
+        folder: true,
+        deviceRules: true,
+        scheduleRules: true,
+      },
+    })
+    
+    if (!qrCode) {
+      return null
+    }
+
+    return qrCode
+  } catch (error) {
+    console.error("Error fetching QR code:", error)
+    throw new Error("Failed to fetch QR code")
+  }
+}
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/hooks/use-debounce.ts
 import { useEffect, useState } from "react";
@@ -14377,6 +20692,536 @@ export function useDebounce<T>(value: T, delay?: number): T {
   return debouncedValue;
 
 }
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/pos/services.ts
+import { prisma } from "@/lib/db/prisma";
+import { Order, MenuItem, QuickNote } from "@/types/pos";
+
+export async function createOrder(orderData: Omit<Order, "id">): Promise<Order> {
+  const order = await prisma.order.create({
+    data: orderData
+  });
+  return order as Order;
+}
+
+export async function getOrders(): Promise<Order[]> {
+  const orders = await prisma.order.findMany({
+    orderBy: { timestamp: 'desc' }
+  });
+  return orders as Order[];
+}
+
+export async function getMenuItems(): Promise<MenuItem[]> {
+  const menuItems = await prisma.menuItem.findMany({
+    orderBy: { name: 'asc' }
+  });
+  return menuItems as MenuItem[];
+}
+
+export async function getQuickNotes(): Promise<QuickNote[]> {
+  const quickNotes = await prisma.quickNote.findMany({
+    orderBy: { createdAt: 'desc' }
+  });
+  return quickNotes as QuickNote[];
+}
+
+export async function createQuickNote(content: string): Promise<QuickNote> {
+  const quickNote = await prisma.quickNote.create({
+    data: { content }
+  });
+  return quickNote as QuickNote;
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/services/db-service.ts
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import { prisma } from "@/lib/db/prisma";
+import { Order, MenuItem, QuickNote } from "@/types/pos";
+
+interface CreateOrderData {
+  orderNumber: number;
+  customerName: string;
+  customerInfo: Record<string, any>; // Ignoring eslint error for 'any'
+  items: any[]; // Ignoring eslint error for 'any'
+  notes?: string;
+  status: string;
+  total: number;
+  isComplimentary: boolean;
+  queueTime?: number;
+  startTime: Date;
+  userId: string;
+}
+
+export const dbService = {
+  // Order Operations
+  async createOrder(data: CreateOrderData): Promise<Order> {
+    try {
+      const order = await prisma.order.create({
+        data: {
+          orderNumber: data.orderNumber,
+          customerName: data.customerName,
+          customerInfo: data.customerInfo,
+          items: data.items,
+          notes: data.notes,
+          status: data.status as any, // Ignoring eslint error for 'any'
+          total: data.total,
+          isComplimentary: data.isComplimentary,
+          queueTime: data.queueTime || 0, // Fix: Provide a default value of 0 if queueTime is undefined
+          startTime: data.startTime,
+          userId: data.userId
+        }
+      });
+      return order as Order;
+    } catch (error) {
+      console.error('Error creating order:', error);
+      throw error;
+    }
+  },
+
+  async getOrders(userId: string): Promise<Order[]> {
+    try {
+      const orders = await prisma.order.findMany({
+        where: {
+          userId: userId
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+      return orders as Order[];
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      throw error;
+    }
+  },
+
+  // MenuItem Operations
+  async getMenuItems(): Promise<MenuItem[]> {
+    try {
+      const items = await prisma.menuItem.findMany({
+        where: {
+          active: true
+        },
+        orderBy: {
+          name: 'asc'
+        }
+      });
+      return items as MenuItem[];
+    } catch (error) {
+      console.error('Error fetching menu items:', error);
+      throw error;
+    }
+  },
+
+  async createMenuItem(data: Omit<MenuItem, 'id' | 'createdAt' | 'updatedAt'>): Promise<MenuItem> {
+    try {
+      const item = await prisma.menuItem.create({
+        data: {
+          name: data.name,
+          price: data.price,
+          category: data.category,
+          popular: data.popular,
+          active: true
+        }
+      });
+      return item as MenuItem;
+    } catch (error) {
+      console.error('Error creating menu item:', error);
+      throw error;
+    }
+  },
+
+  // QuickNote Operations
+  async getQuickNotes(userId: string): Promise<QuickNote[]> {
+    try {
+      const notes = await prisma.quickNote.findMany({
+        where: {
+          userId: userId
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+      return notes as QuickNote[];
+    } catch (error) {
+      console.error('Error fetching quick notes:', error);
+      throw error;
+    }
+  },
+
+  async createQuickNote(content: string, userId: string): Promise<QuickNote> {
+    try {
+      const note = await prisma.quickNote.create({
+        data: {
+          content,
+          userId
+        }
+      });
+      return note as QuickNote;
+    } catch (error) {
+      console.error('Error creating quick note:', error);
+      throw error;
+    }
+  }
+};
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/services/order-service.ts
+import { Order } from '@/types/pos';
+
+export const orderService = {
+  async getOrders(): Promise<Order[]> {
+    try {
+      const response = await fetch('/api/pos/orders');
+      if (!response.ok) throw new Error('Failed to fetch orders');
+      const orders = await response.json();
+      
+      // Update localStorage
+      localStorage.setItem('orders', JSON.stringify(orders));
+      
+      return orders;
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      // Fallback to localStorage
+      const savedOrders = localStorage.getItem('orders');
+      return savedOrders ? JSON.parse(savedOrders) : [];
+    }
+  },
+
+  async createOrder(orderData: Omit<Order, 'id'>): Promise<Order> {
+    try {
+      const response = await fetch('/api/pos/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      if (!response.ok) throw new Error('Failed to create order');
+      
+      const order = await response.json();
+      
+      // Update localStorage
+      const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      const updatedOrders = [order, ...existingOrders];
+      localStorage.setItem('orders', JSON.stringify(updatedOrders));
+      
+      return order;
+    } catch (error) {
+      console.error('Error creating order:', error);
+      // Fallback to localStorage only
+      const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      const newOrder = { ...orderData, id: Date.now().toString() };
+      const updatedOrders = [newOrder, ...existingOrders];
+      localStorage.setItem('orders', JSON.stringify(updatedOrders));
+      return newOrder as Order;
+    }
+  },
+
+  async updateOrder(orderId: string, updates: Partial<Order>): Promise<Order> {
+    try {
+      const response = await fetch(`/api/pos/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) throw new Error('Failed to update order');
+      
+      const updatedOrder = await response.json();
+      
+      // Update localStorage
+      const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      const updatedOrders = existingOrders.map((order: Order) =>
+        order.id === orderId ? updatedOrder : order
+      );
+      localStorage.setItem('orders', JSON.stringify(updatedOrders));
+      
+      return updatedOrder;
+    } catch (error) {
+      console.error('Error updating order:', error);
+      // Fallback to localStorage only
+      const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      const updatedOrders = existingOrders.map((order: Order) =>
+        order.id === orderId ? { ...order, ...updates } : order
+      );
+      localStorage.setItem('orders', JSON.stringify(updatedOrders));
+      return updatedOrders.find((order: Order) => order.id === orderId) as Order;
+    }
+  },
+
+  async deleteOrder(orderId: string): Promise<void> {
+    try {
+      const response = await fetch(`/api/pos/orders/${orderId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete order');
+      
+      // Update localStorage
+      const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      const updatedOrders = existingOrders.filter((order: Order) => order.id !== orderId);
+      localStorage.setItem('orders', JSON.stringify(updatedOrders));
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      // Fallback to localStorage only
+      const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      const updatedOrders = existingOrders.filter((order: Order) => order.id !== orderId);
+      localStorage.setItem('orders', JSON.stringify(updatedOrders));
+    }
+  },
+
+  async clearAllOrders(): Promise<void> {
+    try {
+      const existingOrders = await this.getOrders();
+      await Promise.all(
+        existingOrders.map(order => this.updateOrder(order.id, { status: 'CANCELLED' }))
+      );
+      localStorage.setItem('orders', JSON.stringify([]));
+    } catch (error) {
+      console.error('Error clearing orders:', error);
+      localStorage.setItem('orders', JSON.stringify([]));
+    }
+  },
+ 
+  async exportOrders(): Promise<string> {
+    try {
+      const orders = await this.getOrders();
+      const data = {
+        orders,
+        exportDate: new Date().toISOString(),
+        version: '1.0'
+      };
+      return JSON.stringify(data, null, 2);
+    } catch (error) {
+      console.error('Error exporting orders:', error);
+      // Fallback to localStorage
+      const savedOrders = localStorage.getItem('orders');
+      return savedOrders || '[]';
+    }
+  },
+ 
+  async importOrders(data: string): Promise<void> {
+    try {
+      const parsedData = JSON.parse(data);
+      if (Array.isArray(parsedData.orders)) {
+        await Promise.all(
+          parsedData.orders.map((order: Order) => this.createOrder(order))
+        );
+      }
+    } catch (error) {
+      console.error('Error importing orders:', error);
+      throw new Error('Invalid import data format');
+    }
+  },
+
+  async updateLeadInterest(orderId: string, interested: boolean): Promise<Order> {
+    return this.updateOrder(orderId, { interested });
+  },
+ 
+  async updateOrderStatus(orderId: string, status: string, preparationTime?: number): Promise<Order> {
+    return this.updateOrder(orderId, {
+      status,
+      preparationTime,
+      ...(status === 'IN_PROGRESS' && { startTime: new Date() })
+    });
+  },
+ 
+  async updateOrderNotes(orderId: string, notes: string): Promise<Order> {
+    return this.updateOrder(orderId, { notes });
+  },
+
+  async resetAllData(): Promise<void> {
+    try {
+      localStorage.setItem('orders', JSON.stringify([]));
+    } catch (error) {
+      console.error('Error resetting data:', error);
+      localStorage.setItem('orders', JSON.stringify([]));
+    }
+  }
+ 
+ };
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/services/pos-service.ts
+import { MenuItem, Order, QuickNote } from '@/types/pos';
+
+interface PreferenceStore {
+  [key: string]: unknown;
+}
+
+class PosService {
+  private preferences: PreferenceStore = {};
+
+  // Menu Item Operations
+  async getMenuItems(): Promise<MenuItem[]> {
+    try {
+      const response = await fetch('/api/pos/menu');
+      if (!response.ok) throw new Error('Failed to fetch menu items');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching menu items:', error);
+      // Fallback to localStorage
+      const items = localStorage.getItem('menuItems');
+      return items ? JSON.parse(items) : [];
+    }
+  }
+
+  async createMenuItem(data: Omit<MenuItem, 'id' | 'createdAt' | 'updatedAt'>): Promise<MenuItem> {
+    try {
+      const response = await fetch('/api/pos/menu', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) throw new Error('Failed to create menu item');
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating menu item:', error);
+      throw error;
+    }
+  }
+
+  async updateMenuItem(id: string, data: Partial<MenuItem>): Promise<MenuItem> {
+    try {
+      const response = await fetch(`/api/pos/menu/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) throw new Error('Failed to update menu item');
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating menu item:', error);
+      throw error;
+    }
+  }
+
+  async deleteMenuItem(id: string): Promise<void> {
+    try {
+      const response = await fetch(`/api/pos/menu/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete menu item');
+    } catch (error) {
+      console.error('Error deleting menu item:', error);
+      throw error;
+    }
+  }
+
+  // Order Operations
+  async createOrder(orderData: Order): Promise<Order> {
+    try {
+      const response = await fetch('/api/pos/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      if (!response.ok) throw new Error('Failed to create order');
+      
+      const order = await response.json();
+      
+      // Store in localStorage as backup
+      const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      const updatedOrders = [order, ...existingOrders];
+      localStorage.setItem('orders', JSON.stringify(updatedOrders));
+      localStorage.setItem('lastOrderNumber', orderData.orderNumber.toString());
+      
+      return order;
+    } catch (error) {
+      console.error('Error creating order:', error);
+      // Fallback to localStorage only
+      const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      const updatedOrders = [orderData, ...existingOrders];
+      localStorage.setItem('orders', JSON.stringify(updatedOrders));
+      localStorage.setItem('lastOrderNumber', orderData.orderNumber.toString());
+      return orderData;
+    }
+  }
+
+  // Quick Note Operations
+  async getQuickNotes(): Promise<QuickNote[]> {
+    try {
+      const response = await fetch('/api/pos/notes');
+      if (!response.ok) throw new Error('Failed to fetch quick notes');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching quick notes:', error);
+      // Fallback to localStorage
+      const notes = localStorage.getItem('quickNotes');
+      return notes ? JSON.parse(notes) : [];
+    }
+  }
+
+  async createQuickNote(content: string): Promise<QuickNote> {
+    try {
+      const response = await fetch('/api/pos/notes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content }),
+      });
+
+      if (!response.ok) throw new Error('Failed to create quick note');
+      
+      const note = await response.json();
+      
+      // Update localStorage
+      const existingNotes = JSON.parse(localStorage.getItem('quickNotes') || '[]');
+      const updatedNotes = [...existingNotes, note];
+      localStorage.setItem('quickNotes', JSON.stringify(updatedNotes));
+      
+      return note;
+    } catch (error) {
+      console.error('Error creating quick note:', error);
+      // Fallback to localStorage only
+      const existingNotes = JSON.parse(localStorage.getItem('quickNotes') || '[]');
+      const newNote: QuickNote = { content, id: Date.now().toString(), userId: '' };
+      const updatedNotes = [...existingNotes, newNote];
+      localStorage.setItem('quickNotes', JSON.stringify(updatedNotes));
+      return newNote;
+    }
+  }
+
+  // Preference Operations
+  savePreference(key: string, value: unknown): void {
+    this.preferences[key] = value;
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+
+  getPreference<T>(key: string, defaultValue: T | null = null): T | null {
+    if (this.preferences[key] === undefined) {
+      const stored = localStorage.getItem(key);
+      if (stored !== null) {
+        this.preferences[key] = JSON.parse(stored);
+      } else {
+        this.preferences[key] = defaultValue;
+      }
+    }
+    return this.preferences[key] as T | null;
+  }
+
+  getAllPreferences(): PreferenceStore {
+    return this.preferences;
+  }
+}
+
+export const posService = new PosService();
+
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/utils.ts
 import { type ClassValue, clsx } from "clsx"
@@ -14603,4 +21448,65 @@ export interface StatsCardProps {
     positive: boolean;
   };
 }
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/code/buf-crm/src/types/pos/index.ts
+export interface MenuItem {
+  id: string;
+  name: string;
+  price: number;
+  category: string;
+  popular: boolean;
+  active?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface MilkOption {
+  name: string;
+  price: number;
+}
+
+export interface CartItem extends MenuItem {
+  quantity: number;
+  flavor?: string;
+  milk?: MilkOption;
+}
+
+export interface CustomerInfo {
+  firstName: string;
+  lastInitial: string;
+  organization: string;
+  email: string;
+  phone: string;
+}
+
+export interface Order {
+  id: string;
+  orderNumber: number;
+  customerName: string;
+  customerInfo: CustomerInfo;
+  items: CartItem[];
+  notes?: string;
+  status: string;
+  total: number;
+  interested?: boolean;
+  isComplimentary: boolean;
+  queueTime?: number;
+  startTime: Date;
+  userId: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  preparationTime?: number;
+}
+
+export interface QuickNote {
+  id: string;
+  content: string;
+  userId: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+
+
 ________________________________________________________________________________

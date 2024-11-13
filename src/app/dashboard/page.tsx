@@ -25,10 +25,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/options";
 import { redirect } from "next/navigation";
 import {
-  ArrowUpRight,
   Users,
-  UserPlus,
-  UserCheck,
    Download,
   Plus,
 } from "lucide-react";
@@ -72,10 +69,6 @@ export default async function DashboardPage() {
     qualifiedLeads: contacts.filter(c => c.status === 'QUALIFIED').length,
   };
 
-  const conversionRate = stats.totalContacts > 0 
-    ? ((stats.convertedContacts / stats.totalContacts) * 100).toFixed(1) 
-    : "0.0";
-
   return (
     <PageContainer>
       <div className="space-y-4 max-w-[500px] mx-auto px-2 md:max-w-full md:space-y-6 md:p-6">
@@ -113,65 +106,6 @@ export default async function DashboardPage() {
               ))}
             </SelectContent>
           </Select>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-          <Card className="aspect-square overflow-hidden">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium md:text-sm">Total</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
-              <div className="text-2xl font-bold">{stats.totalContacts}</div>
-              <div className="flex items-center gap-1 mt-1">
-                <ArrowUpRight className="h-3 w-3 text-emerald-500" />
-                <p className="text-[10px] text-emerald-500">+20.1%</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="aspect-square overflow-hidden">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium md:text-sm">New</CardTitle>
-              <UserPlus className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
-              <div className="text-2xl font-bold">{stats.newContacts}</div>
-              <div className="flex items-center gap-1 mt-1">
-                <ArrowUpRight className="h-3 w-3 text-emerald-500" />
-                <p className="text-[10px] text-emerald-500">+10.5%</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="aspect-square overflow-hidden">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium md:text-sm">Qualified</CardTitle>
-              <UserCheck className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
-              <div className="text-2xl font-bold">{stats.qualifiedLeads}</div>
-              <div className="flex items-center gap-1 mt-1">
-                <ArrowUpRight className="h-3 w-3 text-emerald-500" />
-                <p className="text-[10px] text-emerald-500">+12.3%</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="aspect-square overflow-hidden">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 p-3">
-              <CardTitle className="text-xs font-medium md:text-sm">Conversion</CardTitle>
-              <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="flex flex-col justify-center items-center h-[calc(100%-48px)] p-3">
-              <div className="text-2xl font-bold">{conversionRate}%</div>
-              <div className="flex items-center gap-1 mt-1">
-                <ArrowUpRight className="h-3 w-3 text-emerald-500" />
-                <p className="text-[10px] text-emerald-500">+4.5%</p>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Charts */}
