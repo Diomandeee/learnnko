@@ -1,4 +1,6 @@
-// QRCard.tsx
+// src/components/dashboard/qr/qr-card.tsx
+"use client"
+
 import { useState } from "react"
 import Link from "next/link"
 import QRCode from "react-qr-code"
@@ -6,52 +8,52 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { 
-  Edit, 
-  FileDown, 
-  ExternalLink, 
-  Trash2, 
-  MoreHorizontal,
-  Loader2 
+ Edit, 
+ FileDown, 
+ ExternalLink, 
+ Trash2, 
+ MoreHorizontal,
+ Loader2 
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
+ DropdownMenu,
+ DropdownMenuContent,
+ DropdownMenuItem,
+ DropdownMenuTrigger,
+ DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { toast } from "@/components/ui/use-toast"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+ Dialog,
+ DialogContent,
+ DialogDescription,
+ DialogFooter,
+ DialogHeader,
+ DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 
+const SITE_URL = "https://bufbarista-crm.vercel.app"
+
 interface QRCodeData {
-  id: string
-  name: string
-  shortCode: string
-  defaultUrl: string
-  scans: number
-  isActive: boolean
-  createdAt: Date
+ id: string
+ name: string
+ shortCode: string
+ defaultUrl: string
+ scans: number
+ isActive: boolean
+ createdAt: Date
+ folderId: string | null
 }
 
 interface QRCardProps {
-  qrCode: QRCodeData
-  onDelete?: (qrCode: QRCodeData) => Promise<void>
-  selected?: boolean
-  onSelect?: () => void
-  className?: string
+ qrCode: QRCodeData
+ onDelete?: (qrCode: QRCodeData) => Promise<void>
+ selected?: boolean
+ onSelect?: () => void
+ className?: string
 }
-
-const SITE_URL = "https://bufbarista-crm.vercel.app"
-
 export function QRCard({ 
   qrCode, 
   onDelete, 
