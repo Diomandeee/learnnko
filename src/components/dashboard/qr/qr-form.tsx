@@ -287,9 +287,8 @@ interface QRFormProps {
                          <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                            <span>Redirect URL:</span>
                            <span className="bg-muted px-2 py-1 rounded flex items-center">
-                             {SITE_URL}/r/
+                             {SITE_URL}/r/{shortCode}
                              <ArrowRight className="h-4 w-4 mx-1" />
-                             <span className="text-primary font-mono">shortcode</span>
                            </span>
                          </div>
                        )}
