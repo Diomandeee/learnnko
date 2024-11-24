@@ -1,10 +1,3 @@
-#!/bin/bash
-
-# Create the directory structure
-mkdir -p "src/app/api/qr/[id]/design"
-
-# Create the route file
-cat > "src/app/api/qr/[id]/design/route.ts" << 'EOF'
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/db/prisma"
 import { getServerSession } from "next-auth"
@@ -72,4 +65,3 @@ export async function PATCH(
     )
   }
 }
-EOF

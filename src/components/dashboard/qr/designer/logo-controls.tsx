@@ -356,3 +356,6 @@ export function LogoControls({
     </Accordion>
   );
 }
+
+
+// src/components/dashboard/qr/designer/logo-controls.tsx

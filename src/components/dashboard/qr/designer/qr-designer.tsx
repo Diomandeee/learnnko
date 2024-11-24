@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { QRCode } from './qr-wrapper'
 import { TabsList, TabsTrigger, Tabs, TabsContent } from "@/components/ui/tabs"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
@@ -48,7 +47,7 @@ export function QRDesigner({
   const [maintainAspectRatio, setMaintainAspectRatio] = useState(true)
   const [originalAspectRatio, setOriginalAspectRatio] = useState(1)
   const qrRef = useRef<HTMLDivElement>(null)
-
+  const fileInputRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
     onConfigChange?.(config)
   }, [config, onConfigChange])
@@ -115,9 +114,11 @@ export function QRDesigner({
     transition: 'all 0.3s ease',
   })
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
+    if (!file) return
+  
+    try {
       if (file.size > 2 * 1024 * 1024) {
         toast({
           title: "Error",
@@ -126,27 +127,50 @@ export function QRDesigner({
         })
         return
       }
-
+  
       const reader = new FileReader()
-      reader.onload = () => {
+      
+      reader.onloadend = () => {
         const img = new Image()
+        
         img.onload = () => {
           const aspectRatio = img.width / img.height
           setOriginalAspectRatio(aspectRatio)
-          const defaultSize = 100
+          const defaultSize = Math.min(100, config.size / 3) // Make sure logo isn't too big
+          
           setConfig(prev => ({
             ...prev,
             logoImage: reader.result as string,
             logoWidth: defaultSize,
             logoHeight: maintainAspectRatio ? Math.round(defaultSize / aspectRatio) : defaultSize,
+            logoStyle: {
+              ...DEFAULT_CONFIG.logoStyle,
+              scale: 1,
+            }
           }))
         }
+  
         img.src = reader.result as string
       }
+  
+      reader.onerror = () => {
+        toast({
+          title: "Error",
+          description: "Failed to load image",
+          variant: "destructive",
+        })
+      }
+  
       reader.readAsDataURL(file)
+    } catch (error) {
+      console.error('Error uploading logo:', error)
+      toast({
+        title: "Error",
+        description: "Failed to upload image",
+        variant: "destructive",
+      })
     }
   }
-
   return (
     <div className={className}>
       <div className="grid gap-6 md:grid-cols-2">
@@ -222,25 +246,48 @@ export function QRDesigner({
 
           <TabsContent value="logo">
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Logo Image</Label>
-                <div className="flex items-center gap-4">
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    className="flex-1"
-                  />
-                  {config.logoImage && (
-                    <Button 
-                      variant="outline"
-                      onClick={() => setConfig(prev => ({ ...prev, logoImage: undefined }))}
-                    >
-                      Remove
-                    </Button>
-                  )}
-                </div>
+            <div className="space-y-2">
+              <Label>Logo Image</Label>
+              <div className="flex items-center gap-4">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                />
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Choose Logo Image
+                </Button>
+                {config.logoImage && (
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      setConfig(prev => ({
+                        ...prev,
+                        logoImage: undefined,
+                        logoWidth: DEFAULT_CONFIG.logoWidth,
+                        logoHeight: DEFAULT_CONFIG.logoHeight,
+                        logoStyle: DEFAULT_CONFIG.logoStyle
+                      }))
+                    }}
+                  >
+                    Remove
+                  </Button>
+                )}
               </div>
+              {config.logoImage && (
+                <img 
+                  src={config.logoImage} 
+                  alt="Logo preview" 
+                  className="h-16 object-contain border rounded-md p-2"
+                />
+              )}
+            </div>
 
               {config.logoImage && (
                 <div className="space-y-4">
@@ -465,3 +512,5 @@ export function QRDesigner({
     </div>
   )
 }
+
+// src/components/dashboard/qr/designer/qr-designer.tsx
