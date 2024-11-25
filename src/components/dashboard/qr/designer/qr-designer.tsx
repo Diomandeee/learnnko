@@ -20,12 +20,13 @@ import { LogoControls } from './logo-controls'
 import { QRDownloadButton } from './qr-download-button'
 import { 
   QRDesignerProps, 
-  QRDotType, 
+  QRDotType,
+  ErrorCorrectionLevel,
   DEFAULT_CONFIG,
   QRDesignerConfig
 } from './types'
 import { toast } from '@/components/ui/use-toast'
-import {  Grid } from 'lucide-react'
+import { Grid } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import styles from './styles.module.css'
 
@@ -48,11 +49,11 @@ export function QRDesigner({
   const [originalAspectRatio, setOriginalAspectRatio] = useState(1)
   const qrRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
   useEffect(() => {
     onConfigChange?.(config)
   }, [config, onConfigChange])
 
-  // Initialize logo style when a logo is added
   useEffect(() => {
     if (config.logoImage && !config.logoStyle) {
       setConfig(prev => ({
@@ -87,7 +88,7 @@ export function QRDesigner({
     if (config.style.contrast !== 100) filters.push(`contrast(${config.style.contrast}%)`)
     if (config.style.opacity !== 100) filters.push(`opacity(${config.style.opacity}%)`)
     return filters.join(' ')
-  } 
+  }
 
   const generateBackground = () => {
     if (config.style.gradientType === 'linear') {
@@ -136,7 +137,7 @@ export function QRDesigner({
         img.onload = () => {
           const aspectRatio = img.width / img.height
           setOriginalAspectRatio(aspectRatio)
-          const defaultSize = Math.min(100, config.size / 3) // Make sure logo isn't too big
+          const defaultSize = Math.min(100, config.size / 3)
           
           setConfig(prev => ({
             ...prev,
@@ -171,6 +172,7 @@ export function QRDesigner({
       })
     }
   }
+
   return (
     <div className={className}>
       <div className="grid gap-6 md:grid-cols-2">
@@ -180,18 +182,18 @@ export function QRDesigner({
               <div className={styles.preview} style={{ background: config.backgroundColor }}>
                 {showGrid && <div className={styles.grid} />}
                 <div ref={qrRef} className={styles.wrapper} style={getQrStyles()}>
-                <QRCode
-                  value={value}
-                  size={config.size}
-                  bgColor={config.backgroundColor}
-                  fgColor={config.foregroundColor}
-                  level={config.errorCorrectionLevel}
-                  logoImage={config.logoImage}
-                  logoWidth={config.logoWidth}
-                  logoHeight={config.logoHeight}
-                  logoStyle={config.logoStyle}
-                  imageStyle={{ display: "block" }}
-/>
+                  <QRCode
+                    value={value}
+                    size={config.size}
+                    bgColor={config.backgroundColor}
+                    fgColor={config.foregroundColor}
+                    level={config.errorCorrectionLevel}
+                    logoImage={config.logoImage}
+                    logoWidth={config.logoWidth}
+                    logoHeight={config.logoHeight}
+                    logoStyle={config.logoStyle}
+                    imageStyle={{ display: "block" }}
+                  />
                 </div>
               </div>
             </CardContent>
@@ -246,48 +248,48 @@ export function QRDesigner({
 
           <TabsContent value="logo">
             <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Logo Image</Label>
-              <div className="flex items-center gap-4">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleLogoUpload}
-                />
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  Choose Logo Image
-                </Button>
-                {config.logoImage && (
-                  <Button 
+              <div className="space-y-2">
+                <Label>Logo Image</Label>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                  />
+                  <Button
                     variant="outline"
-                    onClick={() => {
-                      setConfig(prev => ({
-                        ...prev,
-                        logoImage: undefined,
-                        logoWidth: DEFAULT_CONFIG.logoWidth,
-                        logoHeight: DEFAULT_CONFIG.logoHeight,
-                        logoStyle: DEFAULT_CONFIG.logoStyle
-                      }))
-                    }}
+                    className="w-full"
+                    onClick={() => fileInputRef.current?.click()}
                   >
-                    Remove
+                    Choose Logo Image
                   </Button>
+                  {config.logoImage && (
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        setConfig(prev => ({
+                          ...prev,
+                          logoImage: undefined,
+                          logoWidth: DEFAULT_CONFIG.logoWidth,
+                          logoHeight: DEFAULT_CONFIG.logoHeight,
+                          logoStyle: DEFAULT_CONFIG.logoStyle
+                        }))
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+                {config.logoImage && (
+                  <img 
+                    src={config.logoImage} 
+                    alt="Logo preview" 
+                    className="h-16 object-contain border rounded-md p-2"
+                  />
                 )}
               </div>
-              {config.logoImage && (
-                <img 
-                  src={config.logoImage} 
-                  alt="Logo preview" 
-                  className="h-16 object-contain border rounded-md p-2"
-                />
-              )}
-            </div>
 
               {config.logoImage && (
                 <div className="space-y-4">
@@ -432,85 +434,84 @@ export function QRDesigner({
               <div className="space-y-2">
                 <Label>QR Code Size: {config.size}px</Label>
                 <Slider
-                  value={[config.size]}
-                  min={100}
-                  max={1000}
-                  step={10}
-                  onValueChange={([value]) => 
-                    setConfig(prev => ({ ...prev, size: value }))
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Error Correction Level</Label>
-                <Select
-                  value={config.errorCorrectionLevel}
-                  onValueChange={(value: QRDesignerConfig["errorCorrectionLevel"]) =>
-                    setConfig(prev => ({ 
-                      ...prev, 
-                      errorCorrectionLevel: value 
-                    }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="L">Low (7%)</SelectItem>
-                    <SelectItem value="M">Medium (15%)</SelectItem>
-                    <SelectItem value="Q">Quartile (25%)</SelectItem>
-                    <SelectItem value="H">High (30%)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-              <Label>Margin: {config.style.padding}px</Label>
-                <Slider
-                  value={[config.style.padding]}
-                  min={0}
-                  max={50}
-                  step={1}
-                  onValueChange={([value]) => 
-                    setConfig(prev => ({
-                      ...prev,
-                      style: { ...prev.style, padding: value }
-                    }))
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Quality</Label>
-                <Select
-                  value={config.dotStyle}
-                  onValueChange={(value: QRDotType) => 
-                    setConfig(prev => ({ 
-                      ...prev, 
-                      dotStyle: value 
-                    }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="squares">Squares</SelectItem>
-                    <SelectItem value="dots">Dots</SelectItem>
-                    <SelectItem value="rounded">Rounded</SelectItem>
-                    <SelectItem value="classy">Classy</SelectItem>
-                    <SelectItem value="classy-rounded">Classy Rounded</SelectItem>
-                    <SelectItem value="extra-rounded">Extra Rounded</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
-  )
+value={[config.size]}
+min={100}
+max={1000}
+step={10}
+onValueChange={([value]) => 
+  setConfig(prev => ({ ...prev, size: value }))
 }
+/>
+</div>
 
-// src/components/dashboard/qr/designer/qr-designer.tsx
+<div className="space-y-2">
+<Label>Error Correction Level</Label>
+<Select
+value={config.errorCorrectionLevel}
+onValueChange={(value: ErrorCorrectionLevel) => {
+  console.log('Selected error correction level:', value);
+  setConfig(prev => ({ 
+    ...prev, 
+    errorCorrectionLevel: value 
+  }))
+}}
+>
+<SelectTrigger>
+  <SelectValue />
+</SelectTrigger>
+<SelectContent>
+  <SelectItem value="L">Low (7%)</SelectItem>
+  <SelectItem value="M">Medium (15%)</SelectItem>
+  <SelectItem value="Q">Quartile (25%)</SelectItem>
+  <SelectItem value="H">High (30%)</SelectItem>
+</SelectContent>
+</Select>
+</div>
+
+<div className="space-y-2">
+<Label>Margin: {config.style.padding}px</Label>
+<Slider
+value={[config.style.padding]}
+min={0}
+max={50}
+step={1}
+onValueChange={([value]) => 
+  setConfig(prev => ({
+    ...prev,
+    style: { ...prev.style, padding: value }
+  }))
+}
+/>
+</div>
+
+<div className="space-y-2">
+<Label>Quality</Label>
+<Select
+value={config.dotStyle}
+onValueChange={(value: QRDotType) => 
+  setConfig(prev => ({ 
+    ...prev, 
+    dotStyle: value 
+  }))
+}
+>
+<SelectTrigger>
+  <SelectValue />
+</SelectTrigger>
+<SelectContent>
+  <SelectItem value="squares">Squares</SelectItem>
+  <SelectItem value="dots">Dots</SelectItem>
+  <SelectItem value="rounded">Rounded</SelectItem>
+  <SelectItem value="classy">Classy</SelectItem>
+  <SelectItem value="classy-rounded">Classy Rounded</SelectItem>
+  <SelectItem value="extra-rounded">Extra Rounded</SelectItem>
+</SelectContent>
+</Select>
+</div>
+</div>
+</TabsContent>
+</Tabs>
+</div>
+</div>
+)
+}

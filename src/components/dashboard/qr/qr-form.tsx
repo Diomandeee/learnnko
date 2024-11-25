@@ -24,10 +24,10 @@ SelectValue,
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { QRDesigner } from "./designer/qr-designer"
-import { QRDesignerConfig } from "./designer/types"
 import { DeviceRuleForm } from "./device-rule-form"
 import { ScheduleRuleForm } from "./schedule-rule-form"
+import { QRDesigner } from "./designer/qr-designer"
+import { QRDesignerConfig } from "./designer/types"
 import { toast } from "@/components/ui/use-toast"
 import { Loader2, Plus, CheckCircle2 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
@@ -48,47 +48,30 @@ id: string
 name: string
 }
 
-type Step = {
- id: "info" | "design" | "device" | "schedule"
- label: string
- isRequired: boolean
-}
-
-const STEPS: Step[] = [
- { id: "info", label: "Basic Info", isRequired: true },
- { id: "design", label: "Design", isRequired: false },
- { id: "device", label: "Device Rules", isRequired: false },
- { id: "schedule", label: "Schedule Rules", isRequired: false },
-]
-
 const formSchema = z.object({
-  name: z.string().min(2, {
-    message: "Name must be at least 2 characters.",
-  }),
-  defaultUrl: z.string()
-    .min(1, "URL is required")
-    .transform(val => {
-      const url = val.trim()
-      if (!url.match(/^https?:\/\//i)) {
-        return `https://${url}`
+name: z.string().min(2, {
+  message: "Name must be at least 2 characters.",
+}),
+defaultUrl: z.string()
+  .min(1, "URL is required")
+  .transform(val => {
+    const url = val.trim().replace(/^https?:\/\//i, '')
+    return `https://${url}`
+  })
+  .refine(
+    (val) => {
+      try {
+        new URL(val)
+        return true
+      } catch {
+        return false
       }
-      return url
-    })
-    .refine(
-      (val) => {
-        try {
-          // Add www if needed for validation
-          const urlToValidate = val.includes('://') ? val : `https://${val}`
-          new URL(urlToValidate)
-          return true
-        } catch {
-          return false
-        }
-      },
-      "Please enter a valid URL"
-    ),
-  folderId: z.string().nullable(),
+    },
+    "Please enter a valid URL"
+  ),
+folderId: z.string().nullable(),
 })
+
 interface QRFormProps {
  initialData?: {
    name: string
@@ -98,72 +81,21 @@ interface QRFormProps {
  }
 }
 
+type Step = "info" | "design" | "device" | "schedule" | "review"
+const STEPS: Step[] = ["info", "design", "device", "schedule", "review"]
+
 export function QRForm({ initialData }: QRFormProps) {
  const router = useRouter()
- const [currentStep, setCurrentStep] = useState<Step["id"]>("info")
- const [completedSteps, setCompletedSteps] = useState<Set<Step["id"]>>(new Set())
- const [skippedSteps, setSkippedSteps] = useState<Set<Step["id"]>>(new Set())
- const [progress, setProgress] = useState(0)
+ const [currentStep, setCurrentStep] = useState<Step>("info")
  const [isLoading, setIsLoading] = useState(false)
  const [folders, setFolders] = useState<Folder[]>([])
  const [foldersLoading, setFoldersLoading] = useState(true)
+ const [qrConfig, setQRConfig] = useState<QRDesignerConfig | null>(null)
  const [createFolderOpen, setCreateFolderOpen] = useState(false)
  const [newFolderName, setNewFolderName] = useState("")
  const [createFolderLoading, setCreateFolderLoading] = useState(false)
  const [shortCode, setShortCode] = useState<string>("")
- 
- const [qrConfig, setQRConfig] = useState<QRDesignerConfig>({
-   size: 300,
-   backgroundColor: '#FFFFFF',
-   foregroundColor: '#000000',
-   logoWidth: 100,
-   logoHeight: 100,
-   dotStyle: 'squares',
-   margin: 20,
-   errorCorrectionLevel: 'M',
-   imageRendering: 'auto',
-   style: {
-     opacity: 100,
-     blurRadius: 0,
-     brightness: 100,
-     contrast: 100,
-     borderRadius: 0,
-     borderWidth: 0,
-     borderColor: '#000000',
-     shadowColor: 'rgba(0, 0, 0, 0.5)',
-     shadowBlur: 0,
-     shadowOffsetX: 0,
-     shadowOffsetY: 0,
-     gradientType: 'none',
-     gradientStart: '#000000',
-     gradientEnd: '#FFFFFF',
-     gradientRotation: 0,
-     padding: 0,
-     blend: false,
-     blendMode: 'normal'
-   },
-   logoStyle: {
-     opacity: 100,
-     blurRadius: 0,
-     brightness: 100,
-     contrast: 100,
-     borderRadius: 0,
-     borderWidth: 0,
-     borderColor: '#000000',
-     shadowColor: 'rgba(0, 0, 0, 0.5)',
-     shadowBlur: 0,
-     shadowOffsetX: 0,
-     shadowOffsetY: 0,
-     padding: 0,
-     backgroundColor: '#FFFFFF',
-     removeBackground: false,
-     position: 'center',
-     rotation: 0,
-     blend: false,
-     blendMode: 'normal',
-     scale: 1
-   }
- })
+ const [progress, setProgress] = useState(0)
 
  const form = useForm<z.infer<typeof formSchema>>({
    resolver: zodResolver(formSchema),
@@ -175,9 +107,38 @@ export function QRForm({ initialData }: QRFormProps) {
  })
 
  useEffect(() => {
-   const calculatedProgress = calculateProgress()
-   setProgress(calculatedProgress)
- }, [completedSteps, skippedSteps])
+   const stepIndex = STEPS.indexOf(currentStep)
+   setProgress((stepIndex / (STEPS.length - 1)) * 100)
+ }, [currentStep])
+
+ const handleNext = async () => {
+   const currentIndex = STEPS.indexOf(currentStep)
+   
+   if (currentStep === "info") {
+     const isValid = await form.trigger(["name", "defaultUrl"])
+     if (!isValid) return
+   }
+
+   if (currentStep === "design" && !qrConfig) {
+     toast({
+       title: "Error",
+       description: "Please design your QR code first",
+       variant: "destructive",
+     })
+     return
+   }
+
+   if (currentIndex < STEPS.length - 1) {
+     setCurrentStep(STEPS[currentIndex + 1])
+   }
+ }
+
+ const handleBack = () => {
+   const currentIndex = STEPS.indexOf(currentStep)
+   if (currentIndex > 0) {
+     setCurrentStep(STEPS[currentIndex - 1])
+   }
+ }
 
  useEffect(() => {
    async function loadFolders() {
@@ -203,53 +164,6 @@ export function QRForm({ initialData }: QRFormProps) {
 
    loadFolders()
  }, [])
-
- const calculateProgress = () => {
-   const totalSteps = STEPS.length
-   const completed = completedSteps.size
-   const skipped = skippedSteps.size
-   return ((completed + skipped) / totalSteps) * 100
- }
-
- const canProceed = () => {
-   const currentStepObj = STEPS.find(s => s.id === currentStep)
-   if (!currentStepObj) return false
-
-   if (currentStepObj.isRequired) {
-     if (currentStepObj.id === "info") {
-       return form.formState.isValid
-     }
-     return completedSteps.has(currentStepObj.id)
-   }
-
-   return true
- }
-
- const handleStepComplete = async (stepId: Step["id"]) => {
-   if (stepId === "info") {
-     const isValid = await form.trigger()
-     if (!isValid) return false
-   }
-
-   setCompletedSteps(prev => {
-     const next = new Set(prev)
-     next.add(stepId)
-     return next
-   })
-   
-   return true
- }
-
- const handleStepSkip = (stepId: Step["id"]) => {
-   const step = STEPS.find(s => s.id === stepId)
-   if (step && !step.isRequired) {
-     setSkippedSteps(prev => {
-       const next = new Set(prev)
-       next.add(stepId)
-       return next
-     })
-   }
- }
 
  const createFolder = async () => {
    if (!newFolderName.trim()) {
@@ -298,70 +212,59 @@ export function QRForm({ initialData }: QRFormProps) {
    }
  }
 
- const goToNextStep = async () => {
-   const currentIndex = STEPS.findIndex(s => s.id === currentStep)
-   const completed = await handleStepComplete(currentStep)
-   
-   if (completed && currentIndex < STEPS.length - 1) {
-     setCurrentStep(STEPS[currentIndex + 1].id)
-   }
- }
-
- const goToPrevStep = () => {
-   const currentIndex = STEPS.findIndex(s => s.id === currentStep)
-   if (currentIndex > 0) {
-     setCurrentStep(STEPS[currentIndex - 1].id)
-   }
- }
-
  const onSubmit = async () => {
-  setIsLoading(true)
-  
-  try {
-    const values = form.getValues()
-    const payload = {
-      name: values.name,
-      defaultUrl: values.defaultUrl,
-      folderId: values.folderId,
-      design: qrConfig
-    }
+   if (currentStep !== "review") {
+     return handleNext()
+   }
 
-    console.log('Submitting payload:', payload)
+   setIsLoading(true)
+   
+   try {
+     const values = form.getValues()
+     const payload = {
+       name: values.name,
+       defaultUrl: values.defaultUrl,
+       folderId: values.folderId,
+       design: qrConfig
+     }
 
-    const response = await fetch('/api/qr', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload)
-    })
+     console.log('Submitting payload:', payload)
 
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.error || 'Failed to create QR code')
-    }
+     const response = await fetch('/api/qr', {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/json',
+       },
+       body: JSON.stringify(payload)
+     })
 
-    const data = await response.json()
-    setShortCode(data.shortCode)
+     if (!response.ok) {
+       const error = await response.json()
+       throw new Error(error.error || 'Failed to create QR code')
+     }
 
-    toast({
-      title: "Success!",
-      description: "QR code created successfully.",
-    })
+     const data = await response.json()
+     setShortCode(data.shortCode)
 
-    router.push('/dashboard/qr')
-    router.refresh()
-  } catch (error) {
-    console.error("Error creating QR code:", error)
-    toast({
-      title: "Error",
-      description: error instanceof Error ? error.message : "Failed to create QR code",
-      variant: "destructive",
-    })
-  } finally {
-    setIsLoading(false)
-  }
-}
+     toast({
+       title: "Success!",
+       description: "QR code created successfully.",
+     })
+
+     router.push('/dashboard/qr')
+     router.refresh()
+   } catch (error) {
+     console.error("Error creating QR code:", error)
+     toast({
+       title: "Error",
+       description: error instanceof Error ? error.message : "Failed to create QR code",
+       variant: "destructive",
+     })
+   } finally {
+     setIsLoading(false)
+   }
+ }
+
  const renderStepContent = () => {
    switch (currentStep) {
      case "info":
@@ -376,7 +279,7 @@ export function QRForm({ initialData }: QRFormProps) {
                    <FormLabel>Name</FormLabel>
                    <FormControl>
                      <Input 
-                       placeholder="" 
+                       placeholder="My QR Code" 
                        {...field} 
                        disabled={isLoading}
                      />
@@ -388,40 +291,33 @@ export function QRForm({ initialData }: QRFormProps) {
                  </FormItem>
                )}
              />
-          <FormField
-            control={form.control}
-            name="defaultUrl"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Destination URL</FormLabel>
-                <FormControl>
-                  <div className="flex flex-col space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm text-muted-foreground">https://</span>
-                      <Input 
-                        placeholder="" 
-                        {...field}
-                        value={field.value.replace(/^https?:\/\//i, '')}
-                        onChange={(e) => {
-                          let value = e.target.value.trim()
-                          // Remove protocol if user types it
-                          value = value.replace(/^https?:\/\//i, '')
-                          // Remove www. if user types it
-                          value = value.replace(/^www\./i, '')
-                          field.onChange(value)
-                        }}
-                        disabled={isLoading}
-                      />
-                    </div>
-                  </div>
-                </FormControl>
-                <FormDescription>
-                  Enter the destination website URL (e.g., example.com)
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+
+             <FormField
+               control={form.control}
+               name="defaultUrl"
+               render={({ field }) => (
+                 <FormItem>
+                   <FormLabel>Destination URL</FormLabel>
+                   <FormControl>
+                     <div className="flex flex-col space-y-2">
+                       <div className="flex items-center space-x-2">
+                         <span className="text-sm text-muted-foreground">https://</span>
+                         <Input 
+                           placeholder="example.com" 
+                           {...field}
+                           value={field.value.replace(/^https?:\/\//i, '')}
+                           disabled={isLoading}
+                         />
+                       </div>
+                     </div>
+                   </FormControl>
+                   <FormDescription>
+                     Enter the destination website URL without the protocol
+                   </FormDescription>
+                   <FormMessage />
+                 </FormItem>
+               )}
+             />
 
              <FormField
                control={form.control}
@@ -481,39 +377,75 @@ export function QRForm({ initialData }: QRFormProps) {
            </form>
          </Form>
        )
-       case "design":
-        return (
-          <div className="space-y-4">
-            {form.getValues("defaultUrl") && (
-              <div className="p-4 rounded-lg bg-muted mb-4">
-                <p className="text-sm text-muted-foreground">
-                  Your QR code will use a short URL that redirects to your destination URL.
-                </p>
-                <p className="text-sm mt-2">
-                  <span className="font-medium">Destination URL:</span>{" "}
-                  <code className="px-2 py-1 rounded bg-background">
-                    {form.getValues("defaultUrl")}
-                  </code>
-                </p>
-              </div>
-            )}
-            
-            <QRDesigner
-              value={shortCode 
-                ? `${SITE_URL}/r/${shortCode}`
-                : form.getValues("defaultUrl")
-              }
-              onConfigChange={setQRConfig}
-              defaultConfig={qrConfig}
-            />
+
+     case "design":
+       return (
+        <div className="space-y-4">
+        {form.getValues("defaultUrl") && (
+          <div className="p-4 rounded-lg bg-muted mb-4">
+            <p className="text-sm text-muted-foreground">
+              Your QR code will use a short URL that redirects to your destination URL.
+            </p>
+            <p className="text-sm mt-2">
+              <span className="font-medium">Destination URL:</span>{" "}
+              <code className="px-2 py-1 rounded bg-background">
+                {form.getValues("defaultUrl")}
+              </code>
+            </p>
           </div>
-        );
+        )}
+         <QRDesigner
+           value={form.getValues("defaultUrl")}
+           onConfigChange={setQRConfig}
+           defaultConfig={{
+             size: 300,
+             backgroundColor: '#ffffff',
+             foregroundColor: '#000000',
+             dotStyle: 'squares',
+             margin: 10,
+             errorCorrectionLevel: 'M',
+           }}
+         />
+          </div>
+
+       )
+
      case "device":
        return <DeviceRuleForm qrCodeId={initialData?.id} />
+
      case "schedule":
        return <ScheduleRuleForm qrCodeId={initialData?.id} />
-     default:
-       return null
+
+     case "review":
+       return (
+         <div className="space-y-4">
+           <div className="rounded-lg border p-4">
+             <h4 className="font-medium mb-2">Basic Information</h4>
+             <dl className="space-y-2">
+               <div>
+                 <dt className="text-sm text-muted-foreground">Name</dt>
+                 <dd>{form.getValues("name")}</dd>
+               </div>
+               <div>
+                 <dt className="text-sm text-muted-foreground">URL</dt>
+                 <dd>{form.getValues("defaultUrl")}</dd>
+               </div>
+             </dl>
+           </div>
+           <QRDesigner
+             value={form.getValues("defaultUrl")}
+             onConfigChange={setQRConfig}
+             defaultConfig={qrConfig || {
+               size: 300,
+               backgroundColor: '#ffffff',
+               foregroundColor: '#000000',
+               dotStyle: 'squares',
+               margin: 10,
+               errorCorrectionLevel: 'M',
+             }}
+           />
+         </div>
+       )
    }
  }
 
@@ -522,90 +454,59 @@ export function QRForm({ initialData }: QRFormProps) {
      <div>
        <h3 className="text-lg font-medium">Create QR Code</h3>
        <p className="text-sm text-muted-foreground">
-         Complete the required basic information. Other steps are optional.
+         Follow the steps below to create your QR code.
        </p>
      </div>
 
      <Progress value={progress} className="h-2" />
 
-     <div className="flex justify-between mb-8">
-       {STEPS.map((step) => (
-         <button
-           key={step.id}
-           onClick={() => {
-             if (currentStep === "info" && !completedSteps.has("info")) return
-             setCurrentStep(step.id)
-           }}
-           className={`flex flex-col items-center ${
-             currentStep === step.id
-               ? "text-primary"
-               : completedSteps.has(step.id)
-               ? "text-green-500"
-               : skippedSteps.has(step.id)
-               ? "text-orange-500"
-               : "text-gray-400"
+     <div className="flex items-center justify-between">
+       {STEPS.map((step, index) => (
+         <div
+           key={step}
+           className={`flex items-center ${
+             STEPS.indexOf(currentStep) >= index ? "text-primary" : "text-muted-foreground"
            }`}
-           disabled={!completedSteps.has("info")}
          >
-           <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center mb-2">
-             {completedSteps.has(step.id) ? (
-               <CheckCircle2 className="h-4 w-4" />
-             ) : skippedSteps.has(step.id) ? (
-               "⤍"
+           <div className="flex items-center justify-center w-8 h-8 rounded-full border">
+             {STEPS.indexOf(currentStep) > index ? (
+               <CheckCircle2 className="h-5 w-5" />
              ) : (
-               step.id[0].toUpperCase()
+               <span>{index + 1}</span>
              )}
            </div>
-           <span className="text-sm">{step.label}</span>
-           {step.isRequired && <span className="text-xs text-red-500">*Required</span>}
-         </button>
+           <span className="ml-2 capitalize">{step}</span>
+         </div>
        ))}
      </div>
 
-     <div className="min-h-[400px] border rounded-lg p-6 bg-background">
+     <div className="mt-6">
        {renderStepContent()}
      </div>
 
      <div className="flex justify-between mt-6">
        <Button
          variant="outline"
-         onClick={goToPrevStep}
+         onClick={handleBack}
          disabled={currentStep === "info"}
        >
-         Previous
+         Back
        </Button>
-
-       <div className="space-x-2">
-         {!STEPS.find(s => s.id === currentStep)?.isRequired && currentStep !== "info" && (
-           <Button
-             variant="ghost"
-             onClick={() => {
-               handleStepSkip(currentStep)
-               goToNextStep()
-             }}
-           >
-             Skip this step
-           </Button>
+       <Button
+         onClick={currentStep === "review" ? onSubmit : handleNext}
+         disabled={isLoading}
+       >
+         {isLoading ? (
+           <>
+           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+             Creating...
+           </>
+         ) : currentStep === "review" ? (
+           "Create QR Code"
+         ) : (
+           "Next"
          )}
-         
-         <Button
-           onClick={() => {
-             if (currentStep === STEPS[STEPS.length - 1].id) {
-               onSubmit()
-             } else {
-               goToNextStep()
-             }
-           }}
-           disabled={!canProceed() || isLoading}
-         >
-           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-           {isLoading 
-             ? "Creating..." 
-             : currentStep === STEPS[STEPS.length - 1].id
-             ? "Create QR Code"
-             : "Next"}
-         </Button>
-       </div>
+       </Button>
      </div>
 
      <Dialog open={createFolderOpen} onOpenChange={setCreateFolderOpen}>
@@ -664,5 +565,3 @@ export function QRForm({ initialData }: QRFormProps) {
    </div>
  )
 }
-
-// src/components/dashboard/qr/qr-form.tsx

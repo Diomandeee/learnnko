@@ -12,19 +12,12 @@ export type BlendMode =
   | 'difference' 
   | 'exclusion'
 
-export type PresetPosition = 
+export type LogoPosition = 
   | 'center' 
   | 'top-left' 
   | 'top-right' 
   | 'bottom-left' 
   | 'bottom-right'
-
-export interface CustomPosition {
-  x: number
-  y: number
-}
-
-export type LogoPosition = PresetPosition | CustomPosition
 
 export interface QRStyleOptions {
   opacity: number
@@ -63,12 +56,10 @@ export interface LogoStyleOptions {
   backgroundColor: string
   removeBackground: boolean
   position: LogoPosition
-  customPosition?: CustomPosition
   rotation: number
   blend: boolean
   blendMode: BlendMode
   scale: number
-  isDragging?: boolean
 }
 
 export type QRDotType = 'squares' | 'dots' | 'rounded' | 'classy' | 'classy-rounded' | 'extra-rounded'
@@ -126,8 +117,6 @@ export interface QRWrapperProps {
   className?: string
   containerStyle?: React.CSSProperties
   imageStyle?: React.CSSProperties
-  onDragStart?: () => void
-  onDragEnd?: () => void
 }
 
 export const DEFAULT_CONFIG: QRDesignerConfig = {
@@ -176,45 +165,9 @@ export const DEFAULT_CONFIG: QRDesignerConfig = {
     backgroundColor: '#FFFFFF',
     removeBackground: false,
     position: 'center',
-    customPosition: { x: 0, y: 0 },
     rotation: 0,
     blend: false,
     blendMode: 'normal',
-    scale: 1,
-    isDragging: false
-  }
-}
-
-// Helper functions
-export const isPresetPosition = (position: LogoPosition): position is PresetPosition => {
-  return typeof position === 'string';
-}
-
-export const isCustomPosition = (position: LogoPosition): position is CustomPosition => {
-  return typeof position === 'object' && 'x' in position && 'y' in position;
-}
-
-export const getPositionStyle = (position: LogoPosition): React.CSSProperties => {
-  if (isPresetPosition(position)) {
-    switch (position) {
-      case 'center':
-        return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
-      case 'top-left':
-        return { top: '10%', left: '10%', transform: 'translate(-50%, -50%)' }
-      case 'top-right':
-        return { top: '10%', right: '10%', transform: 'translate(50%, -50%)' }
-      case 'bottom-left':
-        return { bottom: '10%', left: '10%', transform: 'translate(-50%, 50%)' }
-      case 'bottom-right':
-        return { bottom: '10%', right: '10%', transform: 'translate(50%, 50%)' }
-      default:
-        return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
-    }
-  }
-
-  return {
-    top: `${position.y}%`,
-    left: `${position.x}%`,
-    transform: 'translate(-50%, -50%)'
+    scale: 1
   }
 }

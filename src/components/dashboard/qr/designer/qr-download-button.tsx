@@ -14,20 +14,74 @@ export function QRDownloadButton({ qrRef, format }: QRDownloadButtonProps) {
 
     try {
       if (format === 'svg') {
-        // Download as SVG
-        const svg = qrRef.current.querySelector('svg')
-        if (!svg) throw new Error('SVG element not found')
+        // Find the canvas element
+        const canvas = qrRef.current.querySelector('canvas')
+        if (!canvas) throw new Error('Canvas element not found')
 
-        const svgData = new XMLSerializer().serializeToString(svg)
-        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
+        // Convert canvas to base64 PNG
+        const canvasData = canvas.toDataURL('image/png').replace(/^data:image\/[^;]+;base64,/, '')
+        
+        // Create SVG string with the canvas data
+        const svgString = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+          <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            xmlns:xlink="http://www.w3.org/1999/xlink"
+            width="${canvas.width}" 
+            height="${canvas.height}"
+            viewBox="0 0 ${canvas.width} ${canvas.height}"
+            version="1.1"
+          >
+            <image 
+              width="100%" 
+              height="100%" 
+              xlink:href="data:image/png;base64,${canvasData}"
+            />`
+
+        // Add logo if it exists
+        const logoImg = qrRef.current.querySelector('.logo-wrapper img') as HTMLImageElement
+        if (logoImg) {
+          const logoWrapper = logoImg.parentElement
+          if (logoWrapper) {
+            const rect = logoWrapper.getBoundingClientRect()
+            const containerRect = qrRef.current.getBoundingClientRect()
+            
+            // Calculate relative position
+            const x = ((rect.left - containerRect.left) / containerRect.width) * canvas.width
+            const y = ((rect.top - containerRect.top) / containerRect.height) * canvas.height
+            const width = (rect.width / containerRect.width) * canvas.width
+            const height = (rect.height / containerRect.height) * canvas.height
+
+            // Convert logo to base64
+            const logoCanvas = document.createElement('canvas')
+            logoCanvas.width = logoImg.naturalWidth
+            logoCanvas.height = logoImg.naturalHeight
+            const ctx = logoCanvas.getContext('2d')
+            if (ctx) {
+              ctx.drawImage(logoImg, 0, 0)
+              const logoData = logoCanvas.toDataURL('image/png').replace(/^data:image\/[^;]+;base64,/, '')
+              
+              svgString + `
+                <image
+                  x="${x}"
+                  y="${y}"
+                  width="${width}"
+                  height="${height}"
+                  xlink:href="data:image/png;base64,${logoData}"
+                />`
+            }
+          }
+        }
+
+        const finalSvgString = svgString + '</svg>'
+
+        // Create and download SVG file
+        const svgBlob = new Blob([finalSvgString], { type: 'image/svg+xml' })
         const svgUrl = URL.createObjectURL(svgBlob)
-
         const link = document.createElement('a')
         link.href = svgUrl
         link.download = `qr-code-${Date.now()}.svg`
-        document.body.appendChild(link)
         link.click()
-        document.body.removeChild(link)
         URL.revokeObjectURL(svgUrl)
       } else {
         // Download as PNG
@@ -39,13 +93,10 @@ export function QRDownloadButton({ qrRef, format }: QRDownloadButtonProps) {
           allowTaint: true,
         })
 
-        const pngUrl = canvas.toDataURL('image/png')
         const link = document.createElement('a')
-        link.href = pngUrl
+        link.href = canvas.toDataURL('image/png')
         link.download = `qr-code-${Date.now()}.png`
-        document.body.appendChild(link)
         link.click()
-        document.body.removeChild(link)
       }
 
       toast({

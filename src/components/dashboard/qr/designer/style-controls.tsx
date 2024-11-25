@@ -353,3 +353,5 @@ export function StyleControls({ value, onChange }: StyleControlsProps) {
     </Accordion>
   )
 }
+
+// src/components/dashboard/qr/designer/style-controls.tsx
