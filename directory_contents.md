@@ -1,4 +1,113 @@
-### /Users/mohameddiomande/Desktop/code/buf-crm/next.config.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/.main.py
+import os
+import re
+from typing import List, Optional, TextIO
+from pathlib import Path
+
+class DirectoryTraversal:
+    def __init__(
+        self,
+        root_dir: str,
+        exclude_dirs: Optional[List[str]] = None,
+        exclude_ext: Optional[List[str]] = None,
+        exclude_markdown: Optional[List[str]] = None
+    ):
+        self.root_dir = Path(root_dir)
+        self.exclude_dirs = set(exclude_dirs or [])
+        self.exclude_ext = set(exclude_ext or [])
+        self.exclude_markdown = set(exclude_markdown or [])
+        self.pyc_pattern = re.compile(r".*\.cpython-\d+\.pyc$")
+
+    def _should_exclude(self, path: Path) -> bool:
+        """Check if a path should be excluded based on exclusion rules."""
+        normalized_path = str(path.relative_to(self.root_dir)).replace(os.sep, '/')
+        return (normalized_path in self.exclude_dirs or 
+                path.name in self.exclude_dirs or 
+                self.pyc_pattern.match(path.name) is not None)
+
+    def _should_exclude_from_markdown(self, path: Path) -> bool:
+        """Check if a path should be excluded from markdown documentation."""
+        normalized_path = str(path.relative_to(self.root_dir)).replace(os.sep, '/')
+        return normalized_path in self.exclude_markdown
+
+    def _write_to_markdown(self, file_path: Path, markdown_file: TextIO) -> None:
+        """Write file contents to markdown with proper error handling."""
+        try:
+            content = file_path.read_text(encoding='utf-8')
+            markdown_file.write(f"### {file_path.absolute()}\n")
+            markdown_file.write(f"{content}\n")
+            markdown_file.write("_" * 80 + "\n")
+        except (UnicodeDecodeError, FileNotFoundError) as e:
+            print(f"Skipped file {file_path}: {e}")
+
+    def print_structure(
+        self,
+        current_dir: Optional[Path] = None,
+        prefix: str = "",
+        markdown_file: Optional[TextIO] = None
+    ) -> None:
+        """Print directory structure and optionally write to markdown file."""
+        current_dir = current_dir or self.root_dir
+
+        try:
+            # Get and sort items
+            items = sorted(current_dir.iterdir(), key=lambda p: p.name.lower())
+            
+            for index, item in enumerate(items):
+                if self._should_exclude(item):
+                    continue
+
+                is_last_item = index == len(items) - 1
+                connector = "└──" if is_last_item else "├──"
+                
+                print(f"{prefix}{connector} {item.name}{'/' if item.is_dir() else ''}")
+
+                if item.is_dir():
+                    new_prefix = prefix + ("    " if is_last_item else "│   ")
+                    self.print_structure(item, new_prefix, markdown_file)
+                elif (markdown_file and 
+                      not self._should_exclude_from_markdown(item) and 
+                      not any(item.name.endswith(ext) for ext in self.exclude_ext)):
+                    self._write_to_markdown(item, markdown_file)
+
+        except PermissionError:
+            print(f"Permission denied: {current_dir}")
+
+def main():
+    # Configuration
+    root_directory = "."
+    excluded_directories = [
+        "node_modules", ".next", ".git", "package-lock.json", ".env",
+        "fonts", "public", "favicon.ico", ".DS_Store", "package.json",
+        "README.md", ".gitignore", "tailwind.config.ts", "tsconfig.json",
+        "next.config.mjs", "postcss.config.mjs", "next-env.d.ts",
+        ".eslintrc.json", "setup_auth.sh", "src/components/ui",
+        "src/components/landing", ".dir_struc.py", "crontab.txt",
+        "directory_contents.md", "setup-registration.sh",
+        "setup-qr-landing.sh", "data", "__pycache__"
+    ]
+    excluded_from_markdown = ["src/components/ui"]
+    excluded_extensions = [".ext"]
+
+    traversal = DirectoryTraversal(
+        root_directory,
+        excluded_directories,
+        excluded_extensions,
+        excluded_from_markdown
+    )
+
+    with open('directory_contents.md', 'w', encoding='utf-8') as markdown_file:
+        traversal.print_structure(markdown_file=markdown_file)
+
+if __name__ == "__main__":
+    main()
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/.npmrc
+legacy-peer-deps=true
+strict-peer-dependencies=false
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/next.config.ts
 module.exports = {
   typescript: {
     // !! WARN !!
@@ -9,201 +118,235 @@ module.exports = {
   },
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/prisma/schema.prisma
+### /Users/mohameddiomande/Desktop/bufbarista-crm/prisma/schema.prisma
 generator client {
-  provider = "prisma-client-js"
+ provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mongodb"
-  url      = env("DATABASE_URL")
+ provider = "mongodb"
+ url      = env("DATABASE_URL")
 }
 
 model User {
-  id            String       @id @default(auto()) @map("_id") @db.ObjectId
-  email         String      @unique
-  name          String?
-  password      String
-  role          Role        @default(USER)
-  contacts      Contact[]
-  bio           String?
-  phoneNumber   String?
-  preferences   Json?
-  notifications Json?
-  activities    Activity[]
-  orders        Order[]
-  quickNotes    QuickNote[]
-  menuItems     MenuItem[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  qrCodes       QRCode[]
-  folders       Folder[]
+ id            String       @id @default(auto()) @map("_id") @db.ObjectId
+ email         String      @unique
+ name          String?
+ password      String
+ role          Role        @default(USER)
+ contacts      Contact[]
+ bio           String?
+ phoneNumber   String?
+ preferences   Json?
+ notifications Json?
+ activities    Activity[]
+ orders        Order[]
+ quickNotes    QuickNote[]
+ menuItems     MenuItem[]
+ createdAt     DateTime    @default(now())
+ updatedAt     DateTime    @updatedAt
+ qrCodes       QRCode[]
+ folders       Folder[]
 }
 
 model Activity {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String   @db.ObjectId
-  user        User     @relation(fields: [userId], references: [id])
-  contactId   String   @db.ObjectId
-  type        String
-  description String
-  metadata    Json?
-  createdAt   DateTime @default(now())
+ id          String   @id @default(auto()) @map("_id") @db.ObjectId
+ userId      String   @db.ObjectId
+ user        User     @relation(fields: [userId], references: [id])
+ contactId   String   @db.ObjectId
+ type        String
+ description String
+ metadata    Json?
+ createdAt   DateTime @default(now())
 }
 
 model Contact {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  firstName String
-  lastName  String
-  email     String
-  phone     String?
-  company   String?
-  notes     String?
-  status    Status   @default(NEW)
-  userId    String   @db.ObjectId
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+ id        String   @id @default(auto()) @map("_id") @db.ObjectId
+ firstName String
+ lastName  String
+ email     String
+ phone     String?
+ company   String?
+ notes     String?
+ status    Status   @default(NEW)
+ userId    String   @db.ObjectId
+ user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
 }
 
 model MenuItem {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  name        String
-  price       Float
-  category    String
-  popular     Boolean   @default(false)
-  active      Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  userId      String    @db.ObjectId
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orderItems  OrderItem[]
+ id          String    @id @default(auto()) @map("_id") @db.ObjectId
+ name        String
+ price       Float
+ category    String
+ popular     Boolean   @default(false)
+ active      Boolean   @default(true)
+ createdAt   DateTime  @default(now())
+ updatedAt   DateTime  @updatedAt
+ userId      String    @db.ObjectId
+ user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+ orderItems  OrderItem[]
 }
 
 model Order {
-  id              String    @id @default(auto()) @map("_id") @db.ObjectId
-  orderNumber     Int
-  customerName    String
-  status          OrderStatus @default(PENDING)
-  timestamp       DateTime  @default(now())
-  total          Float
-  isComplimentary Boolean   @default(false)
-  queueTime      Float
-  preparationTime Float?
-  startTime      DateTime?
-  customerEmail  String?
-  customerPhone  String?
-  leadInterest   Boolean?
-  notes          String?
-  items          OrderItem[]
-  userId         String    @db.ObjectId
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+ id              String    @id @default(auto()) @map("_id") @db.ObjectId
+ orderNumber     Int
+ customerName    String
+ status          OrderStatus @default(PENDING)
+ timestamp       DateTime  @default(now())
+ total          Float
+ isComplimentary Boolean   @default(false)
+ queueTime      Float
+ preparationTime Float?
+ startTime      DateTime?
+ customerEmail  String?
+ customerPhone  String?
+ leadInterest   Boolean?
+ notes          String?
+ items          OrderItem[]
+ userId         String    @db.ObjectId
+ user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+ createdAt      DateTime  @default(now())
+ updatedAt      DateTime  @updatedAt
 }
 
 model OrderItem {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  menuItem    MenuItem  @relation(fields: [menuItemId], references: [id])
-  menuItemId  String    @db.ObjectId
-  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  orderId     String    @db.ObjectId
-  quantity    Int
-  price       Float
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+ id          String    @id @default(auto()) @map("_id") @db.ObjectId
+ menuItem    MenuItem  @relation(fields: [menuItemId], references: [id])
+ menuItemId  String    @db.ObjectId
+ order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+ orderId     String    @db.ObjectId
+ quantity    Int
+ price       Float
+ createdAt   DateTime  @default(now())
+ updatedAt   DateTime  @updatedAt
 }
 
 model QuickNote {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  content   String
-  userId    String   @db.ObjectId
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+ id        String   @id @default(auto()) @map("_id") @db.ObjectId
+ content   String
+ userId    String   @db.ObjectId
+ user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
 }
-
-enum Role {
-  USER
-  ADMIN
-}
-
-enum Status {
-  NEW
-  CONTACTED
-  QUALIFIED
-  CONVERTED
-  LOST
-}
-
-enum OrderStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-
 
 model Folder {
-  id        String    @id @default(cuid())
-  name      String
-  color     String?   @default("#94a3b8")
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  qrCodes   QRCode[]
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+ id        String    @id @default(auto()) @map("_id") @db.ObjectId
+ name      String
+ color     String?   @default("#94a3b8")
+ createdAt DateTime  @default(now())
+ updatedAt DateTime  @updatedAt
+ qrCodes   QRCode[]
+ userId    String    @db.ObjectId
+ user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model QRCode {
-  id            String         @id @default(cuid())
-  name          String
-  defaultUrl    String
-  shortCode     String         @unique
-  isActive      Boolean        @default(true)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  userId        String
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  folderId      String?
-  folder        Folder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  deviceRules   DeviceRule[]
-  scheduleRules ScheduleRule[]
+ id            String         @id @default(auto()) @map("_id") @db.ObjectId
+ name          String
+ defaultUrl    String
+ shortCode     String         @unique
+ isActive      Boolean        @default(true)
+ createdAt     DateTime       @default(now())
+ updatedAt     DateTime       @updatedAt
+ userId        String         @db.ObjectId
+ user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+ folderId      String?        @db.ObjectId
+ folder        Folder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
+ deviceRules   DeviceRule[]
+ scheduleRules ScheduleRule[]
+ design        QRDesign?
+ scans         Scan[]
+}
 
-  @@index([shortCode])
+model QRDesign {
+ id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+ size                Int      @default(300)
+ backgroundColor     String   @default("#FFFFFF")
+ foregroundColor     String   @default("#000000")
+ logoImage          String?
+ logoWidth          Int?
+ logoHeight         Int?
+ dotStyle           String    @default("squares")
+ margin             Int       @default(20)
+ errorCorrectionLevel String  @default("M")
+ style              Json
+ logoStyle          Json?
+ imageRendering     String    @default("auto")
+ qrCodeId           String    @unique @db.ObjectId
+ qrCode            QRCode    @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+ createdAt          DateTime  @default(now())
+ updatedAt          DateTime  @updatedAt
+}
+
+
+model Scan {
+ id          String   @id @default(auto()) @map("_id") @db.ObjectId
+ qrCodeId    String   @db.ObjectId
+ qrCode      QRCode   @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+ userAgent   String?
+ ipAddress   String?
+ location    String?
+ device      String?
+ browser     String?
+ os          String?
+ timestamp   DateTime @default(now())
 }
 
 model DeviceRule {
-  id         String   @id @default(cuid())
-  qrCodeId   String
-  qrCode     QRCode   @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
-  deviceType String
-  browsers   String[]
-  os         String[]
-  targetUrl  String
-  priority   Int
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+ id         String   @id @default(auto()) @map("_id") @db.ObjectId
+ qrCodeId   String   @db.ObjectId
+ qrCode     QRCode   @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+ deviceType String
+ browsers   String[]
+ os         String[]
+ targetUrl  String
+ priority   Int
+ createdAt  DateTime @default(now())
+ updatedAt  DateTime @updatedAt
 }
 
 model ScheduleRule {
-  id         String    @id @default(cuid())
-  qrCodeId   String
-  qrCode     QRCode    @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
-  startDate  DateTime
-  endDate    DateTime?
-  timeZone   String
-  daysOfWeek Int[]
-  startTime  String?
-  endTime    String?
-  targetUrl  String
-  priority   Int
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+ id         String    @id @default(auto()) @map("_id") @db.ObjectId
+ qrCodeId   String    @db.ObjectId
+ qrCode     QRCode    @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+ startDate  DateTime
+ endDate    DateTime?
+ timeZone   String
+ daysOfWeek Int[]
+ startTime  String?
+ endTime    String?
+ targetUrl  String
+ priority   Int
+ createdAt  DateTime  @default(now())
+ updatedAt  DateTime  @updatedAt
 }
 
+enum Role {
+ USER
+ ADMIN
+}
+
+enum Status {
+ NEW
+ CONTACTED
+ QUALIFIED
+ CONVERTED
+ LOST
+}
+
+enum OrderStatus {
+ PENDING
+ IN_PROGRESS
+ COMPLETED
+ CANCELLED
+}
+
+
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/prisma/seed.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/prisma/seed.ts
 import { PrismaClient } from '@prisma/client';
 import { INITIAL_MENU_ITEMS } from '../src/constants/pos-data';
 
@@ -243,504 +386,61 @@ main()
  });
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/setup-buf-crm.sh
+### /Users/mohameddiomande/Desktop/bufbarista-crm/setup-calculator.sh
 #!/bin/bash
 
-# Colors
+# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-echo -e "${BLUE}Creating complete reports implementation...${NC}"
+echo -e "${BLUE}Starting dependency cleanup and reinstallation...${NC}"
 
-# First, let's update the prisma schema
-cat > prisma/schema.prisma << 'EOF'
-generator client {
-  provider = "prisma-client-js"
-}
+# Remove existing node_modules and lock files
+echo -e "${BLUE}Removing existing node_modules and lock files...${NC}"
+rm -rf node_modules
+rm -f package-lock.json
+rm -f yarn.lock
 
-datasource db {
-  provider = "mongodb"
-  url      = env("DATABASE_URL")
-}
+# Clear npm cache
+echo -e "${BLUE}Clearing npm cache...${NC}"
+npm cache clean --force
 
-model User {
-  id            String       @id @default(auto()) @map("_id") @db.ObjectId
-  email         String      @unique
-  name          String?
-  password      String
-  role          Role        @default(USER)
-  contacts      Contact[]
-  bio           String?
-  phoneNumber   String?
-  preferences   Json?
-  notifications Json?
-  activities    Activity[]
-  orders        Order[]
-  menuItems     MenuItem[]
-  quickNotes    QuickNote[]
-  salesReports  SalesReport[]
-  metricsSnapshots MetricsSnapshot[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-}
+# Update npm to latest version
+echo -e "${BLUE}Updating npm to latest version...${NC}"
+npm install -g npm@latest
 
-model Activity {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String   @db.ObjectId
-  user        User     @relation(fields: [userId], references: [id])
-  contactId   String   @db.ObjectId
-  type        String
-  description String
-  metadata    Json?
-  createdAt   DateTime @default(now())
-}
-
-model Contact {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  firstName String
-  lastName  String
-  email     String
-  phone     String?
-  company   String?
-  notes     String?
-  status    Status   @default(NEW)
-  userId    String   @db.ObjectId
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model MenuItem {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  name        String
-  price       Float
-  category    String
-  popular     Boolean   @default(false)
-  active      Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  userId      String    @db.ObjectId
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orderItems  OrderItem[]
-  salesMetrics SalesItemMetrics[]
-}
-
-model Order {
-  id              String    @id @default(auto()) @map("_id") @db.ObjectId
-  orderNumber     Int
-  customerName    String
-  status          OrderStatus @default(PENDING)
-  timestamp       DateTime  @default(now())
-  total          Float
-  isComplimentary Boolean   @default(false)
-  queueTime      Float
-  preparationTime Float?
-  startTime      DateTime?
-  customerEmail  String?
-  customerPhone  String?
-  leadInterest   Boolean?
-  notes          String?
-  items          OrderItem[]
-  userId         String    @db.ObjectId
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  salesReport    SalesReport?  @relation(fields: [salesReportId], references: [id])
-  salesReportId  String?   @db.ObjectId
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-}
-
-model OrderItem {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  menuItem    MenuItem  @relation(fields: [menuItemId], references: [id])
-  menuItemId  String    @db.ObjectId
-  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  orderId     String    @db.ObjectId
-  quantity    Int
-  price       Float
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-
-model QuickNote {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  content   String
-  userId    String   @db.ObjectId
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model SalesReport {
-  id                    String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId                String    @db.ObjectId
-  user                  User      @relation(fields: [userId], references: [id])
-  date                  DateTime
-  totalSales           Float
-  totalOrders          Int
-  averageOrderValue    Float
-  uniqueCustomers      Int
-  repeatCustomerRate   Float
-  averagePreparationTime Float
-  customerRetentionRate Float
-  salesGrowthRate      Float
-  orders               Order[]
-  peakHourSales        Json      // Stores hour and sales data
-  categoryPerformance  Json      // Stores category-wise performance
-  topSellingItems      Json      // Stores top selling items data
-  hourlyOrders         Json      // Stores orders by hour
-  preparationTimes     Json      // Stores preparation time analytics
-  dailyMetrics         Json      // Stores daily sales and orders
-  periodComparison     Json?     // Stores comparison with previous period
-  itemMetrics          SalesItemMetrics[]
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-}
-
-model SalesItemMetrics {
-  id              String    @id @default(auto()) @map("_id") @db.ObjectId
-  menuItem        MenuItem  @relation(fields: [menuItemId], references: [id])
-  menuItemId      String    @db.ObjectId
-  salesReport     SalesReport @relation(fields: [salesReportId], references: [id])
-  salesReportId   String    @db.ObjectId
-  quantity        Int
-  revenue         Float
-  averagePrice    Float
-  popularity      Float     // Percentage of orders containing this item
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-}
-
-model MetricsSnapshot {
-  id              String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId          String    @db.ObjectId
-  user            User      @relation(fields: [userId], references: [id])
-  timestamp       DateTime  @default(now())
-  metrics         Json      // Stores detailed metrics data
-  type            String    // daily, weekly, monthly
-  periodStart     DateTime
-  periodEnd       DateTime
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  @@index([userId, type, timestamp])
-}
-
-enum Role {
-  USER
-  ADMIN
-}
-
-enum Status {
-  NEW
-  CONTACTED
-  QUALIFIED
-  CONVERTED
-  LOST
-}
-
-enum OrderStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
+# Create .npmrc file to force legacy peer deps and strict versioning
+echo -e "${BLUE}Creating .npmrc configuration...${NC}"
+cat > .npmrc << EOF
+legacy-peer-deps=true
+strict-peer-dependencies=false
 EOF
 
-# Create reports service with all helper functions
-mkdir -p src/lib/services
+# Modify package.json to use specific React version
+echo -e "${BLUE}Updating React dependencies in package.json...${NC}"
+npx json -I -f package.json -e "this.dependencies.react='18.2.0'"
+npx json -I -f package.json -e "this.dependencies['react-dom']='18.2.0'"
 
-cat > src/lib/services/reports-service.ts << 'EOF'
-import { 
-  Order, 
-  SalesReport, 
-  MetricsSnapshot,
-  SalesItemMetrics,
-  CategoryPerformance
-} from '@/types/pos';
-import { 
-  startOfDay,
-  endOfDay,
-  startOfWeek,
-  endOfWeek,
-  startOfMonth,
-  endOfMonth,
-  subDays,
-  format 
-} from 'date-fns';
+# Install dependencies with specific flags
+echo -e "${BLUE}Installing dependencies...${NC}"
+npm install --legacy-peer-deps
 
-interface DateRange {
-  start: Date;
-  end: Date;
-}
+# Verify installation
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}Dependencies successfully installed!${NC}"
+    echo -e "${BLUE}Checking React version...${NC}"
+    npm list react react-dom
+else
+    echo -e "${RED}Installation failed. Please check the error messages above.${NC}"
+    exit 1
+fi
 
-interface SalesMetrics {
-  totalSales: number;
-  totalOrders: number;
-  averageOrderValue: number;
-  uniqueCustomers: number;
-  repeatCustomerRate: number;
-  averagePreparationTime: number;
-  customerRetentionRate: number;
-  salesGrowthRate: number;
-  peakHourSales: {
-    hour: string | number;
-    sales: number;
-  };
-  categoryPerformance: CategoryPerformance[];
-  dailyMetrics: DailyMetrics[];
-  topSellingItems: TopSellingItem[];
-  hourlyOrders: HourlyOrders[];
-  preparationTimes: PreparationTime[];
-}
-
-interface DailyMetrics {
-  date: string;
-  sales: number;
-  orders: number;
-}
-
-interface TopSellingItem {
-  name: string;
-  quantity: number;
-  revenue: number;
-}
-
-interface HourlyOrders {
-  hour: number;
-  orders: number;
-}
-
-interface PreparationTime {
-  preparationTime: number;
-  orderValue: number;
-}
-
-interface ExportOptions {
-  format: 'csv' | 'pdf' | 'json';
-  includeDetails: boolean;
-  dateRange: DateRange;
-}
-
-export const reportsService = {
-  // Main data fetching function
-  async getReports(dateRange: DateRange): Promise<Order[]> {
-    try {
-      const response = await fetch('/api/pos/reports?' + new URLSearchParams({
-        start: dateRange.start.toISOString(),
-        end: dateRange.end.toISOString()
-      }));
-      
-      if (!response.ok) throw new Error('Failed to fetch reports');
-      
-      const orders = await response.json();
-      
-      // Store in localStorage as backup
-      this.cacheReportData(dateRange.start, orders);
-      
-      return orders;
-    } catch (error) {
-      console.error('Error fetching reports:', error);
-      return this.getBackupReportData(dateRange);
-    }
-  },
-
-  // Cache management
-  private cacheReportData(startDate: Date, data: Order[]): void {
-    const cacheKey = `cached_reports_${format(startDate, 'yyyy-MM-dd')}`;
-    const cacheData = {
-      timestamp: new Date().toISOString(),
-      orders: data
-    };
-    localStorage.setItem(cacheKey, JSON.stringify(cacheData));
-  },
-
-  private getBackupReportData(dateRange: DateRange): Order[] {
-    // Try to get from cache first
-    const cacheKey = `cached_reports_${format(dateRange.start, 'yyyy-MM-dd')}`;
-    const cachedData = localStorage.getItem(cacheKey);
-    
-    if (cachedData) {
-      const { orders } = JSON.parse(cachedData);
-      return orders;
-    }
-    
-    // Fall back to filtering all orders
-    const allOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-    return allOrders.filter((order: Order) => {
-      const orderDate = new Date(order.timestamp);
-      return orderDate >= dateRange.start && orderDate <= dateRange.end;
-    });
-  },
-
-  // Detailed metrics generation
-  async generateDetailedReport(dateRange: DateRange): Promise<SalesReport> {
-    try {
-      const response = await fetch('/api/pos/reports/detailed', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(dateRange),
-      });
-      
-      if (!response.ok) throw new Error('Failed to generate detailed report');
-      
-      const report = await response.json();
-      return report;
-    } catch (error) {
-      console.error('Error generating detailed report:', error);
-      throw error;
-    }
-  },
-
-  // Metrics snapshots
-  async getMetricsSnapshot(type: 'daily' | 'weekly' | 'monthly'): Promise<MetricsSnapshot> {
-    try {
-      const response = await fetch(`/api/pos/reports/metrics/${type}`);
-      if (!response.ok) throw new Error('Failed to fetch metrics snapshot');
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching metrics snapshot:', error);
-      throw error;
-    }
-  },
-
-  // Export functionality
-  async exportReportData(options: ExportOptions): Promise<Blob> {
-    try {
-      const response = await fetch('/api/pos/reports/export', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(options),
-      });
-      
-      if (!response.ok) throw new Error('Failed to export report');
-      
-      return await response.blob();
-    } catch (error) {
-      console.error('Error exporting report:', error);
-      throw error;
-    }
-  },
-
-  // Helper functions for calculations
-  calculateMetrics(orders: Order[]): SalesMetrics {
-    const totalSales = orders.reduce((sum, order) => 
-      sum + (order.isComplimentary ? 0 : order.total), 0
-    );
-
-    const totalOrders = orders.length;
-
-    const uniqueCustomers = new Set(
-      orders.map(order => order.customerName)
-    ).size;
-
-    // More calculations...
-    // This is just a partial implementation
-    return {
-      totalSales,
-      totalOrders,
-      averageOrderValue: totalOrders > 0 ? totalSales / totalOrders : 0,
-      uniqueCustomers,
-      // ... other metrics
-    } as SalesMetrics;
-  },
-
-  // Trend analysis
-  analyzeTrends(currentPeriod: Order[], previousPeriod: Order[]): any {
-    // Implement trend analysis
-    return {
-      salesGrowth: 0,
-      orderGrowth: 0,
-      // ... other trend metrics
-    };
-  },
-
-  // Time-based analysis
-  getPeriodComparison(dateRange: DateRange): Promise<any> {
-    // Implementation
-  },
-
-  // Category analysis
-  analyzeCategoryPerformance(orders: Order[]): CategoryPerformance[] {
-    // Implementation
-  }
-};
-
-EOF
-
-# Create API routes for reports
-mkdir -p src/app/api/pos/reports
-
-cat > src/app/api/pos/reports/route.ts << 'EOF'
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/options";
-
-export async function GET(request: Request) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const start = searchParams.get('start');
-    const end = searchParams.get('end');
-
-    if (!start || !end) {
-      return NextResponse.json(
-        { error: "Start and end dates are required" },
-        { status: 400 }
-      );
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Get all orders for the period
-    const orders = await prisma.order.findMany({
-      where: {
-        userId: user.id,
-        timestamp: {
-          gte: new Date(start),
-          lte: new Date(end)
-        }
-      },
-      include: {
-        items: {
-          include: {
-            menuItem: true
-          }
-        }
-      },
-      orderBy: {
-        timestamp: 'asc'
-      }
-    });
-
-    return NextResponse.json(orders);
-  } catch (error) {
-    console.error("[REPORTS_GET]", error);
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
-  }
-}
-
-export async function POST(request: Request) {
-  try {
-    const session
+echo -e "${GREEN}Setup complete! Your React dependencies should now be properly configured.${NC}"
+echo -e "${BLUE}Please test your application to ensure everything works as expected.${NC}"
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/auth/[...nextauth]/route.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/auth/[...nextauth]/route.ts
 import { authOptions } from "@/lib/auth/options";
 import NextAuth from "next-auth/next";
 
@@ -748,7 +448,7 @@ const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/auth/register/route.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/auth/register/route.ts
 import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/db/prisma";
@@ -817,7 +517,7 @@ export async function POST(request: Request) {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/contacts/[id]/activities/route.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/contacts/[id]/activities/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/db/prisma";
@@ -854,7 +554,7 @@ export async function GET(request: NextRequest) {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/contacts/[id]/route.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/contacts/[id]/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/db/prisma";
@@ -948,7 +648,7 @@ export async function DELETE(req: Request) {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/contacts/route.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/contacts/route.ts
 // src/app/api/contacts/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
@@ -1095,9 +795,9 @@ export async function GET() {
   }
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/folders/[id]/route.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/folders/[id]/route.ts
 import { NextResponse } from "next/server"
-import { prisma } from "@/lib/db"
+import { prisma } from "@/lib/db/prisma"
 import { getServerSession } from "next-auth"
 
 // DELETE handler
@@ -1201,7 +901,7 @@ export async function PATCH(request: Request) {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/folders/route.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/folders/route.ts
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/db/prisma"
 import { getServerSession } from "next-auth"
@@ -1297,7 +997,7 @@ export async function POST(request: Request) {
 
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/pos/menu/[id]/route.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/pos/menu/[id]/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getServerSession } from "next-auth";
@@ -1354,14 +1054,14 @@ export async function DELETE(
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/pos/menu/route.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/pos/menu/route.ts
 // src/app/api/pos/menu/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/options";
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -1441,7 +1141,7 @@ export async function POST(request: Request) {
   }
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/pos/notes/route.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/pos/notes/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getServerSession } from "next-auth";
@@ -1517,206 +1217,206 @@ export async function POST(request: Request) {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/pos/orders/[id]/route.ts
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/options";
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/pos/orders/[id]/route.ts
+// import { NextResponse } from "next/server";
+// import { prisma } from "@/lib/db/prisma";
+// import { getServerSession } from "next-auth";
+// import { authOptions } from "@/lib/auth/options";
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+// export async function PATCH(
+//   request: Request,
+//   { params }: { params: { id: string } }
+// ) {
+//   try {
+//     const session = await getServerSession(authOptions);
+//     if (!session?.user?.email) {
+//       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//     }
 
-    const data = await request.json();
-    const orderId = params.id;
+//     const data = await request.json();
+//     const orderId = params.id;
 
-    const updatedOrder = await prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: data.status,
-        notes: data.notes,
-        leadInterest: data.leadInterest,
-        preparationTime: data.preparationTime,
-        items: data.items ? {
-          deleteMany: {},
-          create: data.items.map((item: any) => ({
-            menuItemId: item.id,
-            quantity: item.quantity,
-            price: item.price
-          }))
-        } : undefined
-      },
-      include: {
-        items: {
-          include: {
-            menuItem: true
-          }
-        }
-      }
-    });
+//     const updatedOrder = await prisma.order.update({
+//       where: { id: orderId },
+//       data: {
+//         status: data.status,
+//         notes: data.notes,
+//         leadInterest: data.leadInterest,
+//         preparationTime: data.preparationTime,
+//         items: data.items ? {
+//           deleteMany: {},
+//           create: data.items.map((item: any) => ({
+//             menuItemId: item.id,
+//             quantity: item.quantity,
+//             price: item.price
+//           }))
+//         } : undefined
+//       },
+//       include: {
+//         items: {
+//           include: {
+//             menuItem: true
+//           }
+//         }
+//       }
+//     });
 
-    // Update localStorage
-    const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-    const updatedOrders = existingOrders.map((order: any) => 
-      order.id === orderId ? updatedOrder : order
-    );
-    localStorage.setItem('orders', JSON.stringify(updatedOrders));
+//     // Update localStorage
+//     const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+//     const updatedOrders = existingOrders.map((order: any) => 
+//       order.id === orderId ? updatedOrder : order
+//     );
+//     localStorage.setItem('orders', JSON.stringify(updatedOrders));
 
-    return NextResponse.json(updatedOrder);
-  } catch (error) {
-    console.error("[ORDERS_PATCH]", error);
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
-  }
-}
+//     return NextResponse.json(updatedOrder);
+//   } catch (error) {
+//     console.error("[ORDERS_PATCH]", error);
+//     return NextResponse.json({ error: "Internal error" }, { status: 500 });
+//   }
+// }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+// export async function DELETE(
+//   request: Request,
+//   { params }: { params: { id: string } }
+// ) {
+//   try {
+//     const session = await getServerSession(authOptions);
+//     if (!session?.user?.email) {
+//       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//     }
 
-    const orderId = params.id;
+//     const orderId = params.id;
 
-    // Set order status to cancelled instead of deleting
-    await prisma.order.update({
-      where: { id: orderId },
-      data: { status: 'CANCELLED' }
-    });
+//     // Set order status to cancelled instead of deleting
+//     await prisma.order.update({
+//       where: { id: orderId },
+//       data: { status: 'CANCELLED' }
+//     });
 
-    // Update localStorage
-    const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-    const updatedOrders = existingOrders.filter((order: any) => order.id !== orderId);
-    localStorage.setItem('orders', JSON.stringify(updatedOrders));
+//     // Update localStorage
+//     const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+//     const updatedOrders = existingOrders.filter((order: any) => order.id !== orderId);
+//     localStorage.setItem('orders', JSON.stringify(updatedOrders));
 
-    return new NextResponse(null, { status: 204 });
-  } catch (error) {
-    console.error("[ORDERS_DELETE]", error);
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
-  }
-}
+//     return new NextResponse(null, { status: 204 });
+//   } catch (error) {
+//     console.error("[ORDERS_DELETE]", error);
+//     return NextResponse.json({ error: "Internal error" }, { status: 500 });
+//   }
+// }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/pos/orders/route.ts
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/options";
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/pos/orders/route.ts
+// import { NextResponse } from "next/server";
+// import { prisma } from "@/lib/db/prisma";
+// import { getServerSession } from "next-auth";
+// import { authOptions } from "@/lib/auth/options";
 
-export async function GET(request: Request) {
-  try {
-    // Get the session
-    const session = await getServerSession(authOptions);
+// export async function GET() {
+//   try {
+//     // Get the session
+//     const session = await getServerSession(authOptions);
     
-    // Check if user is authenticated
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+//     // Check if user is authenticated
+//     if (!session?.user?.email) {
+//       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//     }
 
-    // Get the user
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
+//     // Get the user
+//     const user = await prisma.user.findUnique({
+//       where: { email: session.user.email }
+//     });
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+//     if (!user) {
+//       return NextResponse.json({ error: "User not found" }, { status: 404 });
+//     }
 
-    // Get user's orders with included items and menu items
-    const orders = await prisma.order.findMany({
-      where: {
-        userId: user.id
-      },
-      include: {
-        items: {
-          include: {
-            menuItem: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
+//     // Get user's orders with included items and menu items
+//     const orders = await prisma.order.findMany({
+//       where: {
+//         userId: user.id
+//       },
+//       include: {
+//         items: {
+//           include: {
+//             menuItem: true
+//           }
+//         }
+//       },
+//       orderBy: {
+//         createdAt: 'desc'
+//       }
+//     });
 
-    return NextResponse.json(orders);
-  } catch (error) {
-    console.error("[ORDERS_GET]", error);
-    return NextResponse.json(
-      { error: "Internal error" }, 
-      { status: 500 }
-    );
-  }
-}
+//     return NextResponse.json(orders);
+//   } catch (error) {
+//     console.error("[ORDERS_GET]", error);
+//     return NextResponse.json(
+//       { error: "Internal error" }, 
+//       { status: 500 }
+//     );
+//   }
+// }
 
-export async function POST(request: Request) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+// export async function POST(request: Request) {
+//   try {
+//     const session = await getServerSession(authOptions);
+//     if (!session?.user?.email) {
+//       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
+//     const user = await prisma.user.findUnique({
+//       where: { email: session.user.email }
+//     });
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+//     if (!user) {
+//       return NextResponse.json({ error: "User not found" }, { status: 404 });
+//     }
 
-    const data = await request.json();
+//     const data = await request.json();
 
-    // Create order with items
-    const order = await prisma.order.create({
-      data: {
-        orderNumber: data.orderNumber,
-        customerName: data.customerName,
-        status: data.status || 'PENDING',
-        total: data.total,
-        isComplimentary: data.isComplimentary,
-        queueTime: data.queueTime,
-        startTime: data.startTime,
-        customerEmail: data.customerEmail,
-        customerPhone: data.customerPhone,
-        notes: data.notes,
-        userId: user.id,
-        items: {
-          create: data.items.map((item: any) => ({
-            menuItemId: item.id,
-            quantity: item.quantity,
-            price: item.price
-          }))
-        }
-      },
-      include: {
-        items: {
-          include: {
-            menuItem: true
-          }
-        }
-      }
-    });
+//     // Create order with items
+//     const order = await prisma.order.create({
+//       data: {
+//         orderNumber: data.orderNumber,
+//         customerName: data.customerName,
+//         status: data.status || 'PENDING',
+//         total: data.total,
+//         isComplimentary: data.isComplimentary,
+//         queueTime: data.queueTime,
+//         startTime: data.startTime,
+//         customerEmail: data.customerEmail,
+//         customerPhone: data.customerPhone,
+//         notes: data.notes,
+//         userId: user.id,
+//         items: {
+//           create: data.items.map((item: any) => ({
+//             menuItemId: item.id,
+//             quantity: item.quantity,
+//             price: item.price
+//           }))
+//         }
+//       },
+//       include: {
+//         items: {
+//           include: {
+//             menuItem: true
+//           }
+//         }
+//       }
+//     });
 
-    return NextResponse.json(order);
-  } catch (error) {
-    console.error("[ORDERS_POST]", error);
-    return NextResponse.json(
-      { error: "Failed to create order" }, 
-      { status: 500 }
-    );
-  }
-}
+//     return NextResponse.json(order);
+//   } catch (error) {
+//     console.error("[ORDERS_POST]", error);
+//     return NextResponse.json(
+//       { error: "Failed to create order" }, 
+//       { status: 500 }
+//     );
+//   }
+// }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/pos/waste/route.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/pos/waste/route.ts
 // import { NextResponse } from "next/server";
 // import { prisma } from "@/lib/db/prisma";
 // import { getServerSession } from "next-auth";
@@ -1774,36 +1474,121 @@ ________________________________________________________________________________
 // }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/qr/[id]/image/route.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/qr/[id]/design/route.ts
+import { NextResponse } from "next/server"
+import { prisma } from "@/lib/db/prisma"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth/options"
+
+export async function PATCH(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      )
+    }
+
+    // Verify QR code ownership
+    const qrCode = await prisma.qRCode.findUnique({
+      where: { id: params.id }
+    })
+
+    if (!qrCode || qrCode.userId !== user.id) {
+      return NextResponse.json(
+        { error: "QR code not found" },
+        { status: 404 }
+      )
+    }
+
+    const design = await req.json()
+
+    // Update or create design
+    const qrDesign = await prisma.qRDesign.upsert({
+      where: {
+        qrCodeId: params.id,
+      },
+      update: {
+        ...design,
+        updatedAt: new Date(),
+      },
+      create: {
+        ...design,
+        qrCodeId: params.id,
+      },
+    })
+
+    return NextResponse.json(qrDesign)
+  } catch (error) {
+    console.error("[QR_DESIGN_ERROR]", error)
+    return NextResponse.json(
+      { error: "Failed to save QR design" },
+      { status: 500 }
+    )
+  }
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/qr/[id]/image/route.ts
+// src/app/api/qr/[id]/image/route.ts
 import { NextRequest, NextResponse } from "next/server"
-import { getQRCodeById } from "@/lib/db"
-import { generateQRCode } from "@/lib/qr"
+import { prisma } from "@/lib/db/prisma"
+import QRCode from 'qrcode' // Import QRCode library
 
 export async function GET(request: NextRequest) {
   try {
-    // Extract `id` from the URL path
     const url = new URL(request.url)
-    const id = url.pathname.split("/").slice(-2, -1)[0] // grabs the second last part of the path
+    const id = url.pathname.split("/").slice(-2, -1)[0]
 
-    const qrCode = await getQRCodeById(id)
+    const qrCode = await prisma.qRCode.findUnique({
+      where: { id },
+    })
 
     if (!qrCode) {
       return new NextResponse("QR Code not found", { status: 404 })
     }
 
-    const imageData = await generateQRCode(qrCode.shortCode)
+    // Generate the URL directly here for debugging
+    const SITE_URL = "https://bufbarista-crm.vercel.app"
+    const redirectUrl = `${SITE_URL}/r/${qrCode.shortCode}`
+    
+    console.log('Generated QR URL:', redirectUrl) // Debug log
 
-    return NextResponse.json({ imageData })
+    // Use the QRCode library to generate the image
+    const qrDataUrl = await QRCode.toDataURL(redirectUrl, {
+      width: 400,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#ffffff',
+      },
+    })
+
+    return NextResponse.json({ imageData: qrDataUrl })
   } catch (error) {
     console.error("[QR_CODE_IMAGE_ERROR]", error)
     return new NextResponse("Internal Server Error", { status: 500 })
   }
 }
-
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/qr/[id]/route.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/qr/[id]/route.ts
 import { NextResponse } from "next/server"
-import { prisma } from "@/lib/db"
+import { prisma } from "@/lib/db/prisma"
 import { getServerSession } from "next-auth"
 import { z } from "zod"
 
@@ -1955,11 +1740,12 @@ export async function GET(req: Request) {
   }
 }
 
+// src/app/api/qr/[id]/route.ts
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/qr/[id]/schedule-rules/route.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/qr/[id]/schedule-rules/route.ts
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
-import { prisma } from "@/lib/db"
+import { prisma } from "@/lib/db/prisma"
 import { z } from "zod"
 
 const scheduleRuleSchema = z.object({
@@ -2088,119 +1874,250 @@ export async function PUT(req: NextRequest) {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/qr/route.ts
-import { NextResponse } from "next/server"
-import { prisma } from "@/lib/db/prisma"
-import { getServerSession } from "next-auth"
-import { z } from "zod"
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/qr/route.ts
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/options";
+import { z } from "zod";
 
+// Define the style schema
+const styleSchema = z.object({
+  opacity: z.number(),
+  blurRadius: z.number(),
+  brightness: z.number(),
+  contrast: z.number(),
+  borderRadius: z.number(),
+  borderWidth: z.number(),
+  borderColor: z.string(),
+  shadowColor: z.string(),
+  shadowBlur: z.number(),
+  shadowOffsetX: z.number(),
+  shadowOffsetY: z.number(),
+  gradientType: z.enum(['none', 'linear', 'radial']),
+  gradientStart: z.string(),
+  gradientEnd: z.string(),
+  gradientRotation: z.number(),
+  padding: z.number(),
+  blend: z.boolean(),
+  blendMode: z.string()
+});
+
+// Define the logo style schema
+const logoStyleSchema = z.object({
+  opacity: z.number(),
+  blurRadius: z.number(),
+  brightness: z.number(),
+  contrast: z.number(),
+  borderRadius: z.number(),
+  borderWidth: z.number(),
+  borderColor: z.string(),
+  shadowColor: z.string(),
+  shadowBlur: z.number(),
+  shadowOffsetX: z.number(),
+  shadowOffsetY: z.number(),
+  padding: z.number(),
+  backgroundColor: z.string(),
+  removeBackground: z.boolean(),
+  position: z.union([
+    z.string(),
+    z.object({
+      x: z.number(),
+      y: z.number()
+    })
+  ]),
+  rotation: z.number(),
+  blend: z.boolean(),
+  blendMode: z.string(),
+  scale: z.number()
+});
+
+// Define the design schema
+const designSchema = z.object({
+  size: z.number(),
+  backgroundColor: z.string(),
+  foregroundColor: z.string(),
+  logoWidth: z.number(),
+  logoHeight: z.number(),
+  dotStyle: z.string(),
+  margin: z.number(),
+  errorCorrectionLevel: z.string(),
+  imageRendering: z.string(),
+  style: styleSchema,
+  logoStyle: logoStyleSchema.optional(),
+  logoImage: z.string().optional()
+});
+
+// Define the main schema for QR code creation
 const createQRCodeSchema = z.object({
-  name: z.string().min(2),
-  defaultUrl: z.string().url(),
-  folderId: z.string().nullable().optional(),
-})
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  defaultUrl: z.string()
+    .min(1, "URL is required")
+    .transform(val => {
+      if (!val.match(/^https?:\/\//i)) {
+        return `https://${val}`;
+      }
+      return val;
+    }),
+  folderId: z.string().nullable(),
+  design: designSchema
+});
+
+export async function POST(req: Request) {
+  try {
+    // Verify authentication
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    // Get user
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    // Parse and validate request body
+    const body = await req.json();
+    const validatedData = createQRCodeSchema.parse(body);
+
+    // Generate unique short code
+    const generateShortCode = (length: number = 6): string => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      return Array(length)
+        .fill(0)
+        .map(() => chars.charAt(Math.floor(Math.random() * chars.length)))
+        .join('');
+    };
+
+    // Create QR code
+    const qrCode = await prisma.qRCode.create({
+      data: {
+        name: validatedData.name,
+        defaultUrl: validatedData.defaultUrl,
+        shortCode: generateShortCode(),
+        isActive: true,
+        design: validatedData.design,
+        userId: user.id,
+        folderId: validatedData.folderId
+      }
+    });
+
+    return NextResponse.json({
+      message: "QR code created successfully",
+      qrCode
+    });
+
+  } catch (error) {
+    console.error("[QR_CREATE_ERROR]", error);
+    
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({
+        error: "Validation error",
+        details: error.errors
+      }, { status: 400 });
+    }
+
+    return NextResponse.json({
+      error: "Internal server error"
+    }, { status: 500 });
+  }
+}
 
 export async function GET() {
   try {
-    const session = await getServerSession()
+    const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-    })
+      select: { id: true }
+    });
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 401 })
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
     }
 
     const qrCodes = await prisma.qRCode.findMany({
       where: { userId: user.id },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       include: {
         folder: true,
       },
-    })
+    });
 
-    return NextResponse.json(qrCodes)
-  } catch (error) {
-    console.error("[QR_CODES_GET]", error)
-    return NextResponse.json(
-      { error: "Failed to fetch QR codes" },
-      { status: 500 }
-    )
-  }
-}
-
-export async function POST(request: Request) {
-  try {
-    const session = await getServerSession()
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const json = await request.json()
+    return NextResponse.json(qrCodes);
     
-    let url = json.defaultUrl.trim()
-    if (!/^https?:\/\//i.test(url)) {
-      url = `https://${url}`
-    }
-
-    const data = createQRCodeSchema.parse({
-      ...json,
-      defaultUrl: url,
-    })
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    })
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 401 })
-    }
-
-    function generateShortCode(length: number = 6) {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-      let result = ''
-      for (let i = 0; i < length; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length))
-      }
-      return result
-    }
-
-    const qrCode = await prisma.qRCode.create({
-      data: {
-        name: data.name,
-        defaultUrl: data.defaultUrl,
-        shortCode: generateShortCode(),
-        isActive: true,
-        userId: user.id,
-        folderId: data.folderId,
-      },
-      include: {
-        folder: true,
-      },
-    })
-
-    return NextResponse.json(qrCode)
   } catch (error) {
-    console.error("[QR_CODE_CREATE]", error)
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Invalid input. Please check your URL format." },
-        { status: 400 }
-      )
-    }
-    return NextResponse.json(
-      { error: "Failed to create QR code" },
-      { status: 500 }
-    )
+    console.error("[QR_GET_ERROR]", error);
+    return NextResponse.json({
+      error: "Internal server error"
+    }, { status: 500 });
   }
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/api/settings/route.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/r/[shortCode]/route.ts
+import { NextRequest, NextResponse } from "next/server"
+import { prisma } from "@/lib/db/prisma"
+
+export async function GET(
+ request: NextRequest,
+ { params }: { params: { shortCode: string } }
+) {
+ try {
+   const qrCode = await prisma.qRCode.findUnique({
+     where: { shortCode: params.shortCode }
+   })
+
+   if (!qrCode || !qrCode.isActive) {
+     return NextResponse.redirect(new URL('/404', request.url))
+   }
+
+   // Log the scan
+   await prisma.scan.create({
+     data: {
+       qrCodeId: qrCode.id,
+       userAgent: request.headers.get('user-agent') || undefined,
+       device: request.headers.get('sec-ch-ua-platform') || undefined,
+       browser: request.headers.get('sec-ch-ua') || undefined,
+     }
+   })
+
+   // Clean up the target URL
+   let targetUrl = qrCode.defaultUrl
+   if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+     targetUrl = `https://${targetUrl}`
+   }
+
+   console.log(`Redirecting ${params.shortCode} to ${targetUrl}`)
+   return NextResponse.redirect(targetUrl)
+ } catch (error) {
+   console.error("[QR_REDIRECT_ERROR]", error)
+   return NextResponse.redirect(new URL('/404', request.url))
+ }
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/settings/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/options";
@@ -2261,7 +2178,7 @@ export async function GET() {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/auth/login/page.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/auth/login/page.tsx
 import { Metadata } from "next";
 
 import Link from "next/link";
@@ -2288,7 +2205,7 @@ export default function LoginPage() {
             <LoginForm />
             <p className="mt-4 text-center text-sm text-muted-foreground">
               Don&apos;t have an account?{" "}
-              <Link href="/register" className="text-primary hover:underline">
+              <Link href="/auth/register" className="text-primary hover:underline">
                 Sign up
               </Link>
             </p>
@@ -2299,7 +2216,7 @@ export default function LoginPage() {
   );
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/auth/register/page.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/auth/register/page.tsx
 import { Metadata } from "next";
 import Link from "next/link";
 import { RegisterForm } from "@/components/auth/register-form";
@@ -2336,7 +2253,36 @@ export default function RegisterPage() {
   );
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/contacts/[id]/page.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/calculator/page.tsx
+import { Metadata } from "next";
+import { ProfitCalculator } from "@/components/calculator/profit-calculator";
+import { PageContainer } from "@/components/layout/page-container";
+
+export const metadata: Metadata = {
+  title: "Profit Calculator | BUF BARISTA CRM",
+  description: "Optimize profit margins and analyze financial scenarios",
+};
+
+export default function CalculatorPage() {
+  return (
+    <PageContainer>
+      <div className="space-y-6 p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Profit Calculator</h1>
+            <p className="text-muted-foreground">
+              Analyze and optimize profit margins for your partnerships
+            </p>
+          </div>
+        </div>
+        <ProfitCalculator />
+      </div>
+    </PageContainer>
+  );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/contacts/[id]/page.tsx
 import { ContactDetails } from "@/components/contacts/contact-details";
 import { getContactById } from "@/lib/contacts";
 import { notFound } from "next/navigation";
@@ -2360,7 +2306,7 @@ export default async function ContactPage(props: Props) {
   );
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/contacts/new/page.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/contacts/new/page.tsx
 import { Metadata } from "next";
 import { ContactForm } from "@/components/contacts/contact-form";
 import { PageContainer } from "@/components/layout/page-container";
@@ -2381,7 +2327,7 @@ export default function NewContactPage() {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/contacts/page.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/contacts/page.tsx
 import { Suspense } from "react";
 import { ContactList } from "@/components/contacts/contact-list";
 import { Search } from "@/components/contacts/search";
@@ -2629,7 +2575,7 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
   );
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/inventory/page.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/inventory/page.tsx
 import { Suspense } from "react";
 import { ContactList } from "@/components/contacts/contact-list";
 import { Search } from "@/components/contacts/search";
@@ -2885,7 +2831,7 @@ export default async function ContactsPage({ searchParams = {} }: PageProps) {
   );
 } 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/inventory/styles.css
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/inventory/styles.css
 .inventory-container {
     max-width: 1200px;
     margin: 0 auto;
@@ -3282,7 +3228,7 @@ ________________________________________________________________________________
     }
   }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/layout.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/layout.tsx
 import { SideNav } from "@/components/dashboard/navigation/side-nav";
 
 export default function DashboardLayout({
@@ -3307,7 +3253,7 @@ export default function DashboardLayout({
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/management/page.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/management/page.tsx
 "use client"
 
 import { useState, useEffect } from 'react'
@@ -3317,29 +3263,29 @@ import { CATEGORIES } from '@/constants/pos-data'
 import { PageContainer } from "@/components/layout/page-container"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
- Table,
- TableBody,
- TableCell,
- TableHead,
- TableHeader,
- TableRow,
+Table,
+TableBody,
+TableCell,
+TableHead,
+TableHeader,
+TableRow,
 } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
- Dialog,
- DialogContent,
- DialogDescription,
- DialogHeader,
- DialogTitle,
- DialogTrigger,
+Dialog,
+DialogContent,
+DialogDescription,
+DialogHeader,
+DialogTitle,
+DialogTrigger,
 } from "@/components/ui/dialog"
 import { 
- Select,
- SelectContent,
- SelectItem,
- SelectTrigger,
- SelectValue,
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "@/components/ui/use-toast"
@@ -3347,807 +3293,1735 @@ import { Plus, Edit2, Trash2, Save, Coffee, Search } from 'lucide-react'
 import { Label } from "@/components/ui/label"
 
 export default function ManagementPage() {
- const [menuItems, setMenuItems] = useState<MenuItem[]>([])
- const [loading, setLoading] = useState(true)
- const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
- const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
- const [searchTerm, setSearchTerm] = useState("")
- const [filterCategory, setFilterCategory] = useState<string>("All")
- 
- const [newItem, setNewItem] = useState({
-   name: '',
-   price: '',
-   category: '',
-   popular: false,
- })
+const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+const [loading, setLoading] = useState(true)
+const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
+const [searchTerm, setSearchTerm] = useState("")
+const [filterCategory, setFilterCategory] = useState<string>("All")
 
- useEffect(() => {
-   loadMenuItems()
- }, [])
+const [newItem, setNewItem] = useState({
+  name: '',
+  price: '',
+  category: '',
+  popular: false,
+})
 
- const loadMenuItems = async () => {
-   try {
-     setLoading(true)
-     const items = await posService.getMenuItems()
-     setMenuItems(items)
-   } catch (error) {
-     toast({
-       title: "Error",
-       description: "Failed to load menu items",
-       variant: "destructive",
-     })
-   } finally {
-     setLoading(false)
-   }
- }
+useEffect(() => {
+  loadMenuItems()
+}, [])
 
- const handleAddItem = async () => {
-   try {
-     if (!newItem.name || !newItem.price || !newItem.category) {
-       toast({
-         title: "Error",
-         description: "Please fill in all required fields",
-         variant: "destructive",
-       })
-       return
-     }
+const loadMenuItems = async () => {
+  try {
+    setLoading(true)
+    const items = await posService.getMenuItems()
+    setMenuItems(items)
+    
+  } catch (err) {
+    console.error("Failed to load menu items:", err)
+    toast({
+      title: "Error",
+      description: "Failed to load menu items",
+      variant: "destructive",
+    })
+  } finally {
+    setLoading(false)
+  }
+}
 
-     await posService.createMenuItem({
-       name: newItem.name,
-       price: parseFloat(newItem.price),
-       category: newItem.category,
-       popular: newItem.popular,
-       active: true
-     })
+const handleAddItem = async () => {
+  try {
+    if (!newItem.name || !newItem.price || !newItem.category) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      })
+      return
+    }
 
-     setNewItem({
-       name: '',
-       price: '',
-       category: '',
-       popular: false,
-     })
+    await posService.createMenuItem({
+      name: newItem.name,
+      price: parseFloat(newItem.price),
+      category: newItem.category,
+      popular: newItem.popular,
+      active: true
+    })
 
-     setIsAddDialogOpen(false)
-     await loadMenuItems()
+    setNewItem({
+      name: '',
+      price: '',
+      category: '',
+      popular: false,
+    })
 
-     toast({
-       title: "Success",
-       description: "Menu item added successfully",
-     })
-   } catch (error) {
-     toast({
-       title: "Error",
-       description: "Failed to add menu item",
-       variant: "destructive",
-     })
-   }
- }
+    setIsAddDialogOpen(false)
+    await loadMenuItems()
 
- const handleUpdateItem = async (item: MenuItem) => {
-   try {
-     await posService.updateMenuItem(item.id, item)
-     setEditingItem(null)
-     await loadMenuItems()
+    toast({
+      title: "Success",
+      description: "Menu item added successfully",
+    })
+  } catch (err) {
+    console.error("Failed to add menu item:", err) 
+    toast({
+      title: "Error",
+      description: "Failed to add menu item",
+      variant: "destructive",
+    })
+  }
+}
 
-     toast({
-       title: "Success",
-       description: "Menu item updated successfully",
-     })
-   } catch (error) {
-     toast({
-       title: "Error",
-       description: "Failed to update menu item",
-       variant: "destructive",
-     })
-   }
- }
+const handleUpdateItem = async (item: MenuItem) => {
+  try {
+    await posService.updateMenuItem(item.id, item)
+    setEditingItem(null)
+    await loadMenuItems()
 
- const handleDeleteItem = async (id: string) => {
-   if (!confirm('Are you sure you want to delete this item?')) return
+    toast({
+      title: "Success",
+      description: "Menu item updated successfully",
+    })
+  } catch (err) {
+    console.error("Failed to update menu item:", err)
+    toast({
+      title: "Error",
+      description: "Failed to update menu item",
+      variant: "destructive",
+    })
+  }
+}
 
-   try {
-     await posService.deleteMenuItem(id)
-     await loadMenuItems()
+const handleDeleteItem = async (id: string) => {
+  if (!confirm('Are you sure you want to delete this item?')) return
 
-     toast({
-       title: "Success",
-       description: "Menu item deleted successfully",
-     })
-   } catch (error) {
-     toast({
-       title: "Error",
-       description: "Failed to delete menu item",
-       variant: "destructive",
-     })
-   }
- }
+  try {
+    await posService.deleteMenuItem(id)
+    await loadMenuItems()
 
- const filteredItems = menuItems.filter(item => {
-   const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase())
-   const matchesCategory = filterCategory === "All" || item.category === filterCategory
-   return matchesSearch && matchesCategory
- })
+    toast({
+      title: "Success",
+      description: "Menu item deleted successfully",
+    })
+  } catch (err) {
+    console.error("Failed to delete menu item:", err)
+    toast({
+      title: "Error",
+      description: "Failed to delete menu item",
+      variant: "destructive",
+    })
+  }
+}
 
- return (
-   <PageContainer>
-     <div className="p-8">
-       <Card>
-         <CardHeader>
-           <div className="flex justify-between items-center">
-             <div>
-               <CardTitle>Menu Management</CardTitle>
-               <CardDescription>Manage your menu items, categories, and prices</CardDescription>
-             </div>
-             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-               <DialogTrigger asChild>
-                 <Button>
-                   <Plus className="mr-2 h-4 w-4" />
-                   Add Menu Item
-                 </Button>
-               </DialogTrigger>
-               <DialogContent className="sm:max-w-[425px]">
-                 <DialogHeader>
-                   <DialogTitle>Add New Menu Item</DialogTitle>
-                   <DialogDescription>
-                     Add a new item to your menu. Fill in all the required information.
-                   </DialogDescription>
-                 </DialogHeader>
-                 <div className="grid gap-4 py-4">
-                   <div className="grid gap-2">
-                     <Label htmlFor="name">Name</Label>
-                     <Input
-                       id="name"
-                       value={newItem.name}
-                       onChange={e => setNewItem({...newItem, name: e.target.value})}
-                       placeholder="Item name"
-                     />
-                   </div>
-                   <div className="grid gap-2">
-                     <Label htmlFor="price">Price</Label>
-                     <Input
-                       id="price"
-                       type="number"
-                       step="0.01"
-                       value={newItem.price}
-                       onChange={e => setNewItem({...newItem, price: e.target.value})}
-                       placeholder="0.00"
-                     />
-                   </div>
-                   <div className="grid gap-2">
-                     <Label htmlFor="category">Category</Label>
-                     <Select
-                       value={newItem.category}
-                       onValueChange={value => setNewItem({...newItem, category: value})}
-                     >
-                       <SelectTrigger id="category">
-                         <SelectValue placeholder="Select category" />
-                       </SelectTrigger>
-                       <SelectContent>
-                         {CATEGORIES.map(category => (
-                           <SelectItem key={category} value={category}>
-                             {category}
-                           </SelectItem>
-                         ))}
-                       </SelectContent>
-                     </Select>
-                   </div>
-                   <div className="flex items-center gap-2">
-                     <Label htmlFor="popular">Popular Item</Label>
-                     <Switch
-                       id="popular"
-                       checked={newItem.popular}
-                       onCheckedChange={checked => setNewItem({...newItem, popular: checked})}
-                     />
-                   </div>
-                 </div>
-                 <div className="flex justify-end gap-2">
-                   <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                     Cancel
-                   </Button>
-                   <Button onClick={handleAddItem}>
-                     Add Item
-                   </Button>
-                 </div>
-               </DialogContent>
-             </Dialog>
-           </div>
-         </CardHeader>
-         <CardContent>
-           <div className="mb-4 flex gap-4">
-             <div className="flex-1">
-               <div className="relative">
-                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                 <Input
-                   placeholder="Search menu items..."
-                   value={searchTerm}
-                   onChange={(e) => setSearchTerm(e.target.value)}
-                   className="pl-8"
-                 />
-               </div>
-             </div>
-             <Select
-               value={filterCategory}
-               onValueChange={setFilterCategory}
-             >
-               <SelectTrigger className="w-[180px]">
-                 <SelectValue placeholder="Select category" />
-               </SelectTrigger>
-               <SelectContent>
-                 <SelectItem value="All">All Categories</SelectItem>
-                 {CATEGORIES.map(category => (
-                   <SelectItem key={category} value={category}>
-                     {category}
-                   </SelectItem>
-                 ))}
-               </SelectContent>
-             </Select>
-           </div>
+const filteredItems = menuItems.filter(item => {
+  const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const matchesCategory = filterCategory === "All" || item.category === filterCategory
+  return matchesSearch && matchesCategory
+})
 
-           {loading ? (
-             <div className="flex items-center justify-center p-8">
-               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
-             </div>
-           ) : (
-             <div className="rounded-md border">
-               <Table>
-                 <TableHeader>
-                   <TableRow>
-                     <TableHead className="w-[300px]">Name</TableHead>
-                     <TableHead>Category</TableHead>
-                     <TableHead className="w-[100px]">Price</TableHead>
-                     <TableHead className="w-[100px]">Popular</TableHead>
-                     <TableHead className="text-right w-[100px]">Actions</TableHead>
-                   </TableRow>
-                 </TableHeader>
-                 <TableBody>
-                   {filteredItems.map((item) => (
-                     <TableRow key={item.id}>
-                       <TableCell>
-                         {editingItem?.id === item.id ? (
-                           <Input
-                             value={editingItem.name}
-                             onChange={e => setEditingItem({...editingItem, name: e.target.value})}
-                           />
-                         ) : (
-                           <div className="flex items-center gap-2">
-                             <Coffee className="h-4 w-4 text-muted-foreground" />
-                             {item.name}
-                           </div>
-                         )}
-                       </TableCell>
-                       <TableCell>
-                         {editingItem?.id === item.id ? (
-                           <Select
-                             value={editingItem.category}
-                             onValueChange={value => setEditingItem({...editingItem, category: value})}
-                           >
-                             <SelectTrigger>
-                               <SelectValue placeholder="Select category" />
-                             </SelectTrigger>
-                             <SelectContent>
-                               {CATEGORIES.map(category => (
-                                 <SelectItem key={category} value={category}>
-                                   {category}
-                                 </SelectItem>
-                               ))}
-                             </SelectContent>
-                           </Select>
-                         ) : (
-                           item.category
-                         )}
-                       </TableCell>
-                       <TableCell>
-                         {editingItem?.id === item.id ? (
-                           <Input
-                             type="number"
-                             step="0.01"
-                             value={editingItem.price}
-                             onChange={e => setEditingItem({...editingItem, price: parseFloat(e.target.value)})}
-                             className="w-[100px]"
-                           />
-                         ) : (
-                           `$${item.price.toFixed(2)}`
-                         )}
-                       </TableCell>
-                       <TableCell>
-                         <Switch
-                           checked={editingItem?.id === item.id ? editingItem.popular : item.popular}
-                           onCheckedChange={checked => {
-                             if (editingItem?.id === item.id) {
-                               setEditingItem({...editingItem, popular: checked})
-                             } else {
-                               handleUpdateItem({...item, popular: checked})
-                             }
-                           }}
-                         />
-                       </TableCell>
-                       <TableCell className="text-right">
-                         {editingItem?.id === item.id ? (
-                           <div className="flex justify-end gap-2">
-                             <Button
-                               variant="ghost"
-                               size="sm"
-                               onClick={() => setEditingItem(null)}
-                             >
-                               Cancel
-                             </Button>
-                             <Button
-                               size="sm"
-                               onClick={() => handleUpdateItem(editingItem)}
-                             >
-                               <Save className="h-4 w-4" />
-                             </Button>
-                           </div>
-                         ) : (
-                           <div className="flex justify-end gap-2">
-                             <Button
-                               variant="ghost"
-                               size="sm"
-                               onClick={() => setEditingItem(item)}
-                             >
-                               <Edit2 className="h-4 w-4" />
-                             </Button>
-                             <Button
-                               variant="ghost"
-                               size="sm"
-                               onClick={() => handleDeleteItem(item.id)}
-                             >
-                               <Trash2 className="h-4 w-4 text-red-500" />
-                             </Button>
-                           </div>
-                         )}
-                       </TableCell>
-                     </TableRow>
-                   ))}
-                   {filteredItems.length === 0 && (
-                     <TableRow>
-                       <TableCell colSpan={5} className="h-24 text-center">
-                         No menu items found.
-                       </TableCell>
-                     </TableRow>
-                   )}
-                 </TableBody>
-               </Table>
-             </div>
-           )}
-         </CardContent>
-       </Card>
-     </div>
-   </PageContainer>
- )
+return (
+  <PageContainer>
+    <div className="p-8">
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Menu Management</CardTitle>
+              <CardDescription>Manage your menu items, categories, and prices</CardDescription>
+            </div>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Menu Item
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Add New Menu Item</DialogTitle>
+                  <DialogDescription>
+                    Add a new item to your menu. Fill in all the required information.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="name">Name</Label>
+                    <Input
+                      id="name"
+                      value={newItem.name}
+                      onChange={e => setNewItem({...newItem, name: e.target.value})}
+                      placeholder="Item name"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="price">Price</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      step="0.01"
+                      value={newItem.price}
+                      onChange={e => setNewItem({...newItem, price: e.target.value})}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="category">Category</Label>
+                    <Select
+                      value={newItem.category}
+                      onValueChange={value => setNewItem({...newItem, category: value})}
+                    >
+                      <SelectTrigger id="category">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CATEGORIES.map(category => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="popular">Popular Item</Label>
+                    <Switch
+                      id="popular"
+                      checked={newItem.popular}
+                      onCheckedChange={checked => setNewItem({...newItem, popular: checked})}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleAddItem}>
+                    Add Item
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-4 flex gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search menu items..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+            </div>
+            <Select
+              value={filterCategory}
+              onValueChange={setFilterCategory}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Categories</SelectItem>
+                {CATEGORIES.map(category => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center p-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[300px]">Name</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead className="w-[100px]">Price</TableHead>
+                    <TableHead className="w-[100px]">Popular</TableHead>
+                    <TableHead className="text-right w-[100px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredItems.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell>
+                        {editingItem?.id === item.id ? (
+                          <Input
+                            value={editingItem.name}
+                            onChange={e => setEditingItem({...editingItem, name: e.target.value})}
+                          />
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Coffee className="h-4 w-4 text-muted-foreground" />
+                            {item.name}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editingItem?.id === item.id ? (
+                          <Select
+                            value={editingItem.category}
+                            onValueChange={value => setEditingItem({...editingItem, category: value})}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {CATEGORIES.map(category => (
+                                <SelectItem key={category} value={category}>
+                                  {category}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          item.category
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editingItem?.id === item.id ? (
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={editingItem.price}
+                            onChange={e => setEditingItem({...editingItem, price: parseFloat(e.target.value)})}
+                            className="w-[100px]"
+                          />
+                        ) : (
+                          `$${item.price.toFixed(2)}`
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Switch
+                          checked={editingItem?.id === item.id ? editingItem.popular : item.popular}
+                          onCheckedChange={checked => {
+                            if (editingItem?.id === item.id) {
+                              setEditingItem({...editingItem, popular: checked})
+                            } else {
+                              handleUpdateItem({...item, popular: checked})
+                            }
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {editingItem?.id === item.id ? (
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingItem(null)}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleUpdateItem(editingItem)}
+                            >
+                              <Save className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingItem(item)}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteItem(item.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredItems.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-24 text-center">
+                        No menu items found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  </PageContainer>
+)
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/order/page.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/order/page.tsx
+// "use client"
+// import React, { useState, useEffect, useCallback } from 'react'
+// import {
+//  Clock,
+//  Check,
+//  PlayCircle,
+//  ThumbsUp,
+//  ThumbsDown,
+//  Mail,
+//  Phone,
+//  ArrowUpDown,
+//  Trash2,
+//  Edit2,
+//  Save,
+//  Download,
+//  Upload,
+//  RefreshCcw,
+//  Search,
+//  Calendar,
+//  FileText,
+//  AlertTriangle,
+// } from 'lucide-react'
+// import { jsPDF } from 'jspdf'
+// import 'jspdf-autotable'
+// import { PageContainer } from "@/components/layout/page-container"
+// import { orderService } from '@/lib/services/order-service'
+// import './styles.css'
+
+// interface OrderItem {
+//  id: string
+//  menuItem: {
+//    id: string
+//    name: string
+//  }
+//  quantity: number
+//  price: number
+// }
+
+// interface Order {
+//  id: string
+//  orderNumber: number
+//  customerName: string
+//  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+//  timestamp: string
+//  items: OrderItem[]
+//  total: number
+//  isComplimentary: boolean
+//  queueTime: number
+//  preparationTime?: number
+//  customerEmail?: string
+//  customerPhone?: string
+//  leadInterest?: boolean
+//  startTime?: string
+//  notes?: string
+// }
+
+// interface SearchFilters {
+//  customerName: string
+//  orderId: string
+//  itemName: string
+//  dateRange: {
+//    start: string
+//    end: string
+//  }
+// }
+
+// const ActiveOrders: React.FC = () => {
+//  // Basic state
+//  const [orders, setOrders] = useState<Order[]>([])
+//  const [allOrders, setAllOrders] = useState<Order[]>([])
+//  const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
+//  const [statusFilter, setStatusFilter] = useState('All')
+//  const [sortCriteria, setSortCriteria] = useState('timestamp')
+//  const [sortDirection, setSortDirection] = useState('desc')
+//  const [isLoading, setIsLoading] = useState(true)
+//  const [error, setError] = useState<string | null>(null)
+
+//  // Modal states
+//  const [showClearConfirmation, setShowClearConfirmation] = useState(false)
+//  const [showResetConfirmation, setShowResetConfirmation] = useState(false)
+//  const [showOrderDetails, setShowOrderDetails] = useState(false)
+
+//  // Search and filter states
+//  const [searchFilters, setSearchFilters] = useState<SearchFilters>({
+//    customerName: '',
+//    orderId: '',
+//    itemName: '',
+//    dateRange: {
+//      start: '',
+//      end: ''
+//    }
+//  })
+
+//  // Order editing states
+//  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+//  const [editedItems, setEditedItems] = useState<OrderItem[]>([])
+//  const [orderNotes, setOrderNotes] = useState('')
+
+//  // Message state for user feedback
+//  const [message, setMessage] = useState<{
+//    type: 'success' | 'error'
+//    text: string
+//  } | null>(null)
+
+//  // Helper function to show messages
+//  const showMessage = useCallback((text: string, type: 'success' | 'error') => {
+//    setMessage({ text, type })
+//    setTimeout(() => setMessage(null), 3000)
+//  }, [])
+
+//  // Load orders from API with localStorage fallback
+//  const loadOrders = useCallback(async () => {
+//    setIsLoading(true)
+//    setError(null)
+//    try {
+//      const loadedOrders = await orderService.getOrders()
+//      setOrders(loadedOrders)
+//      setAllOrders(loadedOrders)
+//      setFilteredOrders(loadedOrders)
+//    } catch (error) {
+//      setError('Error loading orders. Using cached data.')
+//      // Fallback to localStorage
+//      const cachedOrders = JSON.parse(localStorage.getItem('orders') || '[]')
+//      setOrders(cachedOrders)
+//      setAllOrders(cachedOrders)
+//      setFilteredOrders(cachedOrders)
+//    }
+//    setIsLoading(false)
+//  }, [])
+
+//  // Filter and sort orders based on search criteria and filters
+//  const filterAndSortOrders = useCallback(() => {
+//    let filtered = orders
+
+//    if (statusFilter !== 'All') {
+//      filtered = filtered.filter((order) => order.status === statusFilter)
+//    }
+
+//    if (searchFilters.customerName) {
+//      filtered = filtered.filter((order) =>
+//        order.customerName
+//          .toLowerCase()
+//          .includes(searchFilters.customerName.toLowerCase())
+//      )
+//    }
+
+//    if (searchFilters.orderId) {
+//      filtered = filtered.filter((order) =>
+//        order.orderNumber.toString().includes(searchFilters.orderId)
+//      )
+//    }
+
+//    if (searchFilters.itemName) {
+//      filtered = filtered.filter((order) =>
+//        order.items.some((item) =>
+//          item.menuItem.name.toLowerCase().includes(searchFilters.itemName.toLowerCase())
+//        )
+//      )
+//    }
+
+//    if (searchFilters.dateRange.start && searchFilters.dateRange.end) {
+//      const startDate = new Date(searchFilters.dateRange.start)
+//      const endDate = new Date(searchFilters.dateRange.end)
+//      filtered = filtered.filter((order) => {
+//        const orderDate = new Date(order.timestamp)
+//        return orderDate >= startDate && orderDate <= endDate
+//      })
+//    }
+
+//    // Sort filtered orders
+//    const sorted = [...filtered].sort((a, b) => {
+//      if (sortCriteria === 'timestamp') {
+//        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+//      } else if (sortCriteria === 'preparationTime') {
+//        return (b.preparationTime || 0) - (a.preparationTime || 0)
+//      } else if (sortCriteria === 'queueTime') {
+//        return b.queueTime - a.queueTime
+//      }
+//      return 0
+//    })
+
+//    if (sortDirection === 'asc') {
+//      sorted.reverse()
+//    }
+
+//    setFilteredOrders(sorted)
+//  }, [orders, statusFilter, searchFilters, sortCriteria, sortDirection])
+
+//  // Update filters
+//  const updateSearchFilters = (
+//    field: keyof SearchFilters,
+//    value: string | { start: string; end: string }
+//  ) => {
+//    setSearchFilters((prev) => ({
+//      ...prev,
+//      [field]: value
+//    }))
+//  }
+
+//  // Calculate new total based on items
+//  const calculateTotal = (items: OrderItem[]) => {
+//    return items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+//  }
+
+//  // Handle item editing
+//  const updateOrderItem = (
+//    orderId: string,
+//    itemId: string,
+//    updates: Partial<OrderItem>
+//  ) => {
+//    if (!selectedOrder) return
+
+//    const updatedItems = selectedOrder.items.map((item) =>
+//      item.id === itemId ? { ...item, ...updates } : item
+//    )
+
+//    const newTotal = calculateTotal(updatedItems)
+
+//    setSelectedOrder({
+//      ...selectedOrder,
+//      items: updatedItems,
+//      total: newTotal
+//    })
+//  }
+
+//  // Effect hooks for initial load and filtering
+//  useEffect(() => {
+//    loadOrders()
+//  }, [loadOrders])
+
+//  useEffect(() => {
+//    filterAndSortOrders()
+//  }, [filterAndSortOrders])
+
+//  // Order status management
+//  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+//    try {
+//      const preparationTime = newStatus === 'COMPLETED' && selectedOrder?.startTime
+//        ? (Date.now() - new Date(selectedOrder.startTime).getTime()) / 1000
+//        : undefined
+
+//      const updatedOrder = await orderService.updateOrderStatus(orderId, newStatus, preparationTime)
+//      await loadOrders()
+//      showMessage('Order status updated successfully', 'success')
+//    } catch (error) {
+//      showMessage('Failed to update order status', 'error')
+//    }
+//  }
+
+//  // Handle updating order notes
+//  const handleUpdateOrderNotes = async (orderId: string, notes: string) => {
+//    try {
+//      await orderService.updateOrderNotes(orderId, notes)
+//      await loadOrders()
+//      showMessage('Order notes updated successfully', 'success')
+//    } catch (error) {
+//      showMessage('Failed to update order notes', 'error')
+//    }
+//  }
+
+//  // Lead interest tracking
+//  const recordLeadInterest = async (orderId: string, interested: boolean) => {
+//    try {
+//      await orderService.updateLeadInterest(orderId, interested)
+//      await loadOrders()
+//      showMessage('Lead interest recorded successfully', 'success')
+//    } catch (error) {
+//      showMessage('Failed to record lead interest', 'error')
+//    }
+//  }
+
+//  // Order cancellation
+//  const cancelOrder = async (orderId: string) => {
+//    if (window.confirm('Are you sure you want to cancel this order?')) {
+//      try {
+//        await orderService.updateOrderStatus(orderId, 'CANCELLED')
+//        await loadOrders()
+//        showMessage('Order cancelled successfully', 'success')
+//      } catch (error) {
+//        showMessage('Failed to cancel order', 'error')
+//      }
+//    }
+//  }
+
+//  // Order modification
+//  const modifyOrder = (orderId: string) => {
+//    const orderToModify = orders.find((order) => order.id === orderId)
+//    if (orderToModify) {
+//      setSelectedOrder(orderToModify)
+//      setEditedItems([...orderToModify.items])
+//      setOrderNotes(orderToModify.notes || '')
+//      setShowOrderDetails(true)
+//    }
+//  }
+
+//  // Save modified order
+//  const saveModifiedOrder = async () => {
+//    if (!selectedOrder) return
+
+//    try {
+//      const modifiedOrder = {
+//        ...selectedOrder,
+//        items: editedItems,
+//        notes: orderNotes,
+//        total: calculateTotal(editedItems)
+//      }
+
+//      await orderService.updateOrder(selectedOrder.id, modifiedOrder)
+//      await loadOrders()
+     
+//      setShowOrderDetails(false)
+//      setSelectedOrder(null)
+//      showMessage('Order updated successfully', 'success')
+//    } catch (error) {
+//      showMessage('Failed to update order', 'error')
+//    }
+//  }
+
+//  // Time formatting
+//  const formatTime = (seconds: number) => {
+//    const minutes = Math.floor(seconds / 60)
+//    const remainingSeconds = Math.floor(seconds % 60)
+//    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+//  }
+
+//  // PDF generation
+//  const generatePDF = () => {
+//    const doc = new jsPDF()
+//    const tableColumn = [
+//      'Order #',
+//      'Customer',
+//      'Status',
+//      'Total',
+//      'Queue Time',
+//      'Prep Time',
+//      'Notes'
+//    ]
+//    const tableRows: (string | number)[][] = []
+
+//    allOrders.forEach((order) => {
+//      const orderData = [
+//        order.orderNumber,
+//        order.customerName,
+//        order.status,
+//        order.isComplimentary ? 'Free' : `$${order.total}`,
+//        formatTime(order.queueTime),
+//        order.preparationTime ? formatTime(order.preparationTime) : 'N/A',
+//        order.notes || 'N/A'
+//      ]
+//      tableRows.push(orderData)
+//    })
+
+//    doc.autoTable({
+//      head: [tableColumn],
+//      body: tableRows,
+//      startY: 20
+//    })
+
+//    doc.text('Buf Barista - Complete Order Report', 14, 15)
+//    doc.save('buf-barista-all-orders.pdf')
+//  }
+
+//  // Data management functions
+//  const clearAllOrders = async () => {
+//    try {
+//      await orderService.clearAllOrders()
+//      await loadOrders()
+//      showMessage('All orders cleared successfully', 'success')
+//    } catch (error) {
+//      showMessage('Failed to clear orders', 'error')
+//    }
+//  }
+
+//  const resetAllData = async () => {
+//    try {
+//      await orderService.resetAllData()
+//      await loadOrders()
+//      showMessage('All data reset successfully', 'success')
+//      window.location.reload()
+//    } catch (error) {
+//      showMessage('Failed to reset data', 'error')
+//    }
+//  }
+
+//  const exportData = async () => {
+//    try {
+//      const data = await orderService.exportOrders()
+//      const blob = new Blob([data], { type: 'application/json' })
+//      const url = URL.createObjectURL(blob)
+//      const a = document.createElement('a')
+//      a.href = url
+//      a.download = 'buf-barista-data.json'
+//      document.body.appendChild(a)
+//      a.click()
+//      document.body.removeChild(a)
+//      URL.revokeObjectURL(url)
+//      showMessage('Data exported successfully', 'success')
+//    } catch (error) {
+//      showMessage('Failed to export data', 'error')
+//    }
+//  }
+
+//  const importData = async (event: React.ChangeEvent<HTMLInputElement>) => {
+//    const file = event.target.files?.[0]
+//    if (!file) return
+
+//    try {
+//      const reader = new FileReader()
+//      reader.onload = async (e) => {
+//        const content = e.target?.result as string
+//        await orderService.importOrders(content)
+//        await loadOrders()
+//        showMessage('Data imported successfully', 'success')
+//      }
+//      reader.readAsText(file)
+//    } catch (error) {
+//      showMessage('Failed to import data', 'error')
+//    }
+//  }
+
+//  // Toggle notes editing
+//  const toggleEditNotes = (orderId: string) => {
+//    const order = orders.find((o) => o.id === orderId)
+//    if (order) {
+//      setSelectedOrder(order)
+//      setOrderNotes(order.notes || '')
+//      setShowOrderDetails(true)
+//    }
+//  }
+//   // Render component
+//   return (
+//     <PageContainer>
+//       <div className="active-orders-container">
+//         <h1 className="page-title">Active Orders</h1>
+
+//         {isLoading && <div className="loading">Loading orders...</div>}
+//         {error && <div className="error">{error}</div>}
+
+//         {/* Search and Filter Section */}
+//         <div className="search-section">
+//           <div className="search-inputs">
+//             <div className="search-field">
+//               <Search size={16} />
+//               <input
+//                 type="text"
+//                 placeholder="Search by customer name..."
+//                 value={searchFilters.customerName}
+//                 onChange={(e) =>
+//                   updateSearchFilters('customerName', e.target.value)
+//                 }
+//                 className="search-input"
+//               />
+//             </div>
+//             <div className="search-field">
+//               <Search size={16} />
+//               <input
+//                 type="text"
+//                 placeholder="Search by order ID..."
+//                 value={searchFilters.orderId}
+//                 onChange={(e) => updateSearchFilters('orderId', e.target.value)}
+//                 className="search-input"
+//               />
+//             </div>
+//             <div className="search-field">
+//               <Search size={16} />
+//               <input
+//                 type="text"
+//                 placeholder="Search by item name..."
+//                 value={searchFilters.itemName}
+//                 onChange={(e) => updateSearchFilters('itemName', e.target.value)}
+//                 className="search-input"
+//               />
+//             </div>
+//           </div>
+//           <div className="date-range">
+//             <Calendar size={16} />
+//             <input
+//               type="date"
+//               value={searchFilters.dateRange.start}
+//               onChange={(e) =>
+//                 updateSearchFilters('dateRange', {
+//                   ...searchFilters.dateRange,
+//                   start: e.target.value
+//                 })
+//               }
+//               className="date-input"
+//             />
+//             <span>to</span>
+//             <input
+//               type="date"
+//               value={searchFilters.dateRange.end}
+//               onChange={(e) =>
+//                 updateSearchFilters('dateRange', {
+//                   ...searchFilters.dateRange,
+//                   end: e.target.value
+//                 })
+//               }
+//               className="date-input"
+//             />
+//           </div>
+//         </div>
+
+//         {/* Filters and Actions */}
+//         <div className="filters">
+//           <select
+//             value={statusFilter}
+//             onChange={(e) => setStatusFilter(e.target.value)}
+//             className="filter-dropdown"
+//           >
+//             <option value="All">All Statuses</option>
+//             <option value="Pending">Pending</option>
+//             <option value="In Progress">In Progress</option>
+//             <option value="Completed">Completed</option>
+//           </select>
+
+//           <select
+//             value={sortCriteria}
+//             onChange={(e) => setSortCriteria(e.target.value)}
+//             className="filter-dropdown"
+//           >
+//             <option value="timestamp">Sort by Time</option>
+//             <option value="preparationTime">Sort by Prep Time</option>
+//             <option value="queueTime">Sort by Queue Time</option>
+//           </select>
+
+//           <button
+//             onClick={() =>
+//               setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+//             }
+//             className="sort-button"
+//           >
+//             <ArrowUpDown size={16} />
+//             {sortDirection === 'asc' ? 'Ascending' : 'Descending'}
+//           </button>
+
+//           <button onClick={generatePDF} className="pdf-button">
+//             <Save size={16} />
+//             Save as PDF
+//           </button>
+
+//           <button onClick={clearAllOrders} className="clear-button">
+//             <Trash2 size={16} />
+//             Clear All Orders
+//           </button>
+
+//           <button onClick={resetAllData} className="reset-button">
+//             <RefreshCcw size={16} />
+//             Reset All Data
+//           </button>
+
+//           <button onClick={exportData} className="export-button">
+//             <Download size={16} />
+//             Export Data
+//           </button>
+
+//           <label className="import-button">
+//             <Upload size={16} />
+//             Import Data
+//             <input
+//               type="file"
+//               accept=".json"
+//               style={{ display: 'none' }}
+//               onChange={importData}
+//             />
+//           </label>
+//         </div>
+
+//         {/* Orders Grid */}
+//         <div className="orders-grid">
+//           {filteredOrders.map((order) => (
+//             <div
+//               key={order.id}
+//               className={`order-card ${order.status.toLowerCase()}`}
+//             >
+//               <div className="order-header">
+//                 <span className="order-number">Order #{order.id}</span>
+//                 <span className={`order-status ${order.status.toLowerCase()}`}>
+//                   {order.status}
+//                 </span>
+//               </div>
+//               <div className="order-details">
+//                 <div className="customer-name">{order.customerName}</div>
+//                 <div className="order-time">
+//                   <Clock size={14} className="icon" />
+//                   {order.timestamp}
+//                 </div>
+//               </div>
+//               <div className="order-items">
+//                 {order.items.map((item, index) => (
+//                   <div key={index} className="order-item">
+//                     <span>
+//                       {item.name} x{item.quantity}
+//                     </span>
+//                     <span>
+//                       {order.isComplimentary
+//                         ? 'Free'
+//                         : `$${(item.price * item.quantity).toFixed(2)}`}
+//                     </span>
+//                   </div>
+//                 ))}
+//               </div>
+//               <div className="order-total">
+//                 Total: {order.isComplimentary ? 'Free' : `$${order.total}`}
+//               </div>
+//               <div className="order-metrics">
+//                 <div>Queue Time: {formatTime(order.queueTime)}</div>
+//                 {order.preparationTime && (
+//                   <div>Preparation Time: {formatTime(order.preparationTime)}</div>
+//                 )}
+//               </div>
+
+//               <div className="customer-contact">
+//                 {order.customerEmail && <Mail size={14} className="icon" />}
+//                 {order.customerPhone && <Phone size={14} className="icon" />}
+//               </div>
+
+//               {/* Order Notes Section */}
+//               <div className="order-notes-section">
+//                 <div className="notes-header">
+//                   <FileText size={14} className="icon" />
+//                   <span>Notes</span>
+//                   <button
+//                     onClick={() => toggleEditNotes(order.id)}
+//                     className="edit-notes-button"
+//                   >
+//                     <Edit2 size={14} />
+//                   </button>
+//                 </div>
+//                 <div className="notes-content">
+//                   {order.notes ? (
+//                     <p>{order.notes}</p>
+//                   ) : (
+//                     <p className="no-notes">No notes added</p>
+//                   )}
+//                 </div>
+//               </div>
+
+//               {/* Lead Interest Section */}
+//               {order.status === 'Completed' && order.leadInterest === undefined && (
+//                 <div className="lead-interest-section">
+//                   <div className="lead-interest-header">
+//                     Customer interested in sales pitch?
+//                   </div>
+//                   <div className="lead-interest-buttons">
+//                     <button
+//                       onClick={() => recordLeadInterest(order.id, true)}
+//                       className="lead-button yes"
+//                     >
+//                       <ThumbsUp size={16} className="icon" />
+//                       <span>Yes</span>
+//                     </button>
+//                     <button
+//                       onClick={() => recordLeadInterest(order.id, false)}
+//                       className="lead-button no"
+//                     >
+//                       <ThumbsDown size={16} className="icon" />
+//                       <span>No</span>
+//                     </button>
+//                   </div>
+//                 </div>
+//               )}
+
+//               {order.leadInterest !== undefined && (
+//                 <div
+//                   className={`lead-status ${
+//                     order.leadInterest ? 'interested' : 'not-interested'
+//                   }`}
+//                 >
+//                   <div className="lead-status-content">
+//                     <span className="lead-status-label">Lead Status:</span>
+//                     <span className="lead-status-value">
+//                       {order.leadInterest ? (
+//                         <>
+//                           <ThumbsUp size={16} className="icon" />
+//                           Interested
+//                         </>
+//                       ) : (
+//                         <>
+//                           <ThumbsDown size={16} className="icon" />
+//                           Not Interested
+//                         </>
+//                       )}
+//                     </span>
+//                   </div>
+//                 </div>
+//               )}
+
+//               {order.status !== 'Completed' && (
+//                 <div className="order-actions">
+//                   <button
+//                     onClick={() => updateOrderStatus(order.id, 'In Progress')}
+//                     className="start-button"
+//                     disabled={order.status === 'In Progress'}
+//                   >
+//                     <PlayCircle size={16} className="icon" /> Start
+//                   </button>
+//                   <button
+//                     onClick={() => updateOrderStatus(order.id, 'Completed')}
+//                     className="complete-button"
+//                   >
+//                     <Check size={16} className="icon" /> Complete
+//                   </button>
+//                   <button
+//                     onClick={() => modifyOrder(order.id)}
+//                     className="modify-button"
+//                     disabled={order.status === 'Completed'}
+//                   >
+//                     <Edit2 size={16} className="icon" /> Modify
+//                   </button>
+//                   <button
+//                     onClick={() => cancelOrder(order.id)}
+//                     className="cancel-button"
+//                     disabled={order.status !== 'Pending'}
+//                   >
+//                     <Trash2 size={16} className="icon" /> Cancel
+//                   </button>
+//                 </div>
+//               )}
+//             </div>
+//           ))}
+//         </div>
+
+//         {/* Modals */}
+//         {showClearConfirmation && (
+//           <div className="modal">
+//             <div className="modal-content">
+//               <h2>Clear All Orders</h2>
+//               <p>
+//                 Are you sure you want to clear all orders? This action will remove
+//                 orders from the active list but they will still be included in the
+//                 PDF report.
+//               </p>
+//               <div className="modal-actions">
+//                 <button
+//                   onClick={confirmClearAllOrders}
+//                   className="confirm-button"
+//                 >
+//                   Yes, Clear All
+//                 </button>
+//                 <button onClick={cancelClearAllOrders} className="cancel-button">
+//                   Cancel
+//                 </button>
+//               </div>
+//             </div>
+//           </div>
+//         )}
+
+//         {showResetConfirmation && (
+//           <div className="modal">
+//             <div className="modal-content">
+//               <h2>Reset All Data</h2>
+//               <p>
+//                 Are you sure you want to reset all data? This action will clear
+//                 all orders, preferences, and inventory data. This action cannot be
+//                 undone.
+//               </p>
+//               <div className="modal-actions">
+//                 <button onClick={confirmResetAllData} className="confirm-button">
+//                   Yes, Reset All Data
+//                 </button>
+//                 <button onClick={cancelResetAllData} className="cancel-button">
+//                   Cancel
+//                 </button>
+//               </div>
+//             </div>
+//           </div>
+//         )}
+
+//         {/* Order Edit Modal */}
+//         {showOrderDetails && selectedOrder && (
+//           <div className="modal">
+//             <div className="modal-content">
+//               <h2>Modify Order</h2>
+//               <div className="order-form">
+//                 <label>
+//                   Customer Name:
+//                   <input
+//                     type="text"
+//                     value={selectedOrder.customerName}
+//                     onChange={(e) =>
+//                       setSelectedOrder({
+//                         ...selectedOrder,
+//                         customerName: e.target.value
+//                       })
+//                     }
+//                   />
+//                 </label>
+
+//                 <label>
+//                   Order Notes:
+//                   <textarea
+//                     value={orderNotes}
+//                     onChange={(e) => setOrderNotes(e.target.value)}
+//                     placeholder="Add notes about the order..."
+//                     rows={3}
+//                   />
+//                 </label>
+
+//                 <div className="items-list">
+//                   <h3>Order Items</h3>
+//                   {editedItems.map((item, index) => (
+//                     <div key={index} className="edit-item">
+//                       <input
+//                         type="text"
+//                         value={item.name}
+//                         onChange={(e) =>
+//                           updateOrderItem(selectedOrder.id, item.id, {
+//                             name: e.target.value
+//                           })
+//                         }
+//                       />
+//                       <input
+//                         type="number"
+//                         value={item.quantity}
+//                         min="1"
+//                         onChange={(e) =>
+//                           updateOrderItem(selectedOrder.id, item.id, {
+//                             quantity: parseInt(e.target.value)
+//                           })
+//                         }
+//                       />
+//                       <input
+//                         type="number"
+//                         value={item.price}
+//                         step="0.01"
+//                         min="0"
+//                         onChange={(e) =>
+//                           updateOrderItem(selectedOrder.id, item.id, {
+//                             price: parseFloat(e.target.value)
+//                           })
+//                         }
+//                       />
+//                       <button
+//                         onClick={() =>
+//                           setEditedItems((prev) =>
+//                             prev.filter((_, i) => i !== index)
+//                           )
+//                         }
+//                         className="remove-item"
+//                       >
+//                         <Trash2 size={16} />
+//                       </button>
+//                     </div>
+//                   ))}
+//                 </div>
+//               </div>
+//               <div className="modal-actions">
+//                 <button onClick={saveModifiedOrder} className="confirm-button">
+//                   Save Changes
+//                 </button>
+//                 <button
+//                   onClick={() => {
+//                     setShowOrderDetails(false)
+//                     setSelectedOrder(null)
+//                   }}
+//                   className="cancel-button"
+//                 >
+//                   Cancel
+//                 </button>
+//               </div>
+//             </div>
+//           </div>
+//         )}
+
+//         {/* Success/Error Messages */}
+//         {message && (
+//           <div className={`message ${message.type}`}>
+//             {message.type === 'success' ? (
+//               <Check size={16} />
+//             ) : (
+//               <AlertTriangle size={16} />
+//             )}
+//             {message.text}
+//           </div>
+//         )}
+//       </div>
+//     </PageContainer>
+//   )
+// }
+
+// export default ActiveOrders
+
 "use client"
 import React, { useState, useEffect, useCallback } from 'react'
 import {
- Clock,
- Check,
- PlayCircle,
- ThumbsUp,
- ThumbsDown,
- Mail,
- Phone,
- ArrowUpDown,
- Trash2,
- Edit2,
- Save,
- Download,
- Upload,
- RefreshCcw,
- Search,
- Calendar,
- FileText,
- AlertTriangle,
+  Clock,
+  Check,
+  PlayCircle,
+  ThumbsUp,
+  ThumbsDown,
+  Mail,
+  Phone,
+  ArrowUpDown,
+  Trash2,
+  Edit2,
+  Save,
+  Download,
+  Upload,
+  RefreshCcw,
+  Search,
+  Calendar,
+  FileText,
+  AlertTriangle
 } from 'lucide-react'
 import { jsPDF } from 'jspdf'
 import 'jspdf-autotable'
 import { PageContainer } from "@/components/layout/page-container"
-import { orderService } from '@/lib/services/order-service'
 import './styles.css'
 
 interface OrderItem {
- id: string
- menuItem: {
-   id: string
-   name: string
- }
- quantity: number
- price: number
+  id: string
+  name: string
+  quantity: number
+  price: number
 }
 
 interface Order {
- id: string
- orderNumber: number
- customerName: string
- status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
- timestamp: string
- items: OrderItem[]
- total: number
- isComplimentary: boolean
- queueTime: number
- preparationTime?: number
- customerEmail?: string
- customerPhone?: string
- leadInterest?: boolean
- startTime?: string
- notes?: string
+  id: number
+  customerName: string
+  status: string
+  timestamp: string
+  items: OrderItem[]
+  total: number
+  isComplimentary: boolean
+  queueTime: number
+  preparationTime?: number
+  customerEmail?: string
+  customerPhone?: string
+  leadInterest?: boolean
+  startTime?: string
+  notes?: string
 }
 
 interface SearchFilters {
- customerName: string
- orderId: string
- itemName: string
- dateRange: {
-   start: string
-   end: string
- }
+  customerName: string
+  orderId: string
+  itemName: string
+  dateRange: {
+    start: string
+    end: string
+  }
 }
 
 const ActiveOrders: React.FC = () => {
- // Basic state
- const [orders, setOrders] = useState<Order[]>([])
- const [allOrders, setAllOrders] = useState<Order[]>([])
- const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
- const [statusFilter, setStatusFilter] = useState('All')
- const [sortCriteria, setSortCriteria] = useState('timestamp')
- const [sortDirection, setSortDirection] = useState('desc')
- const [isLoading, setIsLoading] = useState(true)
- const [error, setError] = useState<string | null>(null)
+  // Basic state
+  const [orders, setOrders] = useState<Order[]>([])
+  const [allOrders, setAllOrders] = useState<Order[]>([])
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
+  const [statusFilter, setStatusFilter] = useState('All')
+  const [sortCriteria, setSortCriteria] = useState('timestamp')
+  const [sortDirection, setSortDirection] = useState('desc')
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
- // Modal states
- const [showClearConfirmation, setShowClearConfirmation] = useState(false)
- const [showResetConfirmation, setShowResetConfirmation] = useState(false)
- const [showOrderDetails, setShowOrderDetails] = useState(false)
+  // Modal states
+  const [showClearConfirmation, setShowClearConfirmation] = useState(false)
+  const [showResetConfirmation, setShowResetConfirmation] = useState(false)
+  const [showOrderDetails, setShowOrderDetails] = useState(false)
 
- // Search and filter states
- const [searchFilters, setSearchFilters] = useState<SearchFilters>({
-   customerName: '',
-   orderId: '',
-   itemName: '',
-   dateRange: {
-     start: '',
-     end: ''
-   }
- })
+  // Search and filter states
+  const [searchFilters, setSearchFilters] = useState<SearchFilters>({
+    customerName: '',
+    orderId: '',
+    itemName: '',
+    dateRange: {
+      start: '',
+      end: ''
+    }
+  })
 
- // Order editing states
- const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
- const [editedItems, setEditedItems] = useState<OrderItem[]>([])
- const [orderNotes, setOrderNotes] = useState('')
+  // Order editing states
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [editedItems, setEditedItems] = useState<OrderItem[]>([])
+  const [orderNotes, setOrderNotes] = useState('')
 
- // Message state for user feedback
- const [message, setMessage] = useState<{
-   type: 'success' | 'error'
-   text: string
- } | null>(null)
+  // Message state for user feedback
+  const [message, setMessage] = useState<{
+    type: 'success' | 'error'
+    text: string
+  } | null>(null)
 
- // Helper function to show messages
- const showMessage = useCallback((text: string, type: 'success' | 'error') => {
-   setMessage({ text, type })
-   setTimeout(() => setMessage(null), 3000)
- }, [])
+  // Helper function to show messages
+  const showMessage = useCallback((text: string, type: 'success' | 'error') => {
+    setMessage({ text, type })
+    setTimeout(() => setMessage(null), 3000)
+  }, [])
 
- // Load orders from API with localStorage fallback
- const loadOrders = useCallback(async () => {
-   setIsLoading(true)
-   setError(null)
-   try {
-     const loadedOrders = await orderService.getOrders()
-     setOrders(loadedOrders)
-     setAllOrders(loadedOrders)
-     setFilteredOrders(loadedOrders)
-   } catch (error) {
-     setError('Error loading orders. Using cached data.')
-     // Fallback to localStorage
-     const cachedOrders = JSON.parse(localStorage.getItem('orders') || '[]')
-     setOrders(cachedOrders)
-     setAllOrders(cachedOrders)
-     setFilteredOrders(cachedOrders)
-   }
-   setIsLoading(false)
- }, [])
+  // Load orders from localStorage
+  const loadOrders = useCallback(() => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const loadedOrders = JSON.parse(
+        localStorage.getItem('orders') || '[]'
+      ) as Order[]
+      setOrders(loadedOrders)
+      setAllOrders(loadedOrders)
+      setFilteredOrders(loadedOrders)
+    } catch {
+      setError('Error loading orders. Please try again.')
+    }
+    setIsLoading(false)
+  } , [])
 
- // Filter and sort orders based on search criteria and filters
- const filterAndSortOrders = useCallback(() => {
-   let filtered = orders
 
-   if (statusFilter !== 'All') {
-     filtered = filtered.filter((order) => order.status === statusFilter)
-   }
+  // Filter and sort orders based on search criteria and filters
+  const filterAndSortOrders = useCallback(() => {
+    let filtered = orders
 
-   if (searchFilters.customerName) {
-     filtered = filtered.filter((order) =>
-       order.customerName
-         .toLowerCase()
-         .includes(searchFilters.customerName.toLowerCase())
-     )
-   }
+    // Apply status filter
+    if (statusFilter !== 'All') {
+      filtered = filtered.filter((order) => order.status === statusFilter)
+    }
 
-   if (searchFilters.orderId) {
-     filtered = filtered.filter((order) =>
-       order.orderNumber.toString().includes(searchFilters.orderId)
-     )
-   }
+    // Apply search filters
+    if (searchFilters.customerName) {
+      filtered = filtered.filter((order) =>
+        order.customerName
+          .toLowerCase()
+          .includes(searchFilters.customerName.toLowerCase())
+      )
+    }
 
-   if (searchFilters.itemName) {
-     filtered = filtered.filter((order) =>
-       order.items.some((item) =>
-         item.menuItem.name.toLowerCase().includes(searchFilters.itemName.toLowerCase())
-       )
-     )
-   }
+    if (searchFilters.orderId) {
+      filtered = filtered.filter((order) =>
+        order.id.toString().includes(searchFilters.orderId)
+      )
+    }
 
-   if (searchFilters.dateRange.start && searchFilters.dateRange.end) {
-     const startDate = new Date(searchFilters.dateRange.start)
-     const endDate = new Date(searchFilters.dateRange.end)
-     filtered = filtered.filter((order) => {
-       const orderDate = new Date(order.timestamp)
-       return orderDate >= startDate && orderDate <= endDate
-     })
-   }
+    if (searchFilters.itemName) {
+      filtered = filtered.filter((order) =>
+        order.items.some((item) =>
+          item.name.toLowerCase().includes(searchFilters.itemName.toLowerCase())
+        )
+      )
+    }
 
-   // Sort filtered orders
-   const sorted = [...filtered].sort((a, b) => {
-     if (sortCriteria === 'timestamp') {
-       return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-     } else if (sortCriteria === 'preparationTime') {
-       return (b.preparationTime || 0) - (a.preparationTime || 0)
-     } else if (sortCriteria === 'queueTime') {
-       return b.queueTime - a.queueTime
-     }
-     return 0
-   })
+    // Apply date range filter
+    if (searchFilters.dateRange.start && searchFilters.dateRange.end) {
+      const startDate = new Date(searchFilters.dateRange.start)
+      const endDate = new Date(searchFilters.dateRange.end)
+      filtered = filtered.filter((order) => {
+        const orderDate = new Date(order.timestamp)
+        return orderDate >= startDate && orderDate <= endDate
+      })
+    }
 
-   if (sortDirection === 'asc') {
-     sorted.reverse()
-   }
+    // Sort filtered orders
+    const sorted = [...filtered].sort((a, b) => {
+      if (sortCriteria === 'timestamp') {
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      } else if (sortCriteria === 'preparationTime') {
+        return (b.preparationTime || 0) - (a.preparationTime || 0)
+      } else if (sortCriteria === 'queueTime') {
+        return b.queueTime - a.queueTime
+      }
+      return 0
+    })
 
-   setFilteredOrders(sorted)
- }, [orders, statusFilter, searchFilters, sortCriteria, sortDirection])
+    if (sortDirection === 'asc') {
+      sorted.reverse()
+    }
 
- // Update filters
- const updateSearchFilters = (
-   field: keyof SearchFilters,
-   value: string | { start: string; end: string }
- ) => {
-   setSearchFilters((prev) => ({
-     ...prev,
-     [field]: value
-   }))
- }
+    setFilteredOrders(sorted)
+  }, [orders, statusFilter, searchFilters, sortCriteria, sortDirection])
 
- // Calculate new total based on items
- const calculateTotal = (items: OrderItem[]) => {
-   return items.reduce((sum, item) => sum + item.price * item.quantity, 0)
- }
+  // Update filters
+  const updateSearchFilters = (
+    field: keyof SearchFilters,
+    value: string | { start: string; end: string }
+  ) => {
+    setSearchFilters((prev) => ({
+      ...prev,
+      [field]: value
+    }))
+  }
 
- // Handle item editing
- const updateOrderItem = (
-   orderId: string,
-   itemId: string,
-   updates: Partial<OrderItem>
- ) => {
-   if (!selectedOrder) return
+  // Calculate new total based on items
+  const calculateTotal = (items: OrderItem[]) => {
+    return items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  }
 
-   const updatedItems = selectedOrder.items.map((item) =>
-     item.id === itemId ? { ...item, ...updates } : item
-   )
+  // Handle item editing
+  const updateOrderItem = (
+    orderId: number,
+    itemId: string,
+    updates: Partial<OrderItem>
+  ) => {
+    if (!selectedOrder) return
 
-   const newTotal = calculateTotal(updatedItems)
+    const updatedItems = selectedOrder.items.map((item) =>
+      item.id === itemId ? { ...item, ...updates } : item
+    )
 
-   setSelectedOrder({
-     ...selectedOrder,
-     items: updatedItems,
-     total: newTotal
-   })
- }
+    const newTotal = calculateTotal(updatedItems)
 
- // Effect hooks for initial load and filtering
- useEffect(() => {
-   loadOrders()
- }, [loadOrders])
+    setSelectedOrder({
+      ...selectedOrder,
+      items: updatedItems,
+      total: newTotal
+    })
+  }
 
- useEffect(() => {
-   filterAndSortOrders()
- }, [filterAndSortOrders])
+  // Effect hooks for initial load and filtering
+  useEffect(() => {
+    loadOrders()
+  }, [loadOrders])
 
- // Order status management
- const updateOrderStatus = async (orderId: string, newStatus: string) => {
-   try {
-     const preparationTime = newStatus === 'COMPLETED' && selectedOrder?.startTime
-       ? (Date.now() - new Date(selectedOrder.startTime).getTime()) / 1000
-       : undefined
+  useEffect(() => {
+    filterAndSortOrders()
+  }, [filterAndSortOrders])
 
-     const updatedOrder = await orderService.updateOrderStatus(orderId, newStatus, preparationTime)
-     await loadOrders()
-     showMessage('Order status updated successfully', 'success')
-   } catch (error) {
-     showMessage('Failed to update order status', 'error')
-   }
- }
+  // Order status management
+  const updateOrderStatus = (orderId: number, newStatus: string) => {
+    const updatedOrders = orders.map((order) => {
+      if (order.id === orderId) {
+        const updatedOrder = { ...order, status: newStatus }
+        if (newStatus === 'Completed' && order.startTime) {
+          const endTime = new Date()
+          const startTime = new Date(order.startTime)
+          updatedOrder.preparationTime =
+            (endTime.getTime() - startTime.getTime()) / 1000
+        }
+        return updatedOrder
+      }
+      return order
+    })
 
- // Handle updating order notes
- const handleUpdateOrderNotes = async (orderId: string, notes: string) => {
-   try {
-     await orderService.updateOrderNotes(orderId, notes)
-     await loadOrders()
-     showMessage('Order notes updated successfully', 'success')
-   } catch (error) {
-     showMessage('Failed to update order notes', 'error')
-   }
- }
+    setOrders(updatedOrders)
+    setAllOrders(updatedOrders)
+    localStorage.setItem('orders', JSON.stringify(updatedOrders))
+    showMessage('Order status updated successfully', 'success')
+  }
 
- // Lead interest tracking
- const recordLeadInterest = async (orderId: string, interested: boolean) => {
-   try {
-     await orderService.updateLeadInterest(orderId, interested)
-     await loadOrders()
-     showMessage('Lead interest recorded successfully', 'success')
-   } catch (error) {
-     showMessage('Failed to record lead interest', 'error')
-   }
- }
+  // Handle updating order notes
+  const handleUpdateOrderNotes = (orderId: number, notes: string) => {
+    const updatedOrders = orders.map((order) =>
+      order.id === orderId ? { ...order, notes } : order
+    )
+    setOrders(updatedOrders)
+    setAllOrders(updatedOrders)
+    localStorage.setItem('orders', JSON.stringify(updatedOrders))
+    showMessage('Order notes updated successfully', 'success')
+  }
 
- // Order cancellation
- const cancelOrder = async (orderId: string) => {
-   if (window.confirm('Are you sure you want to cancel this order?')) {
-     try {
-       await orderService.updateOrderStatus(orderId, 'CANCELLED')
-       await loadOrders()
-       showMessage('Order cancelled successfully', 'success')
-     } catch (error) {
-       showMessage('Failed to cancel order', 'error')
-     }
-   }
- }
+  // Lead interest tracking
+  const recordLeadInterest = (orderId: number, interested: boolean) => {
+    const updatedOrders = orders.map((order) =>
+      order.id === orderId ? { ...order, leadInterest: interested } : order
+    )
 
- // Order modification
- const modifyOrder = (orderId: string) => {
-   const orderToModify = orders.find((order) => order.id === orderId)
-   if (orderToModify) {
-     setSelectedOrder(orderToModify)
-     setEditedItems([...orderToModify.items])
-     setOrderNotes(orderToModify.notes || '')
-     setShowOrderDetails(true)
-   }
- }
+    setOrders(updatedOrders)
+    setAllOrders(updatedOrders)
+    localStorage.setItem('orders', JSON.stringify(updatedOrders))
+    showMessage('Lead interest recorded successfully', 'success')
+  }
 
- // Save modified order
- const saveModifiedOrder = async () => {
-   if (!selectedOrder) return
+  // Order cancellation
+  const cancelOrder = (orderId: number) => {
+    if (window.confirm('Are you sure you want to cancel this order?')) {
+      const updatedOrders = orders.filter((order) => order.id !== orderId)
+      setOrders(updatedOrders)
+      const updatedAllOrders = allOrders.map((order) =>
+        order.id === orderId ? { ...order, status: 'Cancelled' } : order
+      )
+      setAllOrders(updatedAllOrders)
+      localStorage.setItem('orders', JSON.stringify(updatedOrders))
+      showMessage('Order cancelled successfully', 'success')
+    }
+  }
 
-   try {
-     const modifiedOrder = {
-       ...selectedOrder,
-       items: editedItems,
-       notes: orderNotes,
-       total: calculateTotal(editedItems)
-     }
+  // Order modification
+  const modifyOrder = (orderId: number) => {
+    const orderToModify = orders.find((order) => order.id === orderId)
+    if (orderToModify) {
+      setSelectedOrder(orderToModify)
+      setEditedItems([...orderToModify.items])
+      setOrderNotes(orderToModify.notes || '')
+      setShowOrderDetails(true)
+    }
+  }
 
-     await orderService.updateOrder(selectedOrder.id, modifiedOrder)
-     await loadOrders()
-     
-     setShowOrderDetails(false)
-     setSelectedOrder(null)
-     showMessage('Order updated successfully', 'success')
-   } catch (error) {
-     showMessage('Failed to update order', 'error')
-   }
- }
+  // Save modified order
+  const saveModifiedOrder = () => {
+    if (!selectedOrder) return
 
- // Time formatting
- const formatTime = (seconds: number) => {
-   const minutes = Math.floor(seconds / 60)
-   const remainingSeconds = Math.floor(seconds % 60)
-   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
- }
+    const modifiedOrder = {
+      ...selectedOrder,
+      items: editedItems,
+      notes: orderNotes,
+      total: calculateTotal(editedItems)
+    }
 
- // PDF generation
- const generatePDF = () => {
-   const doc = new jsPDF()
-   const tableColumn = [
-     'Order #',
-     'Customer',
-     'Status',
-     'Total',
-     'Queue Time',
-     'Prep Time',
-     'Notes'
-   ]
-   const tableRows: (string | number)[][] = []
+    const updatedOrders = orders.map((order) =>
+      order.id === modifiedOrder.id ? modifiedOrder : order
+    )
 
-   allOrders.forEach((order) => {
-     const orderData = [
-       order.orderNumber,
-       order.customerName,
-       order.status,
-       order.isComplimentary ? 'Free' : `$${order.total}`,
-       formatTime(order.queueTime),
-       order.preparationTime ? formatTime(order.preparationTime) : 'N/A',
-       order.notes || 'N/A'
-     ]
-     tableRows.push(orderData)
-   })
+    setOrders(updatedOrders)
+    setAllOrders(updatedOrders)
+    localStorage.setItem('orders', JSON.stringify(updatedOrders))
+    
+    // Update notes using the handler
+    handleUpdateOrderNotes(modifiedOrder.id, orderNotes)
+    
+    setShowOrderDetails(false)
+    setSelectedOrder(null)
+    showMessage('Order updated successfully', 'success')
+  }
 
-   doc.autoTable({
-     head: [tableColumn],
-     body: tableRows,
-     startY: 20
-   })
+  // Time formatting
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = Math.floor(seconds % 60)
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+  }
 
-   doc.text('Buf Barista - Complete Order Report', 14, 15)
-   doc.save('buf-barista-all-orders.pdf')
- }
+  // PDF generation
+  const generatePDF = () => {
+    // eslint-disable-next-line new-cap
+    const doc = new jsPDF()
+    const tableColumn = [
+      'Order #',
+      'Customer',
+      'Status',
+      'Total',
+      'Queue Time',
+      'Prep Time',
+      'Notes'
+    ]
+    const tableRows: (string | number)[][] = []
 
- // Data management functions
- const clearAllOrders = async () => {
-   try {
-     await orderService.clearAllOrders()
-     await loadOrders()
-     showMessage('All orders cleared successfully', 'success')
-   } catch (error) {
-     showMessage('Failed to clear orders', 'error')
-   }
- }
+    allOrders.forEach((order) => {
+      const orderData = [
+        order.id,
+        order.customerName,
+        order.status,
+        order.isComplimentary ? 'Free' : `$${order.total}`,
+        formatTime(order.queueTime),
+        order.preparationTime ? formatTime(order.preparationTime) : 'N/A',
+        order.notes || 'N/A'
+      ]
+      tableRows.push(orderData)
+    })
 
- const resetAllData = async () => {
-   try {
-     await orderService.resetAllData()
-     await loadOrders()
-     showMessage('All data reset successfully', 'success')
-     window.location.reload()
-   } catch (error) {
-     showMessage('Failed to reset data', 'error')
-   }
- }
+    doc.autoTable({
+      head: [tableColumn],
+      body: tableRows,
+      startY: 20
+    })
 
- const exportData = async () => {
-   try {
-     const data = await orderService.exportOrders()
-     const blob = new Blob([data], { type: 'application/json' })
-     const url = URL.createObjectURL(blob)
-     const a = document.createElement('a')
-     a.href = url
-     a.download = 'buf-barista-data.json'
-     document.body.appendChild(a)
-     a.click()
-     document.body.removeChild(a)
-     URL.revokeObjectURL(url)
-     showMessage('Data exported successfully', 'success')
-   } catch (error) {
-     showMessage('Failed to export data', 'error')
-   }
- }
+    doc.text('Buf Barista - Complete Order Report', 14, 15)
+    doc.save('buf-barista-all-orders.pdf')
+  }
 
- const importData = async (event: React.ChangeEvent<HTMLInputElement>) => {
-   const file = event.target.files?.[0]
-   if (!file) return
+  // Data management functions
+  const clearAllOrders = () => {
+    setShowClearConfirmation(true)
+  }
 
-   try {
-     const reader = new FileReader()
-     reader.onload = async (e) => {
-       const content = e.target?.result as string
-       await orderService.importOrders(content)
-       await loadOrders()
-       showMessage('Data imported successfully', 'success')
-     }
-     reader.readAsText(file)
-   } catch (error) {
-     showMessage('Failed to import data', 'error')
-   }
- }
+  const confirmClearAllOrders = () => {
+    const clearedOrders = allOrders.map((order) =>
+      orders.some((activeOrder) => activeOrder.id === order.id)
+        ? { ...order, status: 'Cleared' }
+        : order
+    )
+    setAllOrders(clearedOrders)
+    setOrders([])
+    setFilteredOrders([])
+    localStorage.setItem('orders', JSON.stringify([]))
+    setShowClearConfirmation(false)
+    showMessage('All orders cleared successfully', 'success')
+  }
 
- // Toggle notes editing
- const toggleEditNotes = (orderId: string) => {
-   const order = orders.find((o) => o.id === orderId)
-   if (order) {
-     setSelectedOrder(order)
-     setOrderNotes(order.notes || '')
-     setShowOrderDetails(true)
-   }
- }
+  const cancelClearAllOrders = () => {
+    setShowClearConfirmation(false)
+  }
+
+  const resetAllData = () => {
+    setShowResetConfirmation(true)
+  }
+
+  const confirmResetAllData = () => {
+    localStorage.clear()
+    setOrders([])
+    setAllOrders([])
+    setFilteredOrders([])
+    setShowResetConfirmation(false)
+    showMessage('All data reset successfully', 'success')
+    window.location.reload()
+  }
+
+  const cancelResetAllData = () => {
+    setShowResetConfirmation(false)
+  }
+
+  const exportData = () => {
+    const data = {
+      orders: allOrders,
+      preferences: JSON.parse(
+        localStorage.getItem('systemPreferences') || '{}'
+      ),
+      inventory: JSON.parse(localStorage.getItem('inventory') || '[]')
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: 'application/json'
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'buf-barista-data.json'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    showMessage('Data exported successfully', 'success')
+  }
+
+  const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target?.result as string)
+          localStorage.setItem('orders', JSON.stringify(data.orders))
+          localStorage.setItem(
+            'systemPreferences',
+            JSON.stringify(data.preferences)
+          )
+          localStorage.setItem('inventory', JSON.stringify(data.inventory))
+          loadOrders()
+          showMessage('Data imported successfully', 'success')
+        } catch {
+          showMessage(
+            'Error importing data. Please check the file format.',
+            'error'
+          )
+        }
+      }
+      reader.readAsText(file)
+    }
+  }
+
+  const toggleEditNotes = (orderId: number) => {
+    const order = orders.find((o) => o.id === orderId)
+    if (order) {
+      setSelectedOrder(order)
+      setOrderNotes(order.notes || '')
+      setShowOrderDetails(true)
+    }
+  }
+
   // Render component
   return (
     <PageContainer>
@@ -4600,10 +5474,8 @@ const ActiveOrders: React.FC = () => {
 }
 
 export default ActiveOrders
-
-
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/order/styles.css
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/order/styles.css
 .nav-buttons {
   display: flex;
   justify-content: center;
@@ -5305,7 +6177,7 @@ button:active {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/page.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/page.tsx
 import { Metadata } from "next";
 import { PageContainer } from "@/components/layout/page-container";
 import { 
@@ -5550,695 +6422,1403 @@ export default async function DashboardPage() {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/pos/page.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/pos/page.tsx
+// "use client"
+// import React, { useState, useEffect, useCallback, useMemo } from 'react'
+// import {
+//  Coffee,
+//  X,
+//  DollarSign,
+//  Gift,
+//  Moon,
+//  Sun,
+//  Search,
+//  Bell,
+//  Plus,
+//  Minus,
+//  Trash2,
+//  Star,
+//  Clock,
+//  CalendarDays,
+//  Loader2
+// } from 'lucide-react'
+// import Link from 'next/link'
+// import {Button} from '@/components/ui/button'
+// import { format } from 'date-fns'
+// import { PageContainer } from "@/components/layout/page-container"
+// import { posService } from '@/lib/services/pos-service'
+// import './styles.css'
+// import { MenuItem, MilkOption, CartItem, CustomerInfo } from '@/types/pos'
+
+// // Constants
+// const flavorOptions = [
+//  'No Flavoring',
+//  'Vanilla',
+//  'Caramel',
+//  'Hazelnut',
+//  'Raspberry',
+//  'Pumpkin Spice'
+// ]
+
+// const milkOptions: MilkOption[] = [
+//  { name: 'No Milk', price: 0 },
+//  { name: 'Whole Milk', price: 0 },
+//  { name: 'Oat Milk', price: 0 }
+// ]
+
+// const BufBaristaPOS: React.FC = () => {
+//  // Basic state
+//  const [cart, setCart] = useState<CartItem[]>([])
+//  const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+//  const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
+//    firstName: '',
+//    lastInitial: '',
+//    organization: '',
+//    email: '',
+//    phone: ''
+//  })
+//  const [orderNotes, setOrderNotes] = useState('')
+//  const [orderNumber, setOrderNumber] = useState(1)
+//  const [selectedCategory, setSelectedCategory] = useState('All')
+//  const [isComplimentaryMode, setIsComplimentaryMode] = useState(true)
+//  const [queueStartTime, setQueueStartTime] = useState<Date | null>(null)
+//  const [isDarkMode, setIsDarkMode] = useState(false)
+//  const [searchTerm, setSearchTerm] = useState('')
+//  const [quickNotes, setQuickNotes] = useState<string[]>([])
+//  const [isLoading, setIsLoading] = useState(true)
+
+//  // Modal states
+//  const [isModalOpen, setIsModalOpen] = useState(false)
+//  const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState(false)
+//  const [notification, setNotification] = useState<string | null>(null)
+//  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null)
+//  const [selectedFlavor, setSelectedFlavor] = useState('')
+//  const [selectedMilk, setSelectedMilk] = useState(milkOptions[0])
+//  const [showPopular, setShowPopular] = useState(false)
+
+//  // Initial data loading
+//  useEffect(() => {
+//    const loadInitialData = async () => {
+//      setIsLoading(true)
+//     const prefs = {
+//       lastOrderNumber: 1,
+//       darkMode: false,
+//       complimentaryMode: true
+//     };
+
+//     try {
+//       const lastOrderNumber = prefs.lastOrderNumber || 1;
+//       setOrderNumber((lastOrderNumber as number) + 1);
+//       setIsDarkMode(prefs.darkMode || false);
+//       setIsComplimentaryMode(prefs.complimentaryMode || true);
+
+//       setQueueStartTime(new Date());
+//     } catch (error) {
+//        console.error('Error loading initial data:', error)
+//        showNotification('Error loading some data. Using fallback options.')
+       
+//        // Load from localStorage as fallback
+//        const savedQuickNotes = localStorage.getItem('quickNotes')
+//        if (savedQuickNotes) {
+//          setQuickNotes(JSON.parse(savedQuickNotes))
+//        }
+
+//        const lastOrderNumber = localStorage.getItem('lastOrderNumber')
+//        if (lastOrderNumber) {
+//          setOrderNumber(parseInt(lastOrderNumber) + 1)
+//        }
+
+//        const savedDarkMode = localStorage.getItem('darkMode')
+//        if (savedDarkMode) {
+//          setIsDarkMode(JSON.parse(savedDarkMode))
+//        }
+
+//        const savedComplimentaryMode = localStorage.getItem('complimentaryMode')
+//        if (savedComplimentaryMode) {
+//          setIsComplimentaryMode(JSON.parse(savedComplimentaryMode))
+//        }
+//      } finally {
+//        setIsLoading(false)
+//      }
+//    }
+
+//    loadInitialData()
+//  }, [])
+
+//  // Save preferences
+//  useEffect(() => {
+//    posService.savePreference('darkMode', isDarkMode)
+//    document.body.classList.toggle('dark-mode', isDarkMode)
+//  }, [isDarkMode])
+
+//  useEffect(() => {
+//    posService.savePreference('complimentaryMode', isComplimentaryMode)
+//  }, [isComplimentaryMode])
+
+//  const categories = useMemo(
+//    () => ['All', ...new Set(menuItems.map((item) => item.category))],
+//    [menuItems]
+//  )
+
+//  const showNotification = useCallback((message: string) => {
+//    setNotification(message)
+//    setTimeout(() => setNotification(null), 3000)
+//  }, [])
+
+//  const addToCart = useCallback((item: MenuItem) => {
+//    setSelectedItem(item)
+//    setSelectedFlavor('No Flavoring')
+
+//    // Set default milk based on specific drinks and categories
+//    const noMilkDrinks = ['Espresso', 'Americano']
+//    const defaultMilk = noMilkDrinks.includes(item.name)
+//      ? milkOptions.find((milk) => milk.name === 'No Milk') || milkOptions[0]
+//      : item.category === 'Coffee' || item.category === 'Specialty'
+//      ? milkOptions.find((milk) => milk.name === 'Whole Milk') || milkOptions[0]
+//      : milkOptions[0]
+
+//    setSelectedMilk(defaultMilk)
+//    setIsCustomizationModalOpen(true)
+//  }, [])
+
+//  const confirmCustomization = useCallback(() => {
+//    if (!selectedItem) return
+
+//    const newItem: CartItem = {
+//      ...selectedItem,
+//      flavor: selectedFlavor === 'No Flavoring' ? undefined : selectedFlavor,
+//      milk: selectedMilk,
+//      quantity: 1
+//    }
+
+//    setCart((prevCart) => {
+//      const existingItemIndex = prevCart.findIndex(
+//        (item) =>
+//          item.id === newItem.id &&
+//          item.flavor === newItem.flavor &&
+//          item.milk?.name === newItem.milk?.name
+//      )
+
+//      if (existingItemIndex !== -1) {
+//        return prevCart.map((item, index) =>
+//          index === existingItemIndex
+//            ? { ...item, quantity: item.quantity + 1 }
+//            : item
+//        )
+//      }
+
+//      return [...prevCart, newItem]
+//    })
+
+//    showNotification(
+//      `Added ${selectedItem.name} with ${selectedMilk.name}${
+//        selectedFlavor !== 'No Flavoring' ? ` and ${selectedFlavor}` : ''
+//      } to cart`
+//    )
+
+//    setIsCustomizationModalOpen(false)
+//  }, [selectedItem, selectedFlavor, selectedMilk, showNotification])
+
+//  const removeFromCart = useCallback((index: number) => {
+//    setCart((prevCart) => {
+//      const newCart = [...prevCart]
+//      if (newCart[index].quantity > 1) {
+//        newCart[index] = { ...newCart[index], quantity: newCart[index].quantity - 1 }
+//      } else {
+//        newCart.splice(index, 1)
+//      }
+//      return newCart
+//    })
+//  }, [])
+
+//  const increaseQuantity = useCallback((index: number) => {
+//    setCart((prevCart) => {
+//      const newCart = [...prevCart]
+//      newCart[index] = { ...newCart[index], quantity: newCart[index].quantity + 1 }
+//      return newCart
+//    })
+//  }, [])
+
+//  const calculateTotal = useCallback(() => {
+//    return isComplimentaryMode
+//       ? '0.00'
+//       : cart.reduce(
+//           (total, item) =>
+//             total + (item.price + (item.milk?.price || 0)) * item.quantity,
+//           0
+//         ).toFixed(2)
+//   }
+// , [cart, isComplimentaryMode])
+
+//  const handlePlaceOrder = useCallback(() => {
+//    if (cart.length === 0) return
+//    setIsModalOpen(true)
+//  }, [cart])
+
+//  const addQuickNote = useCallback(async (note: string) => {
+//    setOrderNotes((prev) => (prev ? `${prev}\n${note}` : note))
+//    try {
+//      await posService.createQuickNote(note)
+//      const notes = await posService.getQuickNotes()
+//      setQuickNotes(notes.map(note => note.content))
+//    } catch (error) {
+//      console.error('Error saving quick note:', error)
+//    }
+//  }, [])
+
+//  const confirmOrder = useCallback(async () => {
+//    if (!customerInfo.firstName || !customerInfo.lastInitial) return
+
+//    const orderStartTime = new Date()
+//    const newOrder = {
+//      orderNumber,
+//      customerName: `${customerInfo.firstName} ${customerInfo.lastInitial}.`,
+//      customerInfo,
+//      items: cart,
+//      notes: orderNotes,
+//      status: 'PENDING',
+//      total: parseFloat(calculateTotal()),
+//      isComplimentary: isComplimentaryMode,
+//      queueTime: queueStartTime
+//        ? (orderStartTime.getTime() - queueStartTime.getTime()) / 1000
+//        : 0,
+//      startTime: orderStartTime
+//    }
+
+//    try {
+//      await posService.createOrder({ ...newOrder, id: '', userId: '' })
+     
+//      setCart([])
+//      setCustomerInfo({
+//        firstName: '',
+//        lastInitial: '',
+//        organization: '',
+//        email: '',
+//        phone: ''
+//      })
+//      setOrderNotes('')
+//      setOrderNumber(orderNumber + 1)
+//      setQueueStartTime(new Date())
+//      setIsModalOpen(false)
+//      showNotification('Order placed successfully!')
+//    } catch (error) {
+//      console.error('Error creating order:', error)
+//      showNotification('Error creating order. Please try again.')
+//    }
+//  }, [
+//    customerInfo,
+//    cart,
+//    orderNumber,
+//    calculateTotal,
+//    isComplimentaryMode,
+//    queueStartTime,
+//    showNotification,
+//    orderNotes
+//  ])
+
+//  const filteredMenuItems = useMemo(
+//    () =>
+//      menuItems.filter(
+//        (item) =>
+//          (selectedCategory === 'All' || item.category === selectedCategory) &&
+//          item.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+//          (!showPopular || item.popular)
+//      ),
+//    [selectedCategory, searchTerm, showPopular, menuItems]
+//  )
+
+//  const handleKeyPress = useCallback(
+//    (e: KeyboardEvent) => {
+//      if (e.key === 'Enter' && e.ctrlKey) {
+//        handlePlaceOrder()
+//      }
+//    },
+//    [handlePlaceOrder]
+//  )
+
+//  useEffect(() => {
+//    window.addEventListener('keydown', handleKeyPress)
+//    return () => {
+//      window.removeEventListener('keydown', handleKeyPress)
+//    }
+//  }, [handleKeyPress])
+
+//  const toggleServiceMode = useCallback(() => {
+//    setIsComplimentaryMode((prev) => !prev)
+//    showNotification(
+//      `Switched to ${isComplimentaryMode ? 'Pop-up' : 'Complimentary'} mode`
+//    )
+//  }, [isComplimentaryMode, showNotification])
+
+//  if (isLoading) {
+//    return (
+//      <PageContainer>
+//        <div className="flex items-center justify-center min-h-screen">
+//          <div className="flex flex-col items-center space-y-4">
+//            <Loader2 className="w-8 h-8 animate-spin" />
+//            <p className="text-lg">Loading POS system...</p>
+//          </div>
+//        </div>
+//      </PageContainer>
+//    )
+//  }
+
+//  return (
+//    <PageContainer>
+//      <div className={`pos-container ${isDarkMode ? 'dark-mode' : ''}`}>
+//        <h1 className="page-title">Point of Sale</h1>
+
+//        <header className="pos-header">
+//          <div className="header-left">
+//            <Link href="/waste" passHref>
+//              <button className="waste-button">
+//                <Trash2 />
+//                Waste
+//              </button>
+//            </Link>
+//            <button onClick={toggleServiceMode} className="mode-button">
+//              {isComplimentaryMode ? <Gift /> : <DollarSign />}
+//              {isComplimentaryMode ? 'Complimentary' : 'Pop-up'}
+//            </button>
+//            <button
+//              onClick={() => setShowPopular(!showPopular)}
+//              className={`mode-button ${showPopular ? 'active' : ''}`}
+//            >
+//              <Star />
+//              Popular
+//            </button>
+//          </div>
+
+//          <div className="search-container">
+//            <Search />
+//            <input
+//              type="text"
+//              placeholder="Search menu..."
+//              value={searchTerm}
+//              onChange={(e) => setSearchTerm(e.target.value)}
+//              className="search-input"
+//            />
+//          </div>
+
+//          <div className="header-right">
+//            <span className="current-time">
+//              <Clock size={16} />
+//              {format(new Date(), 'HH:mm')}
+//            </span>
+//            <span className="current-date">
+//              <CalendarDays size={16} />
+//              {format(new Date(), 'MMM dd, yyyy')}
+//            </span>
+//            <button
+//              onClick={() => setIsDarkMode(!isDarkMode)}
+//              className="mode-button"
+//            >
+//              {isDarkMode ? <Sun /> : <Moon />}
+//            </button>
+//          </div>
+//        </header>
+
+//        <main className="pos-main">
+//          <section className="cart-section">
+//            <h2 className="section-title">Cart</h2>
+
+//            {cart.length === 0 ? (
+//              <p className="empty-cart">Your cart is empty</p>
+//            ) : (
+//              <ul className="cart-items">
+//                {cart.map((item, index) => (
+//                  <li key={index} className="cart-item">
+//                    <span className="item-name">
+//                      {item.name}
+//                      {item.milk && (
+//                        <span className="item-customization">
+//                          {' '}
+//                          ({item.milk.name})
+//                        </span>
+//                      )}
+//                      {item.flavor && (
+//                        <span className="item-customization">
+//                          {' '}
+//                          with {item.flavor}
+//                        </span>
+//                      )}
+//                    </span>
+//                    <div className="item-controls">
+//                      <button
+//                        onClick={() => removeFromCart(index)}
+//                        className="quantity-button"
+//                      >
+//                        <Minus size={16} />
+//                        </button>
+//                      <span className="item-quantity">{item.quantity}</span>
+//                      <button
+//                        onClick={() => increaseQuantity(index)}
+//                        className="quantity-button"
+//                      >
+//                        <Plus size={16} />
+//                      </button>
+//                      <span className="item-price">
+//                        {isComplimentaryMode
+//                          ? ''
+//                          : `$${(
+//                              (item.price + (item.milk?.price || 0)) *
+//                              item.quantity
+//                            ).toFixed(2)}`}
+//                      </span>
+//                      <Button
+//                        onClick={() => removeFromCart(index)}
+//                        className="remove-item"
+//                      >
+//                        <X size={16} />
+//                      </Button>
+//                    </div>
+//                  </li>
+//                ))}
+//              </ul>
+//            )}
+
+//            <div className="order-notes-section">
+//              <textarea
+//                value={orderNotes}
+//                onChange={(e) => setOrderNotes(e.target.value)}
+//                placeholder="Add notes about this order..."
+//                className="notes-input"
+//              />
+//              <div className="quick-notes">
+//                <div className="quick-note-chips">
+//                  {quickNotes.map((note, index) => (
+//                    <button
+//                      key={index}
+//                      onClick={() => addQuickNote(note)}
+//                      className="quick-note-chip"
+//                    >
+//                      {note}
+//                    </button>
+//                  ))}
+//                </div>
+//              </div>
+//            </div>
+
+//            <div className="cart-total">
+//              <span>Total:</span>
+//              <span>{isComplimentaryMode ? '' : `$${calculateTotal()}`}</span>
+//            </div>
+
+//            <button
+//              onClick={handlePlaceOrder}
+//              disabled={cart.length === 0}
+//              className="place-order-button"
+//            >
+//              Place Order
+//            </button>
+
+//            <Link href="/dashboard/orders" passHref>
+//              <button className="view-orders-button">View Orders</button>
+//            </Link>
+//            <Link href="/dashboard/sales" passHref>
+//              <button className="view-orders-button">View Reports</button>
+//            </Link>
+//          </section>
+
+//          <section className="menu-section">
+//            <div className="category-filters">
+//              {categories.map((category) => (
+//                <button
+//                  key={category}
+//                  onClick={() => setSelectedCategory(category)}
+//                  className={`category-button ${
+//                    category === selectedCategory ? 'active' : ''
+//                  }`}
+//                >
+//                  {category}
+//                </button>
+//              ))}
+//            </div>
+
+//            <div className="menu-grid">
+//              {filteredMenuItems.map((item) => (
+//                <button
+//                  key={item.id}
+//                  onClick={() => addToCart(item)}
+//                  className="menu-item"
+//                >
+//                  <Coffee className="item-icon" />
+//                  <h3 className="item-name">
+//                    {item.name}
+//                    {item.popular && <Star className="popular-icon" size={16} />}
+//                  </h3>
+//                  <p className="item-price">
+//                    {isComplimentaryMode ? '' : `$${item.price.toFixed(2)}`}
+//                  </p>
+//                </button>
+//              ))}
+//            </div>
+//          </section>
+//        </main>
+
+//        {/* Customer Information Modal */}
+//        {isModalOpen && (
+//          <div className="modal-overlay">
+//            <div className="modal-content">
+//              <h3 className="modal-title">Customer Information</h3>
+//              <input
+//                type="text"
+//                value={customerInfo.firstName}
+//                onChange={(e) =>
+//                  setCustomerInfo({ ...customerInfo, firstName: e.target.value })
+//                }
+//                placeholder="First Name"
+//                className="modal-input"
+//              />
+//              <input
+//                type="text"
+//                value={customerInfo.lastInitial}
+//                onChange={(e) =>
+//                  setCustomerInfo({
+//                    ...customerInfo,
+//                    lastInitial: e.target.value
+//                  })
+//                }
+//                placeholder="Last Name Initial"
+//                className="modal-input"
+//              />
+//              <input
+//                type="text"
+//                value={customerInfo.organization}
+//                onChange={(e) =>
+//                  setCustomerInfo({
+//                    ...customerInfo,
+//                    organization: e.target.value
+//                  })
+//                }
+//                placeholder="Organization (Optional)"
+//                className="modal-input"
+//              />
+//              <input
+//                type="email"
+//                value={customerInfo.email}
+//                onChange={(e) =>
+//                  setCustomerInfo({
+//                    ...customerInfo,
+//                    email: e.target.value
+//                  })
+//                }
+//                placeholder="Email (Optional)"
+//                className="modal-input"
+//              />
+//              <input
+//                type="tel"
+//                value={customerInfo.phone}
+//                onChange={(e) =>
+//                  setCustomerInfo({
+//                    ...customerInfo,
+//                    phone: e.target.value
+//                  })
+//                }
+//                placeholder="Phone (Optional)"
+//                className="modal-input"
+//              />
+//              <div className="modal-buttons">
+//                <button
+//                  onClick={() => setIsModalOpen(false)}
+//                  className="modal-button cancel"
+//                >
+//                  Cancel
+//                </button>
+//                <button onClick={confirmOrder} className="modal-button confirm">
+//                  Confirm Order
+//                </button>
+//              </div>
+//            </div>
+//          </div>
+//        )}
+
+//        {/* Customization Modal */}
+//        {isCustomizationModalOpen && selectedItem && (
+//          <div className="modal-overlay">
+//            <div className="modal-content">
+//              <h3 className="modal-title">Customize {selectedItem.name}</h3>
+
+//              <div className="customization-section">
+//                <h4 className="section-subtitle">Select Milk</h4>
+//                <div className="milk-options">
+//                  {milkOptions.map((milk) => (
+//                    <button
+//                      key={milk.name}
+//                      onClick={() => setSelectedMilk(milk)}
+//                      className={`milk-button ${
+//                        selectedMilk.name === milk.name ? 'selected' : ''
+//                      }`}
+//                    >
+//                      <span>{milk.name}</span>
+//                      {milk.price > 0 && (
+//                        <span className="milk-price">
+//                          +${milk.price.toFixed(2)}
+//                        </span>
+//                      )}
+//                    </button>
+//                  ))}
+//                </div>
+//              </div>
+
+//              <div className="customization-section">
+//                <h4 className="section-subtitle">Select Flavor</h4>
+//                {flavorOptions.map((flavor) => (
+//                  <button
+//                    key={flavor}
+//                    onClick={() => setSelectedFlavor(flavor)}
+//                    className={`flavor-button ${
+//                      selectedFlavor === flavor ? 'selected' : ''
+//                    }`}
+//                  >
+//                    {flavor}
+//                  </button>
+//                ))}
+//              </div>
+
+//              <div className="modal-buttons">
+//                <button
+//                  onClick={() => setIsCustomizationModalOpen(false)}
+//                  className="modal-button cancel"
+//                >
+//                  Cancel
+//                </button>
+//                <button
+//                  onClick={confirmCustomization}
+//                  className="modal-button confirm"
+//                  disabled={!selectedFlavor}
+//                >
+//                  Add to Cart
+//                </button>
+//              </div>
+//            </div>
+//          </div>
+//        )}
+
+//        {/* Notification */}
+//        {notification && (
+//          <div className="notification">
+//            <Bell size={16} />
+//            {notification}
+//          </div>
+//        )}
+//      </div>
+//    </PageContainer>
+//  )
+// }
+
+// export default BufBaristaPOS
 "use client"
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
- Coffee,
- X,
- DollarSign,
- Gift,
- Moon,
- Sun,
- Search,
- Bell,
- Plus,
- Minus,
- Trash2,
- Star,
- Clock,
- CalendarDays,
- Loader2
+  Coffee,
+  X,
+  DollarSign,
+  Gift,
+  Moon,
+  Sun,
+  Search,
+  Bell,
+  Plus,
+  Minus,
+  Trash2,
+  Star,
+  Clock,
+  CalendarDays
 } from 'lucide-react'
 import Link from 'next/link'
-import {Button} from '@/components/ui/button'
+import {Button} from '../../../components/ui/button'
 import { format } from 'date-fns'
 import { PageContainer } from "@/components/layout/page-container"
-import { posService } from '@/lib/services/pos-service'
 import './styles.css'
-import { MenuItem, MilkOption, CartItem, CustomerInfo } from '@/types/pos'
+
+// Types
+interface MenuItem {
+  id: number
+  name: string
+  price: number
+  category: string
+  popular: boolean
+}
+
+interface MilkOption {
+  name: string
+  price: number
+}
+
+interface CartItem extends MenuItem {
+  quantity: number
+  flavor?: string
+  milk?: MilkOption
+}
+
+interface CustomerInfo {
+  firstName: string
+  lastInitial: string
+  organization: string
+  email: string
+  phone: string
+}
 
 // Constants
+const menuItems = [
+  { id: 1, name: 'Espresso', price: 2.5, category: 'Coffee', popular: true },
+  { id: 2, name: 'Americano', price: 3.0, category: 'Coffee', popular: false },
+  { id: 3, name: 'Latte', price: 3.5, category: 'Coffee', popular: true },
+  { id: 4, name: 'Cappuccino', price: 3.5, category: 'Coffee', popular: true },
+  {
+    id: 5,
+    name: 'Flat White',
+    price: 3.5,
+    category: 'Coffee',
+    popular: false
+  },
+  { id: 6, name: 'Cortado', price: 3.5, category: 'Coffee', popular: false },
+  {
+    id: 7,
+    name: 'Caramel Crunch Crusher',
+    price: 4.5,
+    category: 'Specialty',
+    popular: true
+  },
+  {
+    id: 8,
+    name: 'Vanilla Dream Latte',
+    price: 4.5,
+    category: 'Specialty',
+    popular: false
+  },
+  {
+    id: 9,
+    name: 'Hazelnut Heaven Cappuccino',
+    price: 4.5,
+    category: 'Specialty',
+    popular: false
+  }
+]
+
 const flavorOptions = [
- 'No Flavoring',
- 'Vanilla',
- 'Caramel',
- 'Hazelnut',
- 'Raspberry',
- 'Pumpkin Spice'
+  'No Flavoring',
+  'Vanilla',
+  'Caramel',
+  'Hazelnut',
+  'Raspberry',
+  'Pumpkin Spice'
 ]
 
 const milkOptions: MilkOption[] = [
- { name: 'No Milk', price: 0 },
- { name: 'Whole Milk', price: 0 },
- { name: 'Oat Milk', price: 0 }
+  { name: 'No Milk', price: 0 },
+  { name: 'Whole Milk', price: 0 },
+  { name: 'Oat Milk', price: 0 }
 ]
 
 const BufBaristaPOS: React.FC = () => {
- // Basic state
- const [cart, setCart] = useState<CartItem[]>([])
- const [menuItems, setMenuItems] = useState<MenuItem[]>([])
- const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
-   firstName: '',
-   lastInitial: '',
-   organization: '',
-   email: '',
-   phone: ''
- })
- const [orderNotes, setOrderNotes] = useState('')
- const [orderNumber, setOrderNumber] = useState(1)
- const [selectedCategory, setSelectedCategory] = useState('All')
- const [isComplimentaryMode, setIsComplimentaryMode] = useState(true)
- const [queueStartTime, setQueueStartTime] = useState<Date | null>(null)
- const [isDarkMode, setIsDarkMode] = useState(false)
- const [searchTerm, setSearchTerm] = useState('')
- const [quickNotes, setQuickNotes] = useState<string[]>([])
- const [isLoading, setIsLoading] = useState(true)
+  // Basic state
+  const [cart, setCart] = useState<CartItem[]>([])
+  const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
+    firstName: '',
+    lastInitial: '',
+    organization: '',
+    email: '',
+    phone: ''
+  })
+  const [orderNotes, setOrderNotes] = useState('')
+  const [orderNumber, setOrderNumber] = useState(1)
+  const [selectedCategory, setSelectedCategory] = useState('All')
+  const [isComplimentaryMode, setIsComplimentaryMode] = useState(true)
+  const [queueStartTime, setQueueStartTime] = useState<Date | null>(null)
+  const [isDarkMode, setIsDarkMode] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [quickNotes, setQuickNotes] = useState<string[]>([])
 
- // Modal states
- const [isModalOpen, setIsModalOpen] = useState(false)
- const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState(false)
- const [notification, setNotification] = useState<string | null>(null)
- const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null)
- const [selectedFlavor, setSelectedFlavor] = useState('')
- const [selectedMilk, setSelectedMilk] = useState(milkOptions[0])
- const [showPopular, setShowPopular] = useState(false)
+  // Modal states
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState(false)
+  const [notification, setNotification] = useState<string | null>(null)
+  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null)
+  const [selectedFlavor, setSelectedFlavor] = useState('')
+  const [selectedMilk, setSelectedMilk] = useState(milkOptions[0])
+  const [showPopular, setShowPopular] = useState(false)
 
- // Initial data loading
- useEffect(() => {
-   const loadInitialData = async () => {
-     setIsLoading(true)
-    const prefs = {
-      lastOrderNumber: 1,
-      darkMode: false,
-      complimentaryMode: true
-    };
+  // Load saved quick notes
+  useEffect(() => {
+    const savedQuickNotes = localStorage.getItem('quickNotes')
+    if (savedQuickNotes) {
+      setQuickNotes(JSON.parse(savedQuickNotes))
+    }
+  }, [])
 
-    try {
-      const lastOrderNumber = prefs.lastOrderNumber || 1;
-      setOrderNumber((lastOrderNumber as number) + 1);
-      setIsDarkMode(prefs.darkMode || false);
-      setIsComplimentaryMode(prefs.complimentaryMode || true);
+  // Save quick notes
+  useEffect(() => {
+    localStorage.setItem('quickNotes', JSON.stringify(quickNotes))
+  }, [quickNotes])
 
-      setQueueStartTime(new Date());
-    } catch (error) {
-       console.error('Error loading initial data:', error)
-       showNotification('Error loading some data. Using fallback options.')
-       
-       // Load from localStorage as fallback
-       const savedQuickNotes = localStorage.getItem('quickNotes')
-       if (savedQuickNotes) {
-         setQuickNotes(JSON.parse(savedQuickNotes))
-       }
+  const categories = useMemo(
+    () => ['All', ...new Set(menuItems.map((item) => item.category))],
+    []
+  )
 
-       const lastOrderNumber = localStorage.getItem('lastOrderNumber')
-       if (lastOrderNumber) {
-         setOrderNumber(parseInt(lastOrderNumber) + 1)
-       }
+  useEffect(() => {
+    const lastOrderNumber = localStorage.getItem('lastOrderNumber')
+    if (lastOrderNumber) {
+      setOrderNumber(parseInt(lastOrderNumber) + 1)
+    }
 
-       const savedDarkMode = localStorage.getItem('darkMode')
-       if (savedDarkMode) {
-         setIsDarkMode(JSON.parse(savedDarkMode))
-       }
+    const savedDarkMode = localStorage.getItem('darkMode')
+    if (savedDarkMode) {
+      setIsDarkMode(JSON.parse(savedDarkMode))
+    }
 
-       const savedComplimentaryMode = localStorage.getItem('complimentaryMode')
-       if (savedComplimentaryMode) {
-         setIsComplimentaryMode(JSON.parse(savedComplimentaryMode))
-       }
-     } finally {
-       setIsLoading(false)
-     }
-   }
+    const savedComplimentaryMode = localStorage.getItem('complimentaryMode')
+    if (savedComplimentaryMode) {
+      setIsComplimentaryMode(JSON.parse(savedComplimentaryMode))
+    }
 
-   loadInitialData()
- }, [])
+    setQueueStartTime(new Date())
+  }, [])
 
- // Save preferences
- useEffect(() => {
-   posService.savePreference('darkMode', isDarkMode)
-   document.body.classList.toggle('dark-mode', isDarkMode)
- }, [isDarkMode])
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(isDarkMode))
+    document.body.classList.toggle('dark-mode', isDarkMode)
+  }, [isDarkMode])
 
- useEffect(() => {
-   posService.savePreference('complimentaryMode', isComplimentaryMode)
- }, [isComplimentaryMode])
+  useEffect(() => {
+    localStorage.setItem(
+      'complimentaryMode',
+      JSON.stringify(isComplimentaryMode)
+    )
+  }, [isComplimentaryMode])
 
- const categories = useMemo(
-   () => ['All', ...new Set(menuItems.map((item) => item.category))],
-   [menuItems]
- )
+  const showNotification = useCallback((message: string) => {
+    setNotification(message)
+    setTimeout(() => setNotification(null), 3000)
+  }, [])
 
- const showNotification = useCallback((message: string) => {
-   setNotification(message)
-   setTimeout(() => setNotification(null), 3000)
- }, [])
+  const addToCart = useCallback((item: MenuItem) => {
+    setSelectedItem(item)
+    setSelectedFlavor('No Flavoring')
 
- const addToCart = useCallback((item: MenuItem) => {
-   setSelectedItem(item)
-   setSelectedFlavor('No Flavoring')
+    // Set default milk based on specific drinks and categories
+    const noMilkDrinks = ['Espresso', 'Americano']
+    const defaultMilk = noMilkDrinks.includes(item.name)
+      ? milkOptions.find((milk) => milk.name === 'No Milk') || milkOptions[0]
+      : item.category === 'Coffee' || item.category === 'Specialty'
+      ? milkOptions.find((milk) => milk.name === 'Whole Milk') || milkOptions[0]
+      : milkOptions[0]
 
-   // Set default milk based on specific drinks and categories
-   const noMilkDrinks = ['Espresso', 'Americano']
-   const defaultMilk = noMilkDrinks.includes(item.name)
-     ? milkOptions.find((milk) => milk.name === 'No Milk') || milkOptions[0]
-     : item.category === 'Coffee' || item.category === 'Specialty'
-     ? milkOptions.find((milk) => milk.name === 'Whole Milk') || milkOptions[0]
-     : milkOptions[0]
+    setSelectedMilk(defaultMilk)
+    setIsCustomizationModalOpen(true)
+  }, [])
 
-   setSelectedMilk(defaultMilk)
-   setIsCustomizationModalOpen(true)
- }, [])
+  const confirmCustomization = useCallback(() => {
+    if (!selectedItem) return
 
- const confirmCustomization = useCallback(() => {
-   if (!selectedItem) return
+    const newItem: CartItem = {
+      ...selectedItem,
+      flavor: selectedFlavor === 'No Flavoring' ? undefined : selectedFlavor,
+      milk: selectedMilk,
+      quantity: 1
+    }
 
-   const newItem: CartItem = {
-     ...selectedItem,
-     flavor: selectedFlavor === 'No Flavoring' ? undefined : selectedFlavor,
-     milk: selectedMilk,
-     quantity: 1
-   }
+    setCart((prevCart) => {
+      const existingItemIndex = prevCart.findIndex(
+        (item) =>
+          item.id === newItem.id &&
+          item.flavor === newItem.flavor &&
+          item.milk?.name === newItem.milk?.name
+      )
 
-   setCart((prevCart) => {
-     const existingItemIndex = prevCart.findIndex(
-       (item) =>
-         item.id === newItem.id &&
-         item.flavor === newItem.flavor &&
-         item.milk?.name === newItem.milk?.name
-     )
+      if (existingItemIndex !== -1) {
+        return prevCart.map((item, index) =>
+          index === existingItemIndex
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        )
+      }
 
-     if (existingItemIndex !== -1) {
-       return prevCart.map((item, index) =>
-         index === existingItemIndex
-           ? { ...item, quantity: item.quantity + 1 }
-           : item
-       )
-     }
+      return [...prevCart, newItem]
+    })
 
-     return [...prevCart, newItem]
-   })
+    showNotification(
+      `Added ${selectedItem.name} with ${selectedMilk.name}${
+        selectedFlavor !== 'No Flavoring' ? ` and ${selectedFlavor}` : ''
+      } to cart`
+    )
 
-   showNotification(
-     `Added ${selectedItem.name} with ${selectedMilk.name}${
-       selectedFlavor !== 'No Flavoring' ? ` and ${selectedFlavor}` : ''
-     } to cart`
-   )
+    setIsCustomizationModalOpen(false)
+  }, [selectedItem, selectedFlavor, selectedMilk, showNotification])
 
-   setIsCustomizationModalOpen(false)
- }, [selectedItem, selectedFlavor, selectedMilk, showNotification])
+  const removeFromCart = useCallback((index: number) => {
+    setCart((prevCart) => {
+      const newCart = [...prevCart]
+      if (newCart[index].quantity > 1) {
+        newCart[index] = { ...newCart[index], quantity: newCart[index].quantity - 1 }
+      } else {
+        newCart.splice(index, 1)
+      }
+      return newCart
+    })
+  }, [])
 
- const removeFromCart = useCallback((index: number) => {
-   setCart((prevCart) => {
-     const newCart = [...prevCart]
-     if (newCart[index].quantity > 1) {
-       newCart[index] = { ...newCart[index], quantity: newCart[index].quantity - 1 }
-     } else {
-       newCart.splice(index, 1)
-     }
-     return newCart
-   })
- }, [])
+  const increaseQuantity = useCallback((index: number) => {
+    setCart((prevCart) => {
+      const newCart = [...prevCart]
+      newCart[index] = { ...newCart[index], quantity: newCart[index].quantity + 1 }
+      return newCart
+    })
+  }, [])
 
- const increaseQuantity = useCallback((index: number) => {
-   setCart((prevCart) => {
-     const newCart = [...prevCart]
-     newCart[index] = { ...newCart[index], quantity: newCart[index].quantity + 1 }
-     return newCart
-   })
- }, [])
+  const calculateTotal = useCallback(() => {
+    return isComplimentaryMode
+      ? 0
+      : cart
+          .reduce(
+            (sum, item) =>
+              sum + (item.price + (item.milk?.price || 0)) * item.quantity,
+            0
+          )
+          .toFixed(2)
+  }, [cart, isComplimentaryMode])
 
- const calculateTotal = useCallback(() => {
-   return isComplimentaryMode
-      ? '0.00'
-      : cart.reduce(
-          (total, item) =>
-            total + (item.price + (item.milk?.price || 0)) * item.quantity,
-          0
-        ).toFixed(2)
-  }
-, [cart, isComplimentaryMode])
+  const handlePlaceOrder = useCallback(() => {
+    if (cart.length === 0) return
+    setIsModalOpen(true)
+  }, [cart])
 
- const handlePlaceOrder = useCallback(() => {
-   if (cart.length === 0) return
-   setIsModalOpen(true)
- }, [cart])
+  const addQuickNote = useCallback((note: string) => {
+    setOrderNotes((prev) => (prev ? `${prev}\n${note}` : note))
+  }, [])
 
- const addQuickNote = useCallback(async (note: string) => {
-   setOrderNotes((prev) => (prev ? `${prev}\n${note}` : note))
-   try {
-     await posService.createQuickNote(note)
-     const notes = await posService.getQuickNotes()
-     setQuickNotes(notes.map(note => note.content))
-   } catch (error) {
-     console.error('Error saving quick note:', error)
-   }
- }, [])
+  const confirmOrder = useCallback(() => {
+    if (!customerInfo.firstName || !customerInfo.lastInitial) return
 
- const confirmOrder = useCallback(async () => {
-   if (!customerInfo.firstName || !customerInfo.lastInitial) return
+    const orderStartTime = new Date()
+    const newOrder = {
+      id: orderNumber,
+      customerName: `${customerInfo.firstName} ${customerInfo.lastInitial}.`,
+      customerInfo: { ...customerInfo },
+      items: [...cart],
+      notes: orderNotes,
+      timestamp: orderStartTime.toLocaleString(),
+      status: 'Pending',
+      total: calculateTotal(),
+      isComplimentary: isComplimentaryMode,
+      queueTime: queueStartTime
+        ? (orderStartTime.getTime() - queueStartTime.getTime()) / 1000
+        : 0,
+      startTime: orderStartTime
+    }
 
-   const orderStartTime = new Date()
-   const newOrder = {
-     orderNumber,
-     customerName: `${customerInfo.firstName} ${customerInfo.lastInitial}.`,
-     customerInfo,
-     items: cart,
-     notes: orderNotes,
-     status: 'PENDING',
-     total: parseFloat(calculateTotal()),
-     isComplimentary: isComplimentaryMode,
-     queueTime: queueStartTime
-       ? (orderStartTime.getTime() - queueStartTime.getTime()) / 1000
-       : 0,
-     startTime: orderStartTime
-   }
+    const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]')
+    const updatedOrders = [newOrder, ...existingOrders]
+    localStorage.setItem('orders', JSON.stringify(updatedOrders))
+    localStorage.setItem('lastOrderNumber', orderNumber.toString())
 
-   try {
-     await posService.createOrder({ ...newOrder, id: '', userId: '' })
-     
-     setCart([])
-     setCustomerInfo({
-       firstName: '',
-       lastInitial: '',
-       organization: '',
-       email: '',
-       phone: ''
-     })
-     setOrderNotes('')
-     setOrderNumber(orderNumber + 1)
-     setQueueStartTime(new Date())
-     setIsModalOpen(false)
-     showNotification('Order placed successfully!')
-   } catch (error) {
-     console.error('Error creating order:', error)
-     showNotification('Error creating order. Please try again.')
-   }
- }, [
-   customerInfo,
-   cart,
-   orderNumber,
-   calculateTotal,
-   isComplimentaryMode,
-   queueStartTime,
-   showNotification,
-   orderNotes
- ])
+    setCart([])
+    setCustomerInfo({
+      firstName: '',
+      lastInitial: '',
+      organization: '',
+      email: '',
+      phone: ''
+    })
+    setOrderNotes('')
+    setOrderNumber(orderNumber + 1)
+    setQueueStartTime(new Date())
+    setIsModalOpen(false)
+    showNotification('Order placed successfully!')
+  }, [
+    customerInfo,
+    cart,
+    orderNumber,
+    calculateTotal,
+    isComplimentaryMode,
+    queueStartTime,
+    showNotification,
+    orderNotes
+  ])
 
- const filteredMenuItems = useMemo(
-   () =>
-     menuItems.filter(
-       (item) =>
-         (selectedCategory === 'All' || item.category === selectedCategory) &&
-         item.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-         (!showPopular || item.popular)
-     ),
-   [selectedCategory, searchTerm, showPopular, menuItems]
- )
+  const filteredMenuItems = useMemo(
+    () =>
+      menuItems.filter(
+        (item) =>
+          (selectedCategory === 'All' || item.category === selectedCategory) &&
+          item.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+          (!showPopular || item.popular)
+      ),
+    [selectedCategory, searchTerm, showPopular]
+  )
 
- const handleKeyPress = useCallback(
-   (e: KeyboardEvent) => {
-     if (e.key === 'Enter' && e.ctrlKey) {
-       handlePlaceOrder()
-     }
-   },
-   [handlePlaceOrder]
- )
+  const handleKeyPress = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && e.ctrlKey) {
+        handlePlaceOrder()
+      }
+    },
+    [handlePlaceOrder]
+  )
 
- useEffect(() => {
-   window.addEventListener('keydown', handleKeyPress)
-   return () => {
-     window.removeEventListener('keydown', handleKeyPress)
-   }
- }, [handleKeyPress])
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyPress)
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress)
+    }
+  }, [handleKeyPress])
 
- const toggleServiceMode = useCallback(() => {
-   setIsComplimentaryMode((prev) => !prev)
-   showNotification(
-     `Switched to ${isComplimentaryMode ? 'Pop-up' : 'Complimentary'} mode`
-   )
- }, [isComplimentaryMode, showNotification])
+  const toggleServiceMode = useCallback(() => {
+    setIsComplimentaryMode((prev) => !prev)
+    showNotification(
+      `Switched to ${isComplimentaryMode ? 'Pop-up' : 'Complimentary'} mode`
+    )
+  }, [isComplimentaryMode, showNotification])
 
- if (isLoading) {
-   return (
-     <PageContainer>
-       <div className="flex items-center justify-center min-h-screen">
-         <div className="flex flex-col items-center space-y-4">
-           <Loader2 className="w-8 h-8 animate-spin" />
-           <p className="text-lg">Loading POS system...</p>
-         </div>
-       </div>
-     </PageContainer>
-   )
- }
+  return (
+    <PageContainer>
+      <div className={`pos-container ${isDarkMode ? 'dark-mode' : ''}`}>
+        <h1 className="page-title">Point of Sale</h1>
 
- return (
-   <PageContainer>
-     <div className={`pos-container ${isDarkMode ? 'dark-mode' : ''}`}>
-       <h1 className="page-title">Point of Sale</h1>
+        <header className="pos-header">
+          <div className="header-left">
+            <Link href="/waste" passHref>
+              <button className="waste-button">
+                <Trash2 />
+                Waste
+              </button>
+            </Link>
+            <button onClick={toggleServiceMode} className="mode-button">
+              {isComplimentaryMode ? <Gift /> : <DollarSign />}
+              {isComplimentaryMode ? 'Complimentary' : 'Pop-up'}
+            </button>
+            <button
+              onClick={() => setShowPopular(!showPopular)}
+              className={`mode-button ${showPopular ? 'active' : ''}`}
+            >
+              <Star />
+              Popular
+            </button>
+          </div>
 
-       <header className="pos-header">
-         <div className="header-left">
-           <Link href="/waste" passHref>
-             <button className="waste-button">
-               <Trash2 />
-               Waste
-             </button>
-           </Link>
-           <button onClick={toggleServiceMode} className="mode-button">
-             {isComplimentaryMode ? <Gift /> : <DollarSign />}
-             {isComplimentaryMode ? 'Complimentary' : 'Pop-up'}
-           </button>
-           <button
-             onClick={() => setShowPopular(!showPopular)}
-             className={`mode-button ${showPopular ? 'active' : ''}`}
-           >
-             <Star />
-             Popular
-           </button>
-         </div>
+          <div className="search-container">
+            <Search />
+            <input
+              type="text"
+              placeholder="Search menu..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
+          </div>
 
-         <div className="search-container">
-           <Search />
-           <input
-             type="text"
-             placeholder="Search menu..."
-             value={searchTerm}
-             onChange={(e) => setSearchTerm(e.target.value)}
-             className="search-input"
-           />
-         </div>
+          <div className="header-right">
+            <span className="current-time">
+              <Clock size={16} />
+              {format(new Date(), 'HH:mm')}
+            </span>
+            <span className="current-date">
+              <CalendarDays size={16} />
+              {format(new Date(), 'MMM dd, yyyy')}
+            </span>
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="mode-button"
+            >
+              {isDarkMode ? <Sun /> : <Moon />}
+            </button>
+          </div>
+        </header>
 
-         <div className="header-right">
-           <span className="current-time">
-             <Clock size={16} />
-             {format(new Date(), 'HH:mm')}
-           </span>
-           <span className="current-date">
-             <CalendarDays size={16} />
-             {format(new Date(), 'MMM dd, yyyy')}
-           </span>
-           <button
-             onClick={() => setIsDarkMode(!isDarkMode)}
-             className="mode-button"
-           >
-             {isDarkMode ? <Sun /> : <Moon />}
-           </button>
-         </div>
-       </header>
+        <main className="pos-main">
+          <section className="cart-section">
+            <h2 className="section-title">Cart</h2>
 
-       <main className="pos-main">
-         <section className="cart-section">
-           <h2 className="section-title">Cart</h2>
+            {cart.length === 0 ? (
+              <p className="empty-cart">Your cart is empty</p>
+            ) : (
+              <ul className="cart-items">
+                {cart.map((item, index) => (
+                  <li key={index} className="cart-item">
+                    <span className="item-name">
+                      {item.name}
+                      {item.milk && (
+                        <span className="item-customization">
+                          {' '}
+                          ({item.milk.name})
+                        </span>
+                      )}
+                      {item.flavor && (
+                        <span className="item-customization">
+                          {' '}
+                          with {item.flavor}
+                        </span>
+                      )}
+                    </span>
+                    <div className="item-controls">
+                      <button
+                        onClick={() => removeFromCart(index)}
+                        className="quantity-button"
+                      >
+                        <Minus size={16} />
+                        </button>
+                      <span className="item-quantity">{item.quantity}</span>
+                      <button
+                        onClick={() => increaseQuantity(index)}
+                        className="quantity-button"
+                      >
+                        <Plus size={16} />
+                      </button>
+                      <span className="item-price">
+                        {isComplimentaryMode
+                          ? ''
+                          : `$${(
+                              (item.price + (item.milk?.price || 0)) *
+                              item.quantity
+                            ).toFixed(2)}`}
+                      </span>
+                      <Button
+                        onClick={() => removeFromCart(index)}
+                        className="remove-item"
+                      >
+                        <X size={16} />
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
 
-           {cart.length === 0 ? (
-             <p className="empty-cart">Your cart is empty</p>
-           ) : (
-             <ul className="cart-items">
-               {cart.map((item, index) => (
-                 <li key={index} className="cart-item">
-                   <span className="item-name">
-                     {item.name}
-                     {item.milk && (
-                       <span className="item-customization">
-                         {' '}
-                         ({item.milk.name})
-                       </span>
-                     )}
-                     {item.flavor && (
-                       <span className="item-customization">
-                         {' '}
-                         with {item.flavor}
-                       </span>
-                     )}
-                   </span>
-                   <div className="item-controls">
-                     <button
-                       onClick={() => removeFromCart(index)}
-                       className="quantity-button"
-                     >
-                       <Minus size={16} />
-                       </button>
-                     <span className="item-quantity">{item.quantity}</span>
-                     <button
-                       onClick={() => increaseQuantity(index)}
-                       className="quantity-button"
-                     >
-                       <Plus size={16} />
-                     </button>
-                     <span className="item-price">
-                       {isComplimentaryMode
-                         ? ''
-                         : `$${(
-                             (item.price + (item.milk?.price || 0)) *
-                             item.quantity
-                           ).toFixed(2)}`}
-                     </span>
-                     <Button
-                       onClick={() => removeFromCart(index)}
-                       className="remove-item"
-                     >
-                       <X size={16} />
-                     </Button>
-                   </div>
-                 </li>
-               ))}
-             </ul>
-           )}
+            <div className="order-notes-section">
+              <textarea
+                value={orderNotes}
+                onChange={(e) => setOrderNotes(e.target.value)}
+                placeholder="Add notes about this order..."
+                className="notes-input"
+              />
+              <div className="quick-notes">
+                <div className="quick-note-chips">
+                  {quickNotes.map((note, index) => (
+                    <button
+                      key={index}
+                      onClick={() => addQuickNote(note)}
+                      className="quick-note-chip"
+                    >
+                      {note}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
 
-           <div className="order-notes-section">
-             <textarea
-               value={orderNotes}
-               onChange={(e) => setOrderNotes(e.target.value)}
-               placeholder="Add notes about this order..."
-               className="notes-input"
-             />
-             <div className="quick-notes">
-               <div className="quick-note-chips">
-                 {quickNotes.map((note, index) => (
-                   <button
-                     key={index}
-                     onClick={() => addQuickNote(note)}
-                     className="quick-note-chip"
-                   >
-                     {note}
-                   </button>
-                 ))}
-               </div>
-             </div>
-           </div>
+            <div className="cart-total">
+              <span>Total:</span>
+              <span>{isComplimentaryMode ? '' : `$${calculateTotal()}`}</span>
+            </div>
 
-           <div className="cart-total">
-             <span>Total:</span>
-             <span>{isComplimentaryMode ? '' : `$${calculateTotal()}`}</span>
-           </div>
+            <button
+              onClick={handlePlaceOrder}
+              disabled={cart.length === 0}
+              className="place-order-button"
+            >
+              Place Order
+            </button>
 
-           <button
-             onClick={handlePlaceOrder}
-             disabled={cart.length === 0}
-             className="place-order-button"
-           >
-             Place Order
-           </button>
+            <Link href="/dashboard/orders" passHref>
+              <button className="view-orders-button">View Orders</button>
+            </Link>
+            <Link href="/dashboard/sales" passHref>
+              <button className="view-orders-button">View Reports</button>
+            </Link>
+          </section>
 
-           <Link href="/dashboard/orders" passHref>
-             <button className="view-orders-button">View Orders</button>
-           </Link>
-           <Link href="/dashboard/sales" passHref>
-             <button className="view-orders-button">View Reports</button>
-           </Link>
-         </section>
+          <section className="menu-section">
+            <div className="category-filters">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`category-button ${
+                    category === selectedCategory ? 'active' : ''
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
 
-         <section className="menu-section">
-           <div className="category-filters">
-             {categories.map((category) => (
-               <button
-                 key={category}
-                 onClick={() => setSelectedCategory(category)}
-                 className={`category-button ${
-                   category === selectedCategory ? 'active' : ''
-                 }`}
-               >
-                 {category}
-               </button>
-             ))}
-           </div>
+            <div className="menu-grid">
+              {filteredMenuItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => addToCart(item)}
+                  className="menu-item"
+                >
+                  <Coffee className="item-icon" />
+                  <h3 className="item-name">
+                    {item.name}
+                    {item.popular && <Star className="popular-icon" size={16} />}
+                  </h3>
+                  <p className="item-price">
+                    {isComplimentaryMode ? '' : `$${item.price.toFixed(2)}`}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </section>
+        </main>
 
-           <div className="menu-grid">
-             {filteredMenuItems.map((item) => (
-               <button
-                 key={item.id}
-                 onClick={() => addToCart(item)}
-                 className="menu-item"
-               >
-                 <Coffee className="item-icon" />
-                 <h3 className="item-name">
-                   {item.name}
-                   {item.popular && <Star className="popular-icon" size={16} />}
-                 </h3>
-                 <p className="item-price">
-                   {isComplimentaryMode ? '' : `$${item.price.toFixed(2)}`}
-                 </p>
-               </button>
-             ))}
-           </div>
-         </section>
-       </main>
+        {/* Customer Information Modal */}
+        {isModalOpen && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <h3 className="modal-title">Customer Information</h3>
+              <input
+                type="text"
+                value={customerInfo.firstName}
+                onChange={(e) =>
+                  setCustomerInfo({ ...customerInfo, firstName: e.target.value })
+                }
+                placeholder="First Name"
+                className="modal-input"
+              />
+              <input
+                type="text"
+                value={customerInfo.lastInitial}
+                onChange={(e) =>
+                  setCustomerInfo({
+                    ...customerInfo,
+                    lastInitial: e.target.value
+                  })
+                }
+                placeholder="Last Name Initial"
+                className="modal-input"
+              />
+              <input
+                type="text"
+                value={customerInfo.organization}
+                onChange={(e) =>
+                  setCustomerInfo({
+                    ...customerInfo,
+                    organization: e.target.value
+                  })
+                }
+                placeholder="Organization (Optional)"
+                className="modal-input"
+              />
+              <input
+                type="email"
+                value={customerInfo.email}
+                onChange={(e) =>
+                  setCustomerInfo({
+                    ...customerInfo,
+                    email: e.target.value
+                  })
+                }
+                placeholder="Email (Optional)"
+                className="modal-input"
+              />
+              <input
+                type="tel"
+                value={customerInfo.phone}
+                onChange={(e) =>
+                  setCustomerInfo({
+                    ...customerInfo,
+                    phone: e.target.value
+                  })
+                }
+                placeholder="Phone (Optional)"
+                className="modal-input"
+              />
+              <div className="modal-buttons">
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="modal-button cancel"
+                >
+                  Cancel
+                </button>
+                <button onClick={confirmOrder} className="modal-button confirm">
+                  Confirm Order
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
-       {/* Customer Information Modal */}
-       {isModalOpen && (
-         <div className="modal-overlay">
-           <div className="modal-content">
-             <h3 className="modal-title">Customer Information</h3>
-             <input
-               type="text"
-               value={customerInfo.firstName}
-               onChange={(e) =>
-                 setCustomerInfo({ ...customerInfo, firstName: e.target.value })
-               }
-               placeholder="First Name"
-               className="modal-input"
-             />
-             <input
-               type="text"
-               value={customerInfo.lastInitial}
-               onChange={(e) =>
-                 setCustomerInfo({
-                   ...customerInfo,
-                   lastInitial: e.target.value
-                 })
-               }
-               placeholder="Last Name Initial"
-               className="modal-input"
-             />
-             <input
-               type="text"
-               value={customerInfo.organization}
-               onChange={(e) =>
-                 setCustomerInfo({
-                   ...customerInfo,
-                   organization: e.target.value
-                 })
-               }
-               placeholder="Organization (Optional)"
-               className="modal-input"
-             />
-             <input
-               type="email"
-               value={customerInfo.email}
-               onChange={(e) =>
-                 setCustomerInfo({
-                   ...customerInfo,
-                   email: e.target.value
-                 })
-               }
-               placeholder="Email (Optional)"
-               className="modal-input"
-             />
-             <input
-               type="tel"
-               value={customerInfo.phone}
-               onChange={(e) =>
-                 setCustomerInfo({
-                   ...customerInfo,
-                   phone: e.target.value
-                 })
-               }
-               placeholder="Phone (Optional)"
-               className="modal-input"
-             />
-             <div className="modal-buttons">
-               <button
-                 onClick={() => setIsModalOpen(false)}
-                 className="modal-button cancel"
-               >
-                 Cancel
-               </button>
-               <button onClick={confirmOrder} className="modal-button confirm">
-                 Confirm Order
-               </button>
-             </div>
-           </div>
-         </div>
-       )}
+        {/* Customization Modal */}
+        {isCustomizationModalOpen && selectedItem && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <h3 className="modal-title">Customize {selectedItem.name}</h3>
 
-       {/* Customization Modal */}
-       {isCustomizationModalOpen && selectedItem && (
-         <div className="modal-overlay">
-           <div className="modal-content">
-             <h3 className="modal-title">Customize {selectedItem.name}</h3>
+              <div className="customization-section">
+                <h4 className="section-subtitle">Select Milk</h4>
+                <div className="milk-options">
+                  {milkOptions.map((milk) => (
+                    <button
+                      key={milk.name}
+                      onClick={() => setSelectedMilk(milk)}
+                      className={`milk-button ${
+                        selectedMilk.name === milk.name ? 'selected' : ''
+                      }`}
+                    >
+                      <span>{milk.name}</span>
+                      {milk.price > 0 && (
+                        <span className="milk-price">
+                          +${milk.price.toFixed(2)}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-             <div className="customization-section">
-               <h4 className="section-subtitle">Select Milk</h4>
-               <div className="milk-options">
-                 {milkOptions.map((milk) => (
-                   <button
-                     key={milk.name}
-                     onClick={() => setSelectedMilk(milk)}
-                     className={`milk-button ${
-                       selectedMilk.name === milk.name ? 'selected' : ''
-                     }`}
-                   >
-                     <span>{milk.name}</span>
-                     {milk.price > 0 && (
-                       <span className="milk-price">
-                         +${milk.price.toFixed(2)}
-                       </span>
-                     )}
-                   </button>
-                 ))}
-               </div>
-             </div>
+              <div className="customization-section">
+                <h4 className="section-subtitle">Select Flavor</h4>
+                {flavorOptions.map((flavor) => (
+                  <button
+                    key={flavor}
+                    onClick={() => setSelectedFlavor(flavor)}
+                    className={`flavor-button ${
+                      selectedFlavor === flavor ? 'selected' : ''
+                    }`}
+                  >
+                    {flavor}
+                  </button>
+                ))}
+              </div>
 
-             <div className="customization-section">
-               <h4 className="section-subtitle">Select Flavor</h4>
-               {flavorOptions.map((flavor) => (
-                 <button
-                   key={flavor}
-                   onClick={() => setSelectedFlavor(flavor)}
-                   className={`flavor-button ${
-                     selectedFlavor === flavor ? 'selected' : ''
-                   }`}
-                 >
-                   {flavor}
-                 </button>
-               ))}
-             </div>
+              <div className="modal-buttons">
+                <button
+                  onClick={() => setIsCustomizationModalOpen(false)}
+                  className="modal-button cancel"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmCustomization}
+                  className="modal-button confirm"
+                  disabled={!selectedFlavor}
+                >
+                  Add to Cart
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
-             <div className="modal-buttons">
-               <button
-                 onClick={() => setIsCustomizationModalOpen(false)}
-                 className="modal-button cancel"
-               >
-                 Cancel
-               </button>
-               <button
-                 onClick={confirmCustomization}
-                 className="modal-button confirm"
-                 disabled={!selectedFlavor}
-               >
-                 Add to Cart
-               </button>
-             </div>
-           </div>
-         </div>
-       )}
-
-       {/* Notification */}
-       {notification && (
-         <div className="notification">
-           <Bell size={16} />
-           {notification}
-         </div>
-       )}
-     </div>
-   </PageContainer>
- )
+        {/* Notification */}
+        {notification && (
+          <div className="notification">
+            <Bell size={16} />
+            {notification}
+          </div>
+        )}
+      </div>
+    </PageContainer>
+  )
 }
 
 export default BufBaristaPOS
-
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/pos/styles.css
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/pos/styles.css
 /* Base Variables */
 :root {
   --primary-color: #4a90e2;
@@ -7116,7 +8696,7 @@ ________________________________________________________________________________
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/qr/[id]/error.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/qr/[id]/error.tsx
 // src/app/(app)/qr/[id]/error.tsx
 "use client"
 
@@ -7146,7 +8726,7 @@ export default function Error() {
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/qr/[id]/loading.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/qr/[id]/loading.tsx
 // src/app/(app)/qr/[id]/loading.tsx
 import { Card } from "@/components/ui/card"
 
@@ -7168,7 +8748,7 @@ export default function Loading() {
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/qr/[id]/not-found.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/qr/[id]/not-found.tsx
 // src/app/(app)/qr/[id]/not-found.tsx
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -7196,17 +8776,18 @@ export default function NotFound() {
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/qr/[id]/page.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/qr/[id]/page.tsx
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { QRForm } from "@/components/dashboard/qr/qr-form"
-import { getQRCodeById } from "@/lib/db"
+import { getQRCodeById } from "@/lib/db/prisma"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { ChevronLeft } from "lucide-react"
+import { PageContainer } from "@/components/layout/page-container"
 
-// @ts-ignore
+// @ts-expect-error Set up the metadata type
 export default async function QRCodePage({ params }) {
   let qrCode = null
   
@@ -7223,6 +8804,7 @@ export default async function QRCodePage({ params }) {
   }
 
   return (
+    <PageContainer>
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between">
         <div>
@@ -7243,10 +8825,11 @@ export default async function QRCodePage({ params }) {
         <QRForm initialData={qrCode} />
       </Card>
     </div>
+  </PageContainer>
   )
 }
 
-// @ts-ignore
+// @ts-expect-error Set up the metadata type
 export async function generateMetadata({ params }): Promise<Metadata> {
   let qrCode = null
   
@@ -7282,7 +8865,7 @@ export async function generateMetadata({ params }): Promise<Metadata> {
   }
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/qr/new/error.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/qr/new/error.tsx
 "use client"
 
 import { Button } from "@/components/ui/button"
@@ -7305,7 +8888,7 @@ export default function Error() {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/qr/new/loading.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/qr/new/loading.tsx
 import { Loader2 } from "lucide-react"
 
 export default function Loading() {
@@ -7319,9 +8902,10 @@ export default function Loading() {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/qr/new/page.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/qr/new/page.tsx
 import { Metadata } from "next"
 import { QRForm } from "@/components/dashboard/qr/qr-form"
+import { PageContainer } from "@/components/layout/page-container"
 
 export const metadata: Metadata = {
   title: "Create QR Code | Chain Works",
@@ -7330,14 +8914,16 @@ export const metadata: Metadata = {
 
 export default function NewQRCodePage() {
   return (
+    <PageContainer>
     <div className="flex-1">
       <QRForm />
     </div>
+  </PageContainer>
   )
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/qr/page.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/qr/page.tsx
 // src/app/(app)/qr/page.tsx
 "use client"
 
@@ -7363,7 +8949,7 @@ export default function QRCodesPage() {
             Create and manage your dynamic QR codes
           </p>
         </div>
-        <Link href="/qr/new">
+        <Link href="/dashboard/qr/new">
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             Create QR Code
@@ -7387,7 +8973,7 @@ export default function QRCodesPage() {
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/sales/page.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/sales/page.tsx
 "use client"
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import DatePicker from 'react-datepicker'
@@ -8362,7 +9948,7 @@ return (
 
 export default Reports
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/sales/styles.css
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/sales/styles.css
 
     /* Base Variables */
     :root {
@@ -8683,7 +10269,7 @@ ________________________________________________________________________________
     }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/settings/page.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/settings/page.tsx
 import { Metadata } from "next";
 import { Separator } from "@/components/ui/separator";
 import { ProfileForm } from "@/components/settings/profile-form";
@@ -8733,7 +10319,7 @@ export default function SettingsPage() {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/waste/page.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/waste/page.tsx
 "use client"
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
@@ -9140,7 +10726,7 @@ const WasteManagement: React.FC = () => {
 export default WasteManagement
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/dashboard/waste/styles.css
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/waste/styles.css
 /* Base Variables */
 :root {
 --primary-color: #4a90e2;
@@ -9672,7 +11258,7 @@ display: none;
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/globals.css
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/globals.css
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -9747,7 +11333,7 @@ body {
   text-align: center;
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/layout.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/layout.tsx
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/auth-provider";
@@ -9777,7 +11363,7 @@ export default function RootLayout({
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/app/page.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/page.tsx
 import Link from "next/link"
 import { Hero } from "@/components/landing/hero"
 import { Features } from "@/components/landing/features"
@@ -9904,7 +11490,2784 @@ export default function LandingPage() {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/auth/auth-provider.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/pricing/constants.ts
+export const PRICING_MODELS = {
+  byTheCup: {
+    basePrice: 5.50,
+    breakpoints: [
+      { threshold: 200, price: 5.50 },
+      { threshold: 500, price: 5.00 },
+      { threshold: 1000, price: 4.50 },
+      { threshold: Infinity, price: 4.00 }
+    ],
+    minimumCharge: 1000
+  },
+  hourlyRate: {
+    basePrice: 250,
+    minimumHours: 4,
+    peakHourSurcharge: 50,
+    additionalStaffRate: 75
+  },
+  hybrid: {
+    basePrice: 1500,
+    includedCups: 300,
+    additionalHourRate: 200,
+    cupRates: [
+      { range: [301, 500], price: 4.75 },
+      { range: [501, 1000], price: 4.25 },
+      { range: [1001, Infinity], price: 3.75 }
+    ]
+  }
+};
+
+export const EQUIPMENT_UPGRADES = {
+  pourOverBar: {
+    hourlyRate: 150,
+    flatFee: 200,
+    perCupRate: 1.50
+  },
+  nitroColdBrew: {
+    hourlyRate: 200,
+    flatFee: 300,
+    perCupRate: 2.00
+  },
+  extraEspressoMachine: {
+    hourlyRate: 100
+  },
+  latteArtStation: {
+    hourlyRate: 90
+  }
+};
+
+export const ADD_ON_EXPERIENCES = {
+  latteArtDemo: {
+    price: 250,
+    duration: 1
+  },
+  coffeeTasting: {
+    price: 300,
+    duration: 1
+  },
+  baristaWorkshop: {
+    price: 400,
+    duration: 2,
+    maxParticipants: 20
+  },
+  coffeeRoasting: {
+    price: 500,
+    duration: 2,
+    maxParticipants: 15,
+    includes: 'Take home 1lb of freshly roasted coffee'
+  },
+  espressoMasterclass: {
+    price: 350,
+    duration: 2,
+    maxParticipants: 12
+  },
+  brewingTechniques: {
+    price: 275,
+    duration: 1.5,
+    maxParticipants: 15
+  },
+  coffeeAndChocolatePairing: {
+    price: 450,
+    duration: 2,
+    maxParticipants: 20,
+    includes: 'Premium chocolate tasting selection'
+  },
+  customBlendCreation: {
+    price: 600,
+    duration: 3,
+    maxParticipants: 10,
+    includes: '1lb of custom created blend'
+  },
+  coldBrewWorkshop: {
+    price: 325,
+    duration: 1.5,
+    maxParticipants: 15,
+    includes: 'Take home cold brew kit'
+  },
+  seasonalDrinkCrafting: {
+    price: 375,
+    duration: 2,
+    maxParticipants: 18
+  }
+};
+
+export const BRANDING_OPTIONS = {
+  cups: {
+    price: 0.75,
+    minimumOrder: 300
+  },
+  deluxe: {
+    price: 1.00,
+    minimumOrder: 500
+  },
+  full: {
+    baseFee: 300,
+    perCupRate: 0.75
+  }
+};
+
+export const DRINK_TYPES = {
+  standard: [
+    { id: 'espresso', name: 'Espresso', included: true },
+    { id: 'americano', name: 'Americano', included: true },
+    { id: 'cappuccino', name: 'Cappuccino', included: true },
+    { id: 'latte', name: 'Latte', included: true },
+    { id: 'flatWhite', name: 'Flat White', included: true },
+    { id: 'mocha', name: 'Mocha', included: true },
+    { id: 'cortado', name: 'Cortado', included: true },
+  ],
+  specialty: [
+    { id: 'caramelMacchiato', name: 'Caramel Macchiato', price: 1.00 },
+    { id: 'vanillaLatte', name: 'Vanilla Latte', price: 1.00 },
+    { id: 'hazelnutLatte', name: 'Hazelnut Latte', price: 1.00 },
+    { id: 'icedCoffee', name: 'Iced Coffee', price: 1.00 },
+    { id: 'coldBrew', name: 'Cold Brew', price: 1.00 }
+  ],
+  nonCoffee: [
+    { id: 'hotChocolate', name: 'Hot Chocolate', price: 0.50 },
+    { id: 'chaiLatte', name: 'Chai Latte', price: 0.50 },
+    { id: 'greenTea', name: 'Green Tea', price: 0.50 },
+    { id: 'blackTea', name: 'Black Tea', price: 0.50 },
+    { id: 'herbalTea', name: 'Herbal Tea', price: 0.50 },
+    { id: 'matchaLatte', name: 'Matcha Latte', price: 0.50 },
+    { id: 'icedTea', name: 'Iced Tea', price: 0.50 }
+  ]
+};
+
+export const EVENT_TYPES = [
+  { value: 'tradeShow', label: 'Trade Show' },
+  { value: 'convention', label: 'Convention' },
+  { value: 'wedding', label: 'Wedding' },
+  { value: 'corporate', label: 'Corporate' },
+  { value: 'festival', label: 'Festival' },
+  { value: 'conference', label: 'Conference' },
+  { value: 'productLaunch', label: 'Product Launch' },
+  { value: 'fashionShow', label: 'Fashion Show' },
+  { value: 'fundraiser', label: 'Fundraiser' },
+  { value: 'graduation', label: 'Graduation' },
+  { value: 'birthdayParty', label: 'Birthday Party' },
+  { value: 'anniversary', label: 'Anniversary' },
+  { value: 'reunion', label: 'Reunion' },
+  { value: 'artGallery', label: 'Art Gallery Opening' },
+  { value: 'moviePremiere', label: 'Movie Premiere' },
+  { value: 'bookLaunch', label: 'Book Launch' },
+  { value: 'sportsEvent', label: 'Sports Event' },
+  { value: 'workshop', label: 'Workshop' },
+  { value: 'seminar', label: 'Seminar' },
+  { value: 'meetAndGreet', label: 'Meet and Greet' },
+  { value: 'networking', label: 'Networking Event' },
+  { value: 'other', label: 'Other' }
+];
+
+
+// src/app/pricing/constants.ts
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/pricing/page.tsx
+// "use client"
+// import React, { useState, useEffect } from 'react';
+// import { Alert, AlertDescription } from '@/components/ui/alert';
+// import { Button } from '@/components/ui/button';
+// import { Card } from '@/components/ui/card';
+// import { Input } from '@/components/ui/input';
+// import { Label } from '@/components/ui/label';
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+// import { Textarea } from '@/components/ui/textarea';
+// import { Calendar, User, MapPin, Coffee } from 'lucide-react';
+// import './styles.css';
+
+// import { FormData, BookedAddOn, QuoteResult, QuoteBreakdown, TimelinePoint } from './types';
+// import { DRINK_TYPES, EVENT_TYPES } from './constants';
+// import {
+//   calculateByTheCupPrice,
+//   calculateHourlyRatePrice,
+//   calculateHybridModelPrice,
+//   validateDates,
+//   formatCurrency,
+//   generateTimelinePoints,
+//   calculateDetailedBreakdown
+// } from './utils';
+
+// const EventPlanner: React.FC = () => {
+//   const [currentStep, setCurrentStep] = useState(1);
+//   const [formData, setFormData] = useState<FormData>({
+//     name: '',
+//     email: '',
+//     phone: '',
+//     eventName: '',
+//     eventDate: '',
+//     eventTime: '',
+//     eventDuration: '',
+//     multiDayEvent: false,
+//     eventEndDate: '',
+//     recurringEvent: false,
+//     recurringFrequency: 'daily',
+//     guestCount: '',
+//     eventType: '',
+//     eventLocation: '',
+//     customBranding: 'none',
+//     staffUniform: 'standard',
+//     customDrink: '',
+//     specialInstructions: '',
+//     selectedDrinks: new Set(),
+//     equipmentUpgrades: new Set(),
+//     addOnExperiences: new Set()
+//   });
+
+//   const [bookedAddOns, setBookedAddOns] = useState<BookedAddOn[]>([]);
+//   const [errors, setErrors] = useState<Record<string, string>>({});
+//   const [quoteResult, setQuoteResult] = useState<QuoteResult | null>(null);
+//   const [alertMessage, setAlertMessage] = useState('');
+//   const [showAlert, setShowAlert] = useState(false);
+//   const [designPreviews, setDesignPreviews] = useState<string[]>([]);
+
+//   useEffect(() => {
+//     if (formData.eventDuration && formData.eventTime) {
+//       updateTimeline();
+//     }
+//   }, [formData.eventDuration, formData.eventTime]);
+
+//   const updateTimeline = () => {
+//     const duration = parseInt(formData.eventDuration);
+//     const startTime = formData.eventTime;
+//     const timeline = document.getElementById('timeline');
+    
+//     if (timeline) {
+//       timeline.innerHTML = '';
+      
+//       for (let i = 0; i <= duration; i++) {
+//         const timePoint = new Date(`2000-01-01T${startTime}`);
+//         timePoint.setHours(timePoint.getHours() + i);
+//         const timeLabel = timePoint.toTimeString().slice(0, 5);
+
+//         const point = document.createElement('div');
+//         point.className = 'timeline-point bg-gray-100 p-2 rounded';
+//         point.textContent = timeLabel;
+//         timeline.appendChild(point);
+//       }
+//     }
+//   };
+
+//   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+//     const { name, value, type } = e.target;
+//     const inputValue = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
+
+//     setFormData(prev => ({
+//       ...prev,
+//       [name]: inputValue
+//     }));
+
+//     if (errors[name]) {
+//       setErrors(prev => {
+//         const newErrors = { ...prev };
+//         delete newErrors[name];
+//         return newErrors;
+//       });
+//     }
+//   };
+
+//   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+//     if (e.target.files) {
+//       const files = Array.from(e.target.files);
+//       const previews = files.map(file => URL.createObjectURL(file));
+//       setDesignPreviews(prev => [...prev, ...previews]);
+//     }
+//   };
+
+//   const handleDrinkSelection = (drinkId: string) => {
+//     setFormData(prev => {
+//       const newSelectedDrinks = new Set(prev.selectedDrinks);
+//       if (newSelectedDrinks.has(drinkId)) {
+//         newSelectedDrinks.delete(drinkId);
+//       } else {
+//         newSelectedDrinks.add(drinkId);
+//       }
+//       return { ...prev, selectedDrinks: newSelectedDrinks };
+//     });
+//   };
+
+//   const addBookedAddOn = (service: string, time: string) => {
+//     setBookedAddOns(prev => [...prev, { service, time }]);
+//   };
+
+//   const removeBookedAddOn = (index: number) => {
+//     setBookedAddOns(prev => prev.filter((_, i) => i !== index));
+//   };
+
+//   const validateStep = (step: number): boolean => {
+//     const newErrors: Record<string, string> = {};
+  
+//     switch (step) {
+//       case 1:
+//         if (!formData.name) newErrors.name = 'Name is required';
+//         if (!formData.email) newErrors.email = 'Email is required';
+//         if (!formData.eventName) newErrors.eventName = 'Event name is required';
+//         if (!formData.eventDate) newErrors.eventDate = 'Event date is required';
+//         if (!formData.eventTime) newErrors.eventTime = 'Start time is required';
+//         if (!formData.eventDuration) newErrors.eventDuration = 'Duration is required';
+//         if (!formData.guestCount) newErrors.guestCount = 'Guest count is required';
+        
+//         // Validate date is in the future
+//         if (formData.eventDate && !validateDates(formData.eventDate)) {
+//           newErrors.eventDate = 'Event date must be in the future';
+//         }
+        
+//         // Validate duration
+//         const duration = parseInt(formData.eventDuration);
+//         if (isNaN(duration) || duration < 1) {
+//           newErrors.eventDuration = 'Duration must be at least 1 hour';
+//         }
+        
+//         // Validate guest count
+//         const guests = parseInt(formData.guestCount);
+//         if (isNaN(guests) || guests < 1) {
+//           newErrors.guestCount = 'Guest count must be at least 1';
+//         }
+//         break;
+  
+//       case 2:
+//         if (formData.selectedDrinks.size === 0) {
+//           newErrors.drinks = 'Please select at least one drink option';
+//         }
+//         break;
+//     }
+  
+//     setErrors(newErrors);
+//     return Object.keys(newErrors).length === 0;
+//   };
+
+//   const calculateQuote = () => {
+//     if (!validateStep(4)) return;
+  
+//     const guestCount = parseInt(formData.guestCount);
+//     const duration = parseInt(formData.eventDuration);
+  
+//     const byTheCupPrice = calculateByTheCupPrice(guestCount, duration, formData);
+//     const hourlyRatePrice = calculateHourlyRatePrice(duration, guestCount, formData);
+//     const hybridModelPrice = calculateHybridModelPrice(duration, guestCount, formData);
+  
+//     const bestPrice = Math.min(byTheCupPrice, hourlyRatePrice, hybridModelPrice);
+//     let recommendedModel = '';
+  
+//     if (bestPrice === byTheCupPrice) {
+//       recommendedModel = 'By-the-Cup Model';
+//     } else if (bestPrice === hourlyRatePrice) {
+//       recommendedModel = 'Hourly Rate Model';
+//     } else {
+//       recommendedModel = 'Hybrid Model';
+//     }
+  
+//     // Use the calculateDetailedBreakdown function instead of hardcoding percentages
+//     const breakdown = calculateDetailedBreakdown(
+//       formData,
+//       guestCount,
+//       duration,
+//       recommendedModel,
+//       bestPrice
+//     );
+  
+//     setQuoteResult({
+//       totalPrice: bestPrice,
+//       recommendedModel,
+//       breakdown
+//     });
+  
+//     setCurrentStep(5);
+//   };
+//   const renderEventDetails = () => (
+//     <div className="space-y-6">
+//       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//         <div>
+//           <Label htmlFor="name">Name</Label>
+//           <Input
+//             id="name"
+//             name="name"
+//             value={formData.name}
+//             onChange={handleInputChange}
+//             className={errors.name ? 'border-red-500' : ''}
+//           />
+//           {errors.name && <span className="text-red-500 text-sm">{errors.name}</span>}
+//         </div>
+
+//         <div>
+//           <Label htmlFor="email">Email</Label>
+//           <Input
+//             id="email"
+//             name="email"
+//             type="email"
+//             value={formData.email}
+//             onChange={handleInputChange}
+//             className={errors.email ? 'border-red-500' : ''}
+//           />
+//           {errors.email && <span className="text-red-500 text-sm">{errors.email}</span>}
+//         </div>
+
+//         <div>
+//           <Label htmlFor="phone">Phone</Label>
+//           <Input
+//             id="phone"
+//             name="phone"
+//             type="tel"
+//             value={formData.phone}
+//             onChange={handleInputChange}
+//           />
+//         </div>
+
+//         <div>
+//           <Label htmlFor="eventName">Event Name</Label>
+//           <Input
+//             id="eventName"
+//             name="eventName"
+//             value={formData.eventName}
+//             onChange={handleInputChange}
+//             className={errors.eventName ? 'border-red-500' : ''}
+//           />
+//           {errors.eventName && <span className="text-red-500 text-sm">{errors.eventName}</span>}
+//         </div>
+
+//         <div>
+//           <Label htmlFor="eventDate">Event Date</Label>
+//           <Input
+//             id="eventDate"
+//             name="eventDate"
+//             type="date"
+//             value={formData.eventDate}
+//             onChange={handleInputChange}
+//             className={errors.eventDate ? 'border-red-500' : ''}
+//           />
+//           {errors.eventDate && <span className="text-red-500 text-sm">{errors.eventDate}</span>}
+//         </div>
+
+//         <div>
+//           <Label htmlFor="eventTime">Start Time</Label>
+//           <Input
+//             id="eventTime"
+//             name="eventTime"
+//             type="time"
+//             value={formData.eventTime}
+//             onChange={handleInputChange}
+//           />
+//         </div>
+
+//         <div>
+//           <Label htmlFor="eventDuration">Duration (hours)</Label>
+//           <Input
+//             id="eventDuration"
+//             name="eventDuration"
+//             type="number"
+//             min="1"
+//             value={formData.eventDuration}
+//             onChange={handleInputChange}
+//             className={errors.eventDuration ? 'border-red-500' : ''}
+//           />
+//           {errors.eventDuration && <span className="text-red-500 text-sm">{errors.eventDuration}</span>}
+//         </div>
+
+//         <div>
+//           <Label htmlFor="guestCount">Expected Guests</Label>
+//           <Input
+//             id="guestCount"
+//             name="guestCount"
+//             type="number"
+//             min="1"
+//             value={formData.guestCount}
+//             onChange={handleInputChange}
+//             className={errors.guestCount ? 'border-red-500' : ''}
+//           />
+//           {errors.guestCount && <span className="text-red-500 text-sm">{errors.guestCount}</span>}
+//         </div>
+
+//         <div>
+//           <Label htmlFor="eventType">Event Type</Label>
+//           <Select 
+//             name="eventType"
+//             value={formData.eventType}
+//             onValueChange={(value) => handleInputChange({
+//               target: { name: 'eventType', value }
+//             } as any)}
+//           >
+//             <SelectTrigger>
+//               <SelectValue placeholder="Select event type" />
+//             </SelectTrigger>
+//             <SelectContent>
+//               {EVENT_TYPES.map(type => (
+//                 <SelectItem key={type.value} value={type.value}>
+//                   {type.label}
+//                 </SelectItem>
+//               ))}
+//             </SelectContent>
+//           </Select>
+//         </div>
+
+//         <div className="col-span-2">
+//           <Label htmlFor="eventLocation">Event Location</Label>
+//           <Textarea
+//             id="eventLocation"
+//             name="eventLocation"
+//             value={formData.eventLocation}
+//             onChange={handleInputChange}
+//             rows={3}
+//           />
+//         </div>
+//       </div>
+//     </div>
+//   );
+
+//   const renderMenuSelection = () => (
+//     <div className="space-y-6">
+//       <h3 className="text-lg font-semibold">Select Drinks</h3>
+//       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+//         {Object.entries(DRINK_TYPES).map(([category, drinks]) => (
+//           <Card key={category} className="p-4">
+//             <h4 className="font-semibold mb-4 capitalize">{category}</h4>
+//             <div className="space-y-2">
+//               {drinks.map(drink => (
+//                 <div key={drink.id} className="flex items-center">
+//                   <input
+//                     type="checkbox"
+//                     id={drink.id}
+//                     checked={formData.selectedDrinks.has(drink.id)}
+//                     onChange={() => handleDrinkSelection(drink.id)}
+//                     className="mr-2"
+//                   />
+//                   <Label htmlFor={drink.id}>{drink.name}</Label>
+//                 </div>
+//               ))}
+//             </div>
+//           </Card>
+//         ))}
+//       </div>
+//       {errors.drinks && <span className="text-red-500">{errors.drinks}</span>}
+//     </div>
+//   );
+
+//   const renderAdditionalServices = () => (
+//     <div className="space-y-6">
+//       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//         <Card className="p-4">
+//           <h3 className="font-semibold mb-4">Equipment Upgrades</h3>
+//           <div className="space-y-2">
+//             <div className="flex items-center">
+//               <input
+//                 type="checkbox"
+//                 id="pourOverBar"
+//                 checked={formData.equipmentUpgrades.has('pourOverBar')}
+//                 onChange={() => {
+//                   const newUpgrades = new Set(formData.equipmentUpgrades);
+//                   if (newUpgrades.has('pourOverBar')) {
+//                     newUpgrades.delete('pourOverBar');
+//                   } else {
+//                     newUpgrades.add('pourOverBar');
+//                   }
+//                   setFormData(prev => ({ ...prev, equipmentUpgrades: newUpgrades }));
+//                 }}
+//                 className="mr-2"
+//               />
+//               <Label htmlFor="pourOverBar">Pour-Over Bar ($200 + $1.50/cup)</Label>
+//             </div>
+//             {/* Add other equipment options */}
+//           </div>
+//         </Card>
+
+//         <Card className="p-4">
+//           <h3 className="font-semibold mb-4">Add-On Experiences</h3>
+//           <div className="space-y-2">
+//             <div className="flex items-center">
+//               <input
+//                 type="checkbox"
+//                 id="latteArt"
+//                 checked={formData.addOnExperiences.has('latteArt')}
+//                 onChange={() => {
+//                   const newExperiences = new Set(formData.addOnExperiences);
+//                   if (newExperiences.has('latteArt')) {
+//                     newExperiences.delete('latteArt');
+//                   } else {
+//                     newExperiences.add('latteArt');
+//                   }
+//                   setFormData(prev => ({ ...prev, addOnExperiences: newExperiences }));
+//                 }}
+//                 className="mr-2"
+//               />
+//               <Label htmlFor="latteArt">Latte Art Demonstration ($250/hour)</Label>
+//             </div>
+//             {/* Add other experience options */}
+//           </div>
+//         </Card>
+//       </div>
+
+//       <Card className="p-4">
+//       <h3 className="font-semibold mb-4">Timeline</h3>
+//         <div id="timeline" className="flex space-x-4 overflow-x-auto p-4">
+//           {/* Timeline points will be populated by updateTimeline() */}
+//         </div>
+
+//         <div className="mt-4">
+//           <h4 className="font-semibold mb-2">Book Add-On Times</h4>
+//           <div className="flex space-x-4">
+//             <Select
+//               onValueChange={(value) => setFormData(prev => ({
+//                 ...prev,
+//                 selectedAddOn: value
+//               }))}
+//             >
+//               <SelectTrigger className="w-[200px]">
+//                 <SelectValue placeholder="Select add-on" />
+//               </SelectTrigger>
+//               <SelectContent>
+//                 {Array.from(formData.addOnExperiences).map(experience => (
+//                   <SelectItem key={experience} value={experience}>
+//                     {experience}
+//                   </SelectItem>
+//                 ))}
+//               </SelectContent>
+//             </Select>
+//             <Input
+//               type="time"
+//               className="w-[150px]"
+//               onChange={(e) => setFormData(prev => ({
+//                 ...prev,
+//                 selectedTime: e.target.value
+//               }))}
+//             />
+//             <Button 
+//               onClick={() => {
+//                 if (formData.selectedAddOn && formData.selectedTime) {
+//                   addBookedAddOn(formData.selectedAddOn, formData.selectedTime);
+//                 }
+//               }}
+//             >
+//               Add
+//             </Button>
+//           </div>
+//         </div>
+
+//         <div className="mt-4">
+//           <h4 className="font-semibold mb-2">Booked Add-Ons</h4>
+//           <div className="space-y-2">
+//             {bookedAddOns.map((addon, index) => (
+//               <div key={index} className="flex justify-between items-center bg-gray-50 p-2 rounded">
+//                 <span>{addon.service} at {addon.time}</span>
+//                 <Button
+//                   variant="destructive"
+//                   size="sm"
+//                   onClick={() => removeBookedAddOn(index)}
+//                 >
+//                   Remove
+//                 </Button>
+//               </div>
+//             ))}
+//           </div>
+//         </div>
+//       </Card>
+
+//       <Card className="p-4">
+//         <h3 className="font-semibold mb-4">Customization Options</h3>
+//         <div className="space-y-4">
+//           <div>
+//             <Label htmlFor="customBranding">Branding Options</Label>
+//             <Select
+//               name="customBranding"
+//               value={formData.customBranding}
+//               onValueChange={(value) => handleInputChange({
+//                 target: { name: 'customBranding', value }
+//               } as any)}
+//             >
+//               <SelectTrigger>
+//                 <SelectValue placeholder="Select branding option" />
+//               </SelectTrigger>
+//               <SelectContent>
+//                 <SelectItem value="none">No Branding</SelectItem>
+//                 <SelectItem value="cups">Custom Cups ($0.75/cup)</SelectItem>
+//                 <SelectItem value="deluxe">Deluxe Branding ($1.00/cup)</SelectItem>
+//                 <SelectItem value="full">Full Custom Branding ($500 + $0.75/cup)</SelectItem>
+//               </SelectContent>
+//             </Select>
+//           </div>
+
+//           <div>
+//             <Label htmlFor="staffUniform">Staff Uniform</Label>
+//             <Select
+//               name="staffUniform"
+//               value={formData.staffUniform}
+//               onValueChange={(value) => handleInputChange({
+//                 target: { name: 'staffUniform', value }
+//               } as any)}
+//             >
+//               <SelectTrigger>
+//                 <SelectValue placeholder="Select uniform option" />
+//               </SelectTrigger>
+//               <SelectContent>
+//                 <SelectItem value="standard">Standard Uniform</SelectItem>
+//                 <SelectItem value="custom">Custom Themed Uniform ($50/staff)</SelectItem>
+//               </SelectContent>
+//             </Select>
+//           </div>
+//         </div>
+//       </Card>
+//     </div>
+//   );
+
+//   const renderSpecialRequests = () => (
+//     <div className="space-y-6">
+//       <Card className="p-4">
+//         <h3 className="font-semibold mb-4">Custom Drink Creation</h3>
+//         <Textarea
+//           name="customDrink"
+//           value={formData.customDrink}
+//           onChange={handleInputChange}
+//           placeholder="Describe your custom drink idea..."
+//           className="min-h-[100px]"
+//         />
+//         <p className="text-sm text-gray-500 mt-2">
+//           $200 one-time fee for recipe development
+//         </p>
+//       </Card>
+
+//       <Card className="p-4">
+//         <h3 className="font-semibold mb-4">Special Instructions</h3>
+//         <Textarea
+//           name="specialInstructions"
+//           value={formData.specialInstructions}
+//           onChange={handleInputChange}
+//           placeholder="Any additional requests or special instructions..."
+//           className="min-h-[100px]"
+//         />
+//       </Card>
+
+//       <Card className="p-4">
+//         <h3 className="font-semibold mb-4">Design Upload</h3>
+//         <Input
+//           type="file"
+//           multiple
+//           accept="image/*"
+//           onChange={handleFileUpload}
+//           className="mb-4"
+//         />
+//         <div className="grid grid-cols-4 gap-4">
+//           {designPreviews.map((preview, index) => (
+//             <img
+//               key={index}
+//               src={preview}
+//               alt={`Design preview ${index + 1}`}
+//               className="w-24 h-24 object-cover rounded"
+//             />
+//           ))}
+//         </div>
+//       </Card>
+//     </div>
+//   );
+
+//     // Update the timeline generation
+//   const renderTimeline = (timePoints: TimelinePoint[]) => {
+//     return (
+//       <div className="grid grid-cols-[auto,1fr] gap-4">
+//         {timePoints.map((point, index) => (
+//           <React.Fragment key={index}>
+//             <div className="text-sm font-medium">
+//               {point.time}
+//             </div>
+//             <div className="text-sm text-gray-600">
+//               {point.events.length > 0 ? (
+//                 point.events.map((event, eventIndex) => (
+//                   <div key={eventIndex} className="text-green-600">
+//                     {event.service}
+//                   </div>
+//                 ))
+//               ) : (
+//                 <div className="text-gray-400">
+//                   {index === 0 ? 'Setup' : 
+//                   index === timePoints.length - 1 ? 'Teardown' : 
+//                   'Regular Service'}
+//                 </div>
+//               )}
+//             </div>
+//           </React.Fragment>
+//         ))}
+//       </div>
+//     );
+//   };
+
+//   // Update the quote breakdown section
+//   const renderDetailedBreakdown = (breakdown: QuoteBreakdown[]) => (
+//     <div className="space-y-6">
+//       {breakdown.map((section, index) => (
+//         <div key={index} className="mb-6">
+//           <h5 className="font-semibold text-gray-700 mb-2">{section.category}</h5>
+//           <div className="space-y-2">
+//             {section.items.map((item, itemIndex) => (
+//               <div key={itemIndex} className="flex justify-between text-sm">
+//                 <div className="flex-1">
+//                   <div>{item.label}</div>
+//                   {item.details && (
+//                     <div className="text-gray-500 text-xs mt-1">{item.details}</div>
+//                   )}
+//                 </div>
+//                 <div className="ml-4 text-right whitespace-nowrap">
+//                   {formatCurrency(item.amount)}
+//                 </div>
+//               </div>
+//             ))}
+//             <div className="flex justify-between font-medium pt-2 border-t">
+//               <span>Subtotal</span>
+//               <span>{formatCurrency(section.subtotal)}</span>
+//             </div>
+//           </div>
+//         </div>
+//       ))}
+//     </div>
+//   );
+
+//   const renderQuoteResult = () => {
+//     const guestCount = parseInt(formData.guestCount);
+//     const duration = parseInt(formData.eventDuration);
+  
+//     const byTheCupBreakdown = calculateDetailedBreakdown(
+//       formData,
+//       guestCount,
+//       duration,
+//       'By-the-Cup Model',
+//       calculateByTheCupPrice(guestCount, duration, formData)
+//     );
+  
+//     const hourlyRateBreakdown = calculateDetailedBreakdown(
+//       formData,
+//       guestCount,
+//       duration,
+//       'Hourly Rate Model',
+//       calculateHourlyRatePrice(duration, guestCount, formData)
+//     );
+  
+//     const hybridBreakdown = calculateDetailedBreakdown(
+//       formData,
+//       guestCount,
+//       duration,
+//       'Hybrid Model',
+//       calculateHybridModelPrice(duration, guestCount, formData)
+//     );
+  
+//     return (
+//       <div className="space-y-6">
+//         {quoteResult && (
+//           <Card className="p-6">
+//             <h3 className="text-xl font-semibold mb-6">Your Custom Event Quote</h3>
+            
+//             <div className="space-y-6">
+//               {/* Event Summary */}
+//               <div className="bg-gray-50 p-4 rounded">
+//                 <h4 className="font-semibold mb-2">Event Summary</h4>
+//                 <div className="grid grid-cols-2 gap-4 text-sm">
+//                   <div><strong>Event:</strong> {formData.eventName}</div>
+//                   <div><strong>Date:</strong> {formData.eventDate}</div>
+//                   <div><strong>Time:</strong> {formData.eventTime}</div>
+//                   <div><strong>Duration:</strong> {formData.eventDuration} hours</div>
+//                   <div><strong>Guests:</strong> {formData.guestCount}</div>
+//                   <div><strong>Location:</strong> {formData.eventLocation || 'TBD'}</div>
+//                   <div><strong>Event Type:</strong> {formData.eventType || 'Not specified'}</div>
+//                   <div><strong>Selected Drinks:</strong> {formData.selectedDrinks.size}</div>
+//                 </div>
+//               </div>
+  
+//               {/* Pricing Comparison */}
+//               <div className="border-t border-b border-gray-200 py-4">
+//                 <h4 className="font-semibold mb-4">Pricing Model Comparison</h4>
+//                 <div className="grid grid-cols-3 gap-6">
+//                   <div className={`p-4 rounded ${quoteResult.recommendedModel === 'By-the-Cup Model' ? 'bg-green-50 border-2 border-green-500' : 'bg-gray-50'}`}>
+//                     <div className="font-semibold mb-2">By-the-Cup Model</div>
+//                     <div className="text-2xl font-bold mb-2">
+//                       {formatCurrency(calculateByTheCupPrice(guestCount, duration, formData))}
+//                     </div>
+//                     <div className="text-sm text-gray-600">
+//                       Best for events with predictable consumption
+//                     </div>
+//                   </div>
+                  
+//                   <div className={`p-4 rounded ${quoteResult.recommendedModel === 'Hourly Rate Model' ? 'bg-green-50 border-2 border-green-500' : 'bg-gray-50'}`}>
+//                     <div className="font-semibold mb-2">Hourly Rate Model</div>
+//                     <div className="text-2xl font-bold mb-2">
+//                       {formatCurrency(calculateHourlyRatePrice(duration, guestCount, formData))}
+//                     </div>
+//                     <div className="text-sm text-gray-600">
+//                       Best for longer events with variable consumption
+//                     </div>
+//                   </div>
+                  
+//                   <div className={`p-4 rounded ${quoteResult.recommendedModel === 'Hybrid Model' ? 'bg-green-50 border-2 border-green-500' : 'bg-gray-50'}`}>
+//                     <div className="font-semibold mb-2">Hybrid Model</div>
+//                     <div className="text-2xl font-bold mb-2">
+//                       {formatCurrency(calculateHybridModelPrice(duration, guestCount, formData))}
+//                     </div>
+//                     <div className="text-sm text-gray-600">
+//                       Best for medium-sized events with base requirements
+//                     </div>
+//                   </div>
+//                 </div>
+  
+//                 <div className="mt-4 text-sm text-gray-600">
+//                   <p>Recommended: <span className="font-semibold text-green-600">{quoteResult.recommendedModel}</span></p>
+//                   <p className="mt-1">
+//                     This recommendation is based on your event size, duration, and selected services.
+//                   </p>
+//                 </div>
+//               </div>
+  
+//               {/* Detailed Price Breakdown */}
+//               <div className="py-4">
+//                 <h4 className="font-semibold mb-4">Detailed Price Breakdown</h4>
+                
+//                 <div className="space-y-8">
+//                   {/* By-the-Cup Breakdown */}
+//                   <div className="border rounded-lg p-4">
+//                     <h5 className="font-semibold mb-3">By-the-Cup Model Breakdown</h5>
+//                     {byTheCupBreakdown.map((section, index) => (
+//                       <div key={index} className="mb-4">
+//                         <h6 className="font-medium text-sm text-gray-700 mb-2">{section.category}</h6>
+//                         {section.items.map((item, itemIndex) => (
+//                           <div key={itemIndex} className="flex justify-between text-sm py-1">
+//                             <div className="flex-1">
+//                               <div>{item.label}</div>
+//                               {item.details && (
+//                                 <div className="text-gray-500 text-xs">{item.details}</div>
+//                               )}
+//                             </div>
+//                             <div className="ml-4">{formatCurrency(item.amount)}</div>
+//                           </div>
+//                         ))}
+//                         <div className="flex justify-between font-medium text-sm pt-2 border-t mt-2">
+//                           <span>Subtotal</span>
+//                           <span>{formatCurrency(section.subtotal)}</span>
+//                         </div>
+//                       </div>
+//                     ))}
+//                   </div>
+  
+//                   {/* Hourly Rate Breakdown */}
+//                   <div className="border rounded-lg p-4">
+//                     <h5 className="font-semibold mb-3">Hourly Rate Model Breakdown</h5>
+//                     {hourlyRateBreakdown.map((section, index) => (
+//                       <div key={index} className="mb-4">
+//                         <h6 className="font-medium text-sm text-gray-700 mb-2">{section.category}</h6>
+//                         {section.items.map((item, itemIndex) => (
+//                           <div key={itemIndex} className="flex justify-between text-sm py-1">
+//                             <div className="flex-1">
+//                               <div>{item.label}</div>
+//                               {item.details && (
+//                                 <div className="text-gray-500 text-xs">{item.details}</div>
+//                               )}
+//                             </div>
+//                             <div className="ml-4">{formatCurrency(item.amount)}</div>
+//                           </div>
+//                         ))}
+//                         <div className="flex justify-between font-medium text-sm pt-2 border-t mt-2">
+//                           <span>Subtotal</span>
+//                           <span>{formatCurrency(section.subtotal)}</span>
+//                         </div>
+//                       </div>
+//                     ))}
+//                   </div>
+  
+//                   {/* Hybrid Model Breakdown */}
+//                   <div className="border rounded-lg p-4">
+//                     <h5 className="font-semibold mb-3">Hybrid Model Breakdown</h5>
+//                     {hybridBreakdown.map((section, index) => (
+//                       <div key={index} className="mb-4">
+//                         <h6 className="font-medium text-sm text-gray-700 mb-2">{section.category}</h6>
+//                         {section.items.map((item, itemIndex) => (
+//                           <div key={itemIndex} className="flex justify-between text-sm py-1">
+//                             <div className="flex-1">
+//                               <div>{item.label}</div>
+//                               {item.details && (
+//                                 <div className="text-gray-500 text-xs">{item.details}</div>
+//                               )}
+//                             </div>
+//                             <div className="ml-4">{formatCurrency(item.amount)}</div>
+//                           </div>
+//                         ))}
+//                         <div className="flex justify-between font-medium text-sm pt-2 border-t mt-2">
+//                           <span>Subtotal</span>
+//                           <span>{formatCurrency(section.subtotal)}</span>
+//                         </div>
+//                       </div>
+//                     ))}
+//                   </div>
+//                 </div>
+//               </div>
+  
+//               {/* Rest of the existing content */}
+//               {/* Timeline */}
+//               <div className="border-t border-gray-200 py-4">
+//                 <h4 className="font-semibold mb-4">Event Timeline</h4>
+//                 <div className="grid grid-cols-[auto,1fr] gap-4">
+//                   {generateTimelinePoints(formData.eventTime, parseInt(formData.eventDuration), bookedAddOns)
+//                     .map((point, index, array) => (
+//                       <React.Fragment key={index}>
+//                         <div className="text-sm font-medium">{point.time}</div>
+//                         <div className="text-sm">
+//                           {point.events.length > 0 ? (
+//                             point.events.map((event, eventIndex) => (
+//                               <div key={eventIndex} className="text-green-600">
+//                                 {event.service}
+//                               </div>
+//                             ))
+//                           ) : (
+//                             <div className="text-gray-600">
+//                               {index === 0 ? 'Setup' : 
+//                                index === array.length - 1 ? 'Teardown' : 
+//                                'Regular Service'}
+//                             </div>
+//                           )}
+//                         </div>
+//                       </React.Fragment>
+//                     ))}
+//                 </div>
+//               </div>
+  
+//               {/* Special Requests */}
+//               {(formData.customDrink || formData.specialInstructions) && (
+//                 <div className="border-t border-gray-200 py-4">
+//                   <h4 className="font-semibold mb-4">Special Requests</h4>
+//                   {formData.customDrink && (
+//                     <div className="mb-4">
+//                       <h5 className="text-sm font-medium mb-2">Custom Drink:</h5>
+//                       <p className="text-sm text-gray-600">{formData.customDrink}</p>
+//                     </div>
+//                   )}
+//                   {formData.specialInstructions && (
+//                     <div>
+//                       <h5 className="text-sm font-medium mb-2">Special Instructions:</h5>
+//                       <p className="text-sm text-gray-600">{formData.specialInstructions}</p>
+//                     </div>
+//                   )}
+//                 </div>
+//               )}
+  
+//               {/* Total */}
+//               <div className="border-t border-gray-200 pt-4">
+//                 <div className="flex justify-between items-center text-lg">
+//                   <span className="font-semibold">Recommended Total Price:</span>
+//                   <span className="font-bold text-xl text-green-600">
+//                     {formatCurrency(quoteResult.totalPrice)}
+//                   </span>
+//                 </div>
+//               </div>
+  
+//               {/* Notes */}
+//               <div className="text-sm text-gray-500 space-y-1 mt-4">
+//                 <p>* All prices are estimates and subject to final confirmation</p>
+//                 <p>* Additional charges may apply based on final event requirements</p>
+//                 <p>* Travel fees may apply based on event location</p>
+//                 <p>* Prices include standard setup and teardown time</p>
+//                 <p>* Minimum notice of 48 hours required for any changes</p>
+//               </div>
+  
+//               {/* Actions */}
+//               <div className="mt-8 flex justify-end space-x-4">
+//                 <Button
+//                   variant="outline"
+//                   onClick={() => window.print()}
+//                   className="flex items-center"
+//                 >
+//                   Print Quote
+//                 </Button>
+//                 <Button
+//                   onClick={() => {
+//                     if (validateDates(formData.eventDate)) {
+//                       setAlertMessage('Thank you for your booking! We will contact you shortly to confirm details.');
+//                       setShowAlert(true);
+//                       setTimeout(() => setShowAlert(false), 5000);
+//                     } else {
+//                       setAlertMessage('Please select a valid future date for your event.');
+//                       setShowAlert(true);
+//                       setTimeout(() => setShowAlert(false), 5000);
+//                     }
+//                   }}
+//                   className="flex items-center"
+//                 >
+//                   Accept Quote
+//                 </Button>
+//               </div>
+//             </div>
+//           </Card>
+//         )}
+//       </div>
+//     );
+//   };
+
+//   return (
+//     <div className="container mx-auto px-4 py-8 max-w-7xl">
+//       <div className="text-center mb-8">
+//         <h1 className="text-3xl font-bold mb-2">Event Planner</h1>
+//         <p className="text-gray-600">Plan your perfect coffee service event</p>
+//       </div>
+
+//       <div className="mb-8 flex justify-between">
+//         {[1, 2, 3, 4].map(step => (
+//           <Button
+//             key={step}
+//             variant={currentStep === step ? 'default' : 'outline'}
+//             onClick={() => {
+//               if (validateStep(currentStep)) {
+//                 setCurrentStep(step);
+//               }
+//             }}
+//             className={`w-[calc(25%-12px)]`}
+//           >
+//             {step === 1 && <Calendar className="w-4 h-4 mr-2" />}
+//             {step === 2 && <Coffee className="w-4 h-4 mr-2" />}
+//             {step === 3 && <User className="w-4 h-4 mr-2" />}
+//             {step === 4 && <MapPin className="w-4 h-4 mr-2" />}
+//             Step {step}
+//           </Button>
+//         ))}
+//       </div>
+
+//       <div className="mb-8">
+//         {currentStep === 1 && renderEventDetails()}
+//         {currentStep === 2 && renderMenuSelection()}
+//         {currentStep === 3 && renderAdditionalServices()}
+//         {currentStep === 4 && renderSpecialRequests()}
+//         {currentStep === 5 && renderQuoteResult()}
+//       </div>
+
+//       <div className="flex justify-between">
+//         {currentStep > 1 && (
+//           <Button
+//             variant="outline"
+//             onClick={() => setCurrentStep(curr => curr - 1)}
+//           >
+//             Previous
+//           </Button>
+//         )}
+        
+//         {currentStep < 4 ? (
+//           <Button
+//             onClick={() => {
+//               if (validateStep(currentStep)) {
+//                 setCurrentStep(curr => curr + 1);
+//               }
+//             }}
+//           >
+//             Next
+//           </Button>
+//         ) : currentStep === 4 ? (
+//           <Button onClick={calculateQuote}>
+//             Calculate Quote
+//           </Button>
+//         ) : null}
+//       </div>
+
+//       {showAlert && (
+//         <Alert className="fixed bottom-4 right-4">
+//           <AlertDescription>{alertMessage}</AlertDescription>
+//         </Alert>
+//       )}
+//     </div>
+
+//   );
+// };
+
+// export default EventPlanner;
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/pricing/styles.css
+
+:root {
+  --primary-color: #000000;
+  --secondary-color: #b0bec5;
+  --accent-color: #f5a623;
+  --background-color: #FFF8E1;
+  --text-color: #333;
+  --success-color: #2ecc71;
+  --error-color: #e74c3c;
+  --border-radius: 8px;
+  --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --transition: all 0.3s ease;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  line-height: 1.6;
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.additional-services {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.service-column {
+  flex: 1;
+  background-color: #f8f8f8;
+  border-radius: var(--border-radius);
+  padding: 20px;
+  box-shadow: var(--box-shadow);
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.service-column h3 {
+  font-size: 2rem; /* Updated font size */
+  margin-bottom: 15px;
+  color: #4A2C2A;
+}
+
+.service-list {
+  display: grid;
+  gap: 10px;
+}
+
+.service-item {
+  display: flex;
+  align-items: center;
+}
+
+.service-item label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: var(--transition);
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.service-item label:hover {
+  background-color: #f0f0f0;
+}
+
+.service-icon {
+  width: 24px;
+  height: 24px;
+  margin-right: 10px;
+}
+
+.service-item input[type="checkbox"] {
+  margin-right: 10px;
+}
+
+.service-item label {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.service-item small {
+  display: block;
+  margin-top: 5px;
+  font-size: 1.4rem; /* Updated font size */
+  color: #666;
+}
+
+.timeline-section {
+  background-color: #f8f8f8;
+  border-radius: var(--border-radius);
+  padding: 20px;
+  margin-bottom: 30px;
+  box-shadow: var(--box-shadow);
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.timeline-section h3 {
+  font-size: 2rem; /* Updated font size */
+  margin-bottom: 15px;
+    text-align: center; /* Center the heading */
+
+  color: #4A2C2A;
+}
+
+#timeline-container {
+  margin-bottom: 15px;
+}
+
+.add-on-booking {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.booked-add-ons {
+  margin-top: 15px;
+}
+.customization-container {
+background-color: #f8f8f8;
+padding: 20px;
+margin: 20px 0;
+border-radius: 8px;
+box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+font-size: 16px;
+}
+
+.customization-title {
+font-size: 24px;
+color: #4A2C2A;
+text-align: center;
+margin-bottom: 20px;
+}
+
+.customization-content {
+display: flex;
+flex-wrap: wrap;
+justify-content: space-between;
+gap: 20px;
+}
+
+.customization-section {
+flex: 1 1 200px;
+display: flex;
+flex-direction: column;
+align-items: center;
+}
+
+.customization-label {
+font-weight: bold;
+margin-bottom: 10px;
+}
+
+.customization-input,
+.customization-select {
+width: 100%;
+max-width: 250px;
+padding: 10px;
+border: 1px solid #ccc;
+border-radius: 4px;
+font-size: 16px;
+text-align: center;
+}
+
+input[type="file"]::file-selector-button {
+text-align: center;
+background-color: #4A2C2A;
+color: white;
+border: none;
+border-radius: 4px;
+padding: 10px;
+}
+
+@media (max-width: 768px) {
+.customization-content {
+  flex-direction: column;
+}
+}
+
+.service-item label:hover {
+  transform: translateY(-2px);
+}
+
+.selection-summary {
+  margin-top: 2rem;
+  padding: 1rem;
+  background-color: var(--background-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.selection-summary h3 {
+  margin-bottom: 1rem;
+  font-size: 2.5rem; /* Updated font size */
+  color: var(--primary-color);
+}
+
+.selection-summary ul {
+  list-style: none;
+  padding: 0;
+}
+
+.selection-summary li {
+  margin-bottom: 0.5rem;
+  font-size: 1.8rem; /* Updated font size */
+  color: var(--text-color);
+}
+
+.menu-tabs {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.tab-link {
+  background-color: var(--secondary-color);
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  margin-right: 0.5rem;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: var(--transition);
+  font-weight: 600;
+}
+
+.tab-link.active {
+  background-color: var(--primary-color);
+}
+
+.menu-category {
+  display: none;
+}
+
+.menu-category.active {
+  display: block;
+}
+
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.menu-item {
+  text-align: center;
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.menu-item input[type="checkbox"] {
+  display: none;
+}
+
+.menu-item label {
+  display: block;
+  padding: 0.5rem;
+  border-radius: var(--border-radius);
+  background-color: var(--background-color);
+  border: 1px solid var(--secondary-color);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.menu-item label img {
+  max-width: 80px;
+  margin-bottom: 0.5rem;
+}
+
+.menu-item input[type="checkbox"]:checked + label {
+  background-color: var(--accent-color);
+  border-color: var(--primary-color);
+}
+
+.menu-item label:hover {
+  transform: translateY(-2px);
+}
+
+.customization-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.customization-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.customization-item label {
+  margin-bottom: 5px;
+  font-weight: 600;
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.customization-item select,
+.customization-item input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1.8rem; /* Updated font size */
+}
+
+/* Increased the size of the Event Type input */
+.field__input#ContactForm-eventType {
+  padding: 1rem; /* Larger padding */
+  font-size: 2rem; /* Increased font size */
+}
+
+.customization-item small {
+  margin-top: 5px;
+  font-size: 1.4rem; /* Updated font size */
+  color: #666;
+}
+
+.design-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.design-preview img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+@media (max-width: 768px) {
+  .additional-services {
+    flex-direction: column;
+  }
+
+  .add-on-booking {
+    flex-direction: column;
+  }
+}
+
+.page-width {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.page-header {
+  text-align: center;
+  padding: 40px 20px;
+  margin-bottom: 40px;
+}
+
+.page-title {
+  font-size: 5rem; /* Updated font size */
+  color: var(--font-color-heading);
+  margin-bottom: 10px;
+}
+
+.page-description {
+  font-size: 2.5rem; /* Updated font size */
+  color: #f28c05;
+  margin: 0;
+}
+
+.contact {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  background-color: #fff;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.title {
+  color: var(--primary-color);
+  font-size: 3rem; /* Updated font size */
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.step-navigation {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.step-button {
+  background-color: var(--secondary-color);
+  color: #fff;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: var(--transition);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.step-button:hover, .step-button.active {
+  background-color: var(--primary-color);
+  transform: translateY(-2px);
+}
+
+.step {
+  display: none;
+}
+
+.step.active {
+  display: block;
+}
+
+.field {
+  margin-bottom: 1.5rem;
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.field__label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.field__input, .text-area {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--secondary-color);
+  border-radius: var(--border-radius);
+  font-size: 1.8rem; /* Updated font size */
+  transition: var(--transition);
+}
+
+.error {
+  border: 2px solid #ff0000 !important;
+  background-color: #ffeeee;
+}
+
+.error-message {
+  color: #ff0000;
+  font-size: 1.6rem; /* Updated font size */
+  margin-top: 5px;
+  display: block;
+}
+
+.field__input:focus, .text-area:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(74, 44, 42, 0.2);
+}
+
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  margin-right: 1rem;
+}
+
+.checkbox-item input[type="checkbox"] {
+  margin-right: 0.5rem;
+}
+
+.button {
+  background-color: var(--accent-color);
+  color: #fff;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: var(--transition);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.button:hover {
+  background-color: var(--primary-color);
+  transform: translateY(-2px);
+}
+
+.button--secondary {
+  background-color: var(--secondary-color);
+}
+
+#result {
+  display: none;
+  background-color: #fff;
+  border-radius: var(--border-radius);
+  padding: 2rem;
+  margin-top: 2rem;
+  box-shadow: var(--box-shadow);
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.result-title {
+  color: var(--primary-color);
+  font-size: 2.5rem; /* Updated font size */
+  margin-bottom: 1rem;
+}
+
+.result-item {
+  margin-bottom: 0.5rem;
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.pricing-breakdown {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--secondary-color);
+  font-size: 1.8rem; /* Updated font size */
+}
+
+#event-visualization {
+  margin-top: 2rem;
+}
+
+#eventSetupSvg {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--secondary-color);
+  border-radius: var(--border-radius);
+}
+
+#compare-scenarios {
+  margin-top: 2rem;
+  background-color: #fff;
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+  box-shadow: var(--box-shadow);
+  font-size: 1.8rem; /* Updated font size */
+}
+
+#step4 {
+  background-color: #f9f9f9;
+  border-radius: 10px;
+  padding: 2rem;
+  box-shadow: var(--box-shadow);
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.step-title {
+  color: #4A2C2A;
+  font-size: 2.5rem; /* Updated font size */
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.special-requests-grid {
+  display: grid;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.special-request-item {
+  background-color: #fff;
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+  box-shadow: var(--box-shadow);
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.special-request-item label {
+  display: block;
+  font-weight: 600;
+  color: #4A2C2A;
+  margin-bottom: 0.5rem;
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.text-area {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1.8rem; /* Updated font size */
+  transition: border-color 0.3s ease;
+}
+
+.text-area:focus {
+  outline: none;
+  border-color: #6F4E37;
+  box-shadow: 0 0 0 2px rgba(111, 78, 55, 0.1);
+}
+
+.special-request-item small {
+  display: block;
+  margin-top: 0.5rem;
+  color: #666;
+  font-size: 1.6rem; /* Updated font size */
+}
+
+.contact__button {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2rem;
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.button {
+  padding: 0.75rem 1.5rem;
+  font-size: 1.8rem; /* Updated font size */
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: var(--border-radius);
+  transition: all 0.3s ease;
+}
+
+.button--secondary {
+  background-color: #b0bec5;
+  color: #fff;
+}
+
+.button--secondary:hover {
+  background-color: #90a4ae;
+}
+
+.button:not(.button--secondary) {
+  background-color: #6F4E37;
+  color: #fff;
+}
+
+.button:not(.button--secondary):hover {
+  background-color: #5D4037;
+}
+
+@media (min-width: 768px) {
+  .special-requests-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.custom-alert {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.alert-content {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 5px;
+  text-align: center;
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.alert-content button {
+  margin-top: 10px;
+  padding: 5px 15px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.scenario {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background-color: #f9f9f9;
+  border-radius: var(--border-radius);
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.scenario h3 {
+  color: var(--primary-color);
+  margin-bottom: 0.5rem;
+  font-size: 2.5rem; /* Updated font size */
+}
+
+#timeline-container {
+  overflow-x: auto;
+  margin-bottom: 20px;
+}
+
+#timeline {
+  display: flex;
+  align-items: center;
+  height: 50px;
+  min-width: 100%;
+}
+
+.timeline-point {
+  flex: 1;
+  text-align: center;
+  border-right: 1px solid #ccc;
+  padding: 5px;
+  min-width: 60px;
+  font-size: 1.8rem; /* Updated font size */
+}
+.add-on-booking select.field__input,
+.add-on-booking input[type="time"].field__input {
+width: 200px; /* Adjust this value as needed */
+padding: 10px; /* Adjust padding for better readability */
+font-size: 1.6rem; /* Adjust font size to match other inputs */
+}
+
+.add-on-booking .button {
+font-size: 1.8rem; /* Ensure the button size matches the input fields */
+padding: 10px 20px; /* Adjust button padding */
+}
+
+.add-on-booking {
+display: flex;
+gap: 20px; /* Increase gap between elements for better spacing */
+}
+
+.booked-add-ons {
+margin-top: 20px; /* Add some space between the add-on booking and the booked list */
+}
+
+.booked-add-on {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f0f0f0;
+  padding: 5px 10px;
+  margin-bottom: 5px;
+  border-radius: var(--border-radius);
+  font-size: 1.8rem; /* Updated font size */
+}
+
+.design-preview-image {
+  max-width: 100px;
+  max-height: 100px;
+  margin-right: 10px;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 768px) {
+  .step-navigation {
+    flex-direction: column;
+  }
+
+  .step-button {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/pricing/types.ts
+// Equipment-related types
+interface BaseEquipment {
+  hourlyRate: number;
+  flatFee?: number;
+  perCupRate?: number;
+}
+
+interface FullEquipment extends BaseEquipment {
+  hourlyRate: number;
+  flatFee: number;
+  perCupRate: number;
+}
+
+interface SimpleEquipment extends BaseEquipment {
+  hourlyRate: number;
+}
+
+export interface EquipmentUpgrades {
+  pourOverBar: FullEquipment;
+  nitroColdBrew: FullEquipment;
+  extraEspressoMachine: SimpleEquipment;
+  latteArtStation: SimpleEquipment;
+}
+
+// Branding-related types
+interface BaseBrandingOption {
+  minimumOrder?: number;
+}
+
+interface PricedBrandingOption extends BaseBrandingOption {
+  price: number;
+  minimumOrder: number;
+}
+
+interface RatedBrandingOption extends BaseBrandingOption {
+  baseFee: number;
+  perCupRate: number;
+}
+
+export type BrandingOption = PricedBrandingOption | RatedBrandingOption;
+
+// Form data interface
+export interface FormData {
+  name: string;
+  email: string;
+  phone: string;
+  eventName: string;
+  eventDate: string;
+  eventTime: string;
+  eventDuration: string;
+  multiDayEvent: boolean;
+  eventEndDate: string;
+  recurringEvent: boolean;
+  recurringFrequency: 'daily' | 'weekly' | 'monthly';
+  guestCount: string;
+  eventType: string;
+  eventLocation: string;
+  customBranding: 'none' | 'cups' | 'deluxe' | 'full';
+  staffUniform: 'standard' | 'custom';
+  customDrink: string;
+  specialInstructions: string;
+  selectedDrinks: Set<string>;
+  equipmentUpgrades: Set<string>;
+  addOnExperiences: Set<string>;
+  selectedAddOn?: string;
+  selectedTime?: string;
+}
+
+// Add-on related types
+export interface BookedAddOn {
+  service: string;
+  time: string;
+}
+
+export interface AddOnExperience {
+  price: number;
+  duration: number;
+  maxParticipants: number;
+  includes?: string;
+}
+
+// Quote-related types
+export interface QuoteResult {
+  totalPrice: number;
+  recommendedModel: string;
+  breakdown: QuoteBreakdown[];
+}
+
+export interface QuoteBreakdown {
+  category: string;
+  items: {
+    label: string;
+    amount: number;
+    details?: string;
+  }[];
+  subtotal: number;
+}
+
+// Pricing model types
+export interface PricingModelBreakpoint {
+  threshold: number;
+  price: number;
+}
+
+export interface ByTheCupModel {
+  basePrice: number;
+  breakpoints: PricingModelBreakpoint[];
+  minimumCharge: number;
+}
+
+export interface HourlyRateModel {
+  basePrice: number;
+  minimumHours: number;
+  peakHourSurcharge: number;
+  additionalStaffRate: number;
+}
+
+export interface HybridModelCupRate {
+  range: [number, number];
+  price: number;
+}
+
+export interface HybridModel {
+  basePrice: number;
+  includedCups: number;
+  additionalHourRate: number;
+  cupRates: HybridModelCupRate[];
+}
+
+export interface PricingModels {
+  byTheCup: ByTheCupModel;
+  hourlyRate: HourlyRateModel;
+  hybrid: HybridModel;
+}
+
+// Drink-related types
+export interface DrinkType {
+  id: string;
+  name: string;
+  price?: number;
+  included?: boolean;
+}
+
+export interface DrinkTypes {
+  standard: DrinkType[];
+  specialty: DrinkType[];
+  nonCoffee: DrinkType[];
+}
+
+// Timeline-related types
+export interface TimelinePoint {
+  time: string;
+  events: BookedAddOn[];
+}
+
+// Event type interface
+export interface EventType {
+  value: string;
+  label: string;
+}
+  // src/app/pricing/types.ts
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/pricing/utils.ts
+// import { 
+//   PRICING_MODELS, 
+//   EQUIPMENT_UPGRADES, 
+//   ADD_ON_EXPERIENCES, 
+//   BRANDING_OPTIONS, 
+//   DRINK_TYPES 
+// } from './constants';
+// import type { 
+//   FormData, 
+//   TimelinePoint, 
+//   BookedAddOn, 
+//   QuoteBreakdown,
+//   EquipmentUpgrades,
+//   BrandingOption,
+//   DrinkType
+// } from './types';
+
+// export const calculateByTheCupPrice = (guestCount: number, duration: number, formData: FormData): number => {
+//   let basePrice = PRICING_MODELS.byTheCup.breakpoints.find(
+//     b => guestCount <= b.threshold
+//   )?.price || PRICING_MODELS.byTheCup.basePrice;
+
+//   let totalPrice = basePrice * guestCount;
+
+//   // Apply minimum charge
+//   if (totalPrice < PRICING_MODELS.byTheCup.minimumCharge && guestCount <= 200) {
+//     totalPrice = PRICING_MODELS.byTheCup.minimumCharge;
+//   }
+
+//   // Add equipment upgrades
+//   formData.equipmentUpgrades.forEach(upgrade => {
+//     const equipment = EQUIPMENT_UPGRADES[upgrade as keyof EquipmentUpgrades];
+//     if (equipment) {
+//       if ('flatFee' in equipment) {
+//         totalPrice += equipment.flatFee;
+//       }
+//       if ('perCupRate' in equipment) {
+//         totalPrice += equipment.perCupRate * guestCount;
+//       }
+//       totalPrice += equipment.hourlyRate * duration;
+//     }
+//   });
+
+//   // Add selected drinks cost
+//   formData.selectedDrinks.forEach(drinkId => {
+//     const specialtyDrink = DRINK_TYPES.specialty.find(d => d.id === drinkId);
+//     const nonCoffeeDrink = DRINK_TYPES.nonCoffee.find(d => d.id === drinkId);
+//     const drink = specialtyDrink || nonCoffeeDrink;
+//     if (drink?.price) {
+//       totalPrice += drink.price * guestCount;
+//     }
+//   });
+
+//   // Add staffing costs
+//   const additionalBaristas = Math.max(0, Math.floor((guestCount - 500) / 250));
+//   totalPrice += 200 * additionalBaristas;
+
+//   // Add duration charges
+//   if (duration > 4) {
+//     totalPrice += 100 * (duration - 4) * (2 + additionalBaristas);
+//   }
+
+//   // Add add-on experiences
+//   formData.addOnExperiences.forEach(addon => {
+//     const experience = ADD_ON_EXPERIENCES[addon as keyof typeof ADD_ON_EXPERIENCES];
+//     if (experience) {
+//       totalPrice += experience.price;
+//     }
+//   });
+
+//   // Add branding costs
+//   if (formData.customBranding !== 'none') {
+//     const brandingOption = BRANDING_OPTIONS[formData.customBranding] as BrandingOption;
+//     if (brandingOption) {
+//       if ('baseFee' in brandingOption) {
+//         totalPrice += brandingOption.baseFee + (brandingOption.perCupRate * guestCount);
+//       } else {
+//         totalPrice += brandingOption.price * Math.max(brandingOption.minimumOrder, guestCount);
+//       }
+//     }
+//   }
+
+//   // Add custom uniform costs
+//   if (formData.staffUniform === 'custom') {
+//     totalPrice += 50 * (2 + additionalBaristas);
+//   }
+
+//   // Add custom drink development fee
+//   if (formData.customDrink.trim()) {
+//     totalPrice += 200;
+//   }
+
+//   return totalPrice;
+// };
+
+// export const calculateHourlyRatePrice = (duration: number, guestCount: number, formData: FormData): number => {
+//   let totalPrice = PRICING_MODELS.hourlyRate.basePrice * Math.max(duration, 4);
+
+//   // Add peak hours surcharge
+//   if (duration > 4) {
+//     totalPrice += PRICING_MODELS.hourlyRate.peakHourSurcharge * (duration - 4);
+//   }
+
+//   // Update staffing calculation - corrected formula
+//   const baseStaff = 2;
+//   const additionalBaristas = Math.max(0, Math.floor((guestCount - 150) / 100));
+//   totalPrice += PRICING_MODELS.hourlyRate.additionalStaffRate * duration * additionalBaristas;
+
+//   // Add equipment upgrades
+//   formData.equipmentUpgrades.forEach(upgrade => {
+//     const equipment = EQUIPMENT_UPGRADES[upgrade as keyof EquipmentUpgrades];
+//     if (equipment) {
+//       totalPrice += equipment.hourlyRate * duration;
+//       if ('flatFee' in equipment) {
+//         totalPrice += equipment.flatFee;
+//       }
+//       if ('perCupRate' in equipment) {
+//         totalPrice += equipment.perCupRate * guestCount;
+//       }
+//     }
+//   });
+
+//   // Add selected drinks cost
+//   formData.selectedDrinks.forEach(drinkId => {
+//     const drink = findDrinkById(drinkId);
+//     if (drink?.price) {
+//       totalPrice += drink.price * guestCount;
+//     }
+//   });
+
+//   // Add add-on experiences
+//   formData.addOnExperiences.forEach(addon => {
+//     const experience = ADD_ON_EXPERIENCES[addon as keyof typeof ADD_ON_EXPERIENCES];
+//     if (experience) {
+//       totalPrice += experience.price;
+//     }
+//   });
+
+//   // Add branding costs
+//   if (formData.customBranding !== 'none') {
+//     const brandingOption = BRANDING_OPTIONS[formData.customBranding] as BrandingOption;
+//     if (brandingOption) {
+//       if ('baseFee' in brandingOption) {
+//         totalPrice += brandingOption.baseFee + (brandingOption.perCupRate * guestCount);
+//       } else {
+//         totalPrice += brandingOption.price * Math.max(brandingOption.minimumOrder, guestCount);
+//       }
+//     }
+//   }
+
+//   // Add custom uniform costs
+//   if (formData.staffUniform === 'custom') {
+//     totalPrice += 50 * (baseStaff + additionalBaristas);
+//   }
+
+//   // Add custom drink development fee
+//   if (formData.customDrink.trim()) {
+//     totalPrice += 200;
+//   }
+
+//   // Apply volume discounts
+//   if (duration >= 12) {
+//     totalPrice *= 0.85; // 15% off
+//   } else if (duration >= 8) {
+//     totalPrice *= 0.90; // 10% off
+//   }
+
+//   return totalPrice;
+// };
+// // Helper function to find a drink by ID
+// const findDrinkById = (drinkId: string): DrinkType | undefined => {
+//   return (
+//     DRINK_TYPES.specialty.find(d => d.id === drinkId) ||
+//     DRINK_TYPES.nonCoffee.find(d => d.id === drinkId)
+//   );
+// };
+
+// export const calculateHybridModelPrice = (duration: number, guestCount: number, formData: FormData): number => {
+//   let totalPrice = PRICING_MODELS.hybrid.basePrice;
+
+//   // Additional hours
+//   if (duration > 4) {
+//     totalPrice += PRICING_MODELS.hybrid.additionalHourRate * (duration - 4);
+//   }
+
+//   // Additional cups
+//   if (guestCount > PRICING_MODELS.hybrid.includedCups) {
+//     const additionalCups = guestCount - PRICING_MODELS.hybrid.includedCups;
+//     for (const rate of PRICING_MODELS.hybrid.cupRates) {
+//       const [min, max] = rate.range;
+//       if (additionalCups > min) {
+//         const cupsInRange = Math.min(additionalCups - min, max - min);
+//         totalPrice += cupsInRange * rate.price;
+//       }
+//     }
+//   }
+
+//   // Equipment upgrades
+//   formData.equipmentUpgrades.forEach(upgrade => {
+//     const equipment = EQUIPMENT_UPGRADES[upgrade as keyof EquipmentUpgrades];
+//     if (equipment) {
+//       if ('flatFee' in equipment) {
+//         totalPrice += equipment.flatFee;
+//       }
+//       if ('perCupRate' in equipment) {
+//         totalPrice += equipment.perCupRate * guestCount;
+//       }
+//       totalPrice += equipment.hourlyRate * duration;
+//     }
+//   });
+
+//   // Selected drinks cost
+//   formData.selectedDrinks.forEach(drinkId => {
+//     const drink = findDrinkById(drinkId);
+//     if (drink?.price) {
+//       totalPrice += drink.price * guestCount;
+//     }
+//   });
+
+//   // Add-on experiences
+//   formData.addOnExperiences.forEach(addon => {
+//     const experience = ADD_ON_EXPERIENCES[addon as keyof typeof ADD_ON_EXPERIENCES];
+//     if (experience) {
+//       totalPrice += experience.price;
+//     }
+//   });
+
+//   // Branding options
+//   if (formData.customBranding !== 'none') {
+//     const brandingOption = BRANDING_OPTIONS[formData.customBranding] as BrandingOption;
+//     if (brandingOption) {
+//       if ('baseFee' in brandingOption) {
+//         totalPrice += brandingOption.baseFee + (brandingOption.perCupRate * guestCount);
+//       } else {
+//         totalPrice += brandingOption.price * Math.max(brandingOption.minimumOrder, guestCount);
+//       }
+//     }
+//   }
+
+//   // Custom uniform costs
+//   if (formData.staffUniform === 'custom') {
+//     const additionalBaristas = Math.max(0, Math.floor((guestCount - 300) / 150));
+//     totalPrice += 50 * (2 + additionalBaristas);
+//   }
+
+//   // Custom drink development
+//   if (formData.customDrink.trim()) {
+//     totalPrice += 200;
+//   }
+
+//   // Volume discount
+//   if (duration > 8) {
+//     totalPrice *= 0.90;
+//   }
+
+//   return totalPrice;
+// };
+// export const calculateDetailedBreakdown = (
+//   formData: FormData,
+//   guestCount: number,
+//   duration: number,
+//   model: string,
+//   totalPrice: number
+// ): QuoteBreakdown[] => {
+//   const breakdown: QuoteBreakdown[] = [];
+
+//   // Base Services Section
+//   const baseServices: QuoteBreakdown = {
+//     category: 'Base Services',
+//     items: [],
+//     subtotal: 0
+//   };
+
+//   // Calculate base service cost based on model
+//   if (model === 'By-the-Cup Model') {
+//     const basePrice = PRICING_MODELS.byTheCup.breakpoints.find(
+//       b => guestCount <= b.threshold
+//     )?.price || PRICING_MODELS.byTheCup.basePrice;
+
+//     let baseAmount = basePrice * guestCount;
+//     if (baseAmount < PRICING_MODELS.byTheCup.minimumCharge && guestCount <= 200) {
+//       baseAmount = PRICING_MODELS.byTheCup.minimumCharge;
+//     }
+
+//     baseServices.items.push({
+//       label: 'Per Cup Service',
+//       amount: baseAmount,
+//       details: `$${basePrice} × ${guestCount} guests (minimum charge: $${PRICING_MODELS.byTheCup.minimumCharge})`
+//     });
+
+//     // Add staffing costs
+//     const additionalBaristas = Math.max(0, Math.floor((guestCount - 500) / 250));
+//     if (additionalBaristas > 0) {
+//       baseServices.items.push({
+//         label: 'Additional Staff',
+//         amount: 200 * additionalBaristas,
+//         details: `${additionalBaristas} additional baristas × $200 each`
+//       });
+//     }
+//   } else if (model === 'Hourly Rate Model') {
+//     // Base hourly rate
+//     baseServices.items.push({
+//       label: 'Base Hourly Rate',
+//       amount: PRICING_MODELS.hourlyRate.basePrice * duration,
+//       details: `$${PRICING_MODELS.hourlyRate.basePrice} × ${duration} hours`
+//     });
+
+//     // Peak hour surcharge
+//     if (duration > 4) {
+//       baseServices.items.push({
+//         label: 'Peak Hours Surcharge',
+//         amount: PRICING_MODELS.hourlyRate.peakHourSurcharge * (duration - 4),
+//         details: `$${PRICING_MODELS.hourlyRate.peakHourSurcharge} × ${duration - 4} additional hours`
+//       });
+//     }
+
+//     // Additional staff
+//     const additionalBaristas = Math.max(0, Math.floor((guestCount - 75) / 75));
+//     if (additionalBaristas > 0) {
+//       baseServices.items.push({
+//         label: 'Additional Staff',
+//         amount: PRICING_MODELS.hourlyRate.additionalStaffRate * duration * additionalBaristas,
+//         details: `${additionalBaristas} additional baristas × $${PRICING_MODELS.hourlyRate.additionalStaffRate}/hr × ${duration} hours`
+//       });
+//     }
+//   } else {
+//     // Hybrid Model
+//     baseServices.items.push({
+//       label: 'Base Package',
+//       amount: PRICING_MODELS.hybrid.basePrice,
+//       details: `Includes first ${PRICING_MODELS.hybrid.includedCups} cups and 4 hours of service`
+//     });
+
+//     // Additional hours
+//     if (duration > 4) {
+//       baseServices.items.push({
+//         label: 'Additional Hours',
+//         amount: PRICING_MODELS.hybrid.additionalHourRate * (duration - 4),
+//         details: `$${PRICING_MODELS.hybrid.additionalHourRate} × ${duration - 4} additional hours`
+//       });
+//     }
+
+//     // Additional cups
+//     if (guestCount > PRICING_MODELS.hybrid.includedCups) {
+//       const additionalCups = guestCount - PRICING_MODELS.hybrid.includedCups;
+//       let cupCost = 0;
+//       let cupDetails: string[] = [];
+
+//       for (const rate of PRICING_MODELS.hybrid.cupRates) {
+//         const [min, max] = rate.range;
+//         if (additionalCups > min) {
+//           const cupsInRange = Math.min(additionalCups - min, max - min);
+//           cupCost += cupsInRange * rate.price;
+//           cupDetails.push(`${cupsInRange} cups at $${rate.price} each`);
+//         }
+//       }
+
+//       baseServices.items.push({
+//         label: 'Additional Cups',
+//         amount: cupCost,
+//         details: cupDetails.join(', ')
+//       });
+//     }
+//   }
+
+//   baseServices.subtotal = baseServices.items.reduce((sum, item) => sum + item.amount, 0);
+//   breakdown.push(baseServices);
+
+//   // Equipment & Additional Services Section
+//   if (formData.equipmentUpgrades.size > 0 || formData.selectedDrinks.size > 0) {
+//     const additionalServices: QuoteBreakdown = {
+//       category: 'Equipment & Additional Services',
+//       items: [],
+//       subtotal: 0
+//     };
+
+//     // Equipment upgrades
+//     formData.equipmentUpgrades.forEach(upgrade => {
+//       const equipment = EQUIPMENT_UPGRADES[upgrade as keyof typeof EQUIPMENT_UPGRADES];
+//       if (equipment) {
+//         let amount = 0;
+//         const details: string[] = [];
+
+//         if ('hourlyRate' in equipment && equipment.hourlyRate) {
+//           amount += equipment.hourlyRate * duration;
+//           details.push(`$${equipment.hourlyRate}/hr × ${duration} hours`);
+//         }
+
+//         if ('flatFee' in equipment && equipment.flatFee) {
+//           amount += equipment.flatFee;
+//           details.push(`$${equipment.flatFee} setup fee`);
+//         }
+
+//         if ('perCupRate' in equipment && equipment.perCupRate) {
+//           amount += equipment.perCupRate * guestCount;
+//           details.push(`$${equipment.perCupRate}/cup × ${guestCount} guests`);
+//         }
+
+//         additionalServices.items.push({
+//           label: upgrade,
+//           amount,
+//           details: details.join(', ')
+//         });
+//       }
+//     });
+
+//     // Specialty drinks
+//     formData.selectedDrinks.forEach(drinkId => {
+//       const specialtyDrink = DRINK_TYPES.specialty.find(d => d.id === drinkId);
+//       const nonCoffeeDrink = DRINK_TYPES.nonCoffee.find(d => d.id === drinkId);
+//       if (specialtyDrink || nonCoffeeDrink) {
+//         const drink = specialtyDrink || nonCoffeeDrink;
+//         if (drink && drink.price) {
+//           additionalServices.items.push({
+//             label: `${drink.name} Premium`,
+//             amount: drink.price * guestCount,
+//             details: `$${drink.price}/cup × ${guestCount} guests`
+//           });
+//         }
+//       }
+//     });
+
+//     additionalServices.subtotal = additionalServices.items.reduce((sum, item) => sum + item.amount, 0);
+//     if (additionalServices.items.length > 0) {
+//       breakdown.push(additionalServices);
+//     }
+//   }
+
+//   // Customization & Add-Ons Section
+//   if (formData.addOnExperiences.size > 0 || formData.customBranding !== 'none' || 
+//       formData.staffUniform === 'custom' || formData.customDrink.trim()) {
+//     const customization: QuoteBreakdown = {
+//       category: 'Customization & Add-Ons',
+//       items: [],
+//       subtotal: 0
+//     };
+
+//     // Add-on experiences
+//     formData.addOnExperiences.forEach(addon => {
+//       const experience = ADD_ON_EXPERIENCES[addon as keyof typeof ADD_ON_EXPERIENCES];
+//       if (experience && 'maxParticipants' in experience) {
+//         customization.items.push({
+//           label: addon,
+//           amount: experience.price,
+//           details: `${experience.duration}hr session, max ${experience.maxParticipants} participants${
+//             'includes' in experience ? `, includes ${experience.includes}` : ''
+//           }`
+//         });
+//       }
+//     });
+
+//     // Branding
+//     if (formData.customBranding !== 'none') {
+//       const brandingOption = BRANDING_OPTIONS[formData.customBranding];
+//       if (brandingOption) {
+//         let amount = 0;
+//         let details = '';
+
+//         if ('baseFee' in brandingOption) {
+//           amount = brandingOption.baseFee + (brandingOption.perCupRate * guestCount);
+//           details = `Base fee: $${brandingOption.baseFee}, Per cup: $${brandingOption.perCupRate} × ${guestCount}`;
+//         } else {
+//           const minOrder = Math.max(brandingOption.minimumOrder, guestCount);
+//           amount = brandingOption.price * minOrder;
+//           details = `$${brandingOption.price} × ${minOrder} cups (minimum: ${brandingOption.minimumOrder})`;
+//         }
+
+//         customization.items.push({
+//           label: `${formData.customBranding} Branding`,
+//           amount,
+//           details
+//         });
+//       }
+//     }
+
+//     // Custom uniforms
+//     if (formData.staffUniform === 'custom') {
+//       const baseStaff = 2;
+//       let additionalBaristas = 0;
+
+//       if (model === 'By-the-Cup Model') {
+//         additionalBaristas = Math.max(0, Math.floor((guestCount - 500) / 250));
+//       } else if (model === 'Hourly Rate Model') {
+//         additionalBaristas = Math.max(0, Math.floor((guestCount - 75) / 75));
+//       } else {
+//         additionalBaristas = Math.max(0, Math.floor((guestCount - 300) / 150));
+//       }
+
+//       const staffCount = baseStaff + additionalBaristas;
+//       const uniformCost = 50 * staffCount;
+
+//       customization.items.push({
+//         label: 'Custom Uniforms',
+//         amount: uniformCost,
+//         details: `$50 × ${staffCount} staff members`
+//       });
+//     }
+
+//     // Custom drink development
+//     if (formData.customDrink.trim()) {
+//       customization.items.push({
+//         label: 'Custom Drink Development',
+//         amount: 200,
+//         details: 'One-time recipe development fee'
+//       });
+//     }
+
+//     customization.subtotal = customization.items.reduce((sum, item) => sum + item.amount, 0);
+//     if (customization.items.length > 0) {
+//       breakdown.push(customization);
+//     }
+//   }
+
+//   // Discounts Section
+//   if ((model === 'Hourly Rate Model' && duration >= 8) || 
+//       (model === 'Hybrid Model' && duration > 8)) {
+//     const discounts: QuoteBreakdown = {
+//       category: 'Discounts',
+//       items: [],
+//       subtotal: 0
+//     };
+
+//     if (model === 'Hourly Rate Model') {
+//       if (duration >= 12) {
+//         const discountAmount = -(totalPrice * 0.15);
+//         discounts.items.push({
+//           label: 'Volume Discount (12+ hours)',
+//           amount: discountAmount,
+//           details: '15% off total'
+//         });
+//       } else if (duration >= 8) {
+//         const discountAmount = -(totalPrice * 0.10);
+//         discounts.items.push({
+//           label: 'Volume Discount (8+ hours)',
+//           amount: discountAmount,
+//           details: '10% off total'
+//         });
+//       }
+//     } else if (model === 'Hybrid Model' && duration > 8) {
+//       const discountAmount = -(totalPrice * 0.10);
+//       discounts.items.push({
+//         label: 'Volume Discount (8+ hours)',
+//         amount: discountAmount,
+//         details: '10% off total'
+//       });
+//     }
+
+//     discounts.subtotal = discounts.items.reduce((sum, item) => sum + item.amount, 0);
+//     if (discounts.items.length > 0) {
+//       breakdown.push(discounts);
+//     }
+//   }
+
+//   return breakdown;
+// };
+
+// export const validateDates = (startDate: string, endDate?: string): boolean => {
+//   const today = new Date();
+//   today.setHours(0, 0, 0, 0);
+  
+//   const eventDate = new Date(startDate);
+//   if (eventDate < today) {
+//     return false;
+//   }
+
+//   if (endDate) {
+//     const eventEndDate = new Date(endDate);
+//     if (eventEndDate < eventDate) {
+//       return false;
+//     }
+//   }
+
+//   return true;
+// };
+
+// export const generateTimelinePoints = (
+//   startTime: string,
+//   duration: number,
+//   bookedAddOns: BookedAddOn[]
+// ): TimelinePoint[] => {
+//   const points: TimelinePoint[] = [];
+//   const startDate = new Date(`2000-01-01T${startTime}`);
+
+//   for (let i = 0; i <= duration; i++) {
+//     const timePoint = new Date(startDate);
+//     timePoint.setHours(timePoint.getHours() + i);
+//     const timeString = timePoint.toTimeString().slice(0, 5);
+    
+//     points.push({
+//       time: timeString,
+//       events: bookedAddOns.filter(addon => addon.time === timeString)
+//     });
+//   }
+
+//   return points;
+// };
+
+// export const formatCurrency = (amount: number): string => {
+//   return new Intl.NumberFormat('en-US', {
+//     style: 'currency',
+//     currency: 'USD',
+//     minimumFractionDigits: 2,
+//     maximumFractionDigits: 2
+//   }).format(amount);
+// };
+
+// export const calculateStaffing = (guestCount: number, model: string): number => {
+//   const baseStaff = 2; // Minimum 2 staff members
+//   let additionalBaristas = 0;
+
+//   switch (model) {
+//     case 'By-the-Cup Model':
+//       additionalBaristas = Math.max(0, Math.floor((guestCount - 500) / 250));
+//       break;
+//     case 'Hourly Rate Model':
+//       additionalBaristas = Math.max(0, Math.floor((guestCount - 75) / 75));
+//       break;
+//     default: // Hybrid Model
+//       additionalBaristas = Math.max(0, Math.floor((guestCount - 300) / 150));
+//   }
+
+//   return baseStaff + additionalBaristas;
+// };
+
+// export const isValidEmail = (email: string): boolean => {
+//   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+//   return emailRegex.test(email);
+// };
+
+// export const isValidPhone = (phone: string): boolean => {
+//   const phoneRegex = /^\+?[\d\s-()]{10,}$/;
+//   return phoneRegex.test(phone);
+// };
+
+// export const calculateTotalTime = (duration: number, addOns: BookedAddOn[]): number => {
+//   const setupTime = 1; // 1 hour setup
+//   const teardownTime = 1; // 1 hour teardown
+//   const addOnTime = addOns.reduce((total, addon) => {
+//     const experience = ADD_ON_EXPERIENCES[addon.service as keyof typeof ADD_ON_EXPERIENCES];
+//     return total + (experience?.duration || 0);
+//   }, 0);
+
+//   return duration + setupTime + teardownTime + addOnTime;
+// };
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/r/[shortCode]/page.tsx
+import { redirect } from 'next/navigation'
+import { prisma } from '@/lib/db/prisma'
+
+export default async function RedirectPage({
+  params: { shortCode },
+}: {
+  params: { shortCode: string }
+}) {
+  const qrCode = await prisma.qRCode.findUnique({
+    where: { shortCode },
+  })
+
+  if (!qrCode || !qrCode.isActive) {
+    redirect('/404')
+  }
+
+  // Log the redirect for analytics
+  console.log(`Redirecting ${shortCode} to ${qrCode.defaultUrl}`)
+  
+  redirect(qrCode.defaultUrl)
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/auth/auth-provider.tsx
 "use client"
 
 import { SessionProvider } from "next-auth/react"
@@ -9914,7 +14277,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/auth/login-form.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/auth/login-form.tsx
 "use client";
 
 import { useState } from "react";
@@ -10038,7 +14401,7 @@ export function LoginForm() {
   );
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/auth/register-form.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/auth/register-form.tsx
 "use client";
 
 import { useState } from "react";
@@ -10213,7 +14576,7 @@ export function RegisterForm() {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/auth/user-button.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/auth/user-button.tsx
 "use client";
 
 import { LogOut, User } from "lucide-react";
@@ -10248,7 +14611,346 @@ export function UserButton() {
   );
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/contacts/activity/activity-feed.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/calculator/expense-allocation.tsx
+"use client";
+
+import { useState } from "react";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+export function ExpenseAllocation() {
+  const [expenses, setExpenses] = useState({
+    rent: { amount: 0, isBuffBarista: false },
+    utilities: { amount: 0, isBuffBarista: false },
+    labor: { amount: 0, isBuffBarista: true },
+    supplies: { amount: 0, isBuffBarista: true },
+    maintenance: { amount: 0, isBuffBarista: false },
+  });
+
+  return (
+    <div className="space-y-6">
+      {Object.entries(expenses).map(([key, value]) => (
+        <div key={key} className="flex items-center justify-between space-x-4">
+          <div className="flex-1">
+            <Label htmlFor={key} className="capitalize">{key}</Label>
+            <Input
+              id={key}
+              type="number"
+              value={value.amount}
+              onChange={(e) => 
+                setExpenses(prev => ({
+                  ...prev,
+                  [key]: { ...value, amount: parseFloat(e.target.value) || 0 }
+                }))
+              }
+              placeholder="Enter amount"
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <Label htmlFor={`${key}-switch`}>Buf Barista</Label>
+            <Switch
+              id={`${key}-switch`}
+              checked={value.isBuffBarista}
+              onCheckedChange={(checked) =>
+                setExpenses(prev => ({
+                  ...prev,
+                  [key]: { ...value, isBuffBarista: checked }
+                }))
+              }
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/calculator/profit-calculator.tsx
+"use client";
+
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ExpenseAllocation } from "./expense-allocation";
+import { SensitivityAnalysis } from "./sensitivity-analysis";
+import { ScenarioComparison } from "./scenario-comparison";
+import { ProfitVisualization } from "./profit-visualization";
+
+export function ProfitCalculator() {
+  return (
+    <div className="space-y-6">
+      <Tabs defaultValue="expenses" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="expenses">Expense Allocation</TabsTrigger>
+          <TabsTrigger value="sensitivity">Sensitivity Analysis</TabsTrigger>
+          <TabsTrigger value="scenarios">Scenario Comparison</TabsTrigger>
+          <TabsTrigger value="visualization">Visualization</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="expenses">
+          <Card>
+            <CardHeader>
+              <CardTitle>Expense Allocation</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ExpenseAllocation />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="sensitivity">
+          <Card>
+            <CardHeader>
+              <CardTitle>Sensitivity Analysis</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SensitivityAnalysis />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="scenarios">
+          <Card>
+            <CardHeader>
+              <CardTitle>Scenario Comparison</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScenarioComparison />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="visualization">
+          <Card>
+            <CardHeader>
+              <CardTitle>Profit Visualization</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ProfitVisualization />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/calculator/profit-visualization.tsx
+"use client";
+
+import { Card } from "@/components/ui/card";
+import {
+  Bar,
+  BarChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+} from "recharts";
+
+export function ProfitVisualization() {
+  const data = [
+    {
+      month: "Jan",
+      "Buf Barista": 4000,
+      "Restaurant": 2400,
+    },
+    {
+      month: "Feb",
+      "Buf Barista": 3000,
+      "Restaurant": 1398,
+    },
+    {
+      month: "Mar",
+      "Buf Barista": 2000,
+      "Restaurant": 9800,
+    },
+    {
+      month: "Apr",
+      "Buf Barista": 2780,
+      "Restaurant": 3908,
+    },
+    {
+      month: "May",
+      "Buf Barista": 1890,
+      "Restaurant": 4800,
+    },
+    {
+      month: "Jun",
+      "Buf Barista": 2390,
+      "Restaurant": 3800,
+    },
+  ];
+
+  return (
+    <div className="h-[400px]">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data}>
+          <XAxis dataKey="month" />
+          <YAxis />
+          <Tooltip />
+          <Legend />
+          <Bar dataKey="Buf Barista" fill="#8884d8" />
+          <Bar dataKey="Restaurant" fill="#82ca9d" />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/calculator/scenario-comparison.tsx
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+export function ScenarioComparison() {
+  const scenarios = [
+    {
+      id: 1,
+      name: "Base Scenario",
+      revenue: 10000,
+      expenses: 7000,
+      profit: 3000,
+    },
+    {
+      id: 2,
+      name: "Optimistic Scenario",
+      revenue: 15000,
+      expenses: 8000,
+      profit: 7000,
+    },
+    {
+      id: 3,
+      name: "Conservative Scenario",
+      revenue: 8000,
+      expenses: 6000,
+      profit: 2000,
+    },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button>Save Current Scenario</Button>
+      </div>
+      
+      <ScrollArea className="h-[400px]">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Scenario</TableHead>
+              <TableHead className="text-right">Revenue</TableHead>
+              <TableHead className="text-right">Expenses</TableHead>
+              <TableHead className="text-right">Profit</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {scenarios.map((scenario) => (
+              <TableRow key={scenario.id}>
+                <TableCell>{scenario.name}</TableCell>
+                <TableCell className="text-right">
+                  ${scenario.revenue.toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  ${scenario.expenses.toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  ${scenario.profit.toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button variant="ghost" size="sm">Load</Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </ScrollArea>
+    </div>
+  );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/calculator/sensitivity-analysis.tsx
+"use client";
+
+import { useState } from "react";
+import { Slider } from "@/components/ui/slider";
+import { Label } from "@/components/ui/label";
+
+export function SensitivityAnalysis() {
+  const [variables, setVariables] = useState({
+    revenueSplit: 50,
+    guestCount: 100,
+    drinkPrice: 5,
+  });
+
+  return (
+    <div className="space-y-8">
+      <div className="space-y-4">
+        <Label>Revenue Split (%)</Label>
+        <Slider
+          value={[variables.revenueSplit]}
+          onValueChange={([value]) =>
+            setVariables(prev => ({ ...prev, revenueSplit: value }))
+          }
+          max={100}
+          step={1}
+        />
+        <div className="text-sm text-muted-foreground">
+          Current: {variables.revenueSplit}%
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <Label>Daily Guest Count</Label>
+        <Slider
+          value={[variables.guestCount]}
+          onValueChange={([value]) =>
+            setVariables(prev => ({ ...prev, guestCount: value }))
+          }
+          max={500}
+          step={10}
+        />
+        <div className="text-sm text-muted-foreground">
+          Current: {variables.guestCount} guests
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <Label>Average Drink Price ($)</Label>
+        <Slider
+          value={[variables.drinkPrice]}
+          onValueChange={([value]) =>
+            setVariables(prev => ({ ...prev, drinkPrice: value }))
+          }
+          max={10}
+          step={0.5}
+        />
+        <div className="text-sm text-muted-foreground">
+          Current: ${variables.drinkPrice.toFixed(2)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/contacts/activity/activity-feed.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -10321,7 +15023,7 @@ export function ActivityFeed({ contactId }: ActivityFeedProps) {
   );
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/contacts/activity/activity-icon.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/contacts/activity/activity-icon.tsx
 import { MessageSquare, Mail, Star, AlertCircle, Edit, Trash } from "lucide-react";
 
 const iconMap = {
@@ -10345,7 +15047,7 @@ export function ActivityIcon({ type, className }: ActivityIconProps) {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/contacts/bulk-actions.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/contacts/bulk-actions.tsx
 "use client";
 
 import { useState } from "react";
@@ -10481,7 +15183,7 @@ export function BulkActions({ selectedIds, onSuccess }: BulkActionsProps) {
   );
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/contacts/contact-details.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/contacts/contact-details.tsx
 "use client";
 
 import { useState } from "react";
@@ -10642,7 +15344,7 @@ export function ContactDetails({ initialData }: ContactDetailsProps) {
   );
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/contacts/contact-form.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/contacts/contact-form.tsx
 "use client";
 
 import { useState } from "react";
@@ -10920,7 +15622,7 @@ export function ContactForm() {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/contacts/contact-list.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/contacts/contact-list.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -11289,7 +15991,7 @@ export function ContactList({
   );
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/contacts/data-export.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/contacts/data-export.tsx
 "use client";
 
 import { useState } from "react";
@@ -11365,7 +16067,7 @@ export function DataExport({ contacts }: DataExportProps) {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/contacts/data-table-loading.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/contacts/data-table-loading.tsx
 export function DataTableLoading() {
     return (
       <div className="space-y-3">
@@ -11392,7 +16094,7 @@ export function DataTableLoading() {
     );
   }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/contacts/search.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/contacts/search.tsx
 // src/components/contacts/search.tsx
 "use client";
 
@@ -11460,7 +16162,7 @@ export function Search() {
   );
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/contacts/status-select.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/contacts/status-select.tsx
 import {
   Select,
   SelectContent,
@@ -11500,7 +16202,7 @@ export function StatusSelect({ value, onChange }: StatusSelectProps) {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/analytics/contact-chart.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/analytics/contact-chart.tsx
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11543,7 +16245,7 @@ export function ContactChart({ contacts }: ContactChartProps) {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/analytics/overview.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/analytics/overview.tsx
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11610,7 +16312,21 @@ export function AnalyticsOverview({ contacts }: AnalyticsOverviewProps) {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/date-range.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/dashboard-shell.tsx
+interface DashboardShellProps {
+  children: React.ReactNode
+}
+
+export function DashboardShell({ children }: DashboardShellProps) {
+  return (
+    <div className="flex-1 space-y-4 p-8 pt-6">
+      {children}
+    </div>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/date-range.tsx
 "use client";
 
 import * as React from "react";
@@ -11677,7 +16393,7 @@ export function CalendarDateRangePicker({
   );
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/navigation/mobile-nav.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/navigation/mobile-nav.tsx
 "use client";
 
 import Link from "next/link";
@@ -11744,7 +16460,7 @@ export function MobileNav() {
   );
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/navigation/side-nav.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/navigation/side-nav.tsx
 "use client";
 
 import Link from "next/link";
@@ -11766,6 +16482,7 @@ import {
   FaClipboardList as OrdersIcon,
   FaTrash as WasteIcon,
   FaBoxes as InventoryIcon,
+  FaCog as SettingsIcon,
 } from "react-icons/fa"; 
 
 import { Button } from "@/components/ui/button";
@@ -11780,6 +16497,12 @@ const routes = [
     icon: Home,
     href: "/dashboard",
     color: "text-sky-500"
+  },
+  {
+    label: "QR",
+    icon: SettingsIcon,
+    href: "/dashboard/qr",
+    color: "text-orange-500"
   },
   {
     label: "Contacts",
@@ -11929,7 +16652,7 @@ export function SideNav() {
   );
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/navigation/top-nav.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/navigation/top-nav.tsx
 "use client";
 
 import Link from "next/link";
@@ -11951,7 +16674,7 @@ export function TopNav() {
   );
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/overview.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/overview.tsx
 "use client";
 
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
@@ -12013,7 +16736,7 @@ export function Overview() {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/designer/download-utils.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/designer/download-utils.ts
 import html2canvas from 'html2canvas';
 import { generateUUID } from '@/lib/generate-uuid';
 
@@ -12022,7 +16745,7 @@ export const downloadQRCode = async (
   format: 'svg' | 'png',
   filename: string = 'qr-code'
 ) => {
-  return new Promise(async (resolve, reject) => {
+  return new Promise<boolean>(async (resolve, reject) => {
     if (!qrRef) {
       reject(new Error('QR code reference not found'));
       return;
@@ -12031,110 +16754,104 @@ export const downloadQRCode = async (
     try {
       const uuid = generateUUID();
       const fullFilename = `${filename}-${uuid}`;
-      
-      // Get the container with all styles
       const container = qrRef;
       
       if (format === 'png') {
-        // For PNG, capture the entire styled container
         const canvas = await html2canvas(container as HTMLElement, {
           scale: 3,
           backgroundColor: null,
           logging: false,
           useCORS: true,
           allowTaint: true,
-          onclone: () => {
-            // Any additional processing of cloned document if needed
-            console.log('Cloned document ready for capture');
-          }
         });
 
         const link = document.createElement('a');
         link.download = `${fullFilename}.png`;
         link.href = canvas.toDataURL('image/png');
-        document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
         resolve(true);
       } else {
-        // For SVG, create a new SVG containing both QR code and styling
         const canvas = container.querySelector('canvas');
         if (!canvas) {
           throw new Error('Canvas element not found');
         }
 
-        // Get the canvas data
-        const canvasData = canvas.toDataURL('image/png');
+        // Convert canvas to base64 PNG with proper formatting
+        const canvasData = canvas.toDataURL('image/png').replace(/^data:image\/[^;]+;base64,/, '');
         
-        // Create a new SVG
-        let svgString = `
+        // Create SVG with encoded image data
+        let svgString = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+          <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
+            xmlns:xlink="http://www.w3.org/1999/xlink"
             width="${canvas.width}" 
             height="${canvas.height}"
             viewBox="0 0 ${canvas.width} ${canvas.height}"
+            version="1.1"
           >
-            <style>
-              .qr-wrapper {
-                width: 100%;
-                height: 100%;
-              }
-              .qr-image {
-                width: 100%;
-                height: 100%;
-                image-rendering: pixelated;
-              }
-            </style>
+            <defs>
+              <style type="text/css">
+                .qr-wrapper { width: 100%; height: 100%; }
+                .qr-image { width: 100%; height: 100%; image-rendering: pixelated; }
+              </style>
+            </defs>
             <g class="qr-wrapper">
               <image 
                 class="qr-image"
-                width="100%" 
-                height="100%" 
-                href="${canvasData}"
-                preserveAspectRatio="none"
+                width="${canvas.width}" 
+                height="${canvas.height}" 
+                xlink:href="data:image/png;base64,${canvasData}"
               />
-            </g>
-        `;
+            </g>`;
 
-        // Add logo if available
+        // Add logo if it exists
         const logoImg = container.querySelector('.logo-wrapper img') as HTMLImageElement;
         if (logoImg) {
-          const logoStyles = window.getComputedStyle(logoImg);
           const logoWrapper = logoImg.parentElement;
-          const wrapperStyles = logoWrapper ? window.getComputedStyle(logoWrapper) : null;
+          if (logoWrapper) {
+            const rect = logoWrapper.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            
+            // Calculate relative position
+            const x = ((rect.left - containerRect.left) / containerRect.width) * canvas.width;
+            const y = ((rect.top - containerRect.top) / containerRect.height) * canvas.height;
+            const width = (rect.width / containerRect.width) * canvas.width;
+            const height = (rect.height / containerRect.height) * canvas.height;
 
-          svgString += `
-            <g class="logo-wrapper" transform="${wrapperStyles?.transform || ''}">
-              <image
-                x="${wrapperStyles?.left || '0'}"
-                y="${wrapperStyles?.top || '0'}"
-                width="${logoStyles.width}"
-                height="${logoStyles.height}"
-                style="
-                  opacity: ${logoStyles.opacity};
-                  mix-blend-mode: ${logoStyles.mixBlendMode};
-                  filter: ${logoStyles.filter};
-                  border-radius: ${logoStyles.borderRadius};
-                  ${logoStyles.backgroundColor !== 'transparent' ? `background-color: ${logoStyles.backgroundColor};` : ''}
-                "
-                href="${logoImg.src}"
-              />
-            </g>
-          `;
+            // Convert logo to base64
+            const logoCanvas = document.createElement('canvas');
+            logoCanvas.width = logoImg.naturalWidth;
+            logoCanvas.height = logoImg.naturalHeight;
+            const ctx = logoCanvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(logoImg, 0, 0);
+              const logoData = logoCanvas.toDataURL('image/png').replace(/^data:image\/[^;]+;base64,/, '');
+              
+              svgString += `
+                <g class="logo-wrapper">
+                  <image
+                    x="${x}"
+                    y="${y}"
+                    width="${width}"
+                    height="${height}"
+                    xlink:href="data:image/png;base64,${logoData}"
+                  />
+                </g>`;
+            }
+          }
         }
 
         svgString += '</svg>';
 
-        // Create and download the SVG file
-        const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-        const svgUrl = URL.createObjectURL(svgBlob);
+        // Create and trigger download
+        const blob = new Blob([svgString], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href = svgUrl;
+        link.href = url;
         link.download = `${fullFilename}.svg`;
-        document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(svgUrl);
+        URL.revokeObjectURL(url);
         resolve(true);
       }
     } catch (error) {
@@ -12143,14 +16860,13 @@ export const downloadQRCode = async (
     }
   });
 };
-
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/designer/index.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/designer/index.ts
 export * from './qr-designer'
 export * from './types'
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/designer/logo-controls.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/designer/logo-controls.tsx
 "use client"
 
 import React, { useState } from "react"
@@ -12510,14 +17226,15 @@ export function LogoControls({
   );
 }
 
+
+// src/components/dashboard/qr/designer/logo-controls.tsx
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/designer/qr-designer.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/designer/qr-designer.tsx
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react'
 import { QRCode } from './qr-wrapper'
 import { TabsList, TabsTrigger, Tabs, TabsContent } from "@/components/ui/tabs"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
@@ -12535,12 +17252,13 @@ import { LogoControls } from './logo-controls'
 import { QRDownloadButton } from './qr-download-button'
 import { 
   QRDesignerProps, 
-  QRDotType, 
+  QRDotType,
+  ErrorCorrectionLevel,
   DEFAULT_CONFIG,
   QRDesignerConfig
 } from './types'
 import { toast } from '@/components/ui/use-toast'
-import {  Grid } from 'lucide-react'
+import { Grid } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import styles from './styles.module.css'
 
@@ -12562,12 +17280,12 @@ export function QRDesigner({
   const [maintainAspectRatio, setMaintainAspectRatio] = useState(true)
   const [originalAspectRatio, setOriginalAspectRatio] = useState(1)
   const qrRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     onConfigChange?.(config)
   }, [config, onConfigChange])
 
-  // Initialize logo style when a logo is added
   useEffect(() => {
     if (config.logoImage && !config.logoStyle) {
       setConfig(prev => ({
@@ -12602,7 +17320,7 @@ export function QRDesigner({
     if (config.style.contrast !== 100) filters.push(`contrast(${config.style.contrast}%)`)
     if (config.style.opacity !== 100) filters.push(`opacity(${config.style.opacity}%)`)
     return filters.join(' ')
-  } 
+  }
 
   const generateBackground = () => {
     if (config.style.gradientType === 'linear') {
@@ -12629,9 +17347,11 @@ export function QRDesigner({
     transition: 'all 0.3s ease',
   })
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
+    if (!file) return
+  
+    try {
       if (file.size > 2 * 1024 * 1024) {
         toast({
           title: "Error",
@@ -12640,24 +17360,48 @@ export function QRDesigner({
         })
         return
       }
-
+  
       const reader = new FileReader()
-      reader.onload = () => {
+      
+      reader.onloadend = () => {
         const img = new Image()
+        
         img.onload = () => {
           const aspectRatio = img.width / img.height
           setOriginalAspectRatio(aspectRatio)
-          const defaultSize = 100
+          const defaultSize = Math.min(100, config.size / 3)
+          
           setConfig(prev => ({
             ...prev,
             logoImage: reader.result as string,
             logoWidth: defaultSize,
             logoHeight: maintainAspectRatio ? Math.round(defaultSize / aspectRatio) : defaultSize,
+            logoStyle: {
+              ...DEFAULT_CONFIG.logoStyle,
+              scale: 1,
+            }
           }))
         }
+  
         img.src = reader.result as string
       }
+  
+      reader.onerror = () => {
+        toast({
+          title: "Error",
+          description: "Failed to load image",
+          variant: "destructive",
+        })
+      }
+  
       reader.readAsDataURL(file)
+    } catch (error) {
+      console.error('Error uploading logo:', error)
+      toast({
+        title: "Error",
+        description: "Failed to upload image",
+        variant: "destructive",
+      })
     }
   }
 
@@ -12670,18 +17414,18 @@ export function QRDesigner({
               <div className={styles.preview} style={{ background: config.backgroundColor }}>
                 {showGrid && <div className={styles.grid} />}
                 <div ref={qrRef} className={styles.wrapper} style={getQrStyles()}>
-                <QRCode
-                  value={value}
-                  size={config.size}
-                  bgColor={config.backgroundColor}
-                  fgColor={config.foregroundColor}
-                  level={config.errorCorrectionLevel}
-                  logoImage={config.logoImage}
-                  logoWidth={config.logoWidth}
-                  logoHeight={config.logoHeight}
-                  logoStyle={config.logoStyle}
-                  imageStyle={{ display: "block" }}
-/>
+                  <QRCode
+                    value={value}
+                    size={config.size}
+                    bgColor={config.backgroundColor}
+                    fgColor={config.foregroundColor}
+                    level={config.errorCorrectionLevel}
+                    logoImage={config.logoImage}
+                    logoWidth={config.logoWidth}
+                    logoHeight={config.logoHeight}
+                    logoStyle={config.logoStyle}
+                    imageStyle={{ display: "block" }}
+                  />
                 </div>
               </div>
             </CardContent>
@@ -12739,21 +17483,44 @@ export function QRDesigner({
               <div className="space-y-2">
                 <Label>Logo Image</Label>
                 <div className="flex items-center gap-4">
-                  <Input
+                  <input
                     type="file"
+                    ref={fileInputRef}
+                    className="hidden"
                     accept="image/*"
                     onChange={handleLogoUpload}
-                    className="flex-1"
                   />
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Choose Logo Image
+                  </Button>
                   {config.logoImage && (
                     <Button 
                       variant="outline"
-                      onClick={() => setConfig(prev => ({ ...prev, logoImage: undefined }))}
+                      onClick={() => {
+                        setConfig(prev => ({
+                          ...prev,
+                          logoImage: undefined,
+                          logoWidth: DEFAULT_CONFIG.logoWidth,
+                          logoHeight: DEFAULT_CONFIG.logoHeight,
+                          logoStyle: DEFAULT_CONFIG.logoStyle
+                        }))
+                      }}
                     >
                       Remove
                     </Button>
                   )}
                 </div>
+                {config.logoImage && (
+                  <img 
+                    src={config.logoImage} 
+                    alt="Logo preview" 
+                    className="h-16 object-contain border rounded-md p-2"
+                  />
+                )}
               </div>
 
               {config.logoImage && (
@@ -12899,88 +17666,89 @@ export function QRDesigner({
               <div className="space-y-2">
                 <Label>QR Code Size: {config.size}px</Label>
                 <Slider
-                  value={[config.size]}
-                  min={100}
-                  max={1000}
-                  step={10}
-                  onValueChange={([value]) => 
-                    setConfig(prev => ({ ...prev, size: value }))
-                  }
-                />
-              </div>
+value={[config.size]}
+min={100}
+max={1000}
+step={10}
+onValueChange={([value]) => 
+  setConfig(prev => ({ ...prev, size: value }))
+}
+/>
+</div>
 
-              <div className="space-y-2">
-                <Label>Error Correction Level</Label>
-                <Select
-                  value={config.errorCorrectionLevel}
-                  onValueChange={(value: QRDesignerConfig["errorCorrectionLevel"]) =>
-                    setConfig(prev => ({ 
-                      ...prev, 
-                      errorCorrectionLevel: value 
-                    }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="L">Low (7%)</SelectItem>
-                    <SelectItem value="M">Medium (15%)</SelectItem>
-                    <SelectItem value="Q">Quartile (25%)</SelectItem>
-                    <SelectItem value="H">High (30%)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+<div className="space-y-2">
+<Label>Error Correction Level</Label>
+<Select
+value={config.errorCorrectionLevel}
+onValueChange={(value: ErrorCorrectionLevel) => {
+  console.log('Selected error correction level:', value);
+  setConfig(prev => ({ 
+    ...prev, 
+    errorCorrectionLevel: value 
+  }))
+}}
+>
+<SelectTrigger>
+  <SelectValue />
+</SelectTrigger>
+<SelectContent>
+  <SelectItem value="L">Low (7%)</SelectItem>
+  <SelectItem value="M">Medium (15%)</SelectItem>
+  <SelectItem value="Q">Quartile (25%)</SelectItem>
+  <SelectItem value="H">High (30%)</SelectItem>
+</SelectContent>
+</Select>
+</div>
 
-              <div className="space-y-2">
-              <Label>Margin: {config.style.padding}px</Label>
-                <Slider
-                  value={[config.style.padding]}
-                  min={0}
-                  max={50}
-                  step={1}
-                  onValueChange={([value]) => 
-                    setConfig(prev => ({
-                      ...prev,
-                      style: { ...prev.style, padding: value }
-                    }))
-                  }
-                />
-              </div>
+<div className="space-y-2">
+<Label>Margin: {config.style.padding}px</Label>
+<Slider
+value={[config.style.padding]}
+min={0}
+max={50}
+step={1}
+onValueChange={([value]) => 
+  setConfig(prev => ({
+    ...prev,
+    style: { ...prev.style, padding: value }
+  }))
+}
+/>
+</div>
 
-              <div className="space-y-2">
-                <Label>Quality</Label>
-                <Select
-                  value={config.dotStyle}
-                  onValueChange={(value: QRDotType) => 
-                    setConfig(prev => ({ 
-                      ...prev, 
-                      dotStyle: value 
-                    }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="squares">Squares</SelectItem>
-                    <SelectItem value="dots">Dots</SelectItem>
-                    <SelectItem value="rounded">Rounded</SelectItem>
-                    <SelectItem value="classy">Classy</SelectItem>
-                    <SelectItem value="classy-rounded">Classy Rounded</SelectItem>
-                    <SelectItem value="extra-rounded">Extra Rounded</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
-  )
+<div className="space-y-2">
+<Label>Quality</Label>
+<Select
+value={config.dotStyle}
+onValueChange={(value: QRDotType) => 
+  setConfig(prev => ({ 
+    ...prev, 
+    dotStyle: value 
+  }))
+}
+>
+<SelectTrigger>
+  <SelectValue />
+</SelectTrigger>
+<SelectContent>
+  <SelectItem value="squares">Squares</SelectItem>
+  <SelectItem value="dots">Dots</SelectItem>
+  <SelectItem value="rounded">Rounded</SelectItem>
+  <SelectItem value="classy">Classy</SelectItem>
+  <SelectItem value="classy-rounded">Classy Rounded</SelectItem>
+  <SelectItem value="extra-rounded">Extra Rounded</SelectItem>
+</SelectContent>
+</Select>
+</div>
+</div>
+</TabsContent>
+</Tabs>
+</div>
+</div>
+)
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/designer/qr-download-button.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/designer/qr-download-button.tsx
 import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
 import html2canvas from 'html2canvas'
@@ -12997,20 +17765,74 @@ export function QRDownloadButton({ qrRef, format }: QRDownloadButtonProps) {
 
     try {
       if (format === 'svg') {
-        // Download as SVG
-        const svg = qrRef.current.querySelector('svg')
-        if (!svg) throw new Error('SVG element not found')
+        // Find the canvas element
+        const canvas = qrRef.current.querySelector('canvas')
+        if (!canvas) throw new Error('Canvas element not found')
 
-        const svgData = new XMLSerializer().serializeToString(svg)
-        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
+        // Convert canvas to base64 PNG
+        const canvasData = canvas.toDataURL('image/png').replace(/^data:image\/[^;]+;base64,/, '')
+        
+        // Create SVG string with the canvas data
+        const svgString = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+          <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            xmlns:xlink="http://www.w3.org/1999/xlink"
+            width="${canvas.width}" 
+            height="${canvas.height}"
+            viewBox="0 0 ${canvas.width} ${canvas.height}"
+            version="1.1"
+          >
+            <image 
+              width="100%" 
+              height="100%" 
+              xlink:href="data:image/png;base64,${canvasData}"
+            />`
+
+        // Add logo if it exists
+        const logoImg = qrRef.current.querySelector('.logo-wrapper img') as HTMLImageElement
+        if (logoImg) {
+          const logoWrapper = logoImg.parentElement
+          if (logoWrapper) {
+            const rect = logoWrapper.getBoundingClientRect()
+            const containerRect = qrRef.current.getBoundingClientRect()
+            
+            // Calculate relative position
+            const x = ((rect.left - containerRect.left) / containerRect.width) * canvas.width
+            const y = ((rect.top - containerRect.top) / containerRect.height) * canvas.height
+            const width = (rect.width / containerRect.width) * canvas.width
+            const height = (rect.height / containerRect.height) * canvas.height
+
+            // Convert logo to base64
+            const logoCanvas = document.createElement('canvas')
+            logoCanvas.width = logoImg.naturalWidth
+            logoCanvas.height = logoImg.naturalHeight
+            const ctx = logoCanvas.getContext('2d')
+            if (ctx) {
+              ctx.drawImage(logoImg, 0, 0)
+              const logoData = logoCanvas.toDataURL('image/png').replace(/^data:image\/[^;]+;base64,/, '')
+              
+              svgString + `
+                <image
+                  x="${x}"
+                  y="${y}"
+                  width="${width}"
+                  height="${height}"
+                  xlink:href="data:image/png;base64,${logoData}"
+                />`
+            }
+          }
+        }
+
+        const finalSvgString = svgString + '</svg>'
+
+        // Create and download SVG file
+        const svgBlob = new Blob([finalSvgString], { type: 'image/svg+xml' })
         const svgUrl = URL.createObjectURL(svgBlob)
-
         const link = document.createElement('a')
         link.href = svgUrl
         link.download = `qr-code-${Date.now()}.svg`
-        document.body.appendChild(link)
         link.click()
-        document.body.removeChild(link)
         URL.revokeObjectURL(svgUrl)
       } else {
         // Download as PNG
@@ -13022,13 +17844,10 @@ export function QRDownloadButton({ qrRef, format }: QRDownloadButtonProps) {
           allowTaint: true,
         })
 
-        const pngUrl = canvas.toDataURL('image/png')
         const link = document.createElement('a')
-        link.href = pngUrl
+        link.href = canvas.toDataURL('image/png')
         link.download = `qr-code-${Date.now()}.png`
-        document.body.appendChild(link)
         link.click()
-        document.body.removeChild(link)
       }
 
       toast({
@@ -13052,9 +17871,8 @@ export function QRDownloadButton({ qrRef, format }: QRDownloadButtonProps) {
     </Button>
   )
 }
-
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/designer/qr-wrapper.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/designer/qr-wrapper.tsx
 "use client"
 
 import { QRCodeCanvas } from 'qrcode.react'
@@ -13146,7 +17964,7 @@ export const QRCode = forwardRef<HTMLDivElement, QRWrapperProps>((props, ref) =>
 
 QRCode.displayName = 'QRCode'
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/designer/style-controls.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/designer/style-controls.tsx
 "use client"
 
 import React, { useState } from "react"
@@ -13503,8 +18321,9 @@ export function StyleControls({ value, onChange }: StyleControlsProps) {
   )
 }
 
+// src/components/dashboard/qr/designer/style-controls.tsx
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/designer/styles.module.css
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/designer/styles.module.css
 .container {
   position: relative;
   display: flex;
@@ -13762,7 +18581,7 @@ ________________________________________________________________________________
   transition: all 0.3s ease;
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/designer/types.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/designer/types.ts
 export type BlendMode = 
   | 'normal' 
   | 'multiply' 
@@ -13937,7 +18756,7 @@ export const DEFAULT_CONFIG: QRDesignerConfig = {
   }
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/device-rule-form.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/device-rule-form.tsx
 import { useState, useEffect } from "react"
 import {
   Card,
@@ -14172,7 +18991,7 @@ export function DeviceRuleForm({ qrCodeId, initialRules, onChange }: DeviceRuleF
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/folder-list.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/folder-list.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -14214,7 +19033,7 @@ export function FolderList({ className, selectedFolderId, onFolderSelect }: Fold
   const [newFolderName, setNewFolderName] = useState("")
 
   async function fetchFolders() {
-    try {1
+    try {
       const response = await fetch('/api/folders')
       if (!response.ok) {
         const error = await response.json()
@@ -14317,7 +19136,6 @@ export function FolderList({ className, selectedFolderId, onFolderSelect }: Fold
                   placeholder="My Folder"
                 />
               </div>
-   
             </div>
             <DialogFooter>
               <Button 
@@ -14367,7 +19185,6 @@ export function FolderList({ className, selectedFolderId, onFolderSelect }: Fold
             )}
             onClick={() => onFolderSelect(folder.id)}
           >
-    
             {folder.name}
             <span className="ml-auto text-xs text-muted-foreground">
               {folder._count.qrCodes}
@@ -14380,7 +19197,7 @@ export function FolderList({ className, selectedFolderId, onFolderSelect }: Fold
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/folder-menu.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/folder-menu.tsx
 "use client"
 
 import { useState } from "react"
@@ -14544,7 +19361,7 @@ export function FolderMenu({ folder, onFolderDeleted, onFolderUpdated }: FolderM
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/qr-analytics.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/qr-analytics.tsx
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14615,8 +19432,10 @@ export function QRAnalytics({  }: QRAnalyticsProps) {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/qr-card.tsx
-// QRCard.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/qr-card.tsx
+// src/components/dashboard/qr/qr-card.tsx
+"use client"
+
 import { useState } from "react"
 import Link from "next/link"
 import QRCode from "react-qr-code"
@@ -14624,50 +19443,52 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { 
-  Edit, 
-  FileDown, 
-  ExternalLink, 
-  Trash2, 
-  MoreHorizontal,
-  Loader2 
+ Edit, 
+ FileDown, 
+ ExternalLink, 
+ Trash2, 
+ MoreHorizontal,
+ Loader2 
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
+ DropdownMenu,
+ DropdownMenuContent,
+ DropdownMenuItem,
+ DropdownMenuTrigger,
+ DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { toast } from "@/components/ui/use-toast"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+ Dialog,
+ DialogContent,
+ DialogDescription,
+ DialogFooter,
+ DialogHeader,
+ DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 
+const SITE_URL = "https://bufbarista-crm.vercel.app"
+
 interface QRCodeData {
-  id: string
-  name: string
-  shortCode: string
-  defaultUrl: string
-  scans: number
-  isActive: boolean
-  createdAt: Date
+ id: string
+ name: string
+ shortCode: string
+ defaultUrl: string
+ scans: number
+ isActive: boolean
+ createdAt: Date
+ folderId: string | null
 }
 
 interface QRCardProps {
-  qrCode: QRCodeData
-  onDelete?: (qrCode: QRCodeData) => Promise<void>
-  selected?: boolean
-  onSelect?: () => void
-  className?: string
+ qrCode: QRCodeData
+ onDelete?: (qrCode: QRCodeData) => Promise<void>
+ selected?: boolean
+ onSelect?: () => void
+ className?: string
 }
-
 export function QRCard({ 
   qrCode, 
   onDelete, 
@@ -14678,7 +19499,7 @@ export function QRCard({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [downloadLoading, setDownloadLoading] = useState(false)
-  const qrUrl = `${process.env.NEXT_PUBLIC_APP_URL}/r/${qrCode.shortCode}`
+  const qrUrl = `${SITE_URL}/r/${qrCode.shortCode}`
 
   const downloadQRAsImage = async () => {
     try {
@@ -14814,7 +19635,7 @@ export function QRCard({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem asChild>
-                    <Link href={`/qr/${qrCode.id}`} className="flex items-center">
+                    <Link href={`qr/${qrCode.id}`} className="flex items-center">
                       <Edit className="mr-2 h-4 w-4" />
                       Edit
                     </Link>
@@ -14933,8 +19754,11 @@ export function QRCard({
     </>
   )
 }
+
+
+// src/components/dashboard/qr/qr-card.tsx
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/qr-codes-table.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/qr-codes-table.tsx
 import { useState, useEffect } from "react"
 import {
   Table,
@@ -15411,7 +20235,7 @@ export function QRCodesTable({ folderId }: QRCodesTableProps) {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/qr-empty-state.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/qr-empty-state.tsx
 import { Card, CardDescription, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { QrCode, Plus } from "lucide-react"
@@ -15438,7 +20262,7 @@ export function QRCodeEmptyState() {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/qr-form.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/qr-form.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -15447,452 +20271,567 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
+Form,
+FormControl,
+FormDescription,
+FormField,
+FormItem,
+FormLabel,
+FormMessage,
 } from "@/components/ui/form"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DeviceRuleForm } from "./device-rule-form"
 import { ScheduleRuleForm } from "./schedule-rule-form"
 import { QRDesigner } from "./designer/qr-designer"
 import { QRDesignerConfig } from "./designer/types"
 import { toast } from "@/components/ui/use-toast"
-import { Loader2, Plus } from "lucide-react"
+import { Loader2, Plus, CheckCircle2 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+Dialog,
+DialogContent,
+DialogDescription,
+DialogFooter,
+DialogHeader,
+DialogTitle,
 } from "@/components/ui/dialog"
+import { Progress } from "@/components/ui/progress"
+
+const SITE_URL = "https://bufbarista-crm.vercel.app"
 
 interface Folder {
-  id: string
-  name: string
+id: string
+name: string
 }
 
 const formSchema = z.object({
-  name: z.string().min(2, {
-    message: "Name must be at least 2 characters.",
-  }),
-  defaultUrl: z.string()
-    .min(1, "URL is required")
-    .transform(val => {
-      let url = val.trim()
-      if (!/^https?:\/\//i.test(url)) {
-        url = `https://${url}`
+name: z.string().min(2, {
+  message: "Name must be at least 2 characters.",
+}),
+defaultUrl: z.string()
+  .min(1, "URL is required")
+  .transform(val => {
+    const url = val.trim().replace(/^https?:\/\//i, '')
+    return `https://${url}`
+  })
+  .refine(
+    (val) => {
+      try {
+        new URL(val)
+        return true
+      } catch {
+        return false
       }
-      return url
-    })
-    .refine(
-      (val) => {
-        try {
-          new URL(val)
-          return true
-        } catch {
-          return false
-        }
-      },
-      "Please enter a valid URL"
-    ),
-  folderId: z.string().nullable(),
+    },
+    "Please enter a valid URL"
+  ),
+folderId: z.string().nullable(),
 })
 
 interface QRFormProps {
-  initialData?: {
-
-    name: string
-    defaultUrl: string
-    folderId: string | null
-    id?: string
-  }
+ initialData?: {
+   name: string
+   defaultUrl: string
+   folderId: string | null
+   id?: string
+ }
 }
+
+type Step = "info" | "design" | "device" | "schedule" | "review"
+const STEPS: Step[] = ["info", "design", "device", "schedule", "review"]
 
 export function QRForm({ initialData }: QRFormProps) {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-  const [folders, setFolders] = useState<Folder[]>([])
-  const [foldersLoading, setFoldersLoading] = useState(true)
-  const [qrConfig, setQRConfig] = useState<QRDesignerConfig | null>(null)
-  const [createFolderOpen, setCreateFolderOpen] = useState(false)
-  const [newFolderName, setNewFolderName] = useState("")
-  const [createFolderLoading, setCreateFolderLoading] = useState(false)
+ const router = useRouter()
+ const [currentStep, setCurrentStep] = useState<Step>("info")
+ const [isLoading, setIsLoading] = useState(false)
+ const [folders, setFolders] = useState<Folder[]>([])
+ const [foldersLoading, setFoldersLoading] = useState(true)
+ const [qrConfig, setQRConfig] = useState<QRDesignerConfig | null>(null)
+ const [createFolderOpen, setCreateFolderOpen] = useState(false)
+ const [newFolderName, setNewFolderName] = useState("")
+ const [createFolderLoading, setCreateFolderLoading] = useState(false)
+ const [shortCode, setShortCode] = useState<string>("")
+ const [progress, setProgress] = useState(0)
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: initialData?.name || "",
-      defaultUrl: initialData?.defaultUrl || "",
-      folderId: initialData?.folderId || null,
-    },
-  })
+ const form = useForm<z.infer<typeof formSchema>>({
+   resolver: zodResolver(formSchema),
+   defaultValues: {
+     name: initialData?.name || "",
+     defaultUrl: initialData?.defaultUrl ? initialData.defaultUrl.replace(/^https?:\/\//i, '') : "",
+     folderId: initialData?.folderId || null,
+   },
+ })
 
-  const watchUrl = form.watch("defaultUrl")
+ useEffect(() => {
+   const stepIndex = STEPS.indexOf(currentStep)
+   setProgress((stepIndex / (STEPS.length - 1)) * 100)
+ }, [currentStep])
 
-  useEffect(() => {
-    async function loadFolders() {
-      try {
-        const response = await fetch('/api/folders')
-        if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.message || 'Failed to fetch folders')
-        }
-        const data = await response.json()
-        setFolders(data)
-      } catch (error) {
-        console.error('Error loading folders:', error)
-        toast({
-          title: "Error",
-          description: "Failed to load folders",
-          variant: "destructive",
-        })
-      } finally {
-        setFoldersLoading(false)
-      }
-    }
+ const handleNext = async () => {
+   const currentIndex = STEPS.indexOf(currentStep)
+   
+   if (currentStep === "info") {
+     const isValid = await form.trigger(["name", "defaultUrl"])
+     if (!isValid) return
+   }
 
-    loadFolders()
-  }, [])
+   if (currentStep === "design" && !qrConfig) {
+     toast({
+       title: "Error",
+       description: "Please design your QR code first",
+       variant: "destructive",
+     })
+     return
+   }
 
-  const createFolder = async () => {
-    if (!newFolderName.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a folder name",
-        variant: "destructive",
-      })
-      return
-    }
+   if (currentIndex < STEPS.length - 1) {
+     setCurrentStep(STEPS[currentIndex + 1])
+   }
+ }
 
-    setCreateFolderLoading(true)
-    try {
-      const response = await fetch('/api/folders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newFolderName.trim(),
-        }),
-      })
+ const handleBack = () => {
+   const currentIndex = STEPS.indexOf(currentStep)
+   if (currentIndex > 0) {
+     setCurrentStep(STEPS[currentIndex - 1])
+   }
+ }
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to create folder')
-      }
+ useEffect(() => {
+   async function loadFolders() {
+     try {
+       const response = await fetch('/api/folders')
+       if (!response.ok) {
+         const error = await response.json()
+         throw new Error(error.message || 'Failed to fetch folders')
+       }
+       const data = await response.json()
+       setFolders(data)
+     } catch (error) {
+       console.error('Error loading folders:', error)
+       toast({
+         title: "Error",
+         description: "Failed to load folders",
+         variant: "destructive",
+       })
+     } finally {
+       setFoldersLoading(false)
+     }
+   }
 
-      const newFolder = await response.json()
-      
-      // Update folders list with new folder
-      setFolders(prev => [...prev, newFolder])
-      
-      // Update form's folder selection
-      form.setValue('folderId', newFolder.id)
-      
-      // Close dialog and reset state
-      setCreateFolderOpen(false)
-      setNewFolderName("")
-      
-      toast({
-        title: "Success",
-        description: "Folder created and selected",
-      })
-    } catch (error) {
-      console.error('Error creating folder:', error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create folder",
-        variant: "destructive",
-      })
-    } finally {
-      setCreateFolderLoading(false)
-    }
-  }
+   loadFolders()
+ }, [])
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setIsLoading(true)
-    
-    try {
-      const payload = {
-        name: values.name,
-        defaultUrl: values.defaultUrl,
-        folderId: values.folderId,
-        design: qrConfig
-      }
+ const createFolder = async () => {
+   if (!newFolderName.trim()) {
+     toast({
+       title: "Error",
+       description: "Please enter a folder name",
+       variant: "destructive",
+     })
+     return
+   }
 
-      console.log('Submitting payload:', payload)
+   setCreateFolderLoading(true)
+   try {
+     const response = await fetch('/api/folders', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({
+         name: newFolderName.trim(),
+       }),
+     })
 
-      const response = await fetch('/api/qr', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      })
+     if (!response.ok) {
+       const error = await response.json()
+       throw new Error(error.error || 'Failed to create folder')
+     }
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to create QR code')
-      }
+     const newFolder = await response.json()
+     setFolders(prev => [...prev, newFolder])
+     form.setValue('folderId', newFolder.id)
+     setCreateFolderOpen(false)
+     setNewFolderName("")
+     
+     toast({
+       title: "Success",
+       description: "Folder created and selected",
+     })
+   } catch (error) {
+     console.error('Error creating folder:', error)
+     toast({
+       title: "Error",
+       description: error instanceof Error ? error.message : "Failed to create folder",
+       variant: "destructive",
+     })
+   } finally {
+     setCreateFolderLoading(false)
+   }
+ }
 
-      toast({
-        title: "Success!",
-        description: "QR code created successfully.",
-      })
+ const onSubmit = async () => {
+   if (currentStep !== "review") {
+     return handleNext()
+   }
 
-      router.push('/qr')
-      router.refresh()
-    } catch (error) {
-      console.error("Error creating QR code:", error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create QR code",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
+   setIsLoading(true)
+   
+   try {
+     const values = form.getValues()
+     const payload = {
+       name: values.name,
+       defaultUrl: values.defaultUrl,
+       folderId: values.folderId,
+       design: qrConfig
+     }
 
-  return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h3 className="text-lg font-medium">Create QR Code</h3>
-        <p className="text-sm text-muted-foreground">
-          Fill in the details below to create your QR code.
-        </p>
-      </div>
+     console.log('Submitting payload:', payload)
 
-      <Tabs defaultValue="basic" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="basic">Basic Info</TabsTrigger>
-          <TabsTrigger value="design">Design</TabsTrigger>
-          <TabsTrigger value="device">Device Rules</TabsTrigger>
-          <TabsTrigger value="schedule">Schedule Rules</TabsTrigger>
-        </TabsList>
+     const response = await fetch('/api/qr', {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/json',
+       },
+       body: JSON.stringify(payload)
+     })
 
-        <TabsContent value="basic">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="My QR Code" 
-                        {...field} 
-                        disabled={isLoading}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      A name to help you identify this QR code.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+     if (!response.ok) {
+       const error = await response.json()
+       throw new Error(error.error || 'Failed to create QR code')
+     }
 
-              <FormField
-                control={form.control}
-                name="defaultUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Default URL</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="example.com" 
-                        {...field} 
-                        disabled={isLoading}
-                        onChange={(e) => {
-                          let value = e.target.value.trim()
-                          if (!/^[a-zA-Z]+:\/\//i.test(value) && value.includes('://')) {
-                            value = value.split('://')[1]
-                          }
-                          field.onChange(value)
-                        }}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Enter a website URL (e.g., example.com or https://example.com)
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+     const data = await response.json()
+     setShortCode(data.shortCode)
 
-              <FormField
-                control={form.control}
-                name="folderId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Folder (Optional)</FormLabel>
-                    <Select
-                      disabled={foldersLoading}
-                      onValueChange={(value) => {
-                        if (value === "new") {
-                          setCreateFolderOpen(true)
-                          return;
-                        }
-                        field.onChange(value === "none" ? null : value)
-                      }}
-                      value={field.value || "none"}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a folder">
-                            {field.value === null
-                              ? "No folder"
-                              : folders.find(f => f.id === field.value)?.name || "Select a folder"}
-                          </SelectValue>
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">No folder</SelectItem>
-                        <Separator className="my-2" />
-                        {folders.map((folder) => (
-                          <SelectItem key={folder.id} value={folder.id}>
-                            {folder.name}
-                          </SelectItem>
-                        ))}
-                        <Separator className="my-2" />
-                        <Button
-                          variant="ghost"
-                          className="relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
-                          onClick={(e) => {
-                            e.preventDefault()
-                            setCreateFolderOpen(true)
-                          }}
-                        >
-                          <Plus className="mr-2 h-4 w-4" />
-                          Create New Folder
-                        </Button>
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Organize your QR code in a folder
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+     toast({
+       title: "Success!",
+       description: "QR code created successfully.",
+     })
 
-              <Button 
-                type="submit" 
-                disabled={isLoading}
-                className="w-full"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  "Create QR Code"
-                )}
-              </Button>
-            </form>
-          </Form>
-        </TabsContent>
+     router.push('/dashboard/qr')
+     router.refresh()
+   } catch (error) {
+     console.error("Error creating QR code:", error)
+     toast({
+       title: "Error",
+       description: error instanceof Error ? error.message : "Failed to create QR code",
+       variant: "destructive",
+     })
+   } finally {
+     setIsLoading(false)
+   }
+ }
 
-        <TabsContent value="design">
-          <QRDesigner
-            value={watchUrl || "https://example.com"}
-            onConfigChange={setQRConfig}
-            defaultConfig={{
-              size: 300,
-              backgroundColor: '#ffffff',
-              foregroundColor: '#000000',
-              dotStyle: 'squares',
-              margin: 10,
-              errorCorrectionLevel: 'M',
-            }}
-          />
-        </TabsContent>
+ const renderStepContent = () => {
+   switch (currentStep) {
+     case "info":
+       return (
+         <Form {...form}>
+           <form className="space-y-4">
+             <FormField
+               control={form.control}
+               name="name"
+               render={({ field }) => (
+                 <FormItem>
+                   <FormLabel>Name</FormLabel>
+                   <FormControl>
+                     <Input 
+                       placeholder="My QR Code" 
+                       {...field} 
+                       disabled={isLoading}
+                     />
+                   </FormControl>
+                   <FormDescription>
+                     A name to help you identify this QR code.
+                   </FormDescription>
+                   <FormMessage />
+                 </FormItem>
+               )}
+             />
 
-        <TabsContent value="device">
-          <DeviceRuleForm qrCodeId={initialData?.id} />
-        </TabsContent>
+             <FormField
+               control={form.control}
+               name="defaultUrl"
+               render={({ field }) => (
+                 <FormItem>
+                   <FormLabel>Destination URL</FormLabel>
+                   <FormControl>
+                     <div className="flex flex-col space-y-2">
+                       <div className="flex items-center space-x-2">
+                         <span className="text-sm text-muted-foreground">https://</span>
+                         <Input 
+                           placeholder="example.com" 
+                           {...field}
+                           value={field.value.replace(/^https?:\/\//i, '')}
+                           disabled={isLoading}
+                         />
+                       </div>
+                     </div>
+                   </FormControl>
+                   <FormDescription>
+                     Enter the destination website URL without the protocol
+                   </FormDescription>
+                   <FormMessage />
+                 </FormItem>
+               )}
+             />
 
-        <TabsContent value="schedule">
-          <ScheduleRuleForm qrCodeId={initialData?.id} />
-        </TabsContent>
-      </Tabs>
+             <FormField
+               control={form.control}
+               name="folderId"
+               render={({ field }) => (
+                 <FormItem>
+                   <FormLabel>Folder (Optional)</FormLabel>
+                   <Select
+                     disabled={foldersLoading}
+                     onValueChange={(value) => {
+                       if (value === "new") {
+                         setCreateFolderOpen(true)
+                         return;
+                       }
+                       field.onChange(value === "none" ? null : value)
+                     }}
+                     value={field.value || "none"}
+                   >
+                     <FormControl>
+                       <SelectTrigger>
+                         <SelectValue placeholder="Select a folder">
+                           {field.value === null
+                             ? "No folder"
+                             : folders.find(f => f.id === field.value)?.name || "Select a folder"}
+                         </SelectValue>
+                       </SelectTrigger>
+                     </FormControl>
+                     <SelectContent>
+                       <SelectItem value="none">No folder</SelectItem>
+                       <Separator className="my-2" />
+                       {folders.map((folder) => (
+                         <SelectItem key={folder.id} value={folder.id}>
+                           {folder.name}
+                         </SelectItem>
+                       ))}
+                       <Separator className="my-2" />
+                       <Button
+                         variant="ghost"
+                         className="relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                         onClick={(e) => {
+                           e.preventDefault()
+                           setCreateFolderOpen(true)
+                         }}
+                       >
+                         <Plus className="mr-2 h-4 w-4" />
+                         Create New Folder
+                       </Button>
+                     </SelectContent>
+                   </Select>
+                   <FormDescription>
+                     Organize your QR code in a folder
+                   </FormDescription>
+                   <FormMessage />
+                 </FormItem>
+               )}
+             />
+           </form>
+         </Form>
+       )
 
-      <Dialog open={createFolderOpen} onOpenChange={setCreateFolderOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create New Folder</DialogTitle>
-            <DialogDescription>
-              Enter a name for your new folder.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Folder Name</Label>
-              <Input
-                id="folderName"
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                placeholder="My Folder"
-                autoComplete="off"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    createFolder()
-                  }
-                }}
-              />
-            </div>
+     case "design":
+       return (
+        <div className="space-y-4">
+        {form.getValues("defaultUrl") && (
+          <div className="p-4 rounded-lg bg-muted mb-4">
+            <p className="text-sm text-muted-foreground">
+              Your QR code will use a short URL that redirects to your destination URL.
+            </p>
+            <p className="text-sm mt-2">
+              <span className="font-medium">Destination URL:</span>{" "}
+              <code className="px-2 py-1 rounded bg-background">
+                {form.getValues("defaultUrl")}
+              </code>
+            </p>
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setCreateFolderOpen(false)
-                setNewFolderName("")
-              }}
-              disabled={createFolderLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={createFolder}
-              disabled={createFolderLoading || !newFolderName.trim()}
-            >
-              {createFolderLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                "Create Folder"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  )
+        )}
+         <QRDesigner
+           value={form.getValues("defaultUrl")}
+           onConfigChange={setQRConfig}
+           defaultConfig={{
+             size: 300,
+             backgroundColor: '#ffffff',
+             foregroundColor: '#000000',
+             dotStyle: 'squares',
+             margin: 10,
+             errorCorrectionLevel: 'M',
+           }}
+         />
+          </div>
+
+       )
+
+     case "device":
+       return <DeviceRuleForm qrCodeId={initialData?.id} />
+
+     case "schedule":
+       return <ScheduleRuleForm qrCodeId={initialData?.id} />
+
+     case "review":
+       return (
+         <div className="space-y-4">
+           <div className="rounded-lg border p-4">
+             <h4 className="font-medium mb-2">Basic Information</h4>
+             <dl className="space-y-2">
+               <div>
+                 <dt className="text-sm text-muted-foreground">Name</dt>
+                 <dd>{form.getValues("name")}</dd>
+               </div>
+               <div>
+                 <dt className="text-sm text-muted-foreground">URL</dt>
+                 <dd>{form.getValues("defaultUrl")}</dd>
+               </div>
+             </dl>
+           </div>
+           <QRDesigner
+             value={form.getValues("defaultUrl")}
+             onConfigChange={setQRConfig}
+             defaultConfig={qrConfig || {
+               size: 300,
+               backgroundColor: '#ffffff',
+               foregroundColor: '#000000',
+               dotStyle: 'squares',
+               margin: 10,
+               errorCorrectionLevel: 'M',
+             }}
+           />
+         </div>
+       )
+   }
+ }
+
+ return (
+   <div className="space-y-6 p-6">
+     <div>
+       <h3 className="text-lg font-medium">Create QR Code</h3>
+       <p className="text-sm text-muted-foreground">
+         Follow the steps below to create your QR code.
+       </p>
+     </div>
+
+     <Progress value={progress} className="h-2" />
+
+     <div className="flex items-center justify-between">
+       {STEPS.map((step, index) => (
+         <div
+           key={step}
+           className={`flex items-center ${
+             STEPS.indexOf(currentStep) >= index ? "text-primary" : "text-muted-foreground"
+           }`}
+         >
+           <div className="flex items-center justify-center w-8 h-8 rounded-full border">
+             {STEPS.indexOf(currentStep) > index ? (
+               <CheckCircle2 className="h-5 w-5" />
+             ) : (
+               <span>{index + 1}</span>
+             )}
+           </div>
+           <span className="ml-2 capitalize">{step}</span>
+         </div>
+       ))}
+     </div>
+
+     <div className="mt-6">
+       {renderStepContent()}
+     </div>
+
+     <div className="flex justify-between mt-6">
+       <Button
+         variant="outline"
+         onClick={handleBack}
+         disabled={currentStep === "info"}
+       >
+         Back
+       </Button>
+       <Button
+         onClick={currentStep === "review" ? onSubmit : handleNext}
+         disabled={isLoading}
+       >
+         {isLoading ? (
+           <>
+           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+             Creating...
+           </>
+         ) : currentStep === "review" ? (
+           "Create QR Code"
+         ) : (
+           "Next"
+         )}
+       </Button>
+     </div>
+
+     <Dialog open={createFolderOpen} onOpenChange={setCreateFolderOpen}>
+       <DialogContent>
+         <DialogHeader>
+           <DialogTitle>Create New Folder</DialogTitle>
+           <DialogDescription>
+             Enter a name for your new folder.
+           </DialogDescription>
+         </DialogHeader>
+         <div className="grid gap-4 py-4">
+           <div className="grid gap-2">
+             <Label>Folder Name</Label>
+             <Input
+               id="folderName"
+               value={newFolderName}
+               onChange={(e) => setNewFolderName(e.target.value)}
+               placeholder="My Folder"
+               autoComplete="off"
+               onKeyDown={(e) => {
+                 if (e.key === 'Enter') {
+                   e.preventDefault()
+                   createFolder()
+                 }
+               }}
+             />
+           </div>
+         </div>
+         <DialogFooter>
+           <Button
+             variant="outline"
+             onClick={() => {
+               setCreateFolderOpen(false)
+               setNewFolderName("")
+             }}
+             disabled={createFolderLoading}
+           >
+             Cancel
+           </Button>
+           <Button
+             onClick={createFolder}
+             disabled={createFolderLoading || !newFolderName.trim()}
+           >
+             {createFolderLoading ? (
+               <>
+                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                 Creating...
+               </>
+             ) : (
+               "Create Folder"
+             )}
+           </Button>
+         </DialogFooter>
+       </DialogContent>
+     </Dialog>
+   </div>
+ )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/qr-list.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/qr-list.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -15947,7 +20886,7 @@ export function QRCodeList({ folderId }: QRCodeListProps) {
         const data = await response.json()
         
         // Transform the data to match our interface
-        const transformedData = data.map((qr: any) => ({
+        const transformedData = data.map((qr: QRCode) => ({
           ...qr,
           createdAt: new Date(qr.createdAt), // Ensure createdAt is a Date object
           scans: qr.scans || 0 // Ensure scans has a default value
@@ -16180,8 +21119,10 @@ export function QRCodeList({ folderId }: QRCodeListProps) {
     </>
   )
 }
+
+// src/components/dashboard/qr/qr-list.tsx
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/qr-preview.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/qr-preview.tsx
 "use client"
 
 import QRCode from "react-qr-code"
@@ -16235,8 +21176,10 @@ export function QRPreview({ url, name }: QRPreviewProps) {
   )
 }
 
+
+// src/components/dashboard/qr/qr-preview.tsx
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/qr-skeleton.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/qr-skeleton.tsx
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 
 export function QRCodeSkeleton() {
@@ -16263,7 +21206,7 @@ export function QRCodeSkeleton() {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/qr-view.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/qr-view.tsx
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { QRCodeList } from "./qr-list"
@@ -16311,7 +21254,7 @@ export function QRView({ folderId }: QRViewProps) {
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/qr/schedule-rule-form.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/qr/schedule-rule-form.tsx
 import { useState, useEffect, useCallback } from "react"
 import { format } from "date-fns"
 import {
@@ -16651,7 +21594,7 @@ export function ScheduleRuleForm({ qrCodeId }: ScheduleRuleFormProps) {
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/recent-activities.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/recent-activities.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -16719,7 +21662,7 @@ export function RecentActivities() {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/recent-sales.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/recent-sales.tsx
 export function RecentSales() {
     return (
       <div className="space-y-8">
@@ -16750,7 +21693,1124 @@ export function RecentSales() {
     );
   }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/dashboard/upcoming-tasks.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/recent-scans.tsx
+"use client"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Scan, ArrowRight } from "lucide-react"
+import Link from "next/link"
+
+interface RecentScansProps {
+  className?: string
+}
+
+export function RecentScans({ className }: RecentScansProps) {
+  return (
+    <Card className={className}>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-lg font-semibold">Recent Scans</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            Track your latest QR code activity
+          </p>
+        </div>
+        <Link href="/scans">
+          <Button variant="ghost" size="sm" className="text-sm">
+            View All <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </Link>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="rounded-full bg-blue-500/10 p-4 mb-4">
+            <Scan className="h-8 w-8 text-blue-500" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">No Recent Scans</h3>
+          <p className="text-sm text-muted-foreground mb-4 text-center max-w-sm">
+            Create your first QR code to start tracking scans and analyze performance
+          </p>
+          <Link href="/qr/new">
+            <Button>
+              Create Your First QR Code
+            </Button>
+          </Link>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/scans/scan-details-dialog.tsx
+"use client"
+
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Smartphone, Monitor, Globe, Map } from "lucide-react"
+import { format } from "date-fns"
+
+interface ScanDetailsDialogProps {
+  scan: {
+    id: string
+    qrCode: string
+    device: string
+    browser: string
+    location: string
+    timestamp: Date
+    ipAddress?: string
+    userAgent?: string
+    referrer?: string
+    duration?: number
+  }
+}
+
+export function ScanDetailsDialog({ scan }: ScanDetailsDialogProps) {
+  const details = [
+    { label: "Device", value: scan.device, icon: scan.device === "Mobile" ? Smartphone : Monitor },
+    { label: "Browser", value: scan.browser, icon: Globe },
+    { label: "Location", value: scan.location, icon: Map },
+    { label: "Time", value: format(scan.timestamp, 'PPpp') },
+    { label: "Duration", value: scan.duration ? `${scan.duration}s` : "N/A" },
+    { label: "IP Address", value: scan.ipAddress || "N/A" },
+    { label: "Referrer", value: scan.referrer || "Direct" },
+    { label: "User Agent", value: scan.userAgent || "N/A" },
+  ]
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm">View Details</Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Scan Details</DialogTitle>
+          <DialogDescription>
+            Details for scan of &quot;{scan.qrCode}&quot;
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="max-h-[60vh] mt-4 pr-4">
+          <div className="space-y-4">
+            {details.map((detail) => (
+              <div
+                key={detail.label}
+                className="flex items-start justify-between border-b pb-2 last:border-0"
+              >
+                <div className="flex items-center space-x-2">
+                  {detail.icon && <detail.icon className="h-4 w-4 text-muted-foreground" />}
+                  <span className="text-sm font-medium">{detail.label}</span>
+                </div>
+                <span className="text-sm text-muted-foreground break-all">
+                  {detail.value}
+                </span>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/scans/scans-chart.tsx
+"use client"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend
+} from "recharts"
+
+interface ScansChartProps {
+  className?: string
+}
+
+export function ScansChart({ className }: ScansChartProps) {
+  const data = [
+    {
+      date: "2024-01-01",
+      total: 145,
+      mobile: 98,
+      desktop: 47,
+    },
+    {
+      date: "2024-01-02",
+      total: 232,
+      mobile: 156,
+      desktop: 76,
+    },
+    {
+      date: "2024-01-03",
+      total: 186,
+      mobile: 124,
+      desktop: 62,
+    },
+  ]
+
+  return (
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle>Scan Activity</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Tabs defaultValue="7d">
+          <TabsList>
+            <TabsTrigger value="24h">24h</TabsTrigger>
+            <TabsTrigger value="7d">7d</TabsTrigger>
+            <TabsTrigger value="30d">30d</TabsTrigger>
+            <TabsTrigger value="90d">90d</TabsTrigger>
+          </TabsList>
+          <TabsContent value="24h">
+            <div className="h-[400px] mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#888" opacity={0.2} />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#888888"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="#888888"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `${value}`}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))',
+                      borderColor: 'hsl(var(--border))',
+                      borderRadius: 'var(--radius)',
+                    }}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="total"
+                    name="Total Scans"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="mobile"
+                    name="Mobile"
+                    stroke="#8b5cf6"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="desktop"
+                    name="Desktop"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </TabsContent>
+          <TabsContent value="7d">
+            <div className="h-[400px] mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#888" opacity={0.2} />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#888888"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="#888888"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `${value}`}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))',
+                      borderColor: 'hsl(var(--border))',
+                      borderRadius: 'var(--radius)',
+                    }}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="total"
+                    name="Total Scans"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="mobile"
+                    name="Mobile"
+                    stroke="#8b5cf6"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="desktop"
+                    name="Desktop"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </TabsContent>
+          <TabsContent value="30d">
+            {/* Similar content for 30d */}
+          </TabsContent>
+          <TabsContent value="90d">
+            {/* Similar content for 90d */}
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/scans/scans-filter.tsx
+"use client"
+
+import { Button } from "@/components/ui/button"
+// import { Calendar } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Calendar as CalendarIcon, Download } from "lucide-react"
+// import { useState } from "react"
+
+export function ScansFilter() {
+  // const [date, setDate] = useState<Date>()
+
+  return (
+    <div className="flex items-center space-x-2">
+      <Select defaultValue="all">
+        <SelectTrigger className="w-[180px]">
+          <SelectValue placeholder="Select QR Code" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All QR Codes</SelectItem>
+          <SelectItem value="website">Website QR</SelectItem>
+          <SelectItem value="menu">Menu QR</SelectItem>
+        </SelectContent>
+      </Select>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="w-[240px] justify-start">
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {/* {date ? format(date, "PPP") : "Pick a date"} */}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0">
+          {/* <Calendar
+            mode="single"
+            selected={date}
+            onSelect={setDate}
+            initialFocus
+          /> */}
+        </PopoverContent>
+      </Popover>
+
+      <Button variant="outline">
+        <Download className="mr-2 h-4 w-4" />
+        Export
+      </Button>
+    </div>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/scans/scans-list.tsx
+"use client"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { 
+  Smartphone, 
+  Monitor, 
+  Chrome as ChromeIcon,
+  Globe,
+} from "lucide-react"
+import { formatDistanceToNow } from "date-fns"
+
+interface ScansListProps {
+  className?: string
+}
+
+export function ScansList({ className }: ScansListProps) {
+  const scans = [
+    {
+      id: "1",
+      qrCode: "Website QR",
+      device: "Mobile",
+      browser: "Chrome",
+      location: "United States",
+      timestamp: new Date(Date.now() - 1000 * 60 * 5), // 5 minutes ago
+    },
+    {
+      id: "2",
+      qrCode: "Menu QR",
+      device: "Desktop",
+      browser: "Other",
+      location: "Canada",
+      timestamp: new Date(Date.now() - 1000 * 60 * 10), // 10 minutes ago
+    },
+    {
+      id: "3",
+      qrCode: "Product QR",
+      device: "Mobile",
+      browser: "Chrome",
+      location: "United Kingdom",
+      timestamp: new Date(Date.now() - 1000 * 60 * 15), // 15 minutes ago
+    },
+    // Add more mock data as needed
+  ]
+
+  const getBrowserIcon = (browser: string) => {
+    switch (browser.toLowerCase()) {
+      case 'chrome':
+        return ChromeIcon
+      default:
+        return Globe
+    }
+  }
+
+  return (
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle>Recent Scans</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ScrollArea className="h-[500px] pr-4">
+          <div className="space-y-4">
+            {scans.map((scan) => {
+              const BrowserIcon = getBrowserIcon(scan.browser)
+              const DeviceIcon = scan.device === "Mobile" ? Smartphone : Monitor
+              
+              return (
+                <div
+                  key={scan.id}
+                  className="flex items-center space-x-4 rounded-lg border p-4 hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex-1 space-y-1">
+                    <p className="text-sm font-medium leading-none">
+                      {scan.qrCode}
+                    </p>
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <Globe className="mr-1 h-3 w-3" />
+                      {scan.location}
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <DeviceIcon className="h-4 w-4 text-muted-foreground" />
+                    <BrowserIcon className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="text-sm text-muted-foreground whitespace-nowrap">
+                    {formatDistanceToNow(scan.timestamp, { addSuffix: true })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/scans/scans-map.tsx
+"use client"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+interface ScansMapProps {
+  className?: string
+}
+
+export function ScansMap({ className }: ScansMapProps) {
+  return (
+    <Card className={className}>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Geographic Distribution</CardTitle>
+        <Select defaultValue="scans">
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Select metric" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="scans">Total Scans</SelectItem>
+            <SelectItem value="users">Unique Users</SelectItem>
+            <SelectItem value="duration">Avg. Duration</SelectItem>
+          </SelectContent>
+        </Select>
+      </CardHeader>
+      <CardContent>
+        <div className="h-[400px] flex items-center justify-center text-muted-foreground">
+          Map visualization would go here
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/scans/scans-overview.tsx
+"use client"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { 
+  Smartphone, 
+  Monitor, 
+  Globe, 
+  TrendingUp,
+  Users,
+  Clock,
+  Map
+} from "lucide-react"
+
+export function ScansOverview() {
+  const stats = [
+    {
+      title: "Total Scans",
+      value: "2,543",
+      change: "+12.3%",
+      timeFrame: "from last month",
+      icon: TrendingUp,
+      iconColor: "text-blue-500",
+    },
+    {
+      title: "Unique Users",
+      value: "1,325",
+      change: "+8.1%",
+      timeFrame: "from last month",
+      icon: Users,
+      iconColor: "text-violet-500",
+    },
+    {
+      title: "Avg. Duration",
+      value: "2m 45s",
+      change: "+3.2%",
+      timeFrame: "from last month",
+      icon: Clock,
+      iconColor: "text-green-500",
+    },
+    {
+      title: "Top Location",
+      value: "United States",
+      subtitle: "32% of scans",
+      icon: Map,
+      iconColor: "text-orange-500",
+    },
+    {
+      title: "Mobile",
+      value: "68%",
+      subtitle: "1,729 scans",
+      icon: Smartphone,
+      iconColor: "text-pink-500",
+    },
+    {
+      title: "Desktop",
+      value: "24%",
+      subtitle: "612 scans",
+      icon: Monitor,
+      iconColor: "text-indigo-500",
+    },
+    {
+      title: "Top Browser",
+      value: "Chrome",
+      subtitle: "45% of scans",
+      icon: Globe,
+      iconColor: "text-teal-500",
+    },
+    {
+      title: "Top Device",
+      value: "iPhone",
+      subtitle: "23% of scans",
+      icon: Smartphone,
+      iconColor: "text-pink-500",
+    }
+  ]
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {stats.map((stat, index) => (
+        <Card key={index} className="hover:shadow-lg transition-all duration-200">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium">
+              {stat.title}
+            </CardTitle>
+            <stat.icon className={`h-4 w-4 ${stat.iconColor}`} />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stat.value}</div>
+            {stat.change ? (
+              <div className="flex items-center text-xs text-muted-foreground">
+                <span className={stat.change.startsWith('+') ? 'text-green-500' : 'text-red-500'}>
+                  {stat.change}
+                </span>
+                <span className="ml-1">{stat.timeFrame}</span>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {stat.subtitle}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/scans/scans-table.tsx
+"use client"
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { ScanDetailsDialog } from "./scan-details-dialog"
+import { 
+  Smartphone, 
+  Monitor, 
+  Chrome as ChromeIcon,
+  Globe 
+} from "lucide-react"
+import { formatDistanceToNow } from "date-fns"
+
+interface ScansTableProps {
+  className?: string
+}
+
+export function ScansTable({ className }: ScansTableProps) {
+  const scans = [
+    {
+      id: "1",
+      qrCode: "Website QR",
+      device: "Mobile",
+      browser: "Chrome",
+      location: "United States",
+      timestamp: new Date(),
+      ipAddress: "192.168.1.1",
+      userAgent: "Mozilla/5.0...",
+      referrer: "https://example.com",
+      duration: 45,
+    },
+    // Add more scans...
+  ]
+
+  const getBrowserIcon = (browser: string) => {
+    switch (browser.toLowerCase()) {
+      case 'chrome':
+        return ChromeIcon
+      default:
+        return Globe
+    }
+  }
+
+  return (
+    <div className={className}>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>QR Code</TableHead>
+            <TableHead>Device</TableHead>
+            <TableHead>Location</TableHead>
+            <TableHead>Time</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {scans.map((scan) => {
+            const BrowserIcon = getBrowserIcon(scan.browser)
+            const DeviceIcon = scan.device === "Mobile" ? Smartphone : Monitor
+
+            return (
+              <TableRow key={scan.id}>
+                <TableCell className="font-medium">{scan.qrCode}</TableCell>
+                <TableCell>
+                  <div className="flex items-center space-x-2">
+                    <DeviceIcon className="h-4 w-4 text-muted-foreground" />
+                    <BrowserIcon className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </TableCell>
+                <TableCell>{scan.location}</TableCell>
+                <TableCell>
+                  {formatDistanceToNow(scan.timestamp, { addSuffix: true })}
+                </TableCell>
+                <TableCell className="text-right">
+                  <ScanDetailsDialog scan={scan} />
+                </TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/shared/data-table.tsx
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/shared/empty-state.tsx
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Plus } from "lucide-react"
+import Link from "next/link"
+
+interface EmptyStateProps {
+  title: string
+  description: string
+  action?: {
+    label: string
+    href: string
+  }
+  icon?: React.ReactNode
+}
+
+export function EmptyState({ title, description, action, icon }: EmptyStateProps) {
+  return (
+    <Card className="flex flex-col items-center justify-center p-8 text-center">
+      {icon && <div className="rounded-full bg-muted p-3 mb-4">{icon}</div>}
+      <CardHeader className="space-y-1 p-0 mb-4">
+        <CardTitle className="text-xl">{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      {action && (
+        <CardContent className="p-0">
+          <Link href={action.href}>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              {action.label}
+            </Button>
+          </Link>
+        </CardContent>
+      )}
+    </Card>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/shared/loading.tsx
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+
+export function CardSkeleton() {
+  return (
+    <Card className="animate-pulse">
+      <CardHeader className="pb-4">
+        <div className="h-4 w-1/3 bg-muted rounded" />
+      </CardHeader>
+      <CardContent>
+        <div className="h-20 bg-muted rounded" />
+      </CardContent>
+    </Card>
+  )
+}
+
+export function DashboardSkeleton() {
+  return (
+    <div className="grid gap-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <CardSkeleton key={i} />
+      ))}
+    </div>
+  )
+}
+
+export function QRCodeSkeleton() {
+  return (
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <Card key={i} className="animate-pulse">
+          <CardHeader>
+            <div className="h-4 w-2/3 bg-muted rounded" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="h-24 bg-muted rounded" />
+              <div className="h-4 w-1/2 bg-muted rounded" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/stats/overview-chart.tsx
+"use client"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Bar,
+  BarChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from "recharts"
+
+const data = [
+  {
+    name: "Jan",
+    total: 1140,
+  },
+  {
+    name: "Feb",
+    total: 1320,
+  },
+  {
+    name: "Mar",
+    total: 1180,
+  },
+  {
+    name: "Apr",
+    total: 1350,
+  },
+  {
+    name: "May",
+    total: 1280,
+  },
+  {
+    name: "Jun",
+    total: 1420,
+  },
+  {
+    name: "Jul",
+    total: 1380,
+  },
+  {
+    name: "Aug",
+    total: 1520,
+  },
+  {
+    name: "Sep",
+    total: 1460,
+  },
+  {
+    name: "Oct",
+    total: 1640,
+  },
+  {
+    name: "Nov",
+    total: 1580,
+  },
+  {
+    name: "Dec",
+    total: 1780,
+  },
+]
+
+export function OverviewChart() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Monthly Overview</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data}>
+              <XAxis
+                dataKey="name"
+                stroke="#888888"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                stroke="#888888"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => `${value}`}
+              />
+              <Tooltip />
+              <Bar
+                dataKey="total"
+                fill="currentColor"
+                radius={[4, 4, 0, 0]}
+                className="fill-primary"
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/stats/stats-breakdown.tsx
+"use client"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Legend,
+  Tooltip,
+} from "recharts"
+
+const data = [
+  { name: "Mobile", value: 60 },
+  { name: "Desktop", value: 30 },
+  { name: "Tablet", value: 10 },
+]
+
+const COLORS = ["#4f46e5", "#10b981", "#f59e0b"]
+
+export function StatsBreakdown() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Device Breakdown</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={80}
+                paddingAngle={5}
+                dataKey="value"
+              >
+                {data.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={COLORS[index % COLORS.length]}
+                  />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/stats/stats-cards.tsx
+"use client"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { 
+  QrCode, 
+  Scan, 
+  Users, 
+  Clock,
+} from "lucide-react"
+
+export function StatsCards() {
+  const stats = [
+    {
+      title: "Total Scans",
+      value: "2,543",
+      change: "+12.5%",
+      description: "from last month",
+      icon: Scan,
+      color: "text-blue-500",
+    },
+    {
+      title: "Active QR Codes",
+      value: "24",
+      change: "+3",
+      description: "new this month",
+      icon: QrCode,
+      color: "text-purple-500",
+    },
+    {
+      title: "Unique Visitors",
+      value: "1,832",
+      change: "+8.2%",
+      description: "from last month",
+      icon: Users,
+      color: "text-green-500",
+    },
+    {
+      title: "Avg. Session",
+      value: "2m 45s",
+      change: "+12.3%",
+      description: "from last month",
+      icon: Clock,
+      color: "text-orange-500",
+    },
+  ]
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {stats.map((stat) => (
+        <Card key={stat.title} className="hover:shadow-lg transition-all duration-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {stat.title}
+            </CardTitle>
+            <stat.icon className={`h-4 w-4 ${stat.color}`} />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stat.value}</div>
+            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+              <span className={stat.change.startsWith('+') ? 'text-green-500' : 'text-red-500'}>
+                {stat.change}
+              </span>
+              <span>{stat.description}</span>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/stats/stats-chart.tsx
+"use client"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts"
+
+const data = [
+  { date: "Jan 1", scans: 140 },
+  { date: "Jan 2", scans: 220 },
+  { date: "Jan 3", scans: 180 },
+  { date: "Jan 4", scans: 350 },
+  { date: "Jan 5", scans: 280 },
+  { date: "Jan 6", scans: 420 },
+  { date: "Jan 7", scans: 380 },
+]
+
+export function StatsChart() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Scan Activity</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="date"
+                stroke="#888888"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                stroke="#888888"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => `${value}`}
+              />
+              <Tooltip />
+              <Line
+                type="monotone"
+                dataKey="scans"
+                stroke="#4f46e5"
+                strokeWidth={2}
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/stats/stats-view.tsx
+import { StatsCards } from "./stats-cards"
+import { StatsChart } from "./stats-chart"
+import { OverviewChart } from "./overview-chart"
+import { StatsBreakdown } from "./stats-breakdown"
+
+export function StatsView() {
+  return (
+    <div className="space-y-8">
+      <StatsCards />
+      <div className="grid gap-8 md:grid-cols-2">
+        <StatsChart />
+        <StatsBreakdown />
+      </div>
+      <OverviewChart />
+    </div>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/dashboard/upcoming-tasks.tsx
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16775,7 +22835,7 @@ export function UpcomingTasks() {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/forms/ContactForm.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/forms/ContactForm.tsx
 "use client"
 
 import { useState } from 'react'
@@ -16936,315 +22996,7 @@ export default function ContactForm() {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/landing/features.tsx
-import { Check, Coffee, LineChart, Users, Star, Clock } from "lucide-react"
-
-const features = [
-  {
-    name: "Customer Management",
-    description: "Keep track of customer preferences, orders, and loyalty points all in one place.",
-    icon: Users,
-  },
-  {
-    name: "Order Tracking",
-    description: "Monitor orders in real-time and streamline your order fulfillment process.",
-    icon: Coffee,
-  },
-  {
-    name: "Analytics & Insights",
-    description: "Get detailed insights into your business performance with advanced analytics.",
-    icon: LineChart,
-  },
-  {
-    name: "Loyalty Programs",
-    description: "Create and manage customer loyalty programs to increase retention.",
-    icon: Star,
-  },
-  {
-    name: "Real-time Updates",
-    description: "Stay up-to-date with instant notifications and real-time data updates.",
-    icon: Clock,
-  },
-  {
-    name: "Performance Tracking",
-    description: "Monitor staff performance and optimize your operations.",
-    icon: Check,
-  },
-]
-
-export function Features() {
-  return (
-    <section id="features" className="py-24 bg-muted/50">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Everything You Need to Run Your Coffee Shop
-          </h2>
-          <p className="mt-6 text-lg leading-8 text-muted-foreground">
-            Powerful features designed specifically for coffee shop owners and managers.
-          </p>
-        </div>
-        <div className="mx-auto mt-16 max-w-7xl sm:mt-20 lg:mt-24">
-          <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-10 lg:max-w-none lg:grid-cols-3">
-            {features.map((feature) => (
-              <div key={feature.name} className="relative bg-background rounded-lg p-8 shadow-sm">
-                <dt className="flex items-center gap-x-3 text-base font-semibold leading-7">
-                  <feature.icon className="h-5 w-5 text-primary" aria-hidden="true" />
-                  {feature.name}
-                </dt>
-                <dd className="mt-4 text-base leading-7 text-muted-foreground">
-                  {feature.description}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/landing/hero.tsx
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-
-export function Hero() {
-  return (
-    <section className="relative px-6 py-24 md:py-32 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="relative z-10">
-          <div className="mx-auto max-w-4xl text-center">
-            <h1 className="text-4xl font-bold tracking-tight sm:text-6xl md:text-7xl">
-              Streamline Your Coffee Shop Management
-            </h1>
-            <p className="mt-6 text-xl text-muted-foreground">
-              The all-in-one CRM solution designed specifically for coffee shops. 
-              Manage customers, track orders, and grow your business with ease.
-            </p>
-            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link href="/auth/register">
-                <Button size="lg" className="w-full sm:w-auto">
-                  Start Free Trial
-                </Button>
-              </Link>
-              <Link href="#features">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                  Learn More
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute left-[50%] top-0 h-[1000px] w-[1000px] -translate-x-1/2 rounded-full bg-gradient-to-tr from-primary/30 to-primary/10 blur-3xl" />
-      </div>
-    </section>
-  )
-}
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/landing/pricing.tsx
-import { Check } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-
-const tiers = [
-  {
-    name: "Basic",
-    id: "basic",
-    price: "$29",
-    description: "Perfect for small coffee shops just getting started.",
-    features: [
-      "Up to 500 customer profiles",
-      "Basic order tracking",
-      "Email support",
-      "Basic analytics",
-      "1 staff account",
-    ],
-    featured: false,
-  },
-  {
-    name: "Pro",
-    id: "pro",
-    price: "$79",
-    description: "Ideal for growing coffee shops with multiple staff members.",
-    features: [
-      "Unlimited customer profiles",
-      "Advanced order tracking",
-      "Priority support",
-      "Advanced analytics",
-      "Up to 10 staff accounts",
-      "Loyalty program",
-      "Custom branding",
-    ],
-    featured: true,
-  },
-  {
-    name: "Enterprise",
-    id: "enterprise",
-    price: "Custom",
-    description: "For large coffee shop chains with custom requirements.",
-    features: [
-      "Everything in Pro",
-      "Unlimited staff accounts",
-      "24/7 phone support",
-      "Custom integrations",
-      "Dedicated account manager",
-      "Custom analytics",
-      "Multi-location support",
-    ],
-    featured: false,
-  },
-]
-
-export function Pricing() {
-  return (
-    <section id="pricing" className="py-24">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Simple, Transparent Pricing
-          </h2>
-          <p className="mt-6 text-lg leading-8 text-muted-foreground">
-            Choose the plan that best fits your coffee shop&apos;s needs.
-          </p>
-        </div>
-        <div className="mx-auto mt-16 grid max-w-lg grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-3">
-          {tiers.map((tier) => (
-            <div
-              key={tier.id}
-              className={cn(
-                "flex flex-col justify-between rounded-3xl bg-background p-8 shadow-sm ring-1 ring-muted xl:p-10",
-                tier.featured && "ring-2 ring-primary"
-              )}
-            >
-              <div>
-                <div className="flex items-center justify-between gap-x-4">
-                  <h3 className="text-lg font-semibold leading-8">{tier.name}</h3>
-                  {tier.featured && (
-                    <p className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold leading-5 text-primary">
-                      Most popular
-                    </p>
-                  )}
-                </div>
-                <p className="mt-4 text-sm leading-6 text-muted-foreground">
-                  {tier.description}
-                </p>
-                <p className="mt-6 flex items-baseline gap-x-1">
-                  <span className="text-4xl font-bold">{tier.price}</span>
-                  {tier.id !== "enterprise" && (
-                    <span className="text-sm font-semibold leading-6">/month</span>
-                  )}
-                </p>
-                <ul role="list" className="mt-8 space-y-3 text-sm leading-6">
-                  {tier.features.map((feature) => (
-                    <li key={feature} className="flex gap-x-3">
-                      <Check className="h-6 w-5 flex-none text-primary" aria-hidden="true" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <Button
-                variant={tier.featured ? "default" : "outline"}
-                className="mt-8"
-                size="lg"
-              >
-                {tier.id === "enterprise" ? "Contact sales" : "Get started"}
-              </Button>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/landing/testimonials.tsx
-import { Star } from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-
-const testimonials = [
-  {
-    name: "Sarah Johnson",
-    role: "Owner, The Daily Grind",
-    content: "This CRM has transformed how we manage our coffee shop. The customer tracking and loyalty features are invaluable.",
-    image: "/avatars/sarah.jpg",
-    rating: 5,
-  },
-  {
-    name: "Mike Chen",
-    role: "Manager, Coffee Haven",
-    content: "The analytics tools have helped us make better business decisions. Our customer satisfaction has improved significantly.",
-    image: "/avatars/mike.jpg",
-    rating: 5,
-  },
-  {
-    name: "Emily Rodriguez",
-    role: "Owner, The Coffee Corner",
-    content: "Easy to use and fantastic customer support. It's exactly what our growing coffee shop needed.",
-    image: "/avatars/emily.jpg",
-    rating: 5,
-  },
-]
-
-export function Testimonials() {
-  return (
-    <section className="py-24 bg-muted/50">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Loved by Coffee Shop Owners
-          </h2>
-          <p className="mt-6 text-lg leading-8 text-muted-foreground">
-            Hear what our customers have to say about their experience.
-          </p>
-        </div>
-        <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-3">
-          {testimonials.map((testimonial) => (
-            <div
-              key={testimonial.name}
-              className="flex flex-col justify-between rounded-2xl bg-background p-8 shadow-sm"
-            >
-              <div>
-                <div className="flex gap-1">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className="h-5 w-5 fill-primary text-primary"
-                      aria-hidden="true"
-                    />
-                  ))}
-                </div>
-                <p className="mt-6 text-base leading-7">{testimonial.content}</p>
-              </div>
-              <div className="mt-8 flex items-center gap-4">
-                <Avatar>
-                  <AvatarImage src={testimonial.image} alt={testimonial.name} />
-                  <AvatarFallback>{testimonial.name[0]}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="text-base font-semibold leading-7">
-                    {testimonial.name}
-                  </h3>
-                  <p className="text-sm leading-6 text-muted-foreground">
-                    {testimonial.role}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/layout/page-container.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/layout/page-container.tsx
 "use client";
 
 import { cn } from "@/lib/utils";
@@ -17284,7 +23036,7 @@ export function PageContainer({ children, className }: PageContainerProps) {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/settings/account-form.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/settings/account-form.tsx
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -17427,7 +23179,7 @@ export function AccountForm() {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/settings/notifications-form.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/settings/notifications-form.tsx
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17599,7 +23351,7 @@ export function NotificationsForm() {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/settings/preferences-form.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/settings/preferences-form.tsx
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17784,7 +23536,7 @@ export function PreferencesForm() {
   );
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/settings/profile-form.tsx
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/settings/profile-form.tsx
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -17956,2343 +23708,14 @@ export function ProfileForm() {
   );
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/accordion.tsx
-"use client"
-
-import * as React from "react"
-import * as AccordionPrimitive from "@radix-ui/react-accordion"
-import { ChevronDown } from "lucide-react"
-import { cn } from "@/lib/utils"
-
-const Accordion = AccordionPrimitive.Root
-
-const AccordionItem = React.forwardRef<
-  React.ElementRef<typeof AccordionPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Item>
->(({ className, ...props }, ref) => (
-  <AccordionPrimitive.Item
-    ref={ref}
-    className={cn("border-b", className)}
-    {...props}
-  />
-))
-AccordionItem.displayName = AccordionPrimitive.Item.displayName || "AccordionItem"
-
-const AccordionTrigger = React.forwardRef<
-  React.ElementRef<typeof AccordionPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Header className="flex">
-    <AccordionPrimitive.Trigger
-      ref={ref}
-      className={cn(
-        "flex flex-1 items-center justify-between py-4 text-sm font-medium transition-all hover:text-primary [&[data-state=open]>svg]:rotate-180",
-        className
-      )}
-      {...props}
-    >
-      {children}
-      <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200" />
-    </AccordionPrimitive.Trigger>
-  </AccordionPrimitive.Header>
-))
-AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName || "AccordionTrigger"
-
-const AccordionContent = React.forwardRef<
-  React.ElementRef<typeof AccordionPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Content
-    ref={ref}
-    className={cn(
-      "overflow-hidden text-sm data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down",
-      className
-    )}
-    {...props}
-  >
-    <div className={cn("pb-4 pt-0", className)}>{children}</div>
-  </AccordionPrimitive.Content>
-))
-AccordionContent.displayName = AccordionPrimitive.Content.displayName || "AccordionContent"
-
-export { Accordion, AccordionItem, AccordionTrigger, AccordionContent }
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/alert.tsx
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
-
-// Define alert variants using `cva`
-const alertVariants = cva(
-  "relative w-full rounded-lg border px-4 py-3 text-sm [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg~*]:pl-7",
-  {
-    variants: {
-      variant: {
-        default: "bg-background text-foreground",
-        destructive: "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-)
-
-// Alert component with variant support
-const Alert = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants>>(
-  ({ className, variant, ...props }, ref) => (
-    <div
-      ref={ref}
-      role="alert"
-      className={cn(alertVariants({ variant }), className)}
-      {...props}
-    />
-  )
-)
-Alert.displayName = "Alert"
-
-// AlertTitle component
-const AlertTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, ...props }, ref) => (
-    <h5
-      ref={ref}
-      className={cn("mb-1 font-medium leading-none tracking-tight", className)}
-      {...props}
-    />
-  )
-)
-AlertTitle.displayName = "AlertTitle"
-
-// AlertDescription component
-const AlertDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn("text-sm [&_p]:leading-relaxed", className)}
-      {...props}
-    />
-  )
-)
-AlertDescription.displayName = "AlertDescription"
-
-export { Alert, AlertTitle, AlertDescription }
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/avatar.tsx
-"use client"
-
-import * as React from "react"
-import * as AvatarPrimitive from "@radix-ui/react-avatar"
-
-import { cn } from "@/lib/utils"
-
-const Avatar = React.forwardRef<
-  React.ElementRef<typeof AvatarPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Root
-    ref={ref}
-    className={cn(
-      "relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full",
-      className
-    )}
-    {...props}
-  />
-))
-Avatar.displayName = AvatarPrimitive.Root.displayName
-
-const AvatarImage = React.forwardRef<
-  React.ElementRef<typeof AvatarPrimitive.Image>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Image
-    ref={ref}
-    className={cn("aspect-square h-full w-full", className)}
-    {...props}
-  />
-))
-AvatarImage.displayName = AvatarPrimitive.Image.displayName
-
-const AvatarFallback = React.forwardRef<
-  React.ElementRef<typeof AvatarPrimitive.Fallback>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Fallback
-    ref={ref}
-    className={cn(
-      "flex h-full w-full items-center justify-center rounded-full bg-muted",
-      className
-    )}
-    {...props}
-  />
-))
-AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName
-
-export { Avatar, AvatarImage, AvatarFallback }
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/badge.tsx
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-
-import { cn } from "@/lib/utils"
-
-const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-  {
-    variants: {
-      variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
-        success: 
-          "border-transparent bg-green-500 text-white hover:bg-green-500/80",
-        warning:
-          "border-transparent bg-yellow-500 text-white hover:bg-yellow-500/80",
-        info:
-          "border-transparent bg-blue-500 text-white hover:bg-blue-500/80",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-)
-
-export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
-
-function Badge({ className, variant, ...props }: BadgeProps) {
-  return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
-  )
-}
-
-export { Badge, badgeVariants }
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/button.tsx
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
-
-const buttonVariants = cva(
-  "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-input hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "underline-offset-4 hover:underline text-primary",
-        success: "bg-success text-success-foreground hover:bg-success/90",
-        warning: "bg-warning text-warning-foreground hover:bg-warning/90",
-        info: "bg-info text-info-foreground hover:bg-info/90",
-        glass: "bg-background/80 backdrop-blur-sm border hover:bg-background/90",
-      },
-      size: {
-        default: "h-10 py-2 px-4",
-        sm: "h-9 px-3 rounded-md",
-        lg: "h-11 px-8 rounded-md",
-        icon: "h-10 w-10",
-      },
-      animation: {
-        none: "",
-        pulse: "animate-pulse",
-        bounce: "animate-bounce",
-      }
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-      animation: "none",
-    },
-  }
-)
-
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean
-  loading?: boolean
-}
-
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, animation, asChild = false, loading = false, children, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button"
-    return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, animation }), className)}
-        ref={ref}
-        {...props}
-        disabled={loading || props.disabled}
-      >
-        {loading ? (
-          <div className="flex items-center">
-            <svg
-              className="animate-spin -ml-1 mr-3 h-4 w-4"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-            Processing...
-          </div>
-        ) : (
-          children
-        )}
-      </Comp>
-    )
-  }
-)
-Button.displayName = "Button"
-
-export { Button, buttonVariants }
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/calendar.tsx
-"use client"
-
-import * as React from "react"
-import { DayPicker } from "react-day-picker"
-import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
-
-export type CalendarProps = React.ComponentProps<typeof DayPicker>
-
-function Calendar({
-  className,
-  classNames,
-  showOutsideDays = true,
-  ...props
-}: CalendarProps) {
-  return (
-    <DayPicker
-      showOutsideDays={showOutsideDays}
-      className={cn("p-3", className)}
-      classNames={{
-        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-        month: "space-y-4",
-        caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
-        nav: "space-x-1 flex items-center",
-        nav_button: cn(
-          buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
-        ),
-        nav_button_previous: "absolute left-1",
-        nav_button_next: "absolute right-1",
-        table: "w-full border-collapse space-y-1",
-        head_row: "flex",
-        head_cell:
-          "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-        row: "flex w-full mt-2",
-        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-        day: cn(
-          buttonVariants({ variant: "ghost" }),
-          "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
-        ),
-        day_range_end: "day-range-end",
-        day_selected:
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-        day_today: "bg-accent text-accent-foreground",
-        day_outside:
-          "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
-        day_disabled: "text-muted-foreground opacity-50",
-        day_range_middle:
-          "aria-selected:bg-accent aria-selected:text-accent-foreground",
-        day_hidden: "invisible",
-        ...classNames,
-      }}
-      components={{
- 
-      }}
-      {...props}
-    />
-  )
-}
-Calendar.displayName = "Calendar"
-
-export { Calendar }
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/card.tsx
-import * as React from "react";
-import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
-
-const cardVariants = cva(
-  "rounded-lg border bg-card text-card-foreground shadow-sm transition-all duration-200",
-  {
-    variants: {
-      variant: {
-        default: "hover:shadow-md",
-        ghost: "border-none shadow-none hover:bg-accent/50",
-        elevated: "shadow-md hover:shadow-lg hover:-translate-y-0.5",
-        interactive: "cursor-pointer hover:shadow-md hover:-translate-y-0.5 active:translate-y-0",
-      },
-      size: {
-        default: "p-6",
-        sm: "p-4",
-        lg: "p-8",
-      }
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  }
-);
-
-export interface CardProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof cardVariants> {}
-
-const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, variant, size, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(cardVariants({ variant, size }), className)}
-      {...props}
-    />
-  )
-);
-Card.displayName = "Card";
-
-const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn("flex flex-col space-y-1.5", className)}
-      {...props}
-    />
-  )
-);
-CardHeader.displayName = "CardHeader";
-
-const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, ...props }, ref) => (
-    <h3
-      ref={ref}
-      className={cn("text-lg font-semibold leading-none tracking-tight", className)}
-      {...props}
-    />
-  )
-);
-CardTitle.displayName = "CardTitle";
-
-const CardDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <p
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
-));
-CardDescription.displayName = "CardDescription";
-
-const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("pt-0", className)} {...props} />
-  )
-);
-CardContent.displayName = "CardContent";
-
-const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn("flex items-center pt-4", className)}
-      {...props}
-    />
-  )
-);
-CardFooter.displayName = "CardFooter";
-
-export {
-  Card,
-  CardHeader,
-  CardFooter,
-  CardTitle,
-  CardDescription,
-  CardContent,
-};
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/checkbox.tsx
-"use client"
-
-import * as React from "react"
-import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
-import { Check } from "lucide-react"
-
-import { cn } from "@/lib/utils"
-
-const Checkbox = React.forwardRef<
-  React.ElementRef<typeof CheckboxPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>
->(({ className, ...props }, ref) => (
-  <CheckboxPrimitive.Root
-    ref={ref}
-    className={cn(
-      "peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-      "disabled:cursor-not-allowed disabled:opacity-50",
-      "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
-      className
-    )}
-    {...props}
-  >
-    <CheckboxPrimitive.Indicator
-      className={cn("flex items-center justify-center text-current")}
-    >
-      <Check className="h-4 w-4" />
-    </CheckboxPrimitive.Indicator>
-  </CheckboxPrimitive.Root>
-))
-Checkbox.displayName = CheckboxPrimitive.Root.displayName
-
-export { Checkbox }
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/color-picker.tsx
-"use client"
-
-import * as React from "react"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { ChromePicker, ColorResult } from 'react-color'
-
-interface ColorPickerProps {
-  color: string
-  onChange: (color: string) => void
-}
-
-export function ColorPicker({ color, onChange }: ColorPickerProps) {
-  const [isOpen, setIsOpen] = React.useState(false)
-
-  const handleChange = (color: ColorResult) => {
-    onChange(color.hex)
-  }
-
-  return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <div
-          className="h-10 rounded-md border cursor-pointer"
-          style={{ backgroundColor: color }}
-        />
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0 border-none">
-        <ChromePicker
-          color={color}
-          onChange={handleChange}
-          disableAlpha
-        />
-      </PopoverContent>
-    </Popover>
-  )
-}
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/container.tsx
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
-
-const containerVariants = cva(
-  "mx-auto px-4 sm:px-6 lg:px-8",
-  {
-    variants: {
-      maxWidth: {
-        default: "max-w-7xl",
-        sm: "max-w-screen-sm",
-        md: "max-w-screen-md",
-        lg: "max-w-screen-lg",
-        xl: "max-w-screen-xl",
-        full: "max-w-full",
-      },
-      padding: {
-        default: "py-4",
-        none: "py-0",
-        sm: "py-2",
-        lg: "py-8",
-        xl: "py-12",
-      }
-    },
-    defaultVariants: {
-      maxWidth: "default",
-      padding: "default",
-    },
-  }
-)
-
-export interface ContainerProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof containerVariants> {}
-
-export function Container({
-  className,
-  maxWidth,
-  padding,
-  ...props
-}: ContainerProps) {
-  return (
-    <div
-      className={cn(
-        containerVariants({ maxWidth, padding }),
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/dialog.tsx
-"use client"
-
-import * as React from "react"
-import * as DialogPrimitive from "@radix-ui/react-dialog"
-import { X } from "lucide-react"
-
-import { cn } from "@/lib/utils"
-
-const Dialog = DialogPrimitive.Root
-
-const DialogTrigger = DialogPrimitive.Trigger
-
-const DialogPortal = DialogPrimitive.Portal
-
-const DialogClose = DialogPrimitive.Close
-
-const DialogOverlay = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Overlay
-    ref={ref}
-    className={cn(
-      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className
-    )}
-    {...props}
-  />
-))
-DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
-
-const DialogContent = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
-        className
-      )}
-      {...props}
-    >
-      {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
-  </DialogPortal>
-))
-DialogContent.displayName = DialogPrimitive.Content.displayName
-
-const DialogHeader = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col space-y-1.5 text-center sm:text-left",
-      className
-    )}
-    {...props}
-  />
-)
-DialogHeader.displayName = "DialogHeader"
-
-const DialogFooter = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
-      className
-    )}
-    {...props}
-  />
-)
-DialogFooter.displayName = "DialogFooter"
-
-const DialogTitle = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Title
-    ref={ref}
-    className={cn(
-      "text-lg font-semibold leading-none tracking-tight",
-      className
-    )}
-    {...props}
-  />
-))
-DialogTitle.displayName = DialogPrimitive.Title.displayName
-
-const DialogDescription = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Description>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Description
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
-))
-DialogDescription.displayName = DialogPrimitive.Description.displayName
-
-export {
-  Dialog,
-  DialogPortal,
-  DialogOverlay,
-  DialogTrigger,
-  DialogClose,
-  DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
-  DialogDescription,
-}
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/dropdown-menu.tsx
-"use client"
-
-import * as React from "react"
-import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
-import { Check, ChevronRight, Circle } from "lucide-react"
-
-import { cn } from "@/lib/utils"
-
-const DropdownMenu = DropdownMenuPrimitive.Root
-
-const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
-
-const DropdownMenuGroup = DropdownMenuPrimitive.Group
-
-const DropdownMenuPortal = DropdownMenuPrimitive.Portal
-
-const DropdownMenuSub = DropdownMenuPrimitive.Sub
-
-const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup
-
-const DropdownMenuSubTrigger = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
-    inset?: boolean
-  }
->(({ className, inset, children, ...props }, ref) => (
-  <DropdownMenuPrimitive.SubTrigger
-    ref={ref}
-    className={cn(
-      "flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent data-[state=open]:bg-accent",
-      inset && "pl-8",
-      className
-    )}
-    {...props}
-  >
-    {children}
-    <ChevronRight className="ml-auto h-4 w-4" />
-  </DropdownMenuPrimitive.SubTrigger>
-))
-DropdownMenuSubTrigger.displayName =
-  DropdownMenuPrimitive.SubTrigger.displayName
-
-const DropdownMenuSubContent = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, ...props }, ref) => (
-  <DropdownMenuPrimitive.SubContent
-    ref={ref}
-    className={cn(
-      "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-      className
-    )}
-    {...props}
-  />
-))
-DropdownMenuSubContent.displayName =
-  DropdownMenuPrimitive.SubContent.displayName
-
-const DropdownMenuContent = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
-  <DropdownMenuPrimitive.Portal>
-    <DropdownMenuPrimitive.Content
-      ref={ref}
-      sideOffset={sideOffset}
-      className={cn(
-        "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-        className
-      )}
-      {...props}
-    />
-  </DropdownMenuPrimitive.Portal>
-))
-DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName
-
-const DropdownMenuItem = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
-    inset?: boolean
-  }
->(({ className, inset, ...props }, ref) => (
-  <DropdownMenuPrimitive.Item
-    ref={ref}
-    className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      inset && "pl-8",
-      className
-    )}
-    {...props}
-  />
-))
-DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName
-
-const DropdownMenuCheckboxItem = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
->(({ className, children, checked, ...props }, ref) => (
-  <DropdownMenuPrimitive.CheckboxItem
-    ref={ref}
-    className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      className
-    )}
-    checked={checked}
-    {...props}
-  >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-      <DropdownMenuPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
-      </DropdownMenuPrimitive.ItemIndicator>
-    </span>
-    {children}
-  </DropdownMenuPrimitive.CheckboxItem>
-))
-DropdownMenuCheckboxItem.displayName =
-  DropdownMenuPrimitive.CheckboxItem.displayName
-
-const DropdownMenuRadioItem = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem>
->(({ className, children, ...props }, ref) => (
-  <DropdownMenuPrimitive.RadioItem
-    ref={ref}
-    className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      className
-    )}
-    {...props}
-  >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-      <DropdownMenuPrimitive.ItemIndicator>
-        <Circle className="h-2 w-2 fill-current" />
-      </DropdownMenuPrimitive.ItemIndicator>
-    </span>
-    {children}
-  </DropdownMenuPrimitive.RadioItem>
-))
-DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName
-
-const DropdownMenuLabel = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Label>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
-    inset?: boolean
-  }
->(({ className, inset, ...props }, ref) => (
-  <DropdownMenuPrimitive.Label
-    ref={ref}
-    className={cn(
-      "px-2 py-1.5 text-sm font-semibold",
-      inset && "pl-8",
-      className
-    )}
-    {...props}
-  />
-))
-DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName
-
-const DropdownMenuSeparator = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
->(({ className, ...props }, ref) => (
-  <DropdownMenuPrimitive.Separator
-    ref={ref}
-    className={cn("-mx-1 my-1 h-px bg-muted", className)}
-    {...props}
-  />
-))
-DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName
-
-const DropdownMenuShortcut = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLSpanElement>) => {
-  return (
-    <span
-      className={cn("ml-auto text-xs tracking-widest opacity-60", className)}
-      {...props}
-    />
-  )
-}
-DropdownMenuShortcut.displayName = "DropdownMenuShortcut"
-
-export {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuCheckboxItem,
-  DropdownMenuRadioItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuGroup,
-  DropdownMenuPortal,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuRadioGroup,
-}
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/form.tsx
-import * as React from "react"
-import * as LabelPrimitive from "@radix-ui/react-label"
-import { Slot } from "@radix-ui/react-slot"
-import {
-  Controller,
-  ControllerProps,
-  FieldPath,
-  FieldValues,
-  FormProvider,
-  useFormContext,
-} from "react-hook-form"
-import { cn } from "@/lib/utils"
-import { Label } from "@/components/ui/label"
-
-const Form = FormProvider
-
-type FormFieldContextValue<
-  TFieldValues extends FieldValues = FieldValues,
-  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
-> = {
-  name: TName
-}
-
-const FormFieldContext = React.createContext<FormFieldContextValue>(
-  {} as FormFieldContextValue
-)
-
-const FormField = <
-  TFieldValues extends FieldValues = FieldValues,
-  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
->({
-  ...props
-}: ControllerProps<TFieldValues, TName>) => {
-  return (
-    <FormFieldContext.Provider value={{ name: props.name }}>
-      <Controller {...props} />
-    </FormFieldContext.Provider>
-  )
-}
-
-const useFormField = () => {
-  const fieldContext = React.useContext(FormFieldContext)
-  const itemContext = React.useContext(FormItemContext)
-  const { getFieldState, formState } = useFormContext()
-
-  const fieldState = getFieldState(fieldContext.name, formState)
-
-  if (!fieldContext) {
-    throw new Error("useFormField should be used within <FormField>")
-  }
-
-  const { id } = itemContext
-
-  return {
-    id,
-    name: fieldContext.name,
-    formItemId: `${id}-form-item`,
-    formDescriptionId: `${id}-form-item-description`,
-    formMessageId: `${id}-form-item-message`,
-    ...fieldState,
-  }
-}
-
-type FormItemContextValue = {
-  id: string
-}
-
-const FormItemContext = React.createContext<FormItemContextValue>(
-  {} as FormItemContextValue
-)
-
-const FormItem = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
-  const id = React.useId()
-
-  return (
-    <FormItemContext.Provider value={{ id }}>
-      <div ref={ref} className={cn("space-y-2", className)} {...props} />
-    </FormItemContext.Provider>
-  )
-})
-FormItem.displayName = "FormItem"
-
-const FormLabel = React.forwardRef<
-  React.ElementRef<typeof LabelPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
->(({ className, ...props }, ref) => {
-  const { error, formItemId } = useFormField()
-
-  return (
-    <Label
-      ref={ref}
-      className={cn(error && "text-destructive", className)}
-      htmlFor={formItemId}
-      {...props}
-    />
-  )
-})
-FormLabel.displayName = "FormLabel"
-
-const FormControl = React.forwardRef<
-  React.ElementRef<typeof Slot>,
-  React.ComponentPropsWithoutRef<typeof Slot>
->(({ ...props }, ref) => {
-  const { error, formItemId, formDescriptionId, formMessageId } = useFormField()
-
-  return (
-    <Slot
-      ref={ref}
-      id={formItemId}
-      aria-describedby={
-        !error
-          ? `${formDescriptionId}`
-          : `${formDescriptionId} ${formMessageId}`
-      }
-      aria-invalid={!!error}
-      {...props}
-    />
-  )
-})
-FormControl.displayName = "FormControl"
-
-const FormDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => {
-  const { formDescriptionId } = useFormField()
-
-  return (
-    <p
-      ref={ref}
-      id={formDescriptionId}
-      className={cn("text-sm text-muted-foreground", className)}
-      {...props}
-    />
-  )
-})
-FormDescription.displayName = "FormDescription"
-
-const FormMessage = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, children, ...props }, ref) => {
-  const { error, formMessageId } = useFormField()
-  const body = error ? String(error?.message) : children
-
-  if (!body) {
-    return null
-  }
-
-  return (
-    <p
-      ref={ref}
-      id={formMessageId}
-      className={cn("text-sm font-medium text-destructive", className)}
-      {...props}
-    >
-      {body}
-    </p>
-  )
-})
-FormMessage.displayName = "FormMessage"
-
-export {
-  useFormField,
-  Form,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormDescription,
-  FormMessage,
-  FormField,
-}
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/input.tsx
-import * as React from "react";
-import { cn } from "@/lib/utils";
-
-const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-  ({ className, type, ...props }, ref) => {
-    return (
-      <input
-        type={type}
-        className={cn(
-          "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        )}
-        ref={ref}
-        {...props}
-      />
-    );
-  }
-);
-
-Input.displayName = "Input";
-
-export { Input };
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/label.tsx
-import * as React from "react"
-import * as LabelPrimitive from "@radix-ui/react-label"
-import { cn } from "@/lib/utils"
-
-const Label = React.forwardRef<
-  React.ElementRef<typeof LabelPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
->(({ className, ...props }, ref) => (
-  <LabelPrimitive.Root
-    ref={ref}
-    className={cn(
-      "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
-      className
-    )}
-    {...props}
-  />
-))
-Label.displayName = LabelPrimitive.Root.displayName
-
-export { Label }
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/page-header.tsx
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
-
-const pageHeaderVariants = cva(
-  "flex flex-col gap-1",
-  {
-    variants: {
-      spacing: {
-        default: "mb-6",
-        sm: "mb-4",
-        lg: "mb-8",
-      },
-    },
-    defaultVariants: {
-      spacing: "default",
-    },
-  }
-)
-
-export interface PageHeaderProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof pageHeaderVariants> {
-  title: string
-  description?: string
-  children?: React.ReactNode
-}
-
-export function PageHeader({
-  className,
-  title,
-  description,
-  spacing,
-  children,
-  ...props
-}: PageHeaderProps) {
-  return (
-    <div
-      className={cn(
-        pageHeaderVariants({ spacing }),
-        "flex items-center justify-between",
-        className
-      )}
-      {...props}
-    >
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        {description && (
-          <p className="text-sm text-muted-foreground">{description}</p>
-        )}
-      </div>
-      {children && <div className="flex items-center gap-4">{children}</div>}
-    </div>
-  )
-}
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/popover.tsx
-"use client"
-
-import * as React from "react"
-import * as PopoverPrimitive from "@radix-ui/react-popover"
-import { cn } from "@/lib/utils"
-
-const Popover = PopoverPrimitive.Root
-
-const PopoverTrigger = PopoverPrimitive.Trigger
-
-const PopoverContent = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
->((props, ref) => {
-  const { className, ...rest } = props;
-  return (
-    <PopoverPrimitive.Content
-      ref={ref}
-      className={cn("z-10 p-4 bg-white border rounded shadow-sm", className)}
-      {...rest}
-    />
-  );
-});
-
-// Add displayName for debugging purposes
-PopoverContent.displayName = "PopoverContent";
-
-export { Popover, PopoverTrigger, PopoverContent }
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/scroll-area.tsx
-"use client"
-
-import * as React from "react"
-import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area"
-import { cn } from "@/lib/utils"
-
-const ScrollArea = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>
->(({ className, children, ...props }, ref) => (
-  <ScrollAreaPrimitive.Root
-    ref={ref}
-    className={cn("relative overflow-hidden", className)}
-    {...props}
-  >
-    <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit]">
-      {children}
-    </ScrollAreaPrimitive.Viewport>
-    <ScrollBar />
-    <ScrollAreaPrimitive.Corner />
-  </ScrollAreaPrimitive.Root>
-))
-ScrollArea.displayName = ScrollAreaPrimitive.Root.displayName
-
-const ScrollBar = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>
->(({ className, orientation = "vertical", ...props }, ref) => (
-  <ScrollAreaPrimitive.ScrollAreaScrollbar
-    ref={ref}
-    orientation={orientation}
-    className={cn(
-      "flex touch-none select-none transition-colors",
-      orientation === "vertical" &&
-        "h-full w-2.5 border-l border-l-transparent p-[1px]",
-      orientation === "horizontal" &&
-        "h-2.5 flex-col border-t border-t-transparent p-[1px]",
-      className
-    )}
-    {...props}
-  >
-    <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-full bg-border" />
-  </ScrollAreaPrimitive.ScrollAreaScrollbar>
-))
-ScrollBar.displayName = ScrollAreaPrimitive.ScrollAreaScrollbar.displayName
-
-export { ScrollArea, ScrollBar }
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/select.tsx
-"use client"
-
-import * as React from "react"
-import * as SelectPrimitive from "@radix-ui/react-select"
-import { Check, ChevronDown, ChevronUp } from "lucide-react"
-
-import { cn } from "@/lib/utils"
-
-const Select = SelectPrimitive.Root
-
-const SelectGroup = SelectPrimitive.Group
-
-const SelectValue = SelectPrimitive.Value
-
-const SelectTrigger = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
-  <SelectPrimitive.Trigger
-    ref={ref}
-    className={cn(
-      "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
-      className
-    )}
-    {...props}
-  >
-    {children}
-    <SelectPrimitive.Icon asChild>
-      <ChevronDown className="h-4 w-4 opacity-50" />
-    </SelectPrimitive.Icon>
-  </SelectPrimitive.Trigger>
-))
-SelectTrigger.displayName = SelectPrimitive.Trigger.displayName
-
-const SelectScrollUpButton = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.ScrollUpButton>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollUpButton>
->(({ className, ...props }, ref) => (
-  <SelectPrimitive.ScrollUpButton
-    ref={ref}
-    className={cn(
-      "flex cursor-default items-center justify-center py-1",
-      className
-    )}
-    {...props}
-  >
-    <ChevronUp className="h-4 w-4" />
-  </SelectPrimitive.ScrollUpButton>
-))
-SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName
-
-const SelectScrollDownButton = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.ScrollDownButton>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollDownButton>
->(({ className, ...props }, ref) => (
-  <SelectPrimitive.ScrollDownButton
-    ref={ref}
-    className={cn(
-      "flex cursor-default items-center justify-center py-1",
-      className
-    )}
-    {...props}
-  >
-    <ChevronDown className="h-4 w-4" />
-  </SelectPrimitive.ScrollDownButton>
-))
-SelectScrollDownButton.displayName =
-  SelectPrimitive.ScrollDownButton.displayName
-
-const SelectContent = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = "popper", ...props }, ref) => (
-  <SelectPrimitive.Portal>
-    <SelectPrimitive.Content
-      ref={ref}
-      className={cn(
-        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border bg-white text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-        position === "popper" &&
-          "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
-        className
-      )}
-      position={position}
-      {...props}
-    >
-      <SelectScrollUpButton />
-      <SelectPrimitive.Viewport
-        className={cn(
-          "p-1 bg-white",
-          position === "popper" &&
-            "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
-        )}
-      >
-        {children}
-      </SelectPrimitive.Viewport>
-      <SelectScrollDownButton />
-    </SelectPrimitive.Content>
-  </SelectPrimitive.Portal>
-))
-SelectContent.displayName = SelectPrimitive.Content.displayName
-
-const SelectLabel = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Label>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Label>
->(({ className, ...props }, ref) => (
-  <SelectPrimitive.Label
-    ref={ref}
-    className={cn("py-1.5 pl-8 pr-2 text-sm font-semibold", className)}
-    {...props}
-  />
-))
-SelectLabel.displayName = SelectPrimitive.Label.displayName
-
-const SelectItem = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
->(({ className, children, ...props }, ref) => (
-  <SelectPrimitive.Item
-    ref={ref}
-    className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      className
-    )}
-    {...props}
-  >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-      <SelectPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
-      </SelectPrimitive.ItemIndicator>
-    </span>
-
-    <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
-  </SelectPrimitive.Item>
-))
-SelectItem.displayName = SelectPrimitive.Item.displayName
-
-const SelectSeparator = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Separator>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Separator>
->(({ className, ...props }, ref) => (
-  <SelectPrimitive.Separator
-    ref={ref}
-    className={cn("-mx-1 my-1 h-px bg-muted", className)}
-    {...props}
-  />
-))
-SelectSeparator.displayName = SelectPrimitive.Separator.displayName
-
-export {
-  Select,
-  SelectGroup,
-  SelectValue,
-  SelectTrigger,
-  SelectContent,
-  SelectLabel,
-  SelectItem,
-  SelectSeparator,
-  SelectScrollUpButton,
-  SelectScrollDownButton,
-}
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/separator.tsx
-"use client"
-
-import * as React from "react"
-import * as SeparatorPrimitive from "@radix-ui/react-separator"
-
-import { cn } from "@/lib/utils"
-
-const Separator = React.forwardRef<
-  React.ElementRef<typeof SeparatorPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof SeparatorPrimitive.Root>
->(
-  (
-    { className, orientation = "horizontal", decorative = true, ...props },
-    ref
-  ) => (
-    <SeparatorPrimitive.Root
-      ref={ref}
-      decorative={decorative}
-      orientation={orientation}
-      className={cn(
-        "shrink-0 bg-border",
-        orientation === "horizontal" ? "h-[1px] w-full" : "h-full w-[1px]",
-        className
-      )}
-      {...props}
-    />
-  )
-)
-Separator.displayName = SeparatorPrimitive.Root.displayName
-
-export { Separator }
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/sheet.tsx
-"use client"
-
-import * as React from "react"
-import * as SheetPrimitive from "@radix-ui/react-dialog"
-import { cva, type VariantProps } from "class-variance-authority"
-import { X } from "lucide-react"
-
-import { cn } from "@/lib/utils"
-
-const Sheet = SheetPrimitive.Root
-
-const SheetTrigger = SheetPrimitive.Trigger
-
-const SheetClose = SheetPrimitive.Close
-
-const SheetPortal = SheetPrimitive.Portal
-
-const SheetOverlay = React.forwardRef<
-  React.ElementRef<typeof SheetPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
->(({ className, ...props }, ref) => (
-  <SheetPrimitive.Overlay
-    className={cn(
-      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className
-    )}
-    {...props}
-    ref={ref}
-  />
-))
-SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
-
-const sheetVariants = cva(
-  "fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
-  {
-    variants: {
-      side: {
-        top: "inset-x-0 top-0 border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
-        bottom:
-          "inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-        left: "inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
-        right:
-          "inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
-      },
-    },
-    defaultVariants: {
-      side: "right",
-    },
-  }
-)
-
-interface SheetContentProps
-  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-    VariantProps<typeof sheetVariants> {}
-
-const SheetContent = React.forwardRef<
-  React.ElementRef<typeof SheetPrimitive.Content>,
-  SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
-  <SheetPortal>
-    <SheetOverlay />
-    <SheetPrimitive.Content
-      ref={ref}
-      className={cn(sheetVariants({ side }), className)}
-      {...props}
-    >
-      {children}
-      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </SheetPrimitive.Close>
-    </SheetPrimitive.Content>
-  </SheetPortal>
-))
-SheetContent.displayName = SheetPrimitive.Content.displayName
-
-const SheetHeader = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col space-y-2 text-center sm:text-left",
-      className
-    )}
-    {...props}
-  />
-)
-SheetHeader.displayName = "SheetHeader"
-
-const SheetFooter = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
-      className
-    )}
-    {...props}
-  />
-)
-SheetFooter.displayName = "SheetFooter"
-
-const SheetTitle = React.forwardRef<
-  React.ElementRef<typeof SheetPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Title>
->(({ className, ...props }, ref) => (
-  <SheetPrimitive.Title
-    ref={ref}
-    className={cn("text-lg font-semibold text-foreground", className)}
-    {...props}
-  />
-))
-SheetTitle.displayName = SheetPrimitive.Title.displayName
-
-const SheetDescription = React.forwardRef<
-  React.ElementRef<typeof SheetPrimitive.Description>,
-  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Description>
->(({ className, ...props }, ref) => (
-  <SheetPrimitive.Description
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
-))
-SheetDescription.displayName = SheetPrimitive.Description.displayName
-
-export {
-  Sheet,
-  SheetPortal,
-  SheetOverlay,
-  SheetTrigger,
-  SheetClose,
-  SheetContent,
-  SheetHeader,
-  SheetFooter,
-  SheetTitle,
-  SheetDescription,
-}
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/slider.tsx
-"use client"
-
-import * as React from "react"
-import * as SliderPrimitive from "@radix-ui/react-slider"
-import { cn } from "@/lib/utils"
-
-type SliderProps = {
-  className?: string
-} & SliderPrimitive.SliderProps
-
-const Slider = React.forwardRef<HTMLSpanElement, SliderProps>(
-  ({ className, ...props }, ref) => {
-    return (
-      <SliderPrimitive.Root
-        ref={ref}
-        className={cn(
-          "relative flex w-full touch-none select-none items-center",
-          className
-        )}
-        {...props}
-      >
-        <SliderPrimitive.Track
-          className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-primary/20"
-        >
-          <SliderPrimitive.Range className="absolute h-full bg-primary" />
-        </SliderPrimitive.Track>
-        {props.value?.map((_, index) => (
-          <SliderPrimitive.Thumb
-            key={index}
-            className="block h-4 w-4 rounded-full border border-primary/50 bg-background shadow transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:border-primary"
-          />
-        ))}
-      </SliderPrimitive.Root>
-    )
-  }
-)
-
-Slider.displayName = "Slider"
-
-export { Slider }
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/status-badge.tsx
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
-
-const statusBadgeVariants = cva(
-  "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground",
-        success: "bg-success text-success-foreground",
-        destructive: "bg-destructive text-destructive-foreground",
-        warning: "bg-warning text-warning-foreground",
-        info: "bg-info text-info-foreground",
-        outline: "text-foreground border border-input",
-      },
-      dotColor: {
-        none: "",
-        default: "before:bg-primary",
-        success: "before:bg-success",
-        destructive: "before:bg-destructive",
-        warning: "before:bg-warning",
-        info: "before:bg-info",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      dotColor: "none",
-    },
-    compoundVariants: [
-      {
-        dotColor: ["default", "success", "destructive", "warning", "info"],
-        className: "pl-3 before:absolute before:left-1 before:h-1.5 before:w-1.5 before:rounded-full relative",
-      },
-    ],
-  }
-)
-
-export interface StatusBadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof statusBadgeVariants> {
-  pulse?: boolean
-}
-
-function StatusBadge({
-  className,
-  variant,
-  dotColor,
-  pulse = false,
-  ...props
-}: StatusBadgeProps) {
-  return (
-    <div
-      className={cn(
-        statusBadgeVariants({ variant, dotColor }),
-        pulse && dotColor !== "none" && "before:animate-pulse",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-export { StatusBadge, statusBadgeVariants }
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/switch.tsx
-"use client"
-
-import * as React from "react"
-import * as SwitchPrimitives from "@radix-ui/react-switch"
-import { cn } from "@/lib/utils"
-
-type SwitchProps = React.ComponentProps<typeof SwitchPrimitives.Root> & {
-  className?: string
-}
-
-const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
-  ({ className, ...props }, ref) => (
-    <SwitchPrimitives.Root
-      className={cn(
-        "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input",
-        className
-      )}
-      {...props}
-      ref={ref}
-    >
-      <SwitchPrimitives.Thumb
-        className={cn(
-          "pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0"
-        )}
-      />
-    </SwitchPrimitives.Root>
-  )
-)
-
-Switch.displayName = SwitchPrimitives.Root.displayName
-
-export { Switch }
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/table.tsx
-import { forwardRef, HTMLAttributes } from "react";
-import { cn } from "@/lib/utils";
-
-type TableProps = HTMLAttributes<HTMLTableElement>;
-const Table = forwardRef<HTMLTableElement, TableProps>(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
-    <table
-      ref={ref}
-      className={cn("w-full caption-bottom text-sm", className)}
-      {...props}
-    />
-  </div>
-));
-Table.displayName = "Table";
-
-type TableSectionProps = HTMLAttributes<HTMLTableSectionElement>;
-const TableHeader = forwardRef<HTMLTableSectionElement, TableSectionProps>(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
-));
-TableHeader.displayName = "TableHeader";
-
-const TableBody = forwardRef<HTMLTableSectionElement, TableSectionProps>(({ className, ...props }, ref) => (
-  <tbody
-    ref={ref}
-    className={cn("[&_tr:last-child]:border-0", className)}
-    {...props}
-  />
-));
-TableBody.displayName = "TableBody";
-
-const TableFooter = forwardRef<HTMLTableSectionElement, TableSectionProps>(({ className, ...props }, ref) => (
-  <tfoot
-    ref={ref}
-    className={cn(
-      "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
-      className
-    )}
-    {...props}
-  />
-));
-TableFooter.displayName = "TableFooter";
-
-type TableRowProps = HTMLAttributes<HTMLTableRowElement>;
-const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(({ className, ...props }, ref) => (
-  <tr
-    ref={ref}
-    className={cn(
-      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
-      className
-    )}
-    {...props}
-  />
-));
-TableRow.displayName = "TableRow";
-
-type TableHeadProps = HTMLAttributes<HTMLTableCellElement>;
-const TableHead = forwardRef<HTMLTableCellElement, TableHeadProps>(({ className, ...props }, ref) => (
-  <th
-    ref={ref}
-    className={cn(
-      "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
-      className
-    )}
-    {...props}
-  />
-));
-TableHead.displayName = "TableHead";
-
-type TableCellProps = HTMLAttributes<HTMLTableCellElement>;
-const TableCell = forwardRef<HTMLTableCellElement, TableCellProps>(({ className, ...props }, ref) => (
-  <td
-    ref={ref}
-    className={cn("p-4 align-middle [&:has([role=checkbox])]:pr-0", className)}
-    {...props}
-  />
-));
-TableCell.displayName = "TableCell";
-
-type TableCaptionProps = HTMLAttributes<HTMLTableCaptionElement>;
-const TableCaption = forwardRef<HTMLTableCaptionElement, TableCaptionProps>(({ className, ...props }, ref) => (
-  <caption
-    ref={ref}
-    className={cn("mt-4 text-sm text-muted-foreground", className)}
-    {...props}
-  />
-));
-TableCaption.displayName = "TableCaption";
-
-export {
-  Table,
-  TableHeader,
-  TableBody,
-  TableFooter,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableCaption,
-};
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/tabs.tsx
-"use client"
-
-import * as React from "react"
-import * as TabsPrimitive from "@radix-ui/react-tabs"
-
-import { cn } from "@/lib/utils"
-
-const Tabs = TabsPrimitive.Root
-
-const TabsList = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.List>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.List
-    ref={ref}
-    className={cn(
-      "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
-      className
-    )}
-    {...props}
-  />
-))
-TabsList.displayName = TabsPrimitive.List.displayName
-
-const TabsTrigger = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.Trigger
-    ref={ref}
-    className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
-      className
-    )}
-    {...props}
-  />
-))
-TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
-
-const TabsContent = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.Content
-    ref={ref}
-    className={cn(
-      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-      className
-    )}
-    {...props}
-  />
-))
-TabsContent.displayName = TabsPrimitive.Content.displayName
-
-export { Tabs, TabsList, TabsTrigger, TabsContent }
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/textarea.tsx
-import * as React from "react";
-import { cn } from "@/lib/utils";
-
-const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(
-  ({ className, ...props }, ref) => {
-    return (
-      <textarea
-        className={cn(
-          "flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        )}
-        ref={ref}
-        {...props}
-      />
-    );
-  }
-);
-Textarea.displayName = "Textarea";
-
-export { Textarea };
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/toast.tsx
-import * as React from "react"
-import * as ToastPrimitives from "@radix-ui/react-toast"
-import { cva, type VariantProps } from "class-variance-authority"
-import { X } from "lucide-react"
-import { cn } from "@/lib/utils"
-
-const ToastProvider = ToastPrimitives.Provider
-
-const ToastViewport = React.forwardRef<
-  React.ElementRef<typeof ToastPrimitives.Viewport>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport>
->(({ className, ...props }, ref) => (
-  <ToastPrimitives.Viewport
-    ref={ref}
-    className={cn(
-      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
-      className
-    )}
-    {...props}
-  />
-))
-ToastViewport.displayName = ToastPrimitives.Viewport.displayName
-
-const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
-  {
-    variants: {
-      variant: {
-        default: "border bg-background text-foreground",
-        destructive:
-          "destructive group border-destructive bg-destructive text-destructive-foreground",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-)
-
-const Toast = React.forwardRef<
-  React.ElementRef<typeof ToastPrimitives.Root>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
-    VariantProps<typeof toastVariants>
->(({ className, variant, ...props }, ref) => {
-  return (
-    <ToastPrimitives.Root
-      ref={ref}
-      className={cn(toastVariants({ variant }), className)}
-      {...props}
-    />
-  )
-})
-Toast.displayName = ToastPrimitives.Root.displayName
-
-const ToastAction = React.forwardRef<
-  React.ElementRef<typeof ToastPrimitives.Action>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Action>
->(({ className, ...props }, ref) => (
-  <ToastPrimitives.Action
-    ref={ref}
-    className={cn(
-      "inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive",
-      className
-    )}
-    {...props}
-  />
-))
-ToastAction.displayName = ToastPrimitives.Action.displayName
-
-const ToastClose = React.forwardRef<
-  React.ElementRef<typeof ToastPrimitives.Close>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Close>
->(({ className, ...props }, ref) => (
-  <ToastPrimitives.Close
-    ref={ref}
-    className={cn(
-      "absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100 group-[.destructive]:text-red-300 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600",
-      className
-    )}
-    toast-close=""
-    {...props}
-  >
-    <X className="h-4 w-4" />
-  </ToastPrimitives.Close>
-))
-ToastClose.displayName = ToastPrimitives.Close.displayName
-
-const ToastTitle = React.forwardRef<
-  React.ElementRef<typeof ToastPrimitives.Title>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title>
->(({ className, ...props }, ref) => (
-  <ToastPrimitives.Title
-    ref={ref}
-    className={cn("text-sm font-semibold", className)}
-    {...props}
-  />
-))
-ToastTitle.displayName = ToastPrimitives.Title.displayName
-
-const ToastDescription = React.forwardRef<
-  React.ElementRef<typeof ToastPrimitives.Description>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Description>
->(({ className, ...props }, ref) => (
-  <ToastPrimitives.Description
-    ref={ref}
-    className={cn("text-sm opacity-90", className)}
-    {...props}
-  />
-))
-ToastDescription.displayName = ToastPrimitives.Description.displayName
-
-type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>
-
-type ToastActionElement = React.ReactElement<typeof ToastAction>
-
-export {
-  type ToastProps,
-  type ToastActionElement,
-  ToastProvider,
-  ToastViewport,
-  Toast,
-  ToastTitle,
-  ToastDescription,
-  ToastClose,
-  ToastAction,
-}
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/toaster.tsx
-"use client"
-import {
-  Toast,
-  ToastClose,
-  ToastDescription,
-  ToastProvider,
-  ToastTitle,
-  ToastViewport,
-} from "@/components/ui/toast"
-import { useToast } from "@/components/ui/use-toast"
-
-export function Toaster() {
-  const { toasts } = useToast()
-
-  return (
-    <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, ...props }) {
-        return (
-          <Toast key={id} {...props}>
-            <div className="grid gap-1">
-              {title && <ToastTitle>{title}</ToastTitle>}
-              {description && (
-                <ToastDescription>{description}</ToastDescription>
-              )}
-            </div>
-            {action}
-            <ToastClose />
-          </Toast>
-        )
-      })}
-      <ToastViewport />
-    </ToastProvider>
-  )
-}
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/tooltip.tsx
-"use client"
-
-import * as React from "react"
-import * as TooltipPrimitive from "@radix-ui/react-tooltip"
-import { cn } from "@/lib/utils"
-
-const TooltipProvider = TooltipPrimitive.Provider
-const Tooltip = TooltipPrimitive.Root
-const TooltipTrigger = TooltipPrimitive.Trigger
-
-const TooltipContent = React.forwardRef<
-  React.ElementRef<typeof TooltipPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
->(({ className = "", sideOffset = 4, ...props }, ref) => (
-  <TooltipPrimitive.Content
-    ref={ref}
-    sideOffset={sideOffset}
-    className={cn(
-      "z-50 overflow-hidden rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-      className
-    )}
-    {...props}
-  />
-))
-TooltipContent.displayName = TooltipPrimitive.Content.displayName
-
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/components/ui/use-toast.ts
-"use client"
-
-import * as React from "react"
-import type { ToastActionElement, ToastProps } from "@/components/ui/toast"
-
-const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
-
-type ToasterToast = ToastProps & {
-  id: string
-  title?: React.ReactNode
-  description?: React.ReactNode
-  action?: ToastActionElement
-}
-
-const actionTypes = {
-  ADD_TOAST: "ADD_TOAST",
-  UPDATE_TOAST: "UPDATE_TOAST",
-  DISMISS_TOAST: "DISMISS_TOAST",
-  REMOVE_TOAST: "REMOVE_TOAST",
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/config/site.ts
+export const siteConfig = {
+  name: "BUF BARISTA CRM",
+  url: "https://bufbarista-crm.vercel.app"
 } as const
 
-type Action =
-  | {
-      type: typeof actionTypes.ADD_TOAST
-      toast: ToasterToast
-    }
-  | {
-      type: typeof actionTypes.UPDATE_TOAST
-      toast: Partial<ToasterToast>
-    }
-  | {
-      type: typeof actionTypes.DISMISS_TOAST
-      toastId?: ToasterToast["id"]
-    }
-  | {
-      type: typeof actionTypes.REMOVE_TOAST
-      toastId?: ToasterToast["id"]
-    }
-
-interface State {
-  toasts: ToasterToast[]
-}
-
-const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
-
-const addToRemoveQueue = (toastId: string) => {
-  if (toastTimeouts.has(toastId)) {
-    return
-  }
-
-  const timeout = setTimeout(() => {
-    toastTimeouts.delete(toastId)
-    dispatch({
-      type: actionTypes.REMOVE_TOAST,
-      toastId: toastId,
-    })
-  }, TOAST_REMOVE_DELAY)
-
-  toastTimeouts.set(toastId, timeout)
-}
-
-let count = 0
-
-function genId() {
-  count = (count + 1) % Number.MAX_VALUE
-  return count.toString()
-}
-
-const reducer = (state: State, action: Action): State => {
-  switch (action.type) {
-    case actionTypes.ADD_TOAST:
-      return {
-        ...state,
-        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
-      }
-
-    case actionTypes.UPDATE_TOAST:
-      return {
-        ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === action.toast.id ? { ...t, ...action.toast } : t
-        ),
-      }
-
-    case actionTypes.DISMISS_TOAST: {
-      const { toastId } = action
-      if (toastId) {
-        addToRemoveQueue(toastId)
-      } else {
-        state.toasts.forEach((toast) => addToRemoveQueue(toast.id))
-      }
-      return {
-        ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === toastId || toastId === undefined ? { ...t, open: false } : t
-        ),
-      }
-    }
-
-    case actionTypes.REMOVE_TOAST:
-      return {
-        ...state,
-        toasts: action.toastId
-          ? state.toasts.filter((t) => t.id !== action.toastId)
-          : [],
-      }
-  }
-}
-
-const listeners: Array<(state: State) => void> = []
-let memoryState: State = { toasts: [] }
-
-function dispatch(action: Action) {
-  memoryState = reducer(memoryState, action)
-  listeners.forEach((listener) => listener(memoryState))
-}
-
-type Toast = Omit<ToasterToast, "id">
-
-function toast({ ...props }: Toast) {
-  const id = genId()
-
-  const update = (props: ToasterToast) =>
-    dispatch({
-      type: actionTypes.UPDATE_TOAST,
-      toast: { ...props, id },
-    })
-  const dismiss = () => dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id })
-
-  dispatch({
-    type: actionTypes.ADD_TOAST,
-    toast: {
-      ...props,
-      id,
-      open: true,
-      onOpenChange: (open) => {
-        if (!open) dismiss()
-      },
-    },
-  })
-
-  return { id, dismiss, update }
-}
-
-function useToast() {
-  const [state, setState] = React.useState<State>(memoryState)
-
-  React.useEffect(() => {
-    listeners.push(setState)
-    return () => {
-      const index = listeners.indexOf(setState)
-      if (index > -1) listeners.splice(index, 1)
-    }
-  }, [])
-
-  return {
-    ...state,
-    toast,
-    dismiss: (toastId?: string) => dispatch({ type: actionTypes.DISMISS_TOAST, toastId }),
-  }
-}
-
-export { useToast, toast }
-
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/constants/pos-data.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/constants/pos-data.ts
 import { MenuItem, MilkOption } from '@/types/pos';
 
 export const INITIAL_MENU_ITEMS: Omit<MenuItem, 'id' | 'createdAt' | 'updatedAt'>[] = [
@@ -20334,7 +23757,7 @@ export type Category = typeof CATEGORIES[number];
 export type FlavorOption = typeof FLAVOR_OPTIONS[number];
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/hooks/use-media-query.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/hooks/use-media-query.ts
 import { useState, useEffect } from "react";
 
 export function useMediaQuery(query: string): boolean {
@@ -20360,7 +23783,7 @@ export function useMediaQuery(query: string): boolean {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/activity/logger.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/activity/logger.ts
 // import { prisma } from "@/lib/db/prisma";
 
 // export type ActivityType = 
@@ -20402,21 +23825,43 @@ ________________________________________________________________________________
 // }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/auth/options.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/animations.ts
+export const FADE_IN_ANIMATION = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
+  transition: { duration: 0.2 }
+}
+
+export const SLIDE_UP_ANIMATION = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: 10 },
+  transition: { duration: 0.2 }
+}
+
+export const SCALE_ANIMATION = {
+  initial: { opacity: 0, scale: 0.95 },
+  animate: { opacity: 1, scale: 1 },
+  exit: { opacity: 0, scale: 0.95 },
+  transition: { duration: 0.2 }
+}
+
+export const LIST_ITEM_ANIMATION = (index: number) => ({
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: 10 },
+  transition: { duration: 0.2, delay: index * 0.05 }
+})
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/auth/options.ts
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import { compare } from "bcryptjs";
 import { prisma } from "@/lib/db/prisma";
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
-  pages: {
-    signIn: "/auth/login",
-  },
-  session: {
-    strategy: "jwt",
-  },
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -20425,58 +23870,64 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("Missing credentials");
-        }
-
-        const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email
+        try {
+          if (!credentials?.email || !credentials?.password) {
+            throw new Error("Missing credentials");
           }
-        });
 
-        if (!user || !user.password) {
-          throw new Error("No user found");
+          const user = await prisma.user.findUnique({
+            where: {
+              email: credentials.email
+            }
+          });
+
+          if (!user || !user.password) {
+            throw new Error("No user found");
+          }
+
+          const isValid = await compare(credentials.password, user.password);
+
+          if (!isValid) {
+            throw new Error("Invalid password");
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+          };
+        } catch (error) {
+          console.error("Auth error:", error);
+          return null;
         }
-
-        const isValid = await compare(credentials.password, user.password);
-
-        if (!isValid) {
-          throw new Error("Invalid password");
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-        };
       }
     })
   ],
-  callbacks: {
-    session: ({ session, token }) => {
-      return {
-        ...session,
-        user: {
-          ...session.user,
-          id: token.id,
-        },
-      };
-    },
-    jwt: ({ token, user }) => {
-      if (user) {
-        return {
-          ...token,
-          id: user.id,
-        };
-      }
-      return token;
+  pages: {
+    signIn: "/auth/login",
+  },
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === "development" ? "next-auth.session-token" : "__Secure-next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
     },
   },
+  debug: process.env.NODE_ENV === "development",
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
+export default authOptions;
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/contacts.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/contacts.ts
 import { prisma } from "./db/prisma";
 import { Contact, ContactStats } from "@/types/contacts";
 
@@ -20575,7 +24026,7 @@ export async function getContactStats(): Promise<ContactStats> {
   }
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/db/db-utils.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/db/db-utils.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { prisma } from "./prisma";
@@ -20642,7 +24093,7 @@ export const dbUtils = {
 };
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/db/prisma.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/db/prisma.ts
 import { PrismaClient } from '@prisma/client'
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient }
@@ -20678,7 +24129,90 @@ export async function getQRCodeById(id: string) {
   }
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/hooks/use-debounce.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/effects-utils.ts
+interface StyleConfig {
+  style: {
+    blurRadius?: number;
+    brightness?: number;
+    contrast?: number;
+    opacity?: number;
+    gradientType?: 'linear' | 'radial';
+    gradientRotation?: number;
+    gradientStart?: string;
+    gradientEnd?: string;
+    borderWidth?: number;
+    borderColor?: string;
+    borderRadius?: number;
+    shadowBlur?: number;
+    shadowOffsetX?: number;
+    shadowOffsetY?: number;
+    shadowColor?: string;
+    blendMode?: string;
+    padding?: number;
+  };
+}
+
+export const getComputedStyles = (config: StyleConfig) => {
+  const styles = {
+    filter: '',
+    background: '',
+    border: '',
+    borderRadius: '',
+    boxShadow: '',
+    mixBlendMode: '',
+    padding: '',
+    transform: '',
+  };
+
+  // Apply filters
+  const filters = [];
+  if (config.style.blurRadius) filters.push(`blur(${config.style.blurRadius}px)`);
+  if (config.style.brightness && config.style.brightness !== 100) filters.push(`brightness(${config.style.brightness}%)`);
+  if (config.style.contrast && config.style.contrast !== 100) filters.push(`contrast(${config.style.contrast}%)`);
+  if (config.style.opacity && config.style.opacity !== 100) filters.push(`opacity(${config.style.opacity}%)`);
+  styles.filter = filters.join(' ');
+
+  // Apply gradient or background
+  if (config.style.gradientType === 'linear') {
+    styles.background = `linear-gradient(${config.style.gradientRotation}deg, ${config.style.gradientStart}, ${config.style.gradientEnd})`;
+  } else if (config.style.gradientType === 'radial') {
+    styles.background = `radial-gradient(circle, ${config.style.gradientStart}, ${config.style.gradientEnd})`;
+  }
+
+  // Apply border
+  if (config.style.borderWidth) {
+    styles.border = `${config.style.borderWidth}px solid ${config.style.borderColor}`;
+    styles.borderRadius = `${config.style.borderRadius}px`;
+  }
+
+  // Apply shadow
+  if (config.style.shadowBlur) {
+    styles.boxShadow = `${config.style.shadowOffsetX}px ${config.style.shadowOffsetY}px ${config.style.shadowBlur}px ${config.style.shadowColor}`;
+  }
+
+  // Apply blend mode
+  if (config.style.blendMode) {
+    styles.mixBlendMode = config.style.blendMode;
+  }
+
+  // Apply padding
+  styles.padding = `${config.style.padding || 0}px`;
+
+  return styles;
+};
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/generate-uuid.ts
+export function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/hooks/use-debounce.ts
 import { useEffect, useState } from "react";
 
 export function useDebounce<T>(value: T, delay?: number): T {
@@ -20693,7 +24227,106 @@ export function useDebounce<T>(value: T, delay?: number): T {
 
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/pos/services.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/logo-utils.ts
+import { LogoPosition } from '../components/dashboard/qr/designer/types'
+
+// Define types for config and style
+interface LogoStyleConfig {
+  logoWidth: number
+  logoHeight: number
+  logoStyle: {
+    position: LogoPosition
+    borderRadius?: number
+    borderWidth?: number
+    borderColor?: string
+    shadowOffsetX?: number
+    shadowOffsetY?: number
+    shadowBlur?: number
+    shadowColor?: string
+    backgroundColor?: string
+    removeBackground?: boolean
+    opacity: number
+    rotation: number
+    blendMode?: string
+    blurRadius?: number
+    brightness?: number
+    contrast?: number
+  }
+}
+
+interface LogoFilterStyle {
+  blurRadius?: number
+  brightness?: number
+  contrast?: number
+}
+
+export const getLogoPosition = (position: LogoPosition) => {
+  switch (position) {
+    case 'center':
+      return {
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)'
+      }
+    case 'top-left':
+      return {
+        top: '10%',
+        left: '10%',
+        transform: 'translate(-50%, -50%)'
+      }
+    case 'top-right':
+      return {
+        top: '10%',
+        right: '10%',
+        transform: 'translate(50%, -50%)'
+      }
+    case 'bottom-left':
+      return {
+        bottom: '10%',
+        left: '10%',
+        transform: 'translate(-50%, 50%)'
+      }
+    case 'bottom-right':
+      return {
+        bottom: '10%',
+        right: '10%',
+        transform: 'translate(50%, 50%)'
+      }
+    default:
+      return {
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)'
+      }
+  }
+}
+
+export const generateLogoStyles = (config: LogoStyleConfig) => {
+  return {
+    ...getLogoPosition(config.logoStyle.position),
+    width: `${config.logoWidth}px`,
+    height: `${config.logoHeight}px`,
+    filter: generateLogoFilterString(config.logoStyle),
+    borderRadius: config.logoStyle.borderRadius ? `${config.logoStyle.borderRadius}px` : undefined,
+    border: config.logoStyle.borderWidth ? `${config.logoStyle.borderWidth}px solid ${config.logoStyle.borderColor}` : undefined,
+    boxShadow: config.logoStyle.shadowBlur ? `${config.logoStyle.shadowOffsetX}px ${config.logoStyle.shadowOffsetY}px ${config.logoStyle.shadowBlur}px ${config.logoStyle.shadowColor}` : undefined,
+    backgroundColor: config.logoStyle.removeBackground ? 'transparent' : config.logoStyle.backgroundColor,
+    opacity: config.logoStyle.opacity / 100,
+    transform: `${getLogoPosition(config.logoStyle.position).transform} rotate(${config.logoStyle.rotation}deg)`,
+    mixBlendMode: config.logoStyle.blendMode || undefined,
+  }
+}
+
+const generateLogoFilterString = (style: LogoFilterStyle) => {
+  const filters = []
+  if (style.blurRadius) filters.push(`blur(${style.blurRadius}px)`)
+  if (style.brightness !== undefined && style.brightness !== 100) filters.push(`brightness(${style.brightness}%)`)
+  if (style.contrast !== undefined && style.contrast !== 100) filters.push(`contrast(${style.contrast}%)`)
+  return filters.join(' ')
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/pos/services.ts
 import { prisma } from "@/lib/db/prisma";
 import { Order, MenuItem, QuickNote } from "@/types/pos";
 
@@ -20733,7 +24366,147 @@ export async function createQuickNote(content: string): Promise<QuickNote> {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/services/db-service.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/qr-utils.ts
+// Define the type for styles
+interface StyleOptions {
+  blurRadius?: number
+  brightness?: number
+  contrast?: number
+  opacity?: number
+  gradientType?: 'linear' | 'radial'
+  gradientRotation?: number
+  gradientStart?: string
+  gradientEnd?: string
+  shadowOffsetX?: number
+  shadowOffsetY?: number
+  shadowBlur?: number
+  shadowColor?: string
+}
+
+// Generate filter string
+export function generateFilterString(styles: StyleOptions) {
+  const filters = []
+  if (styles.blurRadius) filters.push(`blur(${styles.blurRadius}px)`)
+  if (styles.brightness !== undefined && styles.brightness !== 100) filters.push(`brightness(${styles.brightness}%)`)
+  if (styles.contrast !== undefined && styles.contrast !== 100) filters.push(`contrast(${styles.contrast}%)`)
+  if (styles.opacity !== undefined && styles.opacity !== 100) filters.push(`opacity(${styles.opacity}%)`)
+  return filters.join(' ')
+}
+
+// Generate gradient
+export function generateGradient(styles: StyleOptions) {
+  if (styles.gradientType === 'linear') {
+    return `linear-gradient(${styles.gradientRotation}deg, ${styles.gradientStart}, ${styles.gradientEnd})`
+  }
+  if (styles.gradientType === 'radial') {
+    return `radial-gradient(circle, ${styles.gradientStart}, ${styles.gradientEnd})`
+  }
+  return 'none'
+}
+
+// Generate box shadow
+export function generateBoxShadow(styles: StyleOptions) {
+  if (styles.shadowBlur) {
+    return `${styles.shadowOffsetX}px ${styles.shadowOffsetY}px ${styles.shadowBlur}px ${styles.shadowColor}`
+  }
+  return 'none'
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/qr.ts
+import QRCode from 'qrcode'
+
+export async function generateQRCode(shortCode: string): Promise<string> {
+  try {
+    if (!process.env.NEXT_PUBLIC_APP_URL) {
+      throw new Error('NEXT_PUBLIC_APP_URL environment variable is not set')
+    }
+
+    // Generate URL for the QR code
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '') // Remove trailing slash if present
+    const url = `${baseUrl}/r/${shortCode}`
+    
+    console.log('Generating QR code for URL:', url) // Debug log
+    
+    // Generate QR code as data URL
+    const qrDataUrl = await QRCode.toDataURL(url, {
+      width: 400,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#ffffff',
+      },
+    })
+    
+    return qrDataUrl
+  } catch (error) {
+    console.error('Error generating QR code:', error)
+    throw error
+  }
+}
+
+// src/lib/qr.ts
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/schedule-rules/utils.ts
+import { ScheduleRule } from "@prisma/client"
+import { DateTime } from "luxon"
+
+interface EvaluateScheduleRuleParams {
+  rule: ScheduleRule
+  currentTime?: Date
+}
+
+export function evaluateScheduleRule({
+  rule,
+  currentTime = new Date()
+}: EvaluateScheduleRuleParams): boolean {
+  const now = DateTime.fromJSDate(currentTime).setZone(rule.timeZone)
+  const startDate = DateTime.fromJSDate(rule.startDate).setZone(rule.timeZone)
+
+  // Check if we're after the start date
+  if (now < startDate) {
+    return false
+  }
+
+  // Check if we're before the end date (if specified)
+  if (rule.endDate) {
+    const endDate = DateTime.fromJSDate(rule.endDate).setZone(rule.timeZone)
+    if (now > endDate) {
+      return false
+    }
+  }
+
+  // Check if today is in the allowed days of week
+  if (rule.daysOfWeek.length > 0 && !rule.daysOfWeek.includes(now.weekday % 7)) {
+    return false
+  }
+
+  // Check time constraints if both start and end times are specified
+  if (rule.startTime && rule.endTime) {
+    const [startHour, startMinute] = rule.startTime.split(':').map(Number)
+    const [endHour, endMinute] = rule.endTime.split(':').map(Number)
+    
+    const startTimeToday = now.set({ hour: startHour, minute: startMinute })
+    const endTimeToday = now.set({ hour: endHour, minute: endMinute })
+    
+    if (now < startTimeToday || now > endTimeToday) {
+      return false
+    }
+  }
+
+  return true
+}
+
+export function findMatchingRule(rules: ScheduleRule[], currentTime: Date = new Date()): ScheduleRule | null {
+  // Sort rules by priority (higher number = higher priority)
+  const sortedRules = [...rules].sort((a, b) => b.priority - a.priority)
+
+  // Find the first matching rule
+  return sortedRules.find(rule => evaluateScheduleRule({ rule, currentTime })) || null
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/services/db-service.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { prisma } from "@/lib/db/prisma";
@@ -20867,7 +24640,7 @@ export const dbService = {
 };
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/services/order-service.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/services/order-service.ts
 import { Order } from '@/types/pos';
 
 export const orderService = {
@@ -21046,7 +24819,7 @@ export const orderService = {
  
  };
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/services/pos-service.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/services/pos-service.ts
 import { MenuItem, Order, QuickNote } from '@/types/pos';
 
 interface PreferenceStore {
@@ -21223,7 +24996,15 @@ class PosService {
 export const posService = new PosService();
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/lib/utils.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/utils/qr.ts
+import { siteConfig } from "@/config/site"
+
+export function generateRedirectUrl(shortCode: string): string {
+  return `${siteConfig.url}/r/${shortCode}`
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/utils.ts
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -21232,124 +25013,89 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/middleware.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/middleware.ts
+// src/middleware.ts
+
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import type { NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  try {
-    // Get the token with explicit typing
-    const token = await getToken({
-      req: request,
-      secret: process.env.NEXTAUTH_SECRET,
-    });
+ try {
+   const token = await getToken({
+     req: request,
+     secret: process.env.NEXTAUTH_SECRET,
+   });
 
-    // Debug logging for development
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[Middleware] Path: ${request.nextUrl.pathname}`);
-      console.log(`[Middleware] Token exists: ${!!token}`);
-    }
+   // Debug logging for development
+   console.log(`[Middleware] Path: ${request.nextUrl.pathname}`);
+   console.log(`[Middleware] Token exists: ${!!token}`);
+   console.log(`[Middleware] Environment: ${process.env.NODE_ENV}`);
+   console.log(`[Middleware] Auth URL: ${process.env.NEXTAUTH_URL}`);
 
-    // API route protection
-    if (request.nextUrl.pathname.startsWith('/api')) {
-      // Skip auth check for auth-related API routes
-      if (request.nextUrl.pathname.startsWith('/api/auth')) {
-        return NextResponse.next();
-      }
+   // API route protection
+   if (request.nextUrl.pathname.startsWith('/api')) {
+     if (request.nextUrl.pathname.startsWith('/api/auth')) {
+       return NextResponse.next();
+     }
 
-      if (!token) {
-        console.error('[Middleware] API Route - Unauthorized access attempt');
-        return new NextResponse(
-          JSON.stringify({ error: "Unauthorized access" }), 
-          { 
-            status: 401,
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-      }
-      
-      // Add user info to request headers for API routes
-      const requestHeaders = new Headers(request.headers);
-      requestHeaders.set('x-user-id', token.sub || '');
-      requestHeaders.set('x-user-email', token.email as string || '');
+     if (!token) {
+       console.error('[Middleware] API Route - Unauthorized access attempt');
+       return new NextResponse(
+         JSON.stringify({ error: "Unauthorized access" }), 
+         { 
+           status: 401,
+           headers: {
+             'Content-Type': 'application/json'
+           }
+         }
+       );
+     }
 
-      return NextResponse.next({
-        headers: requestHeaders,
-      });
-    }
+     const requestHeaders = new Headers(request.headers);
+     requestHeaders.set('x-user-id', token.sub || '');
+     requestHeaders.set('x-user-email', token.email as string || '');
 
-    // Auth page protection
-    if (request.nextUrl.pathname.startsWith('/auth')) {
-      if (token) {
-        console.log('[Middleware] Auth Page - Redirecting authenticated user to dashboard');
-        return NextResponse.redirect(new URL('/dashboard', request.url));
-      }
-      return NextResponse.next();
-    }
+     return NextResponse.next({
+       headers: requestHeaders,
+     });
+   }
 
-    // Dashboard protection
-    if (request.nextUrl.pathname.startsWith('/dashboard')) {
-      if (!token) {
-        console.log('[Middleware] Dashboard - Redirecting unauthenticated user to login');
-        const loginUrl = new URL('/auth/login', request.url);
-        loginUrl.searchParams.set('callbackUrl', request.url);
-        return NextResponse.redirect(loginUrl);
-      }
-      return NextResponse.next();
-    }
+   // Auth page protection
+   if (request.nextUrl.pathname.startsWith('/auth')) {
+     if (token) {
+       return NextResponse.redirect(new URL('/dashboard', request.url));
+     }
+     return NextResponse.next();
+   }
 
-    // Contact page protection
-    if (request.nextUrl.pathname.startsWith('/contacts')) {
-      if (!token) {
-        console.log('[Middleware] Contacts - Redirecting unauthenticated user to login');
-        const loginUrl = new URL('/auth/login', request.url);
-        loginUrl.searchParams.set('callbackUrl', request.url);
-        return NextResponse.redirect(loginUrl);
-      }
-      return NextResponse.next();
-    }
+   // Dashboard protection
+   if (request.nextUrl.pathname.startsWith('/dashboard')) {
+     if (!token) {
+       const loginUrl = new URL('/auth/login', request.url);
+       loginUrl.searchParams.set('callbackUrl', request.url);
+       return NextResponse.redirect(loginUrl);
+     }
+     return NextResponse.next();
+   }
 
-    // Public routes
-    return NextResponse.next();
-  } catch (error) {
-    console.error('[Middleware] Error:', error);
-    
-    // Handle errors gracefully
-    if (request.nextUrl.pathname.startsWith('/api')) {
-      return new NextResponse(
-        JSON.stringify({ error: "Internal server error" }), 
-        { 
-          status: 500,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-    }
-    
-    // Redirect to error page for non-API routes
-    return NextResponse.redirect(new URL('/error', request.url));
-  }
+   // Public routes
+   return NextResponse.next();
+ } catch (error) {
+   console.error('[Middleware] Error:', error);
+   return NextResponse.redirect(new URL('/auth/login', request.url));
+ }
 }
 
 export const config = {
-  matcher: [
-    // Protected API routes
-    '/api/:path*',
-    // Auth pages
-    '/auth/:path*',
-    // Dashboard pages
-    '/dashboard/:path*',
-    // Contact pages
-    "/api/contacts/:path*",
-
-  ],
+ matcher: [
+   '/api/:path*',
+   '/auth/:path*',
+   '/dashboard/:path*',
+ ],
 };
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/store/use-sidebar.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/store/use-sidebar.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -21377,7 +25123,7 @@ export const useSidebar = create<SidebarState>()(
 );
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/types/avatar.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/types/avatar.ts
 import { AvatarProps as RadixAvatarProps } from "@radix-ui/react-avatar"
 
 export interface AvatarProps extends RadixAvatarProps {
@@ -21396,7 +25142,7 @@ export interface AvatarGroupProps {
 }
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/types/contacts/index.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/types/contacts/index.ts
 export interface ContactFormData {
   firstName: string;
   lastName: string;
@@ -21449,7 +25195,7 @@ export interface StatsCardProps {
   };
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/code/buf-crm/src/types/pos/index.ts
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/types/pos/index.ts
 export interface MenuItem {
   id: string;
   name: string;

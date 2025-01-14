@@ -223,3 +223,94 @@ enum OrderStatus {
  CANCELLED
 }
 
+// Scheduling models
+model Staff {
+  id                String            @id @default(auto()) @map("_id") @db.ObjectId
+  email             String            @unique
+  name              String
+  role              StaffRole         @default(BARISTA)
+  certifications    String[]
+  maxHoursPerWeek   Int               @default(40)
+  hourlyRate        Float
+  shifts           ShiftAssignment[]
+  availability     Availability[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model Shift {
+  id            String            @id @default(auto()) @map("_id") @db.ObjectId
+  type          ShiftType
+  startTime     DateTime
+  endTime       DateTime
+  status        ShiftStatus       @default(DRAFT)
+  notes         String?
+  requiredRoles Json              // Array of required roles and counts
+  assignedStaff ShiftAssignment[]
+  breaks        Break[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+model ShiftAssignment {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  shiftId   String   @db.ObjectId
+  staffId   String   @db.ObjectId
+  roleId    String   // This can be a string since it's just an identifier
+  status    String   @default("SCHEDULED") // or use an enum if you prefer
+  shift     Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Break {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  shiftId   String   @db.ObjectId
+  staffId   String   @db.ObjectId
+  startTime DateTime
+  duration  Int      // in minutes
+  shift     Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Availability {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  staffId   String   @db.ObjectId
+  dayOfWeek Int      // 0-6 (Sunday-Saturday)
+  startTime String   // 24h format "HH:mm"
+  endTime   String   // 24h format "HH:mm"
+  recurring Boolean  @default(true)
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum StaffRole {
+  BARISTA
+  SOMMELIER
+  MANAGER
+  EXECUTIVE
+}
+
+enum ShiftType {
+  COFFEE
+  WINE
+}
+
+enum ShiftStatus {
+  DRAFT
+  PUBLISHED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum AssignmentStatus {
+  SCHEDULED
+  CONFIRMED
+  CHECKED_IN
+  COMPLETED
+  NO_SHOW
+}

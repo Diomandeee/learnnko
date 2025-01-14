@@ -11,6 +11,7 @@ import {
   ChevronRight,
   ChevronLeft,
   Coffee,
+  Calendar
 } from "lucide-react";
 
 import { 
@@ -20,6 +21,7 @@ import {
   FaTrash as WasteIcon,
   FaBoxes as InventoryIcon,
   FaCog as SettingsIcon,
+    
 } from "react-icons/fa"; 
 
 import { Button } from "@/components/ui/button";
@@ -82,7 +84,14 @@ const routes = [
     icon: Settings,
     href: "/dashboard/settings",
     color: "text-orange-500"
-  }
+  },
+ 
+ {
+   label: "Scheduling",
+   icon: Calendar,
+   href: "/dashboard/scheduling",
+    color: "text-red-500",
+ },
 ];
 
 export function SideNav() {
