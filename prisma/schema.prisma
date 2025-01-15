@@ -236,6 +236,11 @@ model Staff {
   availability     Availability[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
+  shiftPreferences     Json?  // Store staff scheduling preferences
+  maxShiftsPerWeek    Int     @default(5)
+  preferredShiftLength Int     @default(8)  // in hours
+  preferredDays       Int[]   // 0-6 for days of week
+  blackoutDates       DateTime[]
 }
 
 model Shift {
@@ -256,14 +261,12 @@ model ShiftAssignment {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   shiftId   String   @db.ObjectId
   staffId   String   @db.ObjectId
-  roleId    String   // This can be a string since it's just an identifier
-  status    String   @default("SCHEDULED") // or use an enum if you prefer
+  status    String   @default("SCHEDULED")
   shift     Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
   staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
-
 model Break {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   shiftId   String   @db.ObjectId
@@ -283,6 +286,35 @@ model Availability {
   endTime   String   // 24h format "HH:mm"
   recurring Boolean  @default(true)
   staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+model SchedulingRule {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  
+  // Rule types
+  ruleType    RuleType @default(BASIC)
+  
+  // Rule conditions
+  minStaffPerShift   Int?
+  maxStaffPerShift   Int?
+  requireCertification Boolean @default(false)
+  requiredCertifications String[]
+  
+  // Time constraints
+  minHoursBetweenShifts Int?
+  maxWeeklyHours       Int?
+  preferredDays        Int[] // 0-6 for days of week
+  preferredHours       String[] // ["09:00-17:00", "13:00-21:00"]
+  
+  // Staff requirements
+  roleRequirements Json? // e.g. {"BARISTA": 2, "SOMMELIER": 1}
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -313,4 +345,13 @@ enum AssignmentStatus {
   CHECKED_IN
   COMPLETED
   NO_SHOW
+}
+
+
+enum RuleType {
+  BASIC
+  ADVANCED
+  CERTIFICATION
+  TIME_CONSTRAINT
+  ROLE_BASED
 }

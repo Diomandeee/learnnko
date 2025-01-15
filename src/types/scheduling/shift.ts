@@ -1,53 +1,48 @@
-import { ShiftType, ShiftStatus, AssignmentStatus } from "@prisma/client";
+import { Staff, StaffAssignment } from './staff';
 
 export interface Shift {
-  id: string;
-  startTime: Date;
-  endTime: Date;
-  type: ShiftType;
-  status: ShiftStatus;
-  requiredRoles: RequiredRole[];
-  assignedStaff: StaffAssignment[];
-  breaks: Break[];
-  notes?: string;
-  createdAt: Date;
-  updatedAt: Date;
+ id: string;
+ type: 'COFFEE' | 'WINE';
+ startTime: string;
+ endTime: string;
+ status: ShiftStatus;
+ notes?: string;
+ assignedStaff: StaffAssignment[];
+ breaks: Break[];
+ createdAt: Date;
+ updatedAt: Date;
 }
 
-export interface RequiredRole {
-  roleId: string;
-  name: string;
-  requiredCertifications: string[];
-  minStaffCount: number;
-}
+export type ShiftStatus = 
+ | 'DRAFT'
+ | 'PUBLISHED'
+ | 'IN_PROGRESS'
+ | 'COMPLETED'
+ | 'CANCELLED';
 
 export interface Break {
-  id: string;
-  shiftId: string;
-  staffId: string;
-  startTime: Date;
-  duration: number; // in minutes
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface StaffAssignment {
-  id: string;
-  shiftId: string;
-  staffId: string;
-  roleId: string;
-  status: AssignmentStatus;
-  createdAt: Date;
-  updatedAt: Date;
+ id?: string;
+ shiftId: string;
+ startTime: string;
+ duration: number;
+ createdAt?: Date;
+ updatedAt?: Date;
 }
 
 export interface ShiftTemplate {
-  name: string;
-  type: ShiftType;
-  duration: number; // in minutes
-  requiredRoles: RequiredRole[];
-  defaultBreaks: {
-    timing: number; // minutes from shift start
-    duration: number; // in minutes
-  }[];
+ name: string;
+ type: 'COFFEE' | 'WINE';
+ duration: number;
+ requiredRoles: RequiredRole[];
+ defaultBreaks: {
+   timing: number;
+   duration: number;
+ }[];
+}
+
+export interface RequiredRole {
+ roleId: string;
+ name: string;
+ requiredCertifications: string[];
+ minStaffCount: number;
 }

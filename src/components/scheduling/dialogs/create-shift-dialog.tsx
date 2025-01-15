@@ -1,4 +1,3 @@
-cat > src/components/scheduling/dialogs/create-shift-dialog.tsx << 'EOF'
 "use client";
 
 import { useState } from "react";
@@ -170,4 +169,3 @@ export function CreateShiftDialog({
     </Dialog>
   );
 }
-EOF

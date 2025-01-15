@@ -1,40 +1,34 @@
-import { StaffRole } from "@prisma/client";
-
 export interface Staff {
-  id: string;
-  email: string;
-  name: string;
-  role: StaffRole;
-  certifications: string[];
-  maxHoursPerWeek: number;
-  hourlyRate: number;
-  availability: Availability[];
-  createdAt: Date;
-  updatedAt: Date;
+ id: string;
+ name: string;
+ email: string;
+ role: 'BARISTA' | 'SOMMELIER' | 'MANAGER' | 'EXECUTIVE';
+ certifications: Certification[];
+ availability: Availability[];
+ createdAt: Date;
+ updatedAt: Date;
+}
+
+export interface Certification {
+ id: string;
+ name: string;
+ staffId: string;
 }
 
 export interface Availability {
-  id: string;
-  staffId: string;
-  dayOfWeek: number;
-  startTime: string;
-  endTime: string;
-  recurring: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+ id: string;
+ dayOfWeek: number;
+ startTime: string;
+ endTime: string;
+ recurring: boolean;
+ staffId: string;
 }
 
-export interface StaffSchedule {
-  staff: Staff;
-  weeklyHours: number;
-  assignments: {
-    date: Date;
-    shifts: {
-      id: string;
-      type: string;
-      startTime: Date;
-      endTime: Date;
-      role: string;
-    }[];
-  }[];
+export interface StaffAssignment {
+ id: string;
+ shiftId: string;
+ staffId: string;
+ role: string;
+ staff: Staff;
+ status: 'SCHEDULED' | 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED' | 'NO_SHOW';
 }

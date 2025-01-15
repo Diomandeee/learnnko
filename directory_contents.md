@@ -1,445 +1,3 @@
-### /Users/mohameddiomande/Desktop/bufbarista-crm/.main.py
-import os
-import re
-from typing import List, Optional, TextIO
-from pathlib import Path
-
-class DirectoryTraversal:
-    def __init__(
-        self,
-        root_dir: str,
-        exclude_dirs: Optional[List[str]] = None,
-        exclude_ext: Optional[List[str]] = None,
-        exclude_markdown: Optional[List[str]] = None
-    ):
-        self.root_dir = Path(root_dir)
-        self.exclude_dirs = set(exclude_dirs or [])
-        self.exclude_ext = set(exclude_ext or [])
-        self.exclude_markdown = set(exclude_markdown or [])
-        self.pyc_pattern = re.compile(r".*\.cpython-\d+\.pyc$")
-
-    def _should_exclude(self, path: Path) -> bool:
-        """Check if a path should be excluded based on exclusion rules."""
-        normalized_path = str(path.relative_to(self.root_dir)).replace(os.sep, '/')
-        return (normalized_path in self.exclude_dirs or 
-                path.name in self.exclude_dirs or 
-                self.pyc_pattern.match(path.name) is not None)
-
-    def _should_exclude_from_markdown(self, path: Path) -> bool:
-        """Check if a path should be excluded from markdown documentation."""
-        normalized_path = str(path.relative_to(self.root_dir)).replace(os.sep, '/')
-        return normalized_path in self.exclude_markdown
-
-    def _write_to_markdown(self, file_path: Path, markdown_file: TextIO) -> None:
-        """Write file contents to markdown with proper error handling."""
-        try:
-            content = file_path.read_text(encoding='utf-8')
-            markdown_file.write(f"### {file_path.absolute()}\n")
-            markdown_file.write(f"{content}\n")
-            markdown_file.write("_" * 80 + "\n")
-        except (UnicodeDecodeError, FileNotFoundError) as e:
-            print(f"Skipped file {file_path}: {e}")
-
-    def print_structure(
-        self,
-        current_dir: Optional[Path] = None,
-        prefix: str = "",
-        markdown_file: Optional[TextIO] = None
-    ) -> None:
-        """Print directory structure and optionally write to markdown file."""
-        current_dir = current_dir or self.root_dir
-
-        try:
-            # Get and sort items
-            items = sorted(current_dir.iterdir(), key=lambda p: p.name.lower())
-            
-            for index, item in enumerate(items):
-                if self._should_exclude(item):
-                    continue
-
-                is_last_item = index == len(items) - 1
-                connector = "└──" if is_last_item else "├──"
-                
-                print(f"{prefix}{connector} {item.name}{'/' if item.is_dir() else ''}")
-
-                if item.is_dir():
-                    new_prefix = prefix + ("    " if is_last_item else "│   ")
-                    self.print_structure(item, new_prefix, markdown_file)
-                elif (markdown_file and 
-                      not self._should_exclude_from_markdown(item) and 
-                      not any(item.name.endswith(ext) for ext in self.exclude_ext)):
-                    self._write_to_markdown(item, markdown_file)
-
-        except PermissionError:
-            print(f"Permission denied: {current_dir}")
-
-def main():
-    # Configuration
-    root_directory = "."
-    excluded_directories = [
-        "node_modules", ".next", ".git", "package-lock.json", ".env",
-        "fonts", "public", "favicon.ico", ".DS_Store", "package.json",
-        "README.md", ".gitignore", "tailwind.config.ts", "tsconfig.json",
-        "next.config.mjs", "postcss.config.mjs", "next-env.d.ts",
-        ".eslintrc.json", "setup_auth.sh", "src/components/ui",
-        "src/components/landing", ".dir_struc.py", "crontab.txt",
-        "directory_contents.md", "setup-registration.sh",
-        "setup-qr-landing.sh", "data", "__pycache__"
-    ]
-    excluded_from_markdown = ["src/components/ui"]
-    excluded_extensions = [".ext"]
-
-    traversal = DirectoryTraversal(
-        root_directory,
-        excluded_directories,
-        excluded_extensions,
-        excluded_from_markdown
-    )
-
-    with open('directory_contents.md', 'w', encoding='utf-8') as markdown_file:
-        traversal.print_structure(markdown_file=markdown_file)
-
-if __name__ == "__main__":
-    main()
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/.npmrc
-legacy-peer-deps=true
-strict-peer-dependencies=false
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/next.config.ts
-module.exports = {
-  typescript: {
-    // !! WARN !!
-    // Dangerously allow production builds to successfully complete even if
-    // your project has type errors.
-    // !! WARN !!
-    ignoreBuildErrors: true,
-  },
-}
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/prisma/schema.prisma
-generator client {
- provider = "prisma-client-js"
-}
-
-datasource db {
- provider = "mongodb"
- url      = env("DATABASE_URL")
-}
-
-model User {
- id            String       @id @default(auto()) @map("_id") @db.ObjectId
- email         String      @unique
- name          String?
- password      String
- role          Role        @default(USER)
- contacts      Contact[]
- bio           String?
- phoneNumber   String?
- preferences   Json?
- notifications Json?
- activities    Activity[]
- orders        Order[]
- quickNotes    QuickNote[]
- menuItems     MenuItem[]
- createdAt     DateTime    @default(now())
- updatedAt     DateTime    @updatedAt
- qrCodes       QRCode[]
- folders       Folder[]
-}
-
-model Activity {
- id          String   @id @default(auto()) @map("_id") @db.ObjectId
- userId      String   @db.ObjectId
- user        User     @relation(fields: [userId], references: [id])
- contactId   String   @db.ObjectId
- type        String
- description String
- metadata    Json?
- createdAt   DateTime @default(now())
-}
-
-model Contact {
- id        String   @id @default(auto()) @map("_id") @db.ObjectId
- firstName String
- lastName  String
- email     String
- phone     String?
- company   String?
- notes     String?
- status    Status   @default(NEW)
- userId    String   @db.ObjectId
- user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
- createdAt DateTime @default(now())
- updatedAt DateTime @updatedAt
-}
-
-model MenuItem {
- id          String    @id @default(auto()) @map("_id") @db.ObjectId
- name        String
- price       Float
- category    String
- popular     Boolean   @default(false)
- active      Boolean   @default(true)
- createdAt   DateTime  @default(now())
- updatedAt   DateTime  @updatedAt
- userId      String    @db.ObjectId
- user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
- orderItems  OrderItem[]
-}
-
-model Order {
- id              String    @id @default(auto()) @map("_id") @db.ObjectId
- orderNumber     Int
- customerName    String
- status          OrderStatus @default(PENDING)
- timestamp       DateTime  @default(now())
- total          Float
- isComplimentary Boolean   @default(false)
- queueTime      Float
- preparationTime Float?
- startTime      DateTime?
- customerEmail  String?
- customerPhone  String?
- leadInterest   Boolean?
- notes          String?
- items          OrderItem[]
- userId         String    @db.ObjectId
- user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
- createdAt      DateTime  @default(now())
- updatedAt      DateTime  @updatedAt
-}
-
-model OrderItem {
- id          String    @id @default(auto()) @map("_id") @db.ObjectId
- menuItem    MenuItem  @relation(fields: [menuItemId], references: [id])
- menuItemId  String    @db.ObjectId
- order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
- orderId     String    @db.ObjectId
- quantity    Int
- price       Float
- createdAt   DateTime  @default(now())
- updatedAt   DateTime  @updatedAt
-}
-
-model QuickNote {
- id        String   @id @default(auto()) @map("_id") @db.ObjectId
- content   String
- userId    String   @db.ObjectId
- user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
- createdAt DateTime @default(now())
- updatedAt DateTime @updatedAt
-}
-
-model Folder {
- id        String    @id @default(auto()) @map("_id") @db.ObjectId
- name      String
- color     String?   @default("#94a3b8")
- createdAt DateTime  @default(now())
- updatedAt DateTime  @updatedAt
- qrCodes   QRCode[]
- userId    String    @db.ObjectId
- user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model QRCode {
- id            String         @id @default(auto()) @map("_id") @db.ObjectId
- name          String
- defaultUrl    String
- shortCode     String         @unique
- isActive      Boolean        @default(true)
- createdAt     DateTime       @default(now())
- updatedAt     DateTime       @updatedAt
- userId        String         @db.ObjectId
- user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
- folderId      String?        @db.ObjectId
- folder        Folder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
- deviceRules   DeviceRule[]
- scheduleRules ScheduleRule[]
- design        QRDesign?
- scans         Scan[]
-}
-
-model QRDesign {
- id                  String   @id @default(auto()) @map("_id") @db.ObjectId
- size                Int      @default(300)
- backgroundColor     String   @default("#FFFFFF")
- foregroundColor     String   @default("#000000")
- logoImage          String?
- logoWidth          Int?
- logoHeight         Int?
- dotStyle           String    @default("squares")
- margin             Int       @default(20)
- errorCorrectionLevel String  @default("M")
- style              Json
- logoStyle          Json?
- imageRendering     String    @default("auto")
- qrCodeId           String    @unique @db.ObjectId
- qrCode            QRCode    @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
- createdAt          DateTime  @default(now())
- updatedAt          DateTime  @updatedAt
-}
-
-
-model Scan {
- id          String   @id @default(auto()) @map("_id") @db.ObjectId
- qrCodeId    String   @db.ObjectId
- qrCode      QRCode   @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
- userAgent   String?
- ipAddress   String?
- location    String?
- device      String?
- browser     String?
- os          String?
- timestamp   DateTime @default(now())
-}
-
-model DeviceRule {
- id         String   @id @default(auto()) @map("_id") @db.ObjectId
- qrCodeId   String   @db.ObjectId
- qrCode     QRCode   @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
- deviceType String
- browsers   String[]
- os         String[]
- targetUrl  String
- priority   Int
- createdAt  DateTime @default(now())
- updatedAt  DateTime @updatedAt
-}
-
-model ScheduleRule {
- id         String    @id @default(auto()) @map("_id") @db.ObjectId
- qrCodeId   String    @db.ObjectId
- qrCode     QRCode    @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
- startDate  DateTime
- endDate    DateTime?
- timeZone   String
- daysOfWeek Int[]
- startTime  String?
- endTime    String?
- targetUrl  String
- priority   Int
- createdAt  DateTime  @default(now())
- updatedAt  DateTime  @updatedAt
-}
-
-enum Role {
- USER
- ADMIN
-}
-
-enum Status {
- NEW
- CONTACTED
- QUALIFIED
- CONVERTED
- LOST
-}
-
-enum OrderStatus {
- PENDING
- IN_PROGRESS
- COMPLETED
- CANCELLED
-}
-
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/prisma/seed.ts
-import { PrismaClient } from '@prisma/client';
-import { INITIAL_MENU_ITEMS } from '../src/constants/pos-data';
-
-const prisma = new PrismaClient();
-
-async function main() {
- console.log('Starting seeding...');
-
- // Seed menu items
- for (const item of INITIAL_MENU_ITEMS) {
-   const existingItem = await prisma.menuItem.findFirst({
-     where: {
-       name: item.name,
-     },
-   });
-
-   if (!existingItem) {
-     await prisma.menuItem.create({
-       data: item,
-     });
-     console.log(`Created menu item: ${item.name}`);
-   } else {
-     console.log(`Menu item already exists: ${item.name}`);
-   }
- }
-
- console.log('Seeding finished.');
-}
-
-main()
- .catch((e) => {
-   console.error(e);
-   process.exit(1);
- })
- .finally(async () => {
-   await prisma.$disconnect();
- });
-
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/setup-calculator.sh
-#!/bin/bash
-
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-echo -e "${BLUE}Starting dependency cleanup and reinstallation...${NC}"
-
-# Remove existing node_modules and lock files
-echo -e "${BLUE}Removing existing node_modules and lock files...${NC}"
-rm -rf node_modules
-rm -f package-lock.json
-rm -f yarn.lock
-
-# Clear npm cache
-echo -e "${BLUE}Clearing npm cache...${NC}"
-npm cache clean --force
-
-# Update npm to latest version
-echo -e "${BLUE}Updating npm to latest version...${NC}"
-npm install -g npm@latest
-
-# Create .npmrc file to force legacy peer deps and strict versioning
-echo -e "${BLUE}Creating .npmrc configuration...${NC}"
-cat > .npmrc << EOF
-legacy-peer-deps=true
-strict-peer-dependencies=false
-EOF
-
-# Modify package.json to use specific React version
-echo -e "${BLUE}Updating React dependencies in package.json...${NC}"
-npx json -I -f package.json -e "this.dependencies.react='18.2.0'"
-npx json -I -f package.json -e "this.dependencies['react-dom']='18.2.0'"
-
-# Install dependencies with specific flags
-echo -e "${BLUE}Installing dependencies...${NC}"
-npm install --legacy-peer-deps
-
-# Verify installation
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}Dependencies successfully installed!${NC}"
-    echo -e "${BLUE}Checking React version...${NC}"
-    npm list react react-dom
-else
-    echo -e "${RED}Installation failed. Please check the error messages above.${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}Setup complete! Your React dependencies should now be properly configured.${NC}"
-echo -e "${BLUE}Please test your application to ensure everything works as expected.${NC}"
-________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/auth/[...nextauth]/route.ts
 import { authOptions } from "@/lib/auth/options";
 import NextAuth from "next-auth/next";
@@ -2114,6 +1672,225 @@ export async function GET(
    console.error("[QR_REDIRECT_ERROR]", error)
    return NextResponse.redirect(new URL('/404', request.url))
  }
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/scheduling/shifts/[id]/assignments/route.ts
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { prisma } from "@/lib/db/prisma";
+
+export async function POST(request, { params: { id } }) {
+  try {
+    const session = await getServerSession();
+    if (!session?.user?.email) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const body = await request.json();
+    const { staffId } = body;
+
+    if (!staffId) {
+      return new NextResponse("Staff ID required", { status: 400 });
+    }
+
+    const assignment = await prisma.shiftAssignment.create({
+      data: {
+        staffId,
+        shiftId: id,
+        status: "SCHEDULED"
+      },
+      include: {
+        staff: true
+      }
+    });
+
+    return NextResponse.json(assignment);
+  } catch (error) {
+    return new NextResponse("Failed to assign staff", { status: 500 });
+  }
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/scheduling/shifts/[id]/route.ts
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { prisma } from "@/lib/db/prisma";
+
+export async function PATCH(request, { params: { id } }) {
+  try {
+    const session = await getServerSession();
+    if (!session?.user?.email) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const body = await request.json();
+
+    const shift = await prisma.shift.update({
+      where: { id },
+      data: {
+        ...body,
+        startTime: new Date(body.startTime),
+        endTime: new Date(body.endTime)
+      },
+      include: {
+        assignedStaff: {
+          include: {
+            staff: true
+          }
+        },
+        breaks: true
+      }
+    });
+
+    return NextResponse.json(shift);
+  } catch (error) {
+    return new NextResponse(`Failed to update shift: ${error.message}`, { 
+      status: 500 
+    });
+  }
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/scheduling/shifts/route.ts
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { prisma } from "@/lib/db/prisma";
+
+export async function POST(request) {
+  try {
+    const session = await getServerSession();
+    if (!session?.user?.email) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const body = await request.json();
+
+    if (!body.startTime || !body.endTime || !body.type) {
+      return new NextResponse("Missing required fields", { status: 400 });
+    }
+
+    const shift = await prisma.shift.create({
+      data: {
+        type: body.type,
+        startTime: new Date(body.startTime),
+        endTime: new Date(body.endTime),
+        status: "DRAFT",
+        requiredRoles: body.requiredRoles || [],
+        notes: body.notes
+      },
+      include: {
+        assignedStaff: {
+          include: {
+            staff: true
+          }
+        },
+        breaks: true
+      }
+    });
+
+    return NextResponse.json(shift);
+  } catch (error) {
+    return new NextResponse("Failed to create shift", { status: 500 });
+  }
+}
+
+export async function GET(request) {
+  try {
+    const session = await getServerSession();
+    if (!session?.user?.email) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const shifts = await prisma.shift.findMany({
+      include: {
+        assignedStaff: {
+          include: {
+            staff: true
+          }
+        },
+        breaks: true
+      },
+      orderBy: {
+        startTime: 'asc'
+      }
+    });
+
+    return NextResponse.json(shifts);
+  } catch (error) {
+    return new NextResponse("Failed to fetch shifts", { status: 500 });
+  }
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/scheduling/staff/route.ts
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { prisma } from "@/lib/db/prisma";
+
+export async function GET(request: Request) {
+  try {
+    const session = await getServerSession();
+    if (!session?.user?.email) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const staff = await prisma.staff.findMany({
+      include: {
+        availability: true,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+
+    return NextResponse.json(staff);
+  } catch (error) {
+    console.error("[STAFF_GET]", error);
+    return new NextResponse("Internal error", { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const session = await getServerSession();
+    if (!session?.user?.email) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const body = await request.json();
+
+    // Create staff member with availability
+    const staff = await prisma.staff.create({
+      data: {
+        name: body.name,
+        email: body.email,
+        role: body.role,
+        maxHoursPerWeek: body.maxHoursPerWeek || 40,
+        hourlyRate: body.hourlyRate || 15,
+        certifications: body.certifications || [],
+        availability: {
+          create: body.availability.map((avail: any) => ({
+            dayOfWeek: avail.dayOfWeek,
+            startTime: avail.startTime,
+            endTime: avail.endTime,
+            recurring: avail.recurring || true,
+          })),
+        },
+      },
+      include: {
+        availability: true,
+      },
+    });
+
+    return NextResponse.json(staff);
+  } catch (error) {
+    console.error("[STAFF_POST]", error);
+    return new NextResponse(
+      `Failed to create staff: ${error instanceof Error ? error.message : "Unknown error"}`,
+      { status: 500 }
+    );
+  }
 }
 
 ________________________________________________________________________________
@@ -10269,6 +10046,193 @@ ________________________________________________________________________________
     }
 
 ________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/scheduling/[id]/page.tsx
+import { Metadata } from "next";
+import { StaffCalendar } from "@/components/scheduling/calendar/staff-calendar";
+import { notFound, redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { prisma } from "@/lib/db/prisma";
+
+export const metadata: Metadata = {
+ title: "Staff Schedule | BUF BARISTA CRM",
+ description: "View and manage individual staff schedule",
+};
+
+interface StaffSchedulePageProps {
+ params: { id: string };
+}
+
+export default async function StaffSchedulePage({ params }: StaffSchedulePageProps) {
+ const session = await getServerSession();
+ if (!session) {
+   redirect('/auth/login');
+ }
+
+ const staff = await prisma.staff.findUnique({
+   where: { id: params.id },
+   include: {
+     availability: true,
+   },
+ });
+
+ if (!staff) {
+   notFound();
+ }
+
+ return (
+   <div className="space-y-6 p-8">
+     <div>
+       <h2 className="text-3xl font-bold tracking-tight">{staff.name}'s Schedule</h2>
+       <p className="text-muted-foreground">{staff.role} - {staff.email}</p>
+     </div>
+
+     <div className="grid gap-6">
+       <StaffCalendar staff={staff} />
+     </div>
+   </div>
+ );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/scheduling/page.tsx
+"use client";
+
+import { useState } from "react";
+import { ShiftCalendar } from "@/components/scheduling/calendar/shift-calendar";
+import { StaffList } from "@/components/scheduling/lists/staff-list";
+import { ShiftList } from "@/components/scheduling/lists/shift-list";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { StaffDialog } from "@/components/scheduling/dialogs/staff-dialog";
+import { ShiftDialog } from "@/components/scheduling/dialogs/shift-dialog";
+import { toast } from "@/components/ui/use-toast";
+
+export default function SchedulingPage() {
+  const router = useRouter();
+  const [openStaffDialog, setOpenStaffDialog] = useState(false);
+  const [openShiftDialog, setOpenShiftDialog] = useState(false);
+
+  const handleStaffSubmit = async (data: any) => {
+    try {
+      const response = await fetch("/api/scheduling/staff", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create staff member");
+      }
+
+      toast({
+        title: "Success",
+        description: "Staff member created successfully",
+      });
+      
+      router.refresh();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create staff member",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleShiftSubmit = async (data: any) => {
+    try {
+      const response = await fetch("/api/scheduling/shifts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create shift");
+      }
+
+      toast({
+        title: "Success",
+        description: "Shift created successfully",
+      });
+      
+      router.refresh();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create shift",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <div className="space-y-6 p-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Scheduling</h2>
+          <p className="text-muted-foreground">
+            Manage staff schedules and shift assignments
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <Button onClick={() => setOpenStaffDialog(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Staff
+          </Button>
+          <Button onClick={() => setOpenShiftDialog(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Shift
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid gap-6">
+        <ShiftCalendar />
+
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Staff Directory</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <StaffList />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Upcoming Shifts</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ShiftList />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <StaffDialog
+        open={openStaffDialog}
+        onOpenChange={setOpenStaffDialog}
+        onSubmit={handleStaffSubmit}
+      />
+
+      <ShiftDialog
+        open={openShiftDialog}
+        onOpenChange={setOpenShiftDialog}
+        onSubmit={handleShiftSubmit}
+      />
+    </div>
+  );
+}
+
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/settings/page.tsx
 import { Metadata } from "next";
 import { Separator } from "@/components/ui/separator";
@@ -16474,6 +16438,7 @@ import {
   ChevronRight,
   ChevronLeft,
   Coffee,
+  Calendar
 } from "lucide-react";
 
 import { 
@@ -16483,6 +16448,7 @@ import {
   FaTrash as WasteIcon,
   FaBoxes as InventoryIcon,
   FaCog as SettingsIcon,
+    
 } from "react-icons/fa"; 
 
 import { Button } from "@/components/ui/button";
@@ -16545,7 +16511,14 @@ const routes = [
     icon: Settings,
     href: "/dashboard/settings",
     color: "text-orange-500"
-  }
+  },
+ 
+ {
+   label: "Scheduling",
+   icon: Calendar,
+   href: "/dashboard/scheduling",
+    color: "text-red-500",
+ },
 ];
 
 export function SideNav() {
@@ -22996,6 +22969,314 @@ export default function ContactForm() {
 }
 
 ________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/landing/features.tsx
+import { Check, Coffee, LineChart, Users, Star, Clock } from "lucide-react"
+
+const features = [
+  {
+    name: "Customer Management",
+    description: "Keep track of customer preferences, orders, and loyalty points all in one place.",
+    icon: Users,
+  },
+  {
+    name: "Order Tracking",
+    description: "Monitor orders in real-time and streamline your order fulfillment process.",
+    icon: Coffee,
+  },
+  {
+    name: "Analytics & Insights",
+    description: "Get detailed insights into your business performance with advanced analytics.",
+    icon: LineChart,
+  },
+  {
+    name: "Loyalty Programs",
+    description: "Create and manage customer loyalty programs to increase retention.",
+    icon: Star,
+  },
+  {
+    name: "Real-time Updates",
+    description: "Stay up-to-date with instant notifications and real-time data updates.",
+    icon: Clock,
+  },
+  {
+    name: "Performance Tracking",
+    description: "Monitor staff performance and optimize your operations.",
+    icon: Check,
+  },
+]
+
+export function Features() {
+  return (
+    <section id="features" className="py-24 bg-muted/50">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            Everything You Need to Run Your Coffee Shop
+          </h2>
+          <p className="mt-6 text-lg leading-8 text-muted-foreground">
+            Powerful features designed specifically for coffee shop owners and managers.
+          </p>
+        </div>
+        <div className="mx-auto mt-16 max-w-7xl sm:mt-20 lg:mt-24">
+          <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-10 lg:max-w-none lg:grid-cols-3">
+            {features.map((feature) => (
+              <div key={feature.name} className="relative bg-background rounded-lg p-8 shadow-sm">
+                <dt className="flex items-center gap-x-3 text-base font-semibold leading-7">
+                  <feature.icon className="h-5 w-5 text-primary" aria-hidden="true" />
+                  {feature.name}
+                </dt>
+                <dd className="mt-4 text-base leading-7 text-muted-foreground">
+                  {feature.description}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/landing/hero.tsx
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+
+export function Hero() {
+  return (
+    <section className="relative px-6 py-24 md:py-32 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="relative z-10">
+          <div className="mx-auto max-w-4xl text-center">
+            <h1 className="text-4xl font-bold tracking-tight sm:text-6xl md:text-7xl">
+              Streamline Your Coffee Shop Management
+            </h1>
+            <p className="mt-6 text-xl text-muted-foreground">
+              The all-in-one CRM solution designed specifically for coffee shops. 
+              Manage customers, track orders, and grow your business with ease.
+            </p>
+            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <Link href="/auth/register">
+                <Button size="lg" className="w-full sm:w-auto">
+                  Start Free Trial
+                </Button>
+              </Link>
+              <Link href="#features">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                  Learn More
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute left-[50%] top-0 h-[1000px] w-[1000px] -translate-x-1/2 rounded-full bg-gradient-to-tr from-primary/30 to-primary/10 blur-3xl" />
+      </div>
+    </section>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/landing/pricing.tsx
+import { Check } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+
+const tiers = [
+  {
+    name: "Basic",
+    id: "basic",
+    price: "$29",
+    description: "Perfect for small coffee shops just getting started.",
+    features: [
+      "Up to 500 customer profiles",
+      "Basic order tracking",
+      "Email support",
+      "Basic analytics",
+      "1 staff account",
+    ],
+    featured: false,
+  },
+  {
+    name: "Pro",
+    id: "pro",
+    price: "$79",
+    description: "Ideal for growing coffee shops with multiple staff members.",
+    features: [
+      "Unlimited customer profiles",
+      "Advanced order tracking",
+      "Priority support",
+      "Advanced analytics",
+      "Up to 10 staff accounts",
+      "Loyalty program",
+      "Custom branding",
+    ],
+    featured: true,
+  },
+  {
+    name: "Enterprise",
+    id: "enterprise",
+    price: "Custom",
+    description: "For large coffee shop chains with custom requirements.",
+    features: [
+      "Everything in Pro",
+      "Unlimited staff accounts",
+      "24/7 phone support",
+      "Custom integrations",
+      "Dedicated account manager",
+      "Custom analytics",
+      "Multi-location support",
+    ],
+    featured: false,
+  },
+]
+
+export function Pricing() {
+  return (
+    <section id="pricing" className="py-24">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            Simple, Transparent Pricing
+          </h2>
+          <p className="mt-6 text-lg leading-8 text-muted-foreground">
+            Choose the plan that best fits your coffee shop&apos;s needs.
+          </p>
+        </div>
+        <div className="mx-auto mt-16 grid max-w-lg grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-3">
+          {tiers.map((tier) => (
+            <div
+              key={tier.id}
+              className={cn(
+                "flex flex-col justify-between rounded-3xl bg-background p-8 shadow-sm ring-1 ring-muted xl:p-10",
+                tier.featured && "ring-2 ring-primary"
+              )}
+            >
+              <div>
+                <div className="flex items-center justify-between gap-x-4">
+                  <h3 className="text-lg font-semibold leading-8">{tier.name}</h3>
+                  {tier.featured && (
+                    <p className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold leading-5 text-primary">
+                      Most popular
+                    </p>
+                  )}
+                </div>
+                <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                  {tier.description}
+                </p>
+                <p className="mt-6 flex items-baseline gap-x-1">
+                  <span className="text-4xl font-bold">{tier.price}</span>
+                  {tier.id !== "enterprise" && (
+                    <span className="text-sm font-semibold leading-6">/month</span>
+                  )}
+                </p>
+                <ul role="list" className="mt-8 space-y-3 text-sm leading-6">
+                  {tier.features.map((feature) => (
+                    <li key={feature} className="flex gap-x-3">
+                      <Check className="h-6 w-5 flex-none text-primary" aria-hidden="true" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <Button
+                variant={tier.featured ? "default" : "outline"}
+                className="mt-8"
+                size="lg"
+              >
+                {tier.id === "enterprise" ? "Contact sales" : "Get started"}
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/landing/testimonials.tsx
+import { Star } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+
+const testimonials = [
+  {
+    name: "Sarah Johnson",
+    role: "Owner, The Daily Grind",
+    content: "This CRM has transformed how we manage our coffee shop. The customer tracking and loyalty features are invaluable.",
+    image: "/avatars/sarah.jpg",
+    rating: 5,
+  },
+  {
+    name: "Mike Chen",
+    role: "Manager, Coffee Haven",
+    content: "The analytics tools have helped us make better business decisions. Our customer satisfaction has improved significantly.",
+    image: "/avatars/mike.jpg",
+    rating: 5,
+  },
+  {
+    name: "Emily Rodriguez",
+    role: "Owner, The Coffee Corner",
+    content: "Easy to use and fantastic customer support. It's exactly what our growing coffee shop needed.",
+    image: "/avatars/emily.jpg",
+    rating: 5,
+  },
+]
+
+export function Testimonials() {
+  return (
+    <section className="py-24 bg-muted/50">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            Loved by Coffee Shop Owners
+          </h2>
+          <p className="mt-6 text-lg leading-8 text-muted-foreground">
+            Hear what our customers have to say about their experience.
+          </p>
+        </div>
+        <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-3">
+          {testimonials.map((testimonial) => (
+            <div
+              key={testimonial.name}
+              className="flex flex-col justify-between rounded-2xl bg-background p-8 shadow-sm"
+            >
+              <div>
+                <div className="flex gap-1">
+                  {[...Array(testimonial.rating)].map((_, i) => (
+                    <Star
+                      key={i}
+                      className="h-5 w-5 fill-primary text-primary"
+                      aria-hidden="true"
+                    />
+                  ))}
+                </div>
+                <p className="mt-6 text-base leading-7">{testimonial.content}</p>
+              </div>
+              <div className="mt-8 flex items-center gap-4">
+                <Avatar>
+                  <AvatarImage src={testimonial.image} alt={testimonial.name} />
+                  <AvatarFallback>{testimonial.name[0]}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="text-base font-semibold leading-7">
+                    {testimonial.name}
+                  </h3>
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    {testimonial.role}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/layout/page-container.tsx
 "use client";
 
@@ -23033,6 +23314,2623 @@ export function PageContainer({ children, className }: PageContainerProps) {
       </div>
     </div>
   );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/scheduling/calendar/shift-calendar.tsx
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import { format, startOfWeek, addDays, isSameDay, addWeeks, subWeeks, parseISO, addMinutes } from "date-fns";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { 
+ Calendar, 
+ ChevronLeft, 
+ ChevronRight,
+ Calendar as CalendarIcon,
+ Clock as ClockIcon
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/use-toast";
+import {
+ Tooltip,
+ TooltipContent,
+ TooltipProvider,
+ TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+ Select,
+ SelectContent,
+ SelectItem,
+ SelectTrigger,
+ SelectValue,
+} from "@/components/ui/select";
+import { CreateShiftDialog } from "@/components/scheduling/dialogs/create-shift-dialog";
+import { EditShiftDialog } from "@/components/scheduling/dialogs/edit-shift-dialog";
+
+const HOURS = Array.from({ length: 19 }, (_, i) => i + 6); // 6 AM to 12 AM
+const CELL_HEIGHT = 80; // Height in pixels for each hour cell
+
+const SHIFT_COLORS = {
+ COFFEE: {
+   bg: 'bg-blue-500/90',
+   hover: 'hover:bg-blue-600',
+   text: 'text-white',
+   border: 'border-blue-600'
+ },
+ WINE: {
+   bg: 'bg-purple-500/90',
+   hover: 'hover:bg-purple-600',
+   text: 'text-white',
+   border: 'border-purple-600'
+ },
+};
+
+type ViewType = 'day' | 'week';
+
+interface Break {
+ id?: string;
+ startTime: string;
+ duration: number;
+}
+
+interface Shift {
+ id: string;
+ type: 'COFFEE' | 'WINE';
+ startTime: string;
+ endTime: string;
+ status: string;
+ breaks: Break[];
+ assignedStaff: Array<{
+   staff: {
+     id: string;
+     name: string;
+     email: string;
+   };
+ }>;
+}
+
+export function ShiftCalendar() {
+ const [currentDate, setCurrentDate] = useState(new Date());
+ const [weekStart, setWeekStart] = useState(startOfWeek(currentDate));
+ const [shifts, setShifts] = useState<Shift[]>([]);
+ const [loading, setLoading] = useState(true);
+ const [view, setView] = useState<ViewType>('week');
+ const [createDialogOpen, setCreateDialogOpen] = useState(false);
+ const [editDialogOpen, setEditDialogOpen] = useState(false);
+ const [selectedSlot, setSelectedSlot] = useState<{ date: Date; hour: number } | null>(null);
+ const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
+ const [draggingShift, setDraggingShift] = useState<{ shift: Shift; type: 'move' | 'resize' } | null>(null);
+ const calendarRef = useRef<HTMLDivElement>(null);
+ const { toast } = useToast();
+
+ useEffect(() => {
+   fetchShifts();
+ }, [weekStart]);
+
+ const fetchShifts = async () => {
+   try {
+     const weekEnd = addWeeks(weekStart, 1);
+     const response = await fetch(`/api/scheduling/shifts?startDate=${weekStart.toISOString()}&endDate=${weekEnd.toISOString()}`);
+     if (!response.ok) throw new Error('Failed to fetch shifts');
+     const data = await response.json();
+     setShifts(data);
+   } catch (error) {
+     console.error('Error fetching shifts:', error);
+     toast({
+       title: "Error",
+       description: "Failed to fetch shifts",
+       variant: "destructive",
+     });
+   } finally {
+     setLoading(false);
+   }
+ };
+
+ const handleTimeSlotClick = (date: Date, hour: number) => {
+   setSelectedSlot({ date, hour });
+   setCreateDialogOpen(true);
+ };
+
+ const handleShiftClick = (shift: Shift, e: React.MouseEvent) => {
+   e.stopPropagation();
+   setSelectedShift(shift);
+   setEditDialogOpen(true);
+ };
+
+ const getMousePosition = (e: MouseEvent): number => {
+   const calendarRect = calendarRef.current?.getBoundingClientRect();
+   if (!calendarRect) return 0;
+   return e.clientY - calendarRect.top;
+ };
+
+ const getHourFromPosition = (position: number): number => {
+   return Math.floor(position / CELL_HEIGHT) + 6; // Add 6 to account for starting at 6 AM
+ };
+
+ const handleMouseDown = (shift: Shift, type: 'move' | 'resize', e: React.MouseEvent) => {
+   e.stopPropagation();
+   setDraggingShift({ shift, type });
+   document.addEventListener('mousemove', handleMouseMove);
+   document.addEventListener('mouseup', handleMouseUp);
+ };
+
+ const handleMouseMove = (e: MouseEvent) => {
+   if (!draggingShift) return;
+
+   const position = getMousePosition(e);
+   const hour = getHourFromPosition(position);
+   const minutes = Math.round((position % CELL_HEIGHT) / CELL_HEIGHT * 60);
+   
+   // Update shift times based on drag type
+   const { shift, type } = draggingShift;
+   const shiftDate = new Date(shift.startTime);
+   
+   if (type === 'move') {
+     const duration = new Date(shift.endTime).getTime() - new Date(shift.startTime).getTime();
+     const newStartTime = new Date(shiftDate.setHours(hour, minutes));
+     const newEndTime = new Date(newStartTime.getTime() + duration);
+     
+     // Update shift position visually (you'll need to add state for this)
+     // We'll handle the actual update on mouse up
+   } else if (type === 'resize') {
+     const newEndTime = new Date(shiftDate.setHours(hour, minutes));
+     // Update shift size visually
+   }
+ };
+
+ const handleMouseUp = async () => {
+   if (!draggingShift) return;
+
+   try {
+     // Save the updated shift times
+     // This would be similar to your shift update logic in the edit dialog
+     await updateShift(draggingShift.shift);
+     
+     toast({
+       title: "Success",
+       description: "Shift updated successfully",
+     });
+     
+     fetchShifts();
+   } catch (error) {
+     toast({
+       title: "Error",
+       description: "Failed to update shift",
+       variant: "destructive",
+     });
+   } finally {
+     setDraggingShift(null);
+     document.removeEventListener('mousemove', handleMouseMove);
+     document.removeEventListener('mouseup', handleMouseUp);
+   }
+ };
+
+ const updateShift = async (shift: Shift) => {
+   const response = await fetch(`/api/scheduling/shifts/${shift.id}`, {
+     method: 'PATCH',
+     headers: {
+       'Content-Type': 'application/json',
+     },
+     body: JSON.stringify(shift),
+   });
+
+   if (!response.ok) {
+     throw new Error('Failed to update shift');
+   }
+
+   return response.json();
+ };
+
+ const getAssignedStaffDisplay = (shift: Shift) => {
+   if (!shift.assignedStaff || shift.assignedStaff.length === 0) {
+     return "Unassigned";
+   }
+   return shift.assignedStaff
+     .map(assignment => assignment.staff.name)
+     .join(', ');
+ };
+
+ const calculateOverlappingShifts = (shifts: Shift[]) => {
+   const sortedShifts = [...shifts].sort((a, b) => 
+     new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+   );
+   
+   const overlaps = new Map<string, { count: number; index: number }>();
+   
+   sortedShifts.forEach((shift, index) => {
+     const currentStart = new Date(shift.startTime).getTime();
+     const currentEnd = new Date(shift.endTime).getTime();
+     let overlapCount = 0;
+     let overlapIndex = 0;
+     
+     sortedShifts.forEach((compareShift, compareIndex) => {
+       if (shift.id !== compareShift.id) {
+         const compareStart = new Date(compareShift.startTime).getTime();
+         const compareEnd = new Date(compareShift.endTime).getTime();
+         
+         if (currentStart < compareEnd && currentEnd > compareStart) {
+           overlapCount++;
+           if (compareIndex < index) overlapIndex++;
+         }
+       }
+     });
+     
+     overlaps.set(shift.id, {
+       count: overlapCount,
+       index: overlapIndex
+     });
+   });
+   
+   return overlaps;
+ };
+
+ const getShiftStyles = (shift: Shift, overlaps: Map<string, { count: number; index: number }>) => {
+   const startTime = new Date(shift.startTime);
+   const endTime = new Date(shift.endTime);
+   
+   const startHour = startTime.getHours() + (startTime.getMinutes() / 60) - 6; // Subtract 6 to account for starting at 6 AM
+   const endHour = endTime.getHours() + (endTime.getMinutes() / 60) - 6;
+   const duration = endHour - startHour;
+
+   const overlapInfo = overlaps.get(shift.id) || { count: 0, index: 0 };
+   const totalSlots = overlapInfo.count + 1;
+   const slotWidth = 100 / totalSlots;
+   const leftOffset = (overlapInfo.index * slotWidth) + 5;
+
+   return {
+     position: 'absolute' as const,
+     top: `${startHour * CELL_HEIGHT}px`,
+     height: `${duration * CELL_HEIGHT}px`,
+     left: `${leftOffset}%`,
+     width: `${slotWidth}%`,
+     minHeight: '50px',
+   };
+ };
+
+ const renderBreak = (shift: Shift, breakItem: Break) => {
+   const breakStart = new Date(breakItem.startTime);
+   const breakStartHour = breakStart.getHours() + (breakStart.getMinutes() / 60) - 6;
+   const breakDuration = breakItem.duration / 60; // Convert minutes to hours
+
+   return (
+     <div
+       key={breakItem.id}
+       className="absolute left-0 right-0 bg-yellow-300/30 pointer-events-none"
+       style={{
+         top: `${breakStartHour * CELL_HEIGHT}px`,
+         height: `${breakDuration * CELL_HEIGHT}px`,
+       }}
+     />
+   );
+ };
+
+ const renderShift = (shift: Shift, overlaps: Map<string, { count: number; index: number }>) => {
+   const assignedTo = getAssignedStaffDisplay(shift);
+   const timeDisplay = `${format(new Date(shift.startTime), "h:mm a")} - ${format(new Date(shift.endTime), "h:mm a")}`;
+
+   return (
+     <div
+       key={shift.id}
+       style={getShiftStyles(shift, overlaps)}
+       onClick={(e) => handleShiftClick(shift, e)}
+       className="relative"
+     >
+       <div 
+         className={`
+           absolute top-0 left-0 right-0 bottom-0 rounded-md border p-2 cursor-pointer
+           ${SHIFT_COLORS[shift.type].bg}
+           ${SHIFT_COLORS[shift.type].border}
+           ${SHIFT_COLORS[shift.type].hover}
+           ${SHIFT_COLORS[shift.type].text}
+           transition-all duration-200
+         `}
+         onMouseDown={(e) => handleMouseDown(shift, 'move', e)}
+       >
+         <div className="text-xs font-medium truncate">
+           {timeDisplay}
+         </div>
+         <div className="text-xs font-semibold truncate mt-1">
+           {assignedTo}
+         </div>
+         <div className="text-[10px] opacity-75 truncate mt-1">
+           {shift.type} Service
+         </div>
+         
+         {/* Render breaks */}
+         {shift.breaks?.map(breakItem => renderBreak(shift, breakItem))}
+         
+         {/* Resize handle */}
+         <div
+           className="absolute bottom-0 right-0 w-4 h-4 cursor-ns-resize"
+           onMouseDown={(e) => handleMouseDown(shift, 'resize', e)}
+         />
+       </div>
+     </div>
+   );
+ };
+
+ const navigate = (direction: 'prev' | 'next') => {
+   if (view === 'week') {
+     const newDate = direction === 'prev' 
+       ? subWeeks(weekStart, 1) 
+       : addWeeks(weekStart, 1);
+     setWeekStart(newDate);
+     setCurrentDate(newDate);
+   } else {
+     const newDate = direction === 'prev' 
+       ? addDays(currentDate, -1) 
+       : addDays(currentDate, 1);
+     setCurrentDate(newDate);
+     setWeekStart(startOfWeek(newDate));
+   }
+ };
+
+ const renderTimeGrid = () => {
+   const days = view === 'week' 
+     ? Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+     : [currentDate];
+
+   return (
+     <div className="grid grid-cols-8 gap-px bg-muted rounded-lg overflow-hidden">
+       {/* Time labels column */}
+       <div className="bg-background">
+         <div className="sticky top-0 z-20 bg-background p-2">
+           <span className="text-sm font-medium">Time</span>
+         </div>
+         <div>
+           {HOURS.map((hour) => (
+             <div 
+               key={hour} 
+               style={{ height: `${CELL_HEIGHT}px` }}
+               className="border-t p-1"
+             >
+               <span className="text-xs text-muted-foreground">
+                 {format(new Date().setHours(hour, 0), "ha")}
+               </span>
+             </div>
+           ))}
+         </div>
+       </div>
+
+       {/* Day columns */}
+       {days.map((date) => {
+         const dayShifts = shifts.filter(shift => 
+           isSameDay(new Date(shift.startTime), date)
+         );
+         const overlaps = calculateOverlappingShifts(dayShifts);
+
+         return (
+           <div 
+             key={date.toISOString()}
+             className={cn(
+               "relative bg-background",
+               view === 'day' && "col-span-7"
+             )}
+           >
+             <div className="sticky top-0 z-20 bg-background p-2 text-center border-b">
+               <div className="text-sm font-medium">
+                 {format(date, "EEE")}
+               </div>
+               <div className="text-sm text-muted-foreground">
+{format(date, "MMM d")}
+               </div>
+             </div>
+             
+             <div className="relative">
+               {HOURS.map((hour) => (
+                 <div
+                   key={hour}
+                   style={{ height: `${CELL_HEIGHT}px` }}
+                   className="border-t cursor-pointer hover:bg-accent/50 transition-colors"
+                   onClick={() => handleTimeSlotClick(date, hour)}
+                 />
+               ))}
+               {dayShifts.map((shift) => renderShift(shift, overlaps))}
+             </div>
+           </div>
+         );
+       })}
+     </div>
+   );
+ };
+
+ if (loading) {
+   return (
+     <Card className="p-4">
+       <div className="flex items-center justify-center h-96">
+         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+       </div>
+     </Card>
+   );
+ }
+
+ return (
+   <Card className="p-4">
+     <div className="flex items-center justify-between mb-6">
+       <div className="flex items-center space-x-4">
+         <Button
+           variant="outline"
+           size="icon"
+           onClick={() => navigate('prev')}
+         >
+           <ChevronLeft className="h-4 w-4" />
+         </Button>
+         
+         <div className="text-lg font-semibold min-w-[200px]">
+           {view === 'week' 
+             ? `${format(weekStart, "MMM d")} - ${format(addDays(weekStart, 6), "MMM d, yyyy")}`
+             : format(currentDate, "MMMM d, yyyy")
+           }
+         </div>
+
+         <Button
+           variant="outline"
+           size="icon"
+           onClick={() => navigate('next')}
+         >
+           <ChevronRight className="h-4 w-4" />
+         </Button>
+       </div>
+
+       <div className="flex items-center space-x-6">
+         <Select 
+           value={view} 
+           onValueChange={(value: ViewType) => setView(value)}
+         >
+           <SelectTrigger className="w-[180px]">
+             <SelectValue placeholder="Select view" />
+           </SelectTrigger>
+           <SelectContent>
+             <SelectItem value="day">
+               <div className="flex items-center">
+                 <ClockIcon className="w-4 h-4 mr-2" />
+                 Daily View
+               </div>
+             </SelectItem>
+             <SelectItem value="week">
+               <div className="flex items-center">
+                 <CalendarIcon className="w-4 h-4 mr-2" />
+                 Weekly View
+               </div>
+             </SelectItem>
+           </SelectContent>
+         </Select>
+
+         <div className="flex items-center space-x-4">
+           <div className="flex items-center space-x-2">
+             <div className={`w-3 h-3 rounded ${SHIFT_COLORS.COFFEE.bg}`}></div>
+             <span className="text-sm">Coffee Service</span>
+           </div>
+           <div className="flex items-center space-x-2">
+             <div className={`w-3 h-3 rounded ${SHIFT_COLORS.WINE.bg}`}></div>
+             <span className="text-sm">Wine Service</span>
+           </div>
+           <div className="flex items-center space-x-2">
+             <div className="w-3 h-3 rounded bg-yellow-300/30"></div>
+             <span className="text-sm">Break</span>
+           </div>
+         </div>
+       </div>
+     </div>
+
+     <div className="overflow-auto" ref={calendarRef}>
+       {renderTimeGrid()}
+     </div>
+
+     {selectedSlot && (
+       <CreateShiftDialog
+         open={createDialogOpen}
+         onOpenChange={setCreateDialogOpen}
+         selectedDate={selectedSlot.date}
+         selectedHour={selectedSlot.hour}
+         onShiftCreated={fetchShifts}
+       />
+     )}
+
+     {selectedShift && (
+       <EditShiftDialog
+         open={editDialogOpen}
+         onOpenChange={setEditDialogOpen}
+         shift={selectedShift}
+         onShiftUpdated={fetchShifts}
+         onShiftDeleted={() => {
+           fetchShifts();
+           setEditDialogOpen(false);
+         }}
+       />
+     )}
+   </Card>
+ );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/scheduling/calendar/staff-calendar.tsx
+"use client";
+
+import { useState, useEffect } from "react";
+import { format, startOfWeek, addDays, isSameDay } from "date-fns";
+import { useSchedulingStore } from "@/store/use-scheduling-store";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Staff, Availability } from "@/types/scheduling/staff";
+
+interface StaffCalendarProps {
+ staff: Staff;
+ onAvailabilityChange?: (availability: Availability[]) => void;
+}
+
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+export function StaffCalendar({ staff, onAvailabilityChange }: StaffCalendarProps) {
+ const [selectedDate, setSelectedDate] = useState(new Date());
+ const [weekStart, setWeekStart] = useState(startOfWeek(selectedDate));
+ const { shifts } = useSchedulingStore();
+
+ // Generate week days
+ const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+
+ const navigateWeek = (direction: "prev" | "next") => {
+   const newWeekStart = addDays(weekStart, direction === "prev" ? -7 : 7);
+   setWeekStart(newWeekStart);
+ };
+
+ const getShiftsForDay = (date: Date) => {
+   return shifts.filter((shift) =>
+     isSameDay(new Date(shift.startTime), date) &&
+     shift.assignedStaff.some((assignment) => assignment.staffId === staff.id)
+   );
+ };
+
+ const getAvailabilityForDay = (dayOfWeek: number) => {
+   return staff.availability.filter((a) => a.dayOfWeek === dayOfWeek);
+ };
+
+ const isAvailable = (date: Date, hour: number) => {
+   const availability = getAvailabilityForDay(date.getDay());
+   return availability.some((a) => {
+     const start = parseInt(a.startTime.split(":")[0]);
+     const end = parseInt(a.endTime.split(":")[0]);
+     return hour >= start && hour < end;
+   });
+ };
+
+ return (
+   <Card className="p-4">
+     <div className="flex items-center justify-between mb-4">
+       <h3 className="text-lg font-medium">{staff.name}'s Schedule</h3>
+       <div className="flex items-center space-x-4">
+         <Button
+           variant="outline"
+           size="icon"
+           onClick={() => navigateWeek("prev")}
+         >
+           <ChevronLeft className="h-4 w-4" />
+         </Button>
+         <span className="font-medium">
+           {format(weekStart, "MMM d")} - {format(addDays(weekStart, 6), "MMM d, yyyy")}
+         </span>
+         <Button
+           variant="outline"
+           size="icon"
+           onClick={() => navigateWeek("next")}
+         >
+           <ChevronRight className="h-4 w-4" />
+         </Button>
+       </div>
+     </div>
+
+     <div className="grid grid-cols-8 gap-px bg-muted rounded-lg overflow-hidden">
+       {/* Time labels */}
+       <div className="bg-background">
+         <div className="sticky top-0 z-10 bg-background p-2">
+           <span className="text-sm font-medium">Time</span>
+         </div>
+         <div className="space-y-px">
+           {HOURS.map((hour) => (
+             <div
+               key={hour}
+               className="h-12 border-t p-1"
+             >
+               <span className="text-xs text-muted-foreground">
+                 {format(new Date().setHours(hour, 0), "ha")}
+               </span>
+             </div>
+           ))}
+         </div>
+       </div>
+
+       {/* Days columns */}
+       {weekDays.map((date) => (
+         <div key={date.toISOString()} className="relative bg-background">
+           <div className="sticky top-0 z-10 bg-background p-2 text-center">
+             <span className="text-sm font-medium">
+               {format(date, "EEE")}
+             </span>
+             <br />
+             <span className="text-sm text-muted-foreground">
+               {format(date, "MMM d")}
+             </span>
+           </div>
+           <div className="relative h-[calc(24*3rem)] space-y-px">
+             {HOURS.map((hour) => (
+               <div
+                 key={hour}
+                 className={`h-12 border-t ${
+                   isAvailable(date, hour)
+                     ? "bg-green-50"
+                     : ""
+                 }`}
+               />
+             ))}
+             {getShiftsForDay(date).map((shift) => (
+               <div
+                 key={shift.id}
+                 className="absolute left-0 right-0 mx-1 rounded bg-blue-500 p-1 text-xs text-white"
+                 style={{
+                   top: `${(new Date(shift.startTime).getHours() / 24) * 100}%`,
+                   height: `${((new Date(shift.endTime).getHours() - new Date(shift.startTime).getHours()) / 24) * 100}%`,
+                 }}
+               >
+                 <div className="font-medium">
+                   {format(new Date(shift.startTime), "h:mma")} -{" "}
+                   {format(new Date(shift.endTime), "h:mma")}
+                 </div>
+                 <div className="truncate">
+                   {shift.type} Service
+                 </div>
+               </div>
+             ))}
+           </div>
+         </div>
+       ))}
+     </div>
+   </Card>
+ );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/scheduling/dialogs/assignment-dialog.tsx
+"use client";
+
+import { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Staff, Shift } from "@/types/scheduling";
+import { useToast } from "@/components/ui/use-toast";
+
+interface AssignmentDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  shift: Shift;
+  onAssign: (staffIds: string[]) => Promise<void>;
+}
+
+export function AssignmentDialog({
+  open,
+  onOpenChange,
+  shift,
+  onAssign,
+}: AssignmentDialogProps) {
+  const [loading, setLoading] = useState(false);
+  const [availableStaff, setAvailableStaff] = useState<Staff[]>([]);
+  const [selectedStaff, setSelectedStaff] = useState<string[]>([]);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (open) {
+      fetchAvailableStaff();
+    } else {
+      setSelectedStaff([]); // Reset selections when dialog closes
+    }
+  }, [open]);
+
+  const fetchAvailableStaff = async () => {
+    try {
+      const response = await fetch('/api/scheduling/staff');
+      if (!response.ok) throw new Error('Failed to fetch staff');
+      const staff: Staff[] = await response.json();
+      
+      // Filter out staff already assigned to this shift
+      const assignedStaffIds = shift.assignedStaff.map(a => a.staffId);
+      const availableStaff = staff.filter(s => !assignedStaffIds.includes(s.id));
+      
+      setAvailableStaff(availableStaff);
+    } catch (error) {
+      console.error('Error fetching staff:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch available staff",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAssign = async () => {
+    try {
+      setLoading(true);
+      await onAssign(selectedStaff);
+      setSelectedStaff([]); // Reset selections
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Assignment error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to assign staff to shift",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Assign Staff to Shift</DialogTitle>
+          <DialogDescription>
+            Select staff members to assign to this shift on {new Date(shift.startTime).toLocaleDateString()}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="mt-4">
+          {availableStaff.length === 0 ? (
+            <div className="text-center py-4 text-muted-foreground">
+              No available staff members to assign
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[50px]"></TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Certifications</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {availableStaff.map((staff) => (
+                    <TableRow key={staff.id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedStaff.includes(staff.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedStaff([...selectedStaff, staff.id]);
+                            } else {
+                              setSelectedStaff(selectedStaff.filter(id => id !== staff.id));
+                            }
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>{staff.name}</TableCell>
+                      <TableCell>
+                        <Badge>{staff.role}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {staff.certifications.map((cert) => (
+                            <Badge key={cert} variant="outline">
+                              {cert}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 flex justify-end space-x-2">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleAssign}
+            disabled={loading || selectedStaff.length === 0}
+          >
+            {loading ? "Assigning..." : "Assign Selected Staff"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/scheduling/dialogs/create-shift-dialog.tsx
+"use client";
+
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { format } from "date-fns";
+import { toast } from "@/components/ui/use-toast";
+
+interface CreateShiftDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  selectedDate: Date;
+  selectedHour: number;
+  onShiftCreated: () => void;
+}
+
+export function CreateShiftDialog({
+  open,
+  onOpenChange,
+  selectedDate,
+  selectedHour,
+  onShiftCreated,
+}: CreateShiftDialogProps) {
+  const [startTime, setStartTime] = useState(() => {
+    const date = new Date(selectedDate);
+    date.setHours(selectedHour, 0, 0, 0);
+    return format(date, "HH:mm");
+  });
+  const [duration, setDuration] = useState(4); // Default 4 hours
+  const [shiftType, setShiftType] = useState<'COFFEE' | 'WINE'>('COFFEE');
+  const [loading, setLoading] = useState(false);
+
+  const handleCreate = async () => {
+    try {
+      setLoading(true);
+
+      // Create start time from selected date and time
+      const [hours, minutes] = startTime.split(':').map(Number);
+      const shiftStartTime = new Date(selectedDate);
+      shiftStartTime.setHours(hours, minutes, 0, 0);
+
+      // Calculate end time based on duration
+      const shiftEndTime = new Date(shiftStartTime);
+      shiftEndTime.setHours(shiftStartTime.getHours() + duration);
+
+      const response = await fetch('/api/scheduling/shifts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: shiftType,
+          startTime: shiftStartTime.toISOString(),
+          endTime: shiftEndTime.toISOString(),
+          status: 'DRAFT',
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to create shift');
+
+      toast({
+        title: "Success",
+        description: "Shift created successfully",
+      });
+
+      onShiftCreated();
+      onOpenChange(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create shift",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create New Shift</DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Date</label>
+            <Input
+              value={format(selectedDate, "MMMM d, yyyy")}
+              disabled
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Start Time</label>
+            <Input
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Duration (hours)</label>
+            <Select
+              value={duration.toString()}
+              onValueChange={(value) => setDuration(parseInt(value))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[2, 3, 4, 5, 6, 7, 8].map((hours) => (
+                  <SelectItem key={hours} value={hours.toString()}>
+                    {hours} hours
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Shift Type</label>
+            <Select
+              value={shiftType}
+              onValueChange={(value: 'COFFEE' | 'WINE') => setShiftType(value)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="COFFEE">Coffee Service</SelectItem>
+                <SelectItem value="WINE">Wine Service</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="flex justify-end space-x-2">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleCreate}
+            disabled={loading}
+          >
+            {loading ? "Creating..." : "Create Shift"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/scheduling/dialogs/edit-shift-dialog.tsx
+"use client";
+
+import { useState, useEffect } from "react";
+import {
+ Dialog,
+ DialogContent,
+ DialogHeader,
+ DialogTitle,
+} from "@/components/ui/dialog";
+import {
+ Select,
+ SelectContent,
+ SelectItem,
+ SelectTrigger,
+ SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { format } from "date-fns";
+import { useToast } from "@/components/ui/use-toast";
+import { Trash2, Clock, UserPlus } from "lucide-react";
+import {
+ Table,
+ TableBody,
+ TableCell,
+ TableHead,
+ TableHeader,
+ TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+
+interface Staff {
+ id: string;
+ name: string;
+ email: string;
+ role: string;
+}
+
+interface Break {
+ id?: string;
+ startTime: string;
+ duration: number;
+}
+
+interface EditShiftDialogProps {
+ open: boolean;
+ onOpenChange: (open: boolean) => void;
+ shift: any;
+ onShiftUpdated: () => void;
+ onShiftDeleted: () => void;
+}
+
+export function EditShiftDialog({
+ open,
+ onOpenChange,
+ shift,
+ onShiftUpdated,
+ onShiftDeleted
+}: EditShiftDialogProps) {
+ const [shiftType, setShiftType] = useState(shift.type);
+ const [startTime, setStartTime] = useState(format(new Date(shift.startTime), "HH:mm"));
+ const [endTime, setEndTime] = useState(format(new Date(shift.endTime), "HH:mm"));
+ const [breaks, setBreaks] = useState<Break[]>(shift.breaks || []);
+ const [loading, setLoading] = useState(false);
+ const [availableStaff, setAvailableStaff] = useState<Staff[]>([]);
+ const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
+ const { toast } = useToast();
+
+ useEffect(() => {
+   if (open) {
+     fetchAvailableStaff();
+   }
+ }, [open]);
+
+ const fetchAvailableStaff = async () => {
+   try {
+     const response = await fetch('/api/scheduling/staff');
+     if (!response.ok) throw new Error('Failed to fetch staff');
+     const staff = await response.json();
+     setAvailableStaff(staff);
+   } catch (error) {
+     console.error('Error fetching staff:', error);
+     toast({
+       title: "Error",
+       description: "Failed to fetch available staff",
+       variant: "destructive",
+     });
+   }
+ };
+
+ const handleAddBreak = () => {
+   const shiftStart = new Date(shift.startTime);
+   const newBreak: Break = {
+     startTime: format(new Date(shiftStart).setHours(shiftStart.getHours() + 2), "HH:mm"),
+     duration: 30
+   };
+   setBreaks([...breaks, newBreak]);
+ };
+
+ const handleRemoveBreak = (index: number) => {
+   const newBreaks = [...breaks];
+   newBreaks.splice(index, 1);
+   setBreaks(newBreaks);
+ };
+
+ const handleUpdateBreak = (index: number, field: keyof Break, value: string | number) => {
+   const newBreaks = [...breaks];
+   newBreaks[index] = {
+     ...newBreaks[index],
+     [field]: value
+   };
+   setBreaks(newBreaks);
+ };
+
+ const handleAssignStaff = async () => {
+   if (!selectedStaffId) return;
+
+   try {
+     setLoading(true);
+     const response = await fetch(`/api/scheduling/shifts/${shift.id}/assignments`, {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/json',
+       },
+       body: JSON.stringify({
+         staffId: selectedStaffId,
+       }),
+     });
+
+     if (!response.ok) {
+       const error = await response.text();
+       throw new Error(error);
+     }
+
+     toast({
+       title: "Success",
+       description: "Staff assigned successfully",
+     });
+
+     onShiftUpdated();
+   } catch (error) {
+     console.error('Error assigning staff:', error);
+     toast({
+       title: "Error",
+       description: error instanceof Error ? error.message : "Failed to assign staff",
+       variant: "destructive",
+     });
+   } finally {
+     setLoading(false);
+     setSelectedStaffId(null);
+   }
+ };
+
+ const handleRemoveStaffAssignment = async (staffId: string) => {
+   try {
+     setLoading(true);
+     const response = await fetch(`/api/scheduling/shifts/${shift.id}/assignments?staffId=${staffId}`, {
+       method: 'DELETE',
+     });
+
+     if (!response.ok) throw new Error('Failed to remove staff assignment');
+
+     toast({
+       title: "Success",
+       description: "Staff removed from shift",
+     });
+
+     onShiftUpdated();
+   } catch (error) {
+     console.error('Error removing staff:', error);
+     toast({
+       title: "Error",
+       description: "Failed to remove staff from shift",
+       variant: "destructive",
+     });
+   } finally {
+     setLoading(false);
+   }
+ };
+
+ const handleUpdateShift = async () => {
+   try {
+     setLoading(true);
+     
+     const shiftDate = new Date(shift.startTime);
+     const [startHour, startMinute] = startTime.split(':');
+     const [endHour, endMinute] = endTime.split(':');
+     
+     const newStartTime = new Date(shiftDate);
+     newStartTime.setHours(parseInt(startHour), parseInt(startMinute));
+     
+     const newEndTime = new Date(shiftDate);
+     newEndTime.setHours(parseInt(endHour), parseInt(endMinute));
+
+     const formattedBreaks = breaks.map(breakItem => {
+       const [breakHour, breakMinute] = breakItem.startTime.split(':');
+       const breakDate = new Date(shiftDate);
+       breakDate.setHours(parseInt(breakHour), parseInt(breakMinute));
+       return {
+         ...breakItem,
+         startTime: breakDate.toISOString()
+       };
+     });
+
+     const response = await fetch(`/api/scheduling/shifts/${shift.id}`, {
+       method: 'PATCH',
+       headers: {
+         'Content-Type': 'application/json',
+       },
+       body: JSON.stringify({
+         type: shiftType,
+         startTime: newStartTime.toISOString(),
+         endTime: newEndTime.toISOString(),
+         breaks: formattedBreaks,
+       }),
+     });
+
+     if (!response.ok) throw new Error('Failed to update shift');
+
+     toast({
+       title: "Success",
+       description: "Shift updated successfully",
+     });
+
+     onShiftUpdated();
+     onOpenChange(false);
+   } catch (error) {
+     console.error('Error updating shift:', error);
+     toast({
+       title: "Error",
+       description: "Failed to update shift",
+       variant: "destructive",
+     });
+   } finally {
+     setLoading(false);
+   }
+ };
+
+ const handleDeleteShift = async () => {
+   try {
+     setLoading(true);
+     
+     const response = await fetch(`/api/scheduling/shifts/${shift.id}`, {
+       method: 'DELETE',
+     });
+
+     if (!response.ok) throw new Error('Failed to delete shift');
+
+     toast({
+       title: "Success",
+       description: "Shift deleted successfully",
+     });
+
+     onShiftDeleted();
+     onOpenChange(false);
+   } catch (error) {
+     console.error('Error deleting shift:', error);
+     toast({
+       title: "Error",
+       description: "Failed to delete shift",
+       variant: "destructive",
+     });
+   } finally {
+     setLoading(false);
+   }
+ };
+
+ return (
+   <Dialog open={open} onOpenChange={onOpenChange}>
+     <DialogContent className="max-w-3xl">
+       <DialogHeader>
+         <DialogTitle>Edit Shift</DialogTitle>
+       </DialogHeader>
+       
+       <div className="grid grid-cols-2 gap-8">
+         <div className="space-y-4">
+           <div className="space-y-2">
+             <label className="text-sm font-medium">Date</label>
+             <Input
+               value={format(new Date(shift.startTime), "MMMM d, yyyy")}
+               disabled
+             />
+           </div>
+
+           <div className="grid grid-cols-2 gap-4">
+             <div className="space-y-2">
+               <label className="text-sm font-medium">Start Time</label>
+               <Input
+                 type="time"
+                 value={startTime}
+                 onChange={(e) => setStartTime(e.target.value)}
+               />
+             </div>
+
+             <div className="space-y-2">
+               <label className="text-sm font-medium">End Time</label>
+               <Input
+                 type="time"
+                 value={endTime}
+                 onChange={(e) => setEndTime(e.target.value)}
+               />
+             </div>
+           </div>
+
+           <div className="space-y-2">
+             <label className="text-sm font-medium">Shift Type</label>
+             <Select
+               value={shiftType}
+               onValueChange={(value: 'COFFEE' | 'WINE') => setShiftType(value)}
+             >
+               <SelectTrigger>
+                 <SelectValue />
+               </SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="COFFEE">Coffee Service</SelectItem>
+                 <SelectItem value="WINE">Wine Service</SelectItem>
+               </SelectContent>
+             </Select>
+           </div>
+
+           <div className="space-y-2">
+             <div className="flex items-center justify-between">
+               <label className="text-sm font-medium">Breaks</label>
+               <Button
+                 type="button"
+                 variant="outline"
+                 size="sm"
+                 onClick={handleAddBreak}
+               >
+                 Add Break
+               </Button>
+             </div>
+             
+             <div className="space-y-2">
+               {breaks.map((breakItem, index) => (
+                 <div key={index} className="flex items-center space-x-2 bg-accent/50 p-2 rounded-md">
+                   <Clock className="h-4 w-4 text-muted-foreground" />
+                   <Input
+                     type="time"
+                     value={breakItem.startTime}
+                     onChange={(e) => handleUpdateBreak(index, 'startTime', e.target.value)}
+                     className="w-32"
+                   />
+                   <Select
+                     value={breakItem.duration.toString()}
+                     onValueChange={(value) => handleUpdateBreak(index, 'duration', parseInt(value))}
+                   >
+                     <SelectTrigger className="w-32">
+                       <SelectValue />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="15">15 minutes</SelectItem>
+                       <SelectItem value="30">30 minutes</SelectItem>
+                       <SelectItem value="45">45 minutes</SelectItem>
+                       <SelectItem value="60">60 minutes</SelectItem>
+                     </SelectContent>
+                   </Select>
+                   <Button
+                     type="button"
+                     variant="ghost"
+                     size="sm"
+                     onClick={() => handleRemoveBreak(index)}
+                   >
+                     <Trash2 className="h-4 w-4 text-destructive" />
+                   </Button>
+                 </div>
+               ))}
+             </div>
+           </div>
+         </div>
+
+         <div className="space-y-4">
+           <div className="flex items-center justify-between">
+             <label className="text-sm font-medium">Assigned Staff</label>
+             <div className="flex items-center space-x-2">
+               <Select
+                 value={selectedStaffId || ""}
+                 onValueChange={setSelectedStaffId}
+               >
+                 <SelectTrigger className="w-[200px]">
+                   <SelectValue placeholder="Select staff member" />
+                 </SelectTrigger>
+                 <SelectContent>
+                   {availableStaff.map((staff) => (
+                     <SelectItem key={staff.id} value={staff.id}>
+                       {staff.name}
+                     </SelectItem>
+                   ))}
+                 </SelectContent>
+               </Select>
+               <Button
+                 type="button"
+                 size="sm"
+                 onClick={handleAssignStaff}
+                 disabled={!selectedStaffId || loading}
+               >
+                 <UserPlus className="h-4 w-4" />
+               </Button>
+             </div>
+           </div>
+
+           <div className="border rounded-md">
+             <Table>
+               <TableHeader>
+                 <TableRow>
+                   <TableHead>Name</TableHead>
+                   <TableHead>Role</TableHead>
+                   <TableHead></TableHead>
+                 </TableRow>
+               </TableHeader>
+               <TableBody>
+                 {shift.assignedStaff.length === 0 ? (
+                   <TableRow>
+                     <TableCell
+                       colSpan={3}
+                       className="text-center text-muted-foreground"
+                     >
+                       No staff assigned
+                     </TableCell>
+                   </TableRow>
+                 ) : (
+                   shift.assignedStaff.map((assignment: any) => (
+                     <TableRow key={assignment.id}>
+                       <TableCell>{assignment.staff.name}</TableCell>
+                       <TableCell>
+                         <Badge variant="outline">
+                           {assignment.staff.role}
+                         </Badge>
+                       </TableCell>
+                       <TableCell className="text-right">
+                         <Button
+                           type="button"
+                           variant="ghost"
+                           size="sm"
+                           onClick={() => handleRemoveStaffAssignment(assignment.staff.id)}
+                           disabled={loading}
+                         >
+                           <Trash2 className="h-4 w-4 text-destructive" />
+                         </Button>
+                       </TableCell>
+                     </TableRow>
+                   ))
+                 )}
+               </TableBody>
+             </Table>
+           </div>
+         </div>
+       </div>
+
+       <div className="flex justify-between mt-6">
+         <Button
+           variant="destructive"
+           onClick={handleDeleteShift}
+           disabled={loading}
+         >
+           Delete Shift
+         </Button>
+         <div className="space-x-2">
+           <Button
+             variant="outline"
+             onClick={() => onOpenChange(false)}
+             disabled={loading}
+           >
+             Cancel
+           </Button>
+           <Button
+             onClick={handleUpdateShift}
+             disabled={loading}
+           >
+             {loading ? "Saving..." : "Save Changes"}
+           </Button>
+         </div>
+       </div>
+     </DialogContent>
+   </Dialog>
+ );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/scheduling/dialogs/shift-dialog.tsx
+"use client";
+
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ShiftForm } from "@/components/scheduling/forms/shift-form";
+
+interface ShiftDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  initialData?: any;
+  onSubmit: (data: any) => Promise<void>;
+}
+
+export function ShiftDialog({
+  open,
+  onOpenChange,
+  initialData,
+  onSubmit,
+}: ShiftDialogProps) {
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (data: any) => {
+    try {
+      setLoading(true);
+      await onSubmit(data);
+      onOpenChange(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px] bg-white">
+        <DialogHeader>
+          <DialogTitle>
+            {initialData ? "Edit Shift" : "Create New Shift"}
+          </DialogTitle>
+          <DialogDescription>
+            {initialData
+              ? "Update the shift details below"
+              : "Fill in the shift details below"}
+          </DialogDescription>
+        </DialogHeader>
+        <ShiftForm
+          initialData={initialData}
+          onSubmit={handleSubmit}
+          onCancel={() => onOpenChange(false)}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/scheduling/dialogs/staff-dialog.tsx
+"use client";
+
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { StaffForm } from "@/components/scheduling/forms/staff-form";
+
+interface StaffDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  initialData?: any;
+  onSubmit: (data: any) => Promise<void>;
+}
+
+export function StaffDialog({
+  open,
+  onOpenChange,
+  initialData,
+  onSubmit,
+}: StaffDialogProps) {
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (data: any) => {
+    try {
+      setLoading(true);
+      await onSubmit(data);
+      onOpenChange(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px] bg-white">
+        <DialogHeader>
+          <DialogTitle>
+            {initialData ? "Edit Staff Member" : "Add New Staff Member"}
+          </DialogTitle>
+          <DialogDescription>
+            {initialData
+              ? "Update the staff member details below"
+              : "Fill in the staff member details below"}
+          </DialogDescription>
+        </DialogHeader>
+        <StaffForm
+          initialData={initialData}
+          onSubmit={handleSubmit}
+          onCancel={() => onOpenChange(false)}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/scheduling/forms/shift-form.tsx
+"use client";
+
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { ShiftType } from "@prisma/client";
+import { format } from "date-fns";
+
+const shiftFormSchema = z.object({
+  type: z.enum(['COFFEE', 'WINE']),
+  startTime: z.string(),
+  endTime: z.string(),
+  date: z.date(),
+  requiredRoles: z.array(z.object({
+    roleId: z.string(),
+    name: z.string(),
+    requiredCertifications: z.array(z.string()),
+    minStaffCount: z.number().min(1),
+  })),
+  notes: z.string().optional(),
+});
+
+type ShiftFormValues = z.infer<typeof shiftFormSchema>;
+
+interface ShiftFormProps {
+  initialData?: any;
+  onSubmit: (data: any) => Promise<void>;
+  onCancel: () => void;
+}
+
+export function ShiftForm({ initialData, onSubmit, onCancel }: ShiftFormProps) {
+  const [loading, setLoading] = useState(false);
+
+  const form = useForm<ShiftFormValues>({
+    resolver: zodResolver(shiftFormSchema),
+    defaultValues: initialData || {
+      type: 'COFFEE' as ShiftType,
+      date: new Date(),
+      startTime: format(new Date(), 'HH:mm'),
+      endTime: format(new Date(), 'HH:mm'),
+      requiredRoles: [],
+      notes: '',
+    },
+  });
+
+  const handleSubmit = async (data: ShiftFormValues) => {
+    try {
+      setLoading(true);
+      // Combine date and time for startTime and endTime
+      const [startHour, startMinute] = data.startTime.split(':');
+      const [endHour, endMinute] = data.endTime.split(':');
+      
+      const startTime = new Date(data.date);
+      startTime.setHours(parseInt(startHour), parseInt(startMinute));
+      
+      const endTime = new Date(data.date);
+      endTime.setHours(parseInt(endHour), parseInt(endMinute));
+
+      const shiftData = {
+        ...data,
+        startTime,
+        endTime,
+      };
+
+      await onSubmit(shiftData);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="type"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Shift Type</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+                disabled={loading}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select shift type" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="COFFEE">Coffee Service</SelectItem>
+                  <SelectItem value="WINE">Wine Service</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-3 gap-4">
+          <FormField
+            control={form.control}
+            name="date"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Date</FormLabel>
+                <FormControl>
+                  <Input
+                    type="date"
+                    value={format(field.value, 'yyyy-MM-dd')}
+                    onChange={e => field.onChange(new Date(e.target.value))}
+                    disabled={loading}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="startTime"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Start Time</FormLabel>
+                <FormControl>
+                  <Input
+                    type="time"
+                    {...field}
+                    disabled={loading}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="endTime"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>End Time</FormLabel>
+                <FormControl>
+                  <Input
+                    type="time"
+                    {...field}
+                    disabled={loading}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <FormField
+          control={form.control}
+          name="notes"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Notes</FormLabel>
+              <FormControl>
+                <Textarea
+                  {...field}
+                  disabled={loading}
+                  placeholder="Add any additional notes about this shift..."
+                  className="h-32"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="flex justify-end space-x-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? "Saving..." : initialData ? "Update Shift" : "Create Shift"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/scheduling/forms/staff-form.tsx
+"use client";
+
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  FormDescription,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { StaffRole } from "@prisma/client";
+
+const staffFormSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email address"),
+  role: z.enum(["BARISTA", "SOMMELIER", "MANAGER", "EXECUTIVE"]),
+  certifications: z.array(z.string()),
+  maxHoursPerWeek: z.number().min(1).max(40),
+  hourlyRate: z.number().min(1),
+  availability: z.array(z.object({
+    dayOfWeek: z.number(),
+    startTime: z.string(),
+    endTime: z.string(),
+    recurring: z.boolean(),
+  })),
+});
+
+type FormValues = z.infer<typeof staffFormSchema>;
+
+interface StaffFormProps {
+  initialData?: any;
+  onSubmit: (data: any) => Promise<void>;
+  onCancel: () => void;
+}
+
+const CERTIFICATIONS = [
+  "Barista Level 1",
+  "Barista Level 2",
+  "Wine Service Level 1",
+  "Wine Service Level 2",
+  "Food Safety",
+  "First Aid",
+];
+
+const DAYS_OF_WEEK = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+export function StaffForm({ initialData, onSubmit, onCancel }: StaffFormProps) {
+  const [loading, setLoading] = useState(false);
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(staffFormSchema),
+    defaultValues: initialData || {
+      name: "",
+      email: "",
+      role: "BARISTA",
+      certifications: [],
+      maxHoursPerWeek: 40,
+      hourlyRate: 15,
+      availability: DAYS_OF_WEEK.map((_, index) => ({
+        dayOfWeek: index,
+        startTime: "09:00",
+        endTime: "17:00",
+        recurring: true,
+      })),
+    },
+  });
+
+  const handleSubmit = async (values: FormValues) => {
+    try {
+      setLoading(true);
+      await onSubmit(values);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Name</FormLabel>
+                <FormControl>
+                  <Input 
+                    placeholder="John Doe"
+                    {...field}
+                    disabled={loading}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input 
+                    type="email"
+                    placeholder="john@example.com"
+                    {...field}
+                    disabled={loading}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="role"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Role</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {Object.values(StaffRole).map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {role}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="maxHoursPerWeek"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Maximum Hours per Week</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    {...field}
+                    onChange={(e) => field.onChange(parseInt(e.target.value))}
+                    disabled={loading}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <FormField
+          control={form.control}
+          name="hourlyRate"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Hourly Rate ($)</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  step="0.01"
+                  {...field}
+                  onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                  disabled={loading}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="certifications"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Certifications</FormLabel>
+              <div className="grid grid-cols-2 gap-4">
+                {CERTIFICATIONS.map((cert) => (
+                  <div key={cert} className="flex items-center space-x-2">
+                    <Checkbox
+                      checked={field.value?.includes(cert)}
+                      onCheckedChange={(checked) => {
+                        const newValue = checked
+                          ? [...(field.value || []), cert]
+                          : field.value?.filter((c) => c !== cert) || [];
+                        field.onChange(newValue);
+                      }}
+                      disabled={loading}
+                    />
+                    <span className="text-sm">{cert}</span>
+                  </div>
+                ))}
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="space-y-4">
+          <h3 className="font-medium">Availability</h3>
+          {DAYS_OF_WEEK.map((day, index) => (
+            <div key={day} className="grid grid-cols-3 gap-4 items-center">
+              <div className="text-sm font-medium">{day}</div>
+              <FormField
+                control={form.control}
+                name={`availability.${index}.startTime`}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        type="time"
+                        {...field}
+                        disabled={loading}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name={`availability.${index}.endTime`}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        type="time"
+                        {...field}
+                        disabled={loading}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          ))}
+        </div>
+
+        <div className="flex justify-end space-x-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? "Saving..." : initialData ? "Update Staff" : "Add Staff"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/scheduling/lists/shift-list.tsx
+"use client";
+
+import { useState, useEffect } from "react";
+import { format } from "date-fns";
+import { Shift } from "@/types/scheduling";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { MoreHorizontal, Edit, Trash2, UserPlus } from "lucide-react";
+import { ShiftType, ShiftStatus } from "@prisma/client";
+import { useToast } from "@/components/ui/use-toast";
+import { AssignmentDialog } from "@/components/scheduling/dialogs/assignment-dialog";
+
+const getShiftTypeColor = (type: ShiftType) => {
+  return type === "COFFEE" ? "blue" : "purple";
+};
+
+const getStatusColor = (status: ShiftStatus) => {
+  switch (status) {
+    case "DRAFT":
+      return "gray";
+    case "PUBLISHED":
+      return "green";
+    case "IN_PROGRESS":
+      return "blue";
+    case "COMPLETED":
+      return "purple";
+    default:
+      return "gray";
+  }
+};
+
+export function ShiftList() {
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
+  const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchShifts();
+  }, []);
+
+  const fetchShifts = async () => {
+    try {
+      const response = await fetch('/api/scheduling/shifts');
+      if (response.ok) {
+        const data = await response.json();
+        setShifts(data);
+      }
+    } catch (error) {
+      console.error('Error fetching shifts:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch shifts",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAssignStaff = async (staffIds: string[]) => {
+    if (!selectedShift) return;
+
+    try {
+      const responses = await Promise.all(
+        staffIds.map((staffId) =>
+          fetch(`/api/scheduling/shifts/${selectedShift.id}/assignments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ staffId, roleId: selectedShift.requiredRoles[0]?.roleId }),
+          })
+        )
+      );
+
+      if (responses.every(r => r.ok)) {
+        toast({
+          title: "Success",
+          description: "Staff assigned successfully",
+        });
+        fetchShifts(); // Refresh the shifts list
+      } else {
+        throw new Error("Failed to assign one or more staff members");
+      }
+    } catch (error) {
+      console.error('Error assigning staff:', error);
+      toast({
+        title: "Error",
+        description: "Failed to assign staff",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async (shiftId: string) => {
+    try {
+      const response = await fetch(`/api/scheduling/shifts/${shiftId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Shift deleted successfully",
+        });
+        fetchShifts(); // Refresh the shifts list
+      } else {
+        throw new Error("Failed to delete shift");
+      }
+    } catch (error) {
+      console.error('Error deleting shift:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete shift",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="space-y-4">
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Time</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Staff</TableHead>
+                <TableHead className="w-[100px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {shifts.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    No shifts found. Create your first shift to get started.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                shifts.map((shift) => (
+                  <TableRow key={shift.id}>
+                    <TableCell>
+                      {format(new Date(shift.startTime), "MMM d, yyyy")}
+                    </TableCell>
+                    <TableCell>
+                      {format(new Date(shift.startTime), "h:mm a")} -{" "}
+                      {format(new Date(shift.endTime), "h:mm a")}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getShiftTypeColor(shift.type)}>
+                        {shift.type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusColor(shift.status)}>
+                        {shift.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{shift.assignedStaff.length} assigned</TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedShift(shift);
+                              setAssignmentDialogOpen(true);
+                            }}
+                          >
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            Assign Staff
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={() => handleDelete(shift.id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Shift
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      {selectedShift && (
+        <AssignmentDialog
+          open={assignmentDialogOpen}
+          onOpenChange={setAssignmentDialogOpen}
+          shift={selectedShift}
+          onAssign={handleAssignStaff}
+        />
+      )}
+    </>
+  );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/scheduling/lists/staff-list.tsx
+"use client";
+
+import { Staff } from "@/types/scheduling/staff";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { MoreHorizontal, Edit, Trash2, Calendar } from "lucide-react";
+import { StaffRole } from "@prisma/client";
+import { useState, useEffect } from "react";
+
+interface StaffListProps {
+  onEdit?: (staff: Staff) => void;
+  onDelete?: (staffId: string) => void;
+  onViewSchedule?: (staffId: string) => void;
+}
+
+const getRoleColor = (role: StaffRole) => {
+  switch (role) {
+    case 'BARISTA':
+      return 'blue';
+    case 'SOMMELIER':
+      return 'purple';
+    case 'MANAGER':
+      return 'green';
+    case 'EXECUTIVE':
+      return 'orange';
+    default:
+      return 'gray';
+  }
+};
+
+export function StaffList({ onEdit, onDelete, onViewSchedule }: StaffListProps) {
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStaff = async () => {
+      try {
+        const response = await fetch('/api/scheduling/staff');
+        if (response.ok) {
+          const data = await response.json();
+          setStaff(data);
+        }
+      } catch (error) {
+        console.error('Error fetching staff:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStaff();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Certifications</TableHead>
+              <TableHead>Max Hours</TableHead>
+              <TableHead className="w-[100px]"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {staff.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-8">
+                  No staff members found. Add your first staff member to get started.
+                </TableCell>
+              </TableRow>
+            ) : (
+              staff.map((member) => (
+                <TableRow key={member.id}>
+                  <TableCell className="font-medium">
+                    {member.name}
+                    <div className="text-sm text-muted-foreground">
+                      {member.email}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={getRoleColor(member.role)}>
+                      {member.role}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {member.certifications.map((cert) => (
+                        <Badge key={cert} variant="outline">
+                          {cert}
+                        </Badge>
+                      ))}
+                    </div>
+                  </TableCell>
+                  <TableCell>{member.maxHoursPerWeek}h/week</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onSelect={() => onEdit?.(member)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit Staff
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={() => onViewSchedule?.(member.id)}
+                        >
+                          <Calendar className="mr-2 h-4 w-4" />
+                          View Schedule
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-red-600"
+                          onSelect={() => onDelete?.(member.id)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete Staff
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/scheduling/shared/shift-card.tsx
+"use client";
+
+import { format } from "date-fns";
+import { Shift } from "@/types/scheduling/shift";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Clock, Users, AlertCircle } from "lucide-react";
+
+interface ShiftCardProps {
+ shift: Shift;
+ onClick?: () => void;
+}
+
+export function ShiftCard({ shift, onClick }: ShiftCardProps) {
+ const staffingComplete = shift.requiredRoles.every(
+   role => {
+     const assigned = shift.assignedStaff.filter(
+       a => a.roleId === role.roleId
+     ).length;
+     return assigned >= role.minStaffCount;
+   }
+ );
+
+ return (
+   <Card
+     className={`cursor-pointer transition-shadow hover:shadow-md ${
+       !staffingComplete ? 'border-yellow-500' : ''
+     }`}
+     onClick={onClick}
+   >
+     <CardHeader className="pb-2">
+       <div className="flex items-center justify-between">
+         <Badge
+           variant={shift.type === 'COFFEE' ? 'default' : 'secondary'}
+         >
+           {shift.type}
+         </Badge>
+         <Badge
+           variant={staffingComplete ? 'success' : 'warning'}
+         >
+           {staffingComplete ? 'Fully Staffed' : 'Needs Staff'}
+         </Badge>
+       </div>
+       <CardTitle className="text-lg">
+         {format(new Date(shift.startTime), "MMM d, yyyy")}
+       </CardTitle>
+     </CardHeader>
+     <CardContent>
+       <div className="space-y-2">
+         <div className="flex items-center text-sm text-muted-foreground">
+           <Clock className="mr-2 h-4 w-4" />
+           {format(new Date(shift.startTime), "h:mm a")} -{" "}
+           {format(new Date(shift.endTime), "h:mm a")}
+         </div>
+         <div className="flex items-center text-sm text-muted-foreground">
+           <Users className="mr-2 h-4 w-4" />
+           {shift.assignedStaff.length} staff assigned
+         </div>
+         {!staffingComplete && (
+           <div className="flex items-center text-sm text-yellow-600">
+             <AlertCircle className="mr-2 h-4 w-4" />
+             Staffing incomplete
+           </div>
+         )}
+         {shift.notes && (
+           <div className="mt-2 text-sm text-muted-foreground">
+             {shift.notes}
+           </div>
+         )}
+       </div>
+     </CardContent>
+   </Card>
+ );
 }
 
 ________________________________________________________________________________
@@ -23707,6 +26605,2376 @@ export function ProfileForm() {
     </Card>
   );
 }
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/accordion.tsx
+"use client"
+
+import * as React from "react"
+import * as AccordionPrimitive from "@radix-ui/react-accordion"
+import { ChevronDown } from "lucide-react"
+import { cn } from "@/lib/utils"
+
+const Accordion = AccordionPrimitive.Root
+
+const AccordionItem = React.forwardRef<
+  React.ElementRef<typeof AccordionPrimitive.Item>,
+  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Item>
+>(({ className, ...props }, ref) => (
+  <AccordionPrimitive.Item
+    ref={ref}
+    className={cn("border-b", className)}
+    {...props}
+  />
+))
+AccordionItem.displayName = AccordionPrimitive.Item.displayName || "AccordionItem"
+
+const AccordionTrigger = React.forwardRef<
+  React.ElementRef<typeof AccordionPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
+>(({ className, children, ...props }, ref) => (
+  <AccordionPrimitive.Header className="flex">
+    <AccordionPrimitive.Trigger
+      ref={ref}
+      className={cn(
+        "flex flex-1 items-center justify-between py-4 text-sm font-medium transition-all hover:text-primary [&[data-state=open]>svg]:rotate-180",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200" />
+    </AccordionPrimitive.Trigger>
+  </AccordionPrimitive.Header>
+))
+AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName || "AccordionTrigger"
+
+const AccordionContent = React.forwardRef<
+  React.ElementRef<typeof AccordionPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <AccordionPrimitive.Content
+    ref={ref}
+    className={cn(
+      "overflow-hidden text-sm data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down",
+      className
+    )}
+    {...props}
+  >
+    <div className={cn("pb-4 pt-0", className)}>{children}</div>
+  </AccordionPrimitive.Content>
+))
+AccordionContent.displayName = AccordionPrimitive.Content.displayName || "AccordionContent"
+
+export { Accordion, AccordionItem, AccordionTrigger, AccordionContent }
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/alert.tsx
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+import { cn } from "@/lib/utils"
+
+// Define alert variants using `cva`
+const alertVariants = cva(
+  "relative w-full rounded-lg border px-4 py-3 text-sm [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg~*]:pl-7",
+  {
+    variants: {
+      variant: {
+        default: "bg-background text-foreground",
+        destructive: "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
+// Alert component with variant support
+const Alert = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants>>(
+  ({ className, variant, ...props }, ref) => (
+    <div
+      ref={ref}
+      role="alert"
+      className={cn(alertVariants({ variant }), className)}
+      {...props}
+    />
+  )
+)
+Alert.displayName = "Alert"
+
+// AlertTitle component
+const AlertTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
+  ({ className, ...props }, ref) => (
+    <h5
+      ref={ref}
+      className={cn("mb-1 font-medium leading-none tracking-tight", className)}
+      {...props}
+    />
+  )
+)
+AlertTitle.displayName = "AlertTitle"
+
+// AlertDescription component
+const AlertDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn("text-sm [&_p]:leading-relaxed", className)}
+      {...props}
+    />
+  )
+)
+AlertDescription.displayName = "AlertDescription"
+
+export { Alert, AlertTitle, AlertDescription }
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/avatar.tsx
+"use client"
+
+import * as React from "react"
+import * as AvatarPrimitive from "@radix-ui/react-avatar"
+
+import { cn } from "@/lib/utils"
+
+const Avatar = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Root
+    ref={ref}
+    className={cn(
+      "relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full",
+      className
+    )}
+    {...props}
+  />
+))
+Avatar.displayName = AvatarPrimitive.Root.displayName
+
+const AvatarImage = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Image>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Image
+    ref={ref}
+    className={cn("aspect-square h-full w-full", className)}
+    {...props}
+  />
+))
+AvatarImage.displayName = AvatarPrimitive.Image.displayName
+
+const AvatarFallback = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Fallback>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Fallback
+    ref={ref}
+    className={cn(
+      "flex h-full w-full items-center justify-center rounded-full bg-muted",
+      className
+    )}
+    {...props}
+  />
+))
+AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName
+
+export { Avatar, AvatarImage, AvatarFallback }
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/badge.tsx
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const badgeVariants = cva(
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default:
+          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+        secondary:
+          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        destructive:
+          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+        outline: "text-foreground",
+        success: 
+          "border-transparent bg-green-500 text-white hover:bg-green-500/80",
+        warning:
+          "border-transparent bg-yellow-500 text-white hover:bg-yellow-500/80",
+        info:
+          "border-transparent bg-blue-500 text-white hover:bg-blue-500/80",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
+export interface BadgeProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof badgeVariants> {}
+
+function Badge({ className, variant, ...props }: BadgeProps) {
+  return (
+    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+  )
+}
+
+export { Badge, badgeVariants }
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/button.tsx
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
+import { cva, type VariantProps } from "class-variance-authority"
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        outline: "border border-input hover:bg-accent hover:text-accent-foreground",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "underline-offset-4 hover:underline text-primary",
+        success: "bg-success text-success-foreground hover:bg-success/90",
+        warning: "bg-warning text-warning-foreground hover:bg-warning/90",
+        info: "bg-info text-info-foreground hover:bg-info/90",
+        glass: "bg-background/80 backdrop-blur-sm border hover:bg-background/90",
+      },
+      size: {
+        default: "h-10 py-2 px-4",
+        sm: "h-9 px-3 rounded-md",
+        lg: "h-11 px-8 rounded-md",
+        icon: "h-10 w-10",
+      },
+      animation: {
+        none: "",
+        pulse: "animate-pulse",
+        bounce: "animate-bounce",
+      }
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+      animation: "none",
+    },
+  }
+)
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean
+  loading?: boolean
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, animation, asChild = false, loading = false, children, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button"
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, animation }), className)}
+        ref={ref}
+        {...props}
+        disabled={loading || props.disabled}
+      >
+        {loading ? (
+          <div className="flex items-center">
+            <svg
+              className="animate-spin -ml-1 mr-3 h-4 w-4"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
+            </svg>
+            Processing...
+          </div>
+        ) : (
+          children
+        )}
+      </Comp>
+    )
+  }
+)
+Button.displayName = "Button"
+
+export { Button, buttonVariants }
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/calendar.tsx
+"use client"
+
+import * as React from "react"
+import { DayPicker } from "react-day-picker"
+import { cn } from "@/lib/utils"
+import { buttonVariants } from "@/components/ui/button"
+
+export type CalendarProps = React.ComponentProps<typeof DayPicker>
+
+function Calendar({
+  className,
+  classNames,
+  showOutsideDays = true,
+  ...props
+}: CalendarProps) {
+  return (
+    <DayPicker
+      showOutsideDays={showOutsideDays}
+      className={cn("p-3", className)}
+      classNames={{
+        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+        month: "space-y-4",
+        caption: "flex justify-center pt-1 relative items-center",
+        caption_label: "text-sm font-medium",
+        nav: "space-x-1 flex items-center",
+        nav_button: cn(
+          buttonVariants({ variant: "outline" }),
+          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
+        ),
+        nav_button_previous: "absolute left-1",
+        nav_button_next: "absolute right-1",
+        table: "w-full border-collapse space-y-1",
+        head_row: "flex",
+        head_cell:
+          "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
+        row: "flex w-full mt-2",
+        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+        day: cn(
+          buttonVariants({ variant: "ghost" }),
+          "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
+        ),
+        day_range_end: "day-range-end",
+        day_selected:
+          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+        day_today: "bg-accent text-accent-foreground",
+        day_outside:
+          "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
+        day_disabled: "text-muted-foreground opacity-50",
+        day_range_middle:
+          "aria-selected:bg-accent aria-selected:text-accent-foreground",
+        day_hidden: "invisible",
+        ...classNames,
+      }}
+      components={{
+ 
+      }}
+      {...props}
+    />
+  )
+}
+Calendar.displayName = "Calendar"
+
+export { Calendar }
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/card.tsx
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
+
+const cardVariants = cva(
+  "rounded-lg border bg-card text-card-foreground shadow-sm transition-all duration-200",
+  {
+    variants: {
+      variant: {
+        default: "hover:shadow-md",
+        ghost: "border-none shadow-none hover:bg-accent/50",
+        elevated: "shadow-md hover:shadow-lg hover:-translate-y-0.5",
+        interactive: "cursor-pointer hover:shadow-md hover:-translate-y-0.5 active:translate-y-0",
+      },
+      size: {
+        default: "p-6",
+        sm: "p-4",
+        lg: "p-8",
+      }
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+);
+
+export interface CardProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof cardVariants> {}
+
+const Card = React.forwardRef<HTMLDivElement, CardProps>(
+  ({ className, variant, size, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(cardVariants({ variant, size }), className)}
+      {...props}
+    />
+  )
+);
+Card.displayName = "Card";
+
+const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn("flex flex-col space-y-1.5", className)}
+      {...props}
+    />
+  )
+);
+CardHeader.displayName = "CardHeader";
+
+const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
+  ({ className, ...props }, ref) => (
+    <h3
+      ref={ref}
+      className={cn("text-lg font-semibold leading-none tracking-tight", className)}
+      {...props}
+    />
+  )
+);
+CardTitle.displayName = "CardTitle";
+
+const CardDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => (
+  <p
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+));
+CardDescription.displayName = "CardDescription";
+
+const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn("pt-0", className)} {...props} />
+  )
+);
+CardContent.displayName = "CardContent";
+
+const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn("flex items-center pt-4", className)}
+      {...props}
+    />
+  )
+);
+CardFooter.displayName = "CardFooter";
+
+export {
+  Card,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardDescription,
+  CardContent,
+};
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/checkbox.tsx
+"use client"
+
+import * as React from "react"
+import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
+import { Check } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+const Checkbox = React.forwardRef<
+  React.ElementRef<typeof CheckboxPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>
+>(({ className, ...props }, ref) => (
+  <CheckboxPrimitive.Root
+    ref={ref}
+    className={cn(
+      "peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      "disabled:cursor-not-allowed disabled:opacity-50",
+      "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
+      className
+    )}
+    {...props}
+  >
+    <CheckboxPrimitive.Indicator
+      className={cn("flex items-center justify-center text-current")}
+    >
+      <Check className="h-4 w-4" />
+    </CheckboxPrimitive.Indicator>
+  </CheckboxPrimitive.Root>
+))
+Checkbox.displayName = CheckboxPrimitive.Root.displayName
+
+export { Checkbox }
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/color-picker.tsx
+"use client"
+
+import * as React from "react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { ChromePicker, ColorResult } from 'react-color'
+
+interface ColorPickerProps {
+  color: string
+  onChange: (color: string) => void
+}
+
+export function ColorPicker({ color, onChange }: ColorPickerProps) {
+  const [isOpen, setIsOpen] = React.useState(false)
+
+  const handleChange = (color: ColorResult) => {
+    onChange(color.hex)
+  }
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <div
+          className="h-10 rounded-md border cursor-pointer"
+          style={{ backgroundColor: color }}
+        />
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0 border-none">
+        <ChromePicker
+          color={color}
+          onChange={handleChange}
+          disableAlpha
+        />
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/container.tsx
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+import { cn } from "@/lib/utils"
+
+const containerVariants = cva(
+  "mx-auto px-4 sm:px-6 lg:px-8",
+  {
+    variants: {
+      maxWidth: {
+        default: "max-w-7xl",
+        sm: "max-w-screen-sm",
+        md: "max-w-screen-md",
+        lg: "max-w-screen-lg",
+        xl: "max-w-screen-xl",
+        full: "max-w-full",
+      },
+      padding: {
+        default: "py-4",
+        none: "py-0",
+        sm: "py-2",
+        lg: "py-8",
+        xl: "py-12",
+      }
+    },
+    defaultVariants: {
+      maxWidth: "default",
+      padding: "default",
+    },
+  }
+)
+
+export interface ContainerProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof containerVariants> {}
+
+export function Container({
+  className,
+  maxWidth,
+  padding,
+  ...props
+}: ContainerProps) {
+  return (
+    <div
+      className={cn(
+        containerVariants({ maxWidth, padding }),
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/dialog.tsx
+"use client";
+
+import * as React from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { X } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+
+const Dialog = DialogPrimitive.Root;
+
+const DialogTrigger = DialogPrimitive.Trigger;
+
+const DialogPortal = DialogPrimitive.Portal;
+
+const DialogClose = DialogPrimitive.Close;
+
+const DialogOverlay = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Overlay>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Overlay
+    ref={ref}
+    className={cn(
+      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      className
+    )}
+    {...props}
+  />
+));
+DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
+
+const DialogContent = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <DialogPortal>
+    <DialogOverlay />
+    <DialogPrimitive.Content
+      ref={ref}
+      className={cn(
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+        <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </DialogPrimitive.Close>
+    </DialogPrimitive.Content>
+  </DialogPortal>
+));
+DialogContent.displayName = DialogPrimitive.Content.displayName;
+
+const DialogHeader = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn(
+      "flex flex-col space-y-1.5 text-center sm:text-left",
+      className
+    )}
+    {...props}
+  />
+);
+DialogHeader.displayName = "DialogHeader";
+
+const DialogFooter = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn(
+      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
+      className
+    )}
+    {...props}
+  />
+);
+DialogFooter.displayName = "DialogFooter";
+
+const DialogTitle = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Title>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Title
+    ref={ref}
+    className={cn(
+      "text-lg font-semibold leading-none tracking-tight",
+      className
+    )}
+    {...props}
+  />
+));
+DialogTitle.displayName = DialogPrimitive.Title.displayName;
+
+const DialogDescription = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Description>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Description
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+));
+DialogDescription.displayName = DialogPrimitive.Description.displayName;
+
+export {
+  Dialog,
+  DialogPortal,
+  DialogOverlay,
+  DialogTrigger,
+  DialogClose,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+};
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/dropdown-menu.tsx
+"use client"
+
+import * as React from "react"
+import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
+import { Check, ChevronRight, Circle } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+const DropdownMenu = DropdownMenuPrimitive.Root
+
+const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
+
+const DropdownMenuGroup = DropdownMenuPrimitive.Group
+
+const DropdownMenuPortal = DropdownMenuPrimitive.Portal
+
+const DropdownMenuSub = DropdownMenuPrimitive.Sub
+
+const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup
+
+const DropdownMenuSubTrigger = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
+    inset?: boolean
+  }
+>(({ className, inset, children, ...props }, ref) => (
+  <DropdownMenuPrimitive.SubTrigger
+    ref={ref}
+    className={cn(
+      "flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent data-[state=open]:bg-accent",
+      inset && "pl-8",
+      className
+    )}
+    {...props}
+  >
+    {children}
+    <ChevronRight className="ml-auto h-4 w-4" />
+  </DropdownMenuPrimitive.SubTrigger>
+))
+DropdownMenuSubTrigger.displayName =
+  DropdownMenuPrimitive.SubTrigger.displayName
+
+const DropdownMenuSubContent = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
+>(({ className, ...props }, ref) => (
+  <DropdownMenuPrimitive.SubContent
+    ref={ref}
+    className={cn(
+      "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-white p-1 text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+      className
+    )}
+    {...props}
+  />
+))
+DropdownMenuSubContent.displayName =
+  DropdownMenuPrimitive.SubContent.displayName
+
+const DropdownMenuContent = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
+>(({ className, sideOffset = 4, ...props }, ref) => (
+  <DropdownMenuPrimitive.Portal>
+    <DropdownMenuPrimitive.Content
+      ref={ref}
+      sideOffset={sideOffset}
+      className={cn(
+        "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-white p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        className
+      )}
+      {...props}
+    />
+  </DropdownMenuPrimitive.Portal>
+))
+DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName
+
+const DropdownMenuItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Item>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
+    inset?: boolean
+  }
+>(({ className, inset, ...props }, ref) => (
+  <DropdownMenuPrimitive.Item
+    ref={ref}
+    className={cn(
+      "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      inset && "pl-8",
+      className
+    )}
+    {...props}
+  />
+))
+DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName
+
+const DropdownMenuCheckboxItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
+>(({ className, children, checked, ...props }, ref) => (
+  <DropdownMenuPrimitive.CheckboxItem
+    ref={ref}
+    className={cn(
+      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      className
+    )}
+    checked={checked}
+    {...props}
+  >
+    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+      <DropdownMenuPrimitive.ItemIndicator>
+        <Check className="h-4 w-4" />
+      </DropdownMenuPrimitive.ItemIndicator>
+    </span>
+    {children}
+  </DropdownMenuPrimitive.CheckboxItem>
+))
+DropdownMenuCheckboxItem.displayName =
+  DropdownMenuPrimitive.CheckboxItem.displayName
+
+const DropdownMenuRadioItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem>
+>(({ className, children, ...props }, ref) => (
+  <DropdownMenuPrimitive.RadioItem
+    ref={ref}
+    className={cn(
+      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      className
+    )}
+    {...props}
+  >
+    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+      <DropdownMenuPrimitive.ItemIndicator>
+        <Circle className="h-2 w-2 fill-current" />
+      </DropdownMenuPrimitive.ItemIndicator>
+    </span>
+    {children}
+  </DropdownMenuPrimitive.RadioItem>
+))
+DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName
+
+const DropdownMenuLabel = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Label>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
+    inset?: boolean
+  }
+>(({ className, inset, ...props }, ref) => (
+  <DropdownMenuPrimitive.Label
+    ref={ref}
+    className={cn(
+      "px-2 py-1.5 text-sm font-semibold",
+      inset && "pl-8",
+      className
+    )}
+    {...props}
+  />
+))
+DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName
+
+const DropdownMenuSeparator = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
+>(({ className, ...props }, ref) => (
+  <DropdownMenuPrimitive.Separator
+    ref={ref}
+    className={cn("-mx-1 my-1 h-px bg-muted", className)}
+    {...props}
+  />
+))
+DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName
+
+const DropdownMenuShortcut = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLSpanElement>) => {
+  return (
+    <span
+      className={cn("ml-auto text-xs tracking-widest opacity-60", className)}
+      {...props}
+    />
+  )
+}
+DropdownMenuShortcut.displayName = "DropdownMenuShortcut"
+
+export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+  DropdownMenuRadioItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuGroup,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuRadioGroup,
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/form.tsx
+import * as React from "react"
+import * as LabelPrimitive from "@radix-ui/react-label"
+import { Slot } from "@radix-ui/react-slot"
+import {
+  Controller,
+  ControllerProps,
+  FieldPath,
+  FieldValues,
+  FormProvider,
+  useFormContext,
+} from "react-hook-form"
+import { cn } from "@/lib/utils"
+import { Label } from "@/components/ui/label"
+
+const Form = FormProvider
+
+type FormFieldContextValue<
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+> = {
+  name: TName
+}
+
+const FormFieldContext = React.createContext<FormFieldContextValue>(
+  {} as FormFieldContextValue
+)
+
+const FormField = <
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+>({
+  ...props
+}: ControllerProps<TFieldValues, TName>) => {
+  return (
+    <FormFieldContext.Provider value={{ name: props.name }}>
+      <Controller {...props} />
+    </FormFieldContext.Provider>
+  )
+}
+
+const useFormField = () => {
+  const fieldContext = React.useContext(FormFieldContext)
+  const itemContext = React.useContext(FormItemContext)
+  const { getFieldState, formState } = useFormContext()
+
+  const fieldState = getFieldState(fieldContext.name, formState)
+
+  if (!fieldContext) {
+    throw new Error("useFormField should be used within <FormField>")
+  }
+
+  const { id } = itemContext
+
+  return {
+    id,
+    name: fieldContext.name,
+    formItemId: `${id}-form-item`,
+    formDescriptionId: `${id}-form-item-description`,
+    formMessageId: `${id}-form-item-message`,
+    ...fieldState,
+  }
+}
+
+type FormItemContextValue = {
+  id: string
+}
+
+const FormItemContext = React.createContext<FormItemContextValue>(
+  {} as FormItemContextValue
+)
+
+const FormItem = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  const id = React.useId()
+
+  return (
+    <FormItemContext.Provider value={{ id }}>
+      <div ref={ref} className={cn("space-y-2", className)} {...props} />
+    </FormItemContext.Provider>
+  )
+})
+FormItem.displayName = "FormItem"
+
+const FormLabel = React.forwardRef<
+  React.ElementRef<typeof LabelPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
+>(({ className, ...props }, ref) => {
+  const { error, formItemId } = useFormField()
+
+  return (
+    <Label
+      ref={ref}
+      className={cn(error && "text-destructive", className)}
+      htmlFor={formItemId}
+      {...props}
+    />
+  )
+})
+FormLabel.displayName = "FormLabel"
+
+const FormControl = React.forwardRef<
+  React.ElementRef<typeof Slot>,
+  React.ComponentPropsWithoutRef<typeof Slot>
+>(({ ...props }, ref) => {
+  const { error, formItemId, formDescriptionId, formMessageId } = useFormField()
+
+  return (
+    <Slot
+      ref={ref}
+      id={formItemId}
+      aria-describedby={
+        !error
+          ? `${formDescriptionId}`
+          : `${formDescriptionId} ${formMessageId}`
+      }
+      aria-invalid={!!error}
+      {...props}
+    />
+  )
+})
+FormControl.displayName = "FormControl"
+
+const FormDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => {
+  const { formDescriptionId } = useFormField()
+
+  return (
+    <p
+      ref={ref}
+      id={formDescriptionId}
+      className={cn("text-sm text-muted-foreground", className)}
+      {...props}
+    />
+  )
+})
+FormDescription.displayName = "FormDescription"
+
+const FormMessage = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, children, ...props }, ref) => {
+  const { error, formMessageId } = useFormField()
+  const body = error ? String(error?.message) : children
+
+  if (!body) {
+    return null
+  }
+
+  return (
+    <p
+      ref={ref}
+      id={formMessageId}
+      className={cn("text-sm font-medium text-destructive", className)}
+      {...props}
+    >
+      {body}
+    </p>
+  )
+})
+FormMessage.displayName = "FormMessage"
+
+export {
+  useFormField,
+  Form,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormDescription,
+  FormMessage,
+  FormField,
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/input.tsx
+import * as React from "react";
+import { cn } from "@/lib/utils";
+
+const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+  ({ className, type, ...props }, ref) => {
+    return (
+      <input
+        type={type}
+        className={cn(
+          "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+          className
+        )}
+        ref={ref}
+        {...props}
+      />
+    );
+  }
+);
+
+Input.displayName = "Input";
+
+export { Input };
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/label.tsx
+import * as React from "react"
+import * as LabelPrimitive from "@radix-ui/react-label"
+import { cn } from "@/lib/utils"
+
+const Label = React.forwardRef<
+  React.ElementRef<typeof LabelPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
+>(({ className, ...props }, ref) => (
+  <LabelPrimitive.Root
+    ref={ref}
+    className={cn(
+      "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+      className
+    )}
+    {...props}
+  />
+))
+Label.displayName = LabelPrimitive.Root.displayName
+
+export { Label }
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/page-header.tsx
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+import { cn } from "@/lib/utils"
+
+const pageHeaderVariants = cva(
+  "flex flex-col gap-1",
+  {
+    variants: {
+      spacing: {
+        default: "mb-6",
+        sm: "mb-4",
+        lg: "mb-8",
+      },
+    },
+    defaultVariants: {
+      spacing: "default",
+    },
+  }
+)
+
+export interface PageHeaderProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof pageHeaderVariants> {
+  title: string
+  description?: string
+  children?: React.ReactNode
+}
+
+export function PageHeader({
+  className,
+  title,
+  description,
+  spacing,
+  children,
+  ...props
+}: PageHeaderProps) {
+  return (
+    <div
+      className={cn(
+        pageHeaderVariants({ spacing }),
+        "flex items-center justify-between",
+        className
+      )}
+      {...props}
+    >
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        {description && (
+          <p className="text-sm text-muted-foreground">{description}</p>
+        )}
+      </div>
+      {children && <div className="flex items-center gap-4">{children}</div>}
+    </div>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/popover.tsx
+"use client"
+
+import * as React from "react"
+import * as PopoverPrimitive from "@radix-ui/react-popover"
+import { cn } from "@/lib/utils"
+
+const Popover = PopoverPrimitive.Root
+
+const PopoverTrigger = PopoverPrimitive.Trigger
+
+const PopoverContent = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
+>((props, ref) => {
+  const { className, ...rest } = props;
+  return (
+    <PopoverPrimitive.Content
+      ref={ref}
+      className={cn("z-10 p-4 bg-white border rounded shadow-sm", className)}
+      {...rest}
+    />
+  );
+});
+
+// Add displayName for debugging purposes
+PopoverContent.displayName = "PopoverContent";
+
+export { Popover, PopoverTrigger, PopoverContent }
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/progress.tsx
+"use client"
+
+import * as React from "react"
+import * as ProgressPrimitive from "@radix-ui/react-progress"
+import { cn } from "@/lib/utils"
+
+type ProgressProps = React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root> & {
+  value?: number
+}
+
+const Progress = React.forwardRef<
+  React.ElementRef<typeof ProgressPrimitive.Root>,
+  ProgressProps
+>(({ className, value = 0, ...props }, ref) => (
+  <ProgressPrimitive.Root
+    ref={ref}
+    className={cn(
+      "relative h-4 w-full overflow-hidden rounded-full bg-secondary",
+      className
+    )}
+    {...props}
+  >
+    <ProgressPrimitive.Indicator
+      className="h-full flex-1 bg-primary transition-all"
+      style={{ transform: `translateX(-${100 - value}%)` }}
+    />
+  </ProgressPrimitive.Root>
+))
+Progress.displayName = "Progress"
+
+export { Progress }
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/scroll-area.tsx
+"use client"
+
+import * as React from "react"
+import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area"
+import { cn } from "@/lib/utils"
+
+const ScrollArea = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>
+>(({ className, children, ...props }, ref) => (
+  <ScrollAreaPrimitive.Root
+    ref={ref}
+    className={cn("relative overflow-hidden", className)}
+    {...props}
+  >
+    <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit]">
+      {children}
+    </ScrollAreaPrimitive.Viewport>
+    <ScrollBar />
+    <ScrollAreaPrimitive.Corner />
+  </ScrollAreaPrimitive.Root>
+))
+ScrollArea.displayName = ScrollAreaPrimitive.Root.displayName
+
+const ScrollBar = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>
+>(({ className, orientation = "vertical", ...props }, ref) => (
+  <ScrollAreaPrimitive.ScrollAreaScrollbar
+    ref={ref}
+    orientation={orientation}
+    className={cn(
+      "flex touch-none select-none transition-colors",
+      orientation === "vertical" &&
+        "h-full w-2.5 border-l border-l-transparent p-[1px]",
+      orientation === "horizontal" &&
+        "h-2.5 flex-col border-t border-t-transparent p-[1px]",
+      className
+    )}
+    {...props}
+  >
+    <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-full bg-border" />
+  </ScrollAreaPrimitive.ScrollAreaScrollbar>
+))
+ScrollBar.displayName = ScrollAreaPrimitive.ScrollAreaScrollbar.displayName
+
+export { ScrollArea, ScrollBar }
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/select.tsx
+"use client"
+
+import * as React from "react"
+import * as SelectPrimitive from "@radix-ui/react-select"
+import { Check, ChevronDown, ChevronUp } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+const Select = SelectPrimitive.Root
+
+const SelectGroup = SelectPrimitive.Group
+
+const SelectValue = SelectPrimitive.Value
+
+const SelectTrigger = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
+>(({ className, children, ...props }, ref) => (
+  <SelectPrimitive.Trigger
+    ref={ref}
+    className={cn(
+      "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      className
+    )}
+    {...props}
+  >
+    {children}
+    <SelectPrimitive.Icon asChild>
+      <ChevronDown className="h-4 w-4 opacity-50" />
+    </SelectPrimitive.Icon>
+  </SelectPrimitive.Trigger>
+))
+SelectTrigger.displayName = SelectPrimitive.Trigger.displayName
+
+const SelectScrollUpButton = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.ScrollUpButton>,
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollUpButton>
+>(({ className, ...props }, ref) => (
+  <SelectPrimitive.ScrollUpButton
+    ref={ref}
+    className={cn(
+      "flex cursor-default items-center justify-center py-1",
+      className
+    )}
+    {...props}
+  >
+    <ChevronUp className="h-4 w-4" />
+  </SelectPrimitive.ScrollUpButton>
+))
+SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName
+
+const SelectScrollDownButton = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.ScrollDownButton>,
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollDownButton>
+>(({ className, ...props }, ref) => (
+  <SelectPrimitive.ScrollDownButton
+    ref={ref}
+    className={cn(
+      "flex cursor-default items-center justify-center py-1",
+      className
+    )}
+    {...props}
+  >
+    <ChevronDown className="h-4 w-4" />
+  </SelectPrimitive.ScrollDownButton>
+))
+SelectScrollDownButton.displayName =
+  SelectPrimitive.ScrollDownButton.displayName
+
+const SelectContent = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
+>(({ className, children, position = "popper", ...props }, ref) => (
+  <SelectPrimitive.Portal>
+    <SelectPrimitive.Content
+      ref={ref}
+      className={cn(
+        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border bg-white text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        position === "popper" &&
+          "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
+        className
+      )}
+      position={position}
+      {...props}
+    >
+      <SelectScrollUpButton />
+      <SelectPrimitive.Viewport
+        className={cn(
+          "p-1 bg-white",
+          position === "popper" &&
+            "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
+        )}
+      >
+        {children}
+      </SelectPrimitive.Viewport>
+      <SelectScrollDownButton />
+    </SelectPrimitive.Content>
+  </SelectPrimitive.Portal>
+))
+SelectContent.displayName = SelectPrimitive.Content.displayName
+
+const SelectLabel = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.Label>,
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Label>
+>(({ className, ...props }, ref) => (
+  <SelectPrimitive.Label
+    ref={ref}
+    className={cn("py-1.5 pl-8 pr-2 text-sm font-semibold", className)}
+    {...props}
+  />
+))
+SelectLabel.displayName = SelectPrimitive.Label.displayName
+
+const SelectItem = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.Item>,
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
+>(({ className, children, ...props }, ref) => (
+  <SelectPrimitive.Item
+    ref={ref}
+    className={cn(
+      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      className
+    )}
+    {...props}
+  >
+    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+      <SelectPrimitive.ItemIndicator>
+        <Check className="h-4 w-4" />
+      </SelectPrimitive.ItemIndicator>
+    </span>
+
+    <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+  </SelectPrimitive.Item>
+))
+SelectItem.displayName = SelectPrimitive.Item.displayName
+
+const SelectSeparator = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.Separator>,
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Separator>
+>(({ className, ...props }, ref) => (
+  <SelectPrimitive.Separator
+    ref={ref}
+    className={cn("-mx-1 my-1 h-px bg-muted", className)}
+    {...props}
+  />
+))
+SelectSeparator.displayName = SelectPrimitive.Separator.displayName
+
+export {
+  Select,
+  SelectGroup,
+  SelectValue,
+  SelectTrigger,
+  SelectContent,
+  SelectLabel,
+  SelectItem,
+  SelectSeparator,
+  SelectScrollUpButton,
+  SelectScrollDownButton,
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/separator.tsx
+"use client"
+
+import * as React from "react"
+import * as SeparatorPrimitive from "@radix-ui/react-separator"
+
+import { cn } from "@/lib/utils"
+
+const Separator = React.forwardRef<
+  React.ElementRef<typeof SeparatorPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof SeparatorPrimitive.Root>
+>(
+  (
+    { className, orientation = "horizontal", decorative = true, ...props },
+    ref
+  ) => (
+    <SeparatorPrimitive.Root
+      ref={ref}
+      decorative={decorative}
+      orientation={orientation}
+      className={cn(
+        "shrink-0 bg-border",
+        orientation === "horizontal" ? "h-[1px] w-full" : "h-full w-[1px]",
+        className
+      )}
+      {...props}
+    />
+  )
+)
+Separator.displayName = SeparatorPrimitive.Root.displayName
+
+export { Separator }
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/sheet.tsx
+"use client"
+
+import * as React from "react"
+import * as SheetPrimitive from "@radix-ui/react-dialog"
+import { cva, type VariantProps } from "class-variance-authority"
+import { X } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+const Sheet = SheetPrimitive.Root
+
+const SheetTrigger = SheetPrimitive.Trigger
+
+const SheetClose = SheetPrimitive.Close
+
+const SheetPortal = SheetPrimitive.Portal
+
+const SheetOverlay = React.forwardRef<
+  React.ElementRef<typeof SheetPrimitive.Overlay>,
+  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
+>(({ className, ...props }, ref) => (
+  <SheetPrimitive.Overlay
+    className={cn(
+      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      className
+    )}
+    {...props}
+    ref={ref}
+  />
+))
+SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
+
+const sheetVariants = cva(
+  "fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
+  {
+    variants: {
+      side: {
+        top: "inset-x-0 top-0 border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
+        bottom:
+          "inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+        left: "inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
+        right:
+          "inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
+      },
+    },
+    defaultVariants: {
+      side: "right",
+    },
+  }
+)
+
+interface SheetContentProps
+  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
+    VariantProps<typeof sheetVariants> {}
+
+const SheetContent = React.forwardRef<
+  React.ElementRef<typeof SheetPrimitive.Content>,
+  SheetContentProps
+>(({ side = "right", className, children, ...props }, ref) => (
+  <SheetPortal>
+    <SheetOverlay />
+    <SheetPrimitive.Content
+      ref={ref}
+      className={cn(sheetVariants({ side }), className)}
+      {...props}
+    >
+      {children}
+      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+        <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </SheetPrimitive.Close>
+    </SheetPrimitive.Content>
+  </SheetPortal>
+))
+SheetContent.displayName = SheetPrimitive.Content.displayName
+
+const SheetHeader = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn(
+      "flex flex-col space-y-2 text-center sm:text-left",
+      className
+    )}
+    {...props}
+  />
+)
+SheetHeader.displayName = "SheetHeader"
+
+const SheetFooter = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn(
+      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
+      className
+    )}
+    {...props}
+  />
+)
+SheetFooter.displayName = "SheetFooter"
+
+const SheetTitle = React.forwardRef<
+  React.ElementRef<typeof SheetPrimitive.Title>,
+  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Title>
+>(({ className, ...props }, ref) => (
+  <SheetPrimitive.Title
+    ref={ref}
+    className={cn("text-lg font-semibold text-foreground", className)}
+    {...props}
+  />
+))
+SheetTitle.displayName = SheetPrimitive.Title.displayName
+
+const SheetDescription = React.forwardRef<
+  React.ElementRef<typeof SheetPrimitive.Description>,
+  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Description>
+>(({ className, ...props }, ref) => (
+  <SheetPrimitive.Description
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+))
+SheetDescription.displayName = SheetPrimitive.Description.displayName
+
+export {
+  Sheet,
+  SheetPortal,
+  SheetOverlay,
+  SheetTrigger,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetFooter,
+  SheetTitle,
+  SheetDescription,
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/slider.tsx
+"use client"
+
+import * as React from "react"
+import * as SliderPrimitive from "@radix-ui/react-slider"
+import { cn } from "@/lib/utils"
+
+type SliderProps = {
+  className?: string
+} & SliderPrimitive.SliderProps
+
+const Slider = React.forwardRef<HTMLSpanElement, SliderProps>(
+  ({ className, ...props }, ref) => {
+    return (
+      <SliderPrimitive.Root
+        ref={ref}
+        className={cn(
+          "relative flex w-full touch-none select-none items-center",
+          className
+        )}
+        {...props}
+      >
+        <SliderPrimitive.Track
+          className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-primary/20"
+        >
+          <SliderPrimitive.Range className="absolute h-full bg-primary" />
+        </SliderPrimitive.Track>
+        {props.value?.map((_, index) => (
+          <SliderPrimitive.Thumb
+            key={index}
+            className="block h-4 w-4 rounded-full border border-primary/50 bg-background shadow transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:border-primary"
+          />
+        ))}
+      </SliderPrimitive.Root>
+    )
+  }
+)
+
+Slider.displayName = "Slider"
+
+export { Slider }
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/status-badge.tsx
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+import { cn } from "@/lib/utils"
+
+const statusBadgeVariants = cva(
+  "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground",
+        success: "bg-success text-success-foreground",
+        destructive: "bg-destructive text-destructive-foreground",
+        warning: "bg-warning text-warning-foreground",
+        info: "bg-info text-info-foreground",
+        outline: "text-foreground border border-input",
+      },
+      dotColor: {
+        none: "",
+        default: "before:bg-primary",
+        success: "before:bg-success",
+        destructive: "before:bg-destructive",
+        warning: "before:bg-warning",
+        info: "before:bg-info",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      dotColor: "none",
+    },
+    compoundVariants: [
+      {
+        dotColor: ["default", "success", "destructive", "warning", "info"],
+        className: "pl-3 before:absolute before:left-1 before:h-1.5 before:w-1.5 before:rounded-full relative",
+      },
+    ],
+  }
+)
+
+export interface StatusBadgeProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof statusBadgeVariants> {
+  pulse?: boolean
+}
+
+function StatusBadge({
+  className,
+  variant,
+  dotColor,
+  pulse = false,
+  ...props
+}: StatusBadgeProps) {
+  return (
+    <div
+      className={cn(
+        statusBadgeVariants({ variant, dotColor }),
+        pulse && dotColor !== "none" && "before:animate-pulse",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export { StatusBadge, statusBadgeVariants }
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/switch.tsx
+"use client"
+
+import * as React from "react"
+import * as SwitchPrimitives from "@radix-ui/react-switch"
+import { cn } from "@/lib/utils"
+
+type SwitchProps = React.ComponentProps<typeof SwitchPrimitives.Root> & {
+  className?: string
+}
+
+const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
+  ({ className, ...props }, ref) => (
+    <SwitchPrimitives.Root
+      className={cn(
+        "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input",
+        className
+      )}
+      {...props}
+      ref={ref}
+    >
+      <SwitchPrimitives.Thumb
+        className={cn(
+          "pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0"
+        )}
+      />
+    </SwitchPrimitives.Root>
+  )
+)
+
+Switch.displayName = SwitchPrimitives.Root.displayName
+
+export { Switch }
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/table.tsx
+import { forwardRef, HTMLAttributes } from "react";
+import { cn } from "@/lib/utils";
+
+type TableProps = HTMLAttributes<HTMLTableElement>;
+const Table = forwardRef<HTMLTableElement, TableProps>(({ className, ...props }, ref) => (
+  <div className="relative w-full overflow-auto">
+    <table
+      ref={ref}
+      className={cn("w-full caption-bottom text-sm", className)}
+      {...props}
+    />
+  </div>
+));
+Table.displayName = "Table";
+
+type TableSectionProps = HTMLAttributes<HTMLTableSectionElement>;
+const TableHeader = forwardRef<HTMLTableSectionElement, TableSectionProps>(({ className, ...props }, ref) => (
+  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
+));
+TableHeader.displayName = "TableHeader";
+
+const TableBody = forwardRef<HTMLTableSectionElement, TableSectionProps>(({ className, ...props }, ref) => (
+  <tbody
+    ref={ref}
+    className={cn("[&_tr:last-child]:border-0", className)}
+    {...props}
+  />
+));
+TableBody.displayName = "TableBody";
+
+const TableFooter = forwardRef<HTMLTableSectionElement, TableSectionProps>(({ className, ...props }, ref) => (
+  <tfoot
+    ref={ref}
+    className={cn(
+      "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
+      className
+    )}
+    {...props}
+  />
+));
+TableFooter.displayName = "TableFooter";
+
+type TableRowProps = HTMLAttributes<HTMLTableRowElement>;
+const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(({ className, ...props }, ref) => (
+  <tr
+    ref={ref}
+    className={cn(
+      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+      className
+    )}
+    {...props}
+  />
+));
+TableRow.displayName = "TableRow";
+
+type TableHeadProps = HTMLAttributes<HTMLTableCellElement>;
+const TableHead = forwardRef<HTMLTableCellElement, TableHeadProps>(({ className, ...props }, ref) => (
+  <th
+    ref={ref}
+    className={cn(
+      "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+      className
+    )}
+    {...props}
+  />
+));
+TableHead.displayName = "TableHead";
+
+type TableCellProps = HTMLAttributes<HTMLTableCellElement>;
+const TableCell = forwardRef<HTMLTableCellElement, TableCellProps>(({ className, ...props }, ref) => (
+  <td
+    ref={ref}
+    className={cn("p-4 align-middle [&:has([role=checkbox])]:pr-0", className)}
+    {...props}
+  />
+));
+TableCell.displayName = "TableCell";
+
+type TableCaptionProps = HTMLAttributes<HTMLTableCaptionElement>;
+const TableCaption = forwardRef<HTMLTableCaptionElement, TableCaptionProps>(({ className, ...props }, ref) => (
+  <caption
+    ref={ref}
+    className={cn("mt-4 text-sm text-muted-foreground", className)}
+    {...props}
+  />
+));
+TableCaption.displayName = "TableCaption";
+
+export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableFooter,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableCaption,
+};
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/tabs.tsx
+"use client"
+
+import * as React from "react"
+import * as TabsPrimitive from "@radix-ui/react-tabs"
+
+import { cn } from "@/lib/utils"
+
+const Tabs = TabsPrimitive.Root
+
+const TabsList = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.List>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.List
+    ref={ref}
+    className={cn(
+      "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+      className
+    )}
+    {...props}
+  />
+))
+TabsList.displayName = TabsPrimitive.List.displayName
+
+const TabsTrigger = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.Trigger
+    ref={ref}
+    className={cn(
+      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
+      className
+    )}
+    {...props}
+  />
+))
+TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
+
+const TabsContent = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.Content
+    ref={ref}
+    className={cn(
+      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      className
+    )}
+    {...props}
+  />
+))
+TabsContent.displayName = TabsPrimitive.Content.displayName
+
+export { Tabs, TabsList, TabsTrigger, TabsContent }
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/textarea.tsx
+import * as React from "react";
+import { cn } from "@/lib/utils";
+
+const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(
+  ({ className, ...props }, ref) => {
+    return (
+      <textarea
+        className={cn(
+          "flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          className
+        )}
+        ref={ref}
+        {...props}
+      />
+    );
+  }
+);
+Textarea.displayName = "Textarea";
+
+export { Textarea };
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/toast.tsx
+import * as React from "react"
+import * as ToastPrimitives from "@radix-ui/react-toast"
+import { cva, type VariantProps } from "class-variance-authority"
+import { X } from "lucide-react"
+import { cn } from "@/lib/utils"
+
+const ToastProvider = ToastPrimitives.Provider
+
+const ToastViewport = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Viewport>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport>
+>(({ className, ...props }, ref) => (
+  <ToastPrimitives.Viewport
+    ref={ref}
+    className={cn(
+      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
+      className
+    )}
+    {...props}
+  />
+))
+ToastViewport.displayName = ToastPrimitives.Viewport.displayName
+
+const toastVariants = cva(
+  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+  {
+    variants: {
+      variant: {
+        default: "border bg-background text-foreground",
+        destructive:
+          "destructive group border-destructive bg-destructive text-destructive-foreground",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
+const Toast = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Root>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
+    VariantProps<typeof toastVariants>
+>(({ className, variant, ...props }, ref) => {
+  return (
+    <ToastPrimitives.Root
+      ref={ref}
+      className={cn(toastVariants({ variant }), className)}
+      {...props}
+    />
+  )
+})
+Toast.displayName = ToastPrimitives.Root.displayName
+
+const ToastAction = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Action>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Action>
+>(({ className, ...props }, ref) => (
+  <ToastPrimitives.Action
+    ref={ref}
+    className={cn(
+      "inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive",
+      className
+    )}
+    {...props}
+  />
+))
+ToastAction.displayName = ToastPrimitives.Action.displayName
+
+const ToastClose = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Close>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Close>
+>(({ className, ...props }, ref) => (
+  <ToastPrimitives.Close
+    ref={ref}
+    className={cn(
+      "absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100 group-[.destructive]:text-red-300 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600",
+      className
+    )}
+    toast-close=""
+    {...props}
+  >
+    <X className="h-4 w-4" />
+  </ToastPrimitives.Close>
+))
+ToastClose.displayName = ToastPrimitives.Close.displayName
+
+const ToastTitle = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Title>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title>
+>(({ className, ...props }, ref) => (
+  <ToastPrimitives.Title
+    ref={ref}
+    className={cn("text-sm font-semibold", className)}
+    {...props}
+  />
+))
+ToastTitle.displayName = ToastPrimitives.Title.displayName
+
+const ToastDescription = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Description>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Description>
+>(({ className, ...props }, ref) => (
+  <ToastPrimitives.Description
+    ref={ref}
+    className={cn("text-sm opacity-90", className)}
+    {...props}
+  />
+))
+ToastDescription.displayName = ToastPrimitives.Description.displayName
+
+type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>
+
+type ToastActionElement = React.ReactElement<typeof ToastAction>
+
+export {
+  type ToastProps,
+  type ToastActionElement,
+  ToastProvider,
+  ToastViewport,
+  Toast,
+  ToastTitle,
+  ToastDescription,
+  ToastClose,
+  ToastAction,
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/toaster.tsx
+"use client"
+import {
+  Toast,
+  ToastClose,
+  ToastDescription,
+  ToastProvider,
+  ToastTitle,
+  ToastViewport,
+} from "@/components/ui/toast"
+import { useToast } from "@/components/ui/use-toast"
+
+export function Toaster() {
+  const { toasts } = useToast()
+
+  return (
+    <ToastProvider>
+      {toasts.map(function ({ id, title, description, action, ...props }) {
+        return (
+          <Toast key={id} {...props}>
+            <div className="grid gap-1">
+              {title && <ToastTitle>{title}</ToastTitle>}
+              {description && (
+                <ToastDescription>{description}</ToastDescription>
+              )}
+            </div>
+            {action}
+            <ToastClose />
+          </Toast>
+        )
+      })}
+      <ToastViewport />
+    </ToastProvider>
+  )
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/tooltip.tsx
+"use client"
+
+import * as React from "react"
+import * as TooltipPrimitive from "@radix-ui/react-tooltip"
+import { cn } from "@/lib/utils"
+
+const TooltipProvider = TooltipPrimitive.Provider
+const Tooltip = TooltipPrimitive.Root
+const TooltipTrigger = TooltipPrimitive.Trigger
+
+const TooltipContent = React.forwardRef<
+  React.ElementRef<typeof TooltipPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
+>(({ className = "", sideOffset = 4, ...props }, ref) => (
+  <TooltipPrimitive.Content
+    ref={ref}
+    sideOffset={sideOffset}
+    className={cn(
+      "z-50 overflow-hidden rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+      className
+    )}
+    {...props}
+  />
+))
+TooltipContent.displayName = TooltipPrimitive.Content.displayName
+
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/ui/use-toast.ts
+"use client"
+
+import * as React from "react"
+import type { ToastActionElement, ToastProps } from "@/components/ui/toast"
+
+const TOAST_LIMIT = 1
+const TOAST_REMOVE_DELAY = 1000000
+
+type ToasterToast = ToastProps & {
+  id: string
+  title?: React.ReactNode
+  description?: React.ReactNode
+  action?: ToastActionElement
+}
+
+const actionTypes = {
+  ADD_TOAST: "ADD_TOAST",
+  UPDATE_TOAST: "UPDATE_TOAST",
+  DISMISS_TOAST: "DISMISS_TOAST",
+  REMOVE_TOAST: "REMOVE_TOAST",
+} as const
+
+type Action =
+  | {
+      type: typeof actionTypes.ADD_TOAST
+      toast: ToasterToast
+    }
+  | {
+      type: typeof actionTypes.UPDATE_TOAST
+      toast: Partial<ToasterToast>
+    }
+  | {
+      type: typeof actionTypes.DISMISS_TOAST
+      toastId?: ToasterToast["id"]
+    }
+  | {
+      type: typeof actionTypes.REMOVE_TOAST
+      toastId?: ToasterToast["id"]
+    }
+
+interface State {
+  toasts: ToasterToast[]
+}
+
+const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
+
+const addToRemoveQueue = (toastId: string) => {
+  if (toastTimeouts.has(toastId)) {
+    return
+  }
+
+  const timeout = setTimeout(() => {
+    toastTimeouts.delete(toastId)
+    dispatch({
+      type: actionTypes.REMOVE_TOAST,
+      toastId: toastId,
+    })
+  }, TOAST_REMOVE_DELAY)
+
+  toastTimeouts.set(toastId, timeout)
+}
+
+let count = 0
+
+function genId() {
+  count = (count + 1) % Number.MAX_VALUE
+  return count.toString()
+}
+
+const reducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case actionTypes.ADD_TOAST:
+      return {
+        ...state,
+        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
+      }
+
+    case actionTypes.UPDATE_TOAST:
+      return {
+        ...state,
+        toasts: state.toasts.map((t) =>
+          t.id === action.toast.id ? { ...t, ...action.toast } : t
+        ),
+      }
+
+    case actionTypes.DISMISS_TOAST: {
+      const { toastId } = action
+      if (toastId) {
+        addToRemoveQueue(toastId)
+      } else {
+        state.toasts.forEach((toast) => addToRemoveQueue(toast.id))
+      }
+      return {
+        ...state,
+        toasts: state.toasts.map((t) =>
+          t.id === toastId || toastId === undefined ? { ...t, open: false } : t
+        ),
+      }
+    }
+
+    case actionTypes.REMOVE_TOAST:
+      return {
+        ...state,
+        toasts: action.toastId
+          ? state.toasts.filter((t) => t.id !== action.toastId)
+          : [],
+      }
+  }
+}
+
+const listeners: Array<(state: State) => void> = []
+let memoryState: State = { toasts: [] }
+
+function dispatch(action: Action) {
+  memoryState = reducer(memoryState, action)
+  listeners.forEach((listener) => listener(memoryState))
+}
+
+type Toast = Omit<ToasterToast, "id">
+
+function toast({ ...props }: Toast) {
+  const id = genId()
+
+  const update = (props: ToasterToast) =>
+    dispatch({
+      type: actionTypes.UPDATE_TOAST,
+      toast: { ...props, id },
+    })
+  const dismiss = () => dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id })
+
+  dispatch({
+    type: actionTypes.ADD_TOAST,
+    toast: {
+      ...props,
+      id,
+      open: true,
+      onOpenChange: (open) => {
+        if (!open) dismiss()
+      },
+    },
+  })
+
+  return { id, dismiss, update }
+}
+
+function useToast() {
+  const [state, setState] = React.useState<State>(memoryState)
+
+  React.useEffect(() => {
+    listeners.push(setState)
+    return () => {
+      const index = listeners.indexOf(setState)
+      if (index > -1) listeners.splice(index, 1)
+    }
+  }, [])
+
+  return {
+    ...state,
+    toast,
+    dismiss: (toastId?: string) => dispatch({ type: actionTypes.DISMISS_TOAST, toastId }),
+  }
+}
+
+export { useToast, toast }
+
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/bufbarista-crm/src/config/site.ts
 export const siteConfig = {
@@ -24506,6 +29774,623 @@ export function findMatchingRule(rules: ScheduleRule[], currentTime: Date = new 
 }
 
 ________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/scheduling/services/schedule-service.ts
+import { prisma } from "@/lib/db/prisma";
+import { 
+  Shift, 
+  StaffAssignment, 
+  Break, 
+  ShiftTemplate 
+} from "@/types/scheduling";
+import { calculateShiftHours } from "../utils/schedule-utils";
+import { ShiftType, ShiftStatus, AssignmentStatus } from "@prisma/client";
+
+export class ScheduleService {
+  // Shift Operations
+  static async createShift(shiftData: Omit<Shift, 'id' | 'createdAt' | 'updatedAt'>): Promise<Shift> {
+    return prisma.shift.create({
+      data: {
+        ...shiftData,
+        requiredRoles: JSON.stringify(shiftData.requiredRoles),
+      },
+      include: {
+        assignedStaff: true,
+        breaks: true,
+      },
+    });
+  }
+
+  static async updateShift(
+    id: string, 
+    shiftData: Partial<Omit<Shift, 'id' | 'createdAt' | 'updatedAt'>>
+  ): Promise<Shift> {
+    return prisma.shift.update({
+      where: { id },
+      data: {
+        ...shiftData,
+        requiredRoles: shiftData.requiredRoles 
+          ? JSON.stringify(shiftData.requiredRoles)
+          : undefined,
+      },
+      include: {
+        assignedStaff: true,
+        breaks: true,
+      },
+    });
+  }
+
+  static async deleteShift(id: string): Promise<void> {
+    await prisma.shift.delete({
+      where: { id },
+    });
+  }
+
+  static async getShiftsByDateRange(startDate: Date, endDate: Date): Promise<Shift[]> {
+    return prisma.shift.findMany({
+      where: {
+        startTime: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      include: {
+        assignedStaff: true,
+        breaks: true,
+      },
+      orderBy: {
+        startTime: 'asc',
+      },
+    });
+  }
+
+  // Staff Assignment Operations
+  static async assignStaffToShift(
+    shiftId: string,
+    staffId: string,
+    roleId: string
+  ): Promise<StaffAssignment> {
+    // Validate staff availability
+    const shift = await prisma.shift.findUnique({
+      where: { id: shiftId },
+    });
+
+    if (!shift) {
+      throw new Error('Shift not found');
+    }
+
+    // Check for scheduling conflicts
+    const conflicts = await this.checkSchedulingConflicts(
+      staffId,
+      shift.startTime,
+      shift.endTime
+    );
+
+    if (conflicts) {
+      throw new Error('Staff member has scheduling conflicts');
+    }
+
+    // Check weekly hours limit
+    const weekStart = new Date(shift.startTime);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+
+    const weeklyHours = await this.calculateWeeklyHours(
+      staffId,
+      weekStart,
+      weekEnd
+    );
+
+    const shiftHours = calculateShiftHours(shift.startTime, shift.endTime);
+
+    const staff = await prisma.staff.findUnique({
+      where: { id: staffId },
+    });
+
+    if (!staff) {
+      throw new Error('Staff member not found');
+    }
+
+    if (weeklyHours + shiftHours > staff.maxHoursPerWeek) {
+      throw new Error('Assignment would exceed weekly hours limit');
+    }
+
+    // Create assignment
+    return prisma.shiftAssignment.create({
+      data: {
+        shiftId,
+        staffId,
+        roleId,
+        status: 'SCHEDULED',
+      },
+    });
+  }
+
+  static async removeStaffFromShift(
+    shiftId: string,
+    staffId: string
+  ): Promise<void> {
+    await prisma.shiftAssignment.deleteMany({
+      where: {
+        shiftId,
+        staffId,
+      },
+    });
+  }
+
+  // Break Management
+  static async addBreak(breakData: Omit<Break, 'id' | 'createdAt' | 'updatedAt'>): Promise<Break> {
+    return prisma.break.create({
+      data: breakData,
+    });
+  }
+
+  static async updateBreak(
+    id: string,
+    breakData: Partial<Omit<Break, 'id' | 'createdAt' | 'updatedAt'>>
+  ): Promise<Break> {
+    return prisma.break.update({
+      where: { id },
+      data: breakData,
+    });
+  }
+
+  // Template Operations
+  static async createShiftFromTemplate(
+    templateId: string,
+    date: Date
+  ): Promise<Shift> {
+    const template = await this.getShiftTemplate(
+     templateId
+   );
+
+   if (!template) {
+     throw new Error('Template not found');
+   }
+
+   // Set shift times based on template duration
+   const startTime = date;
+   const endTime = new Date(date);
+   endTime.setMinutes(endTime.getMinutes() + template.duration);
+
+   return this.createShift({
+     startTime,
+     endTime,
+     type: template.type,
+     status: 'DRAFT',
+     requiredRoles: template.requiredRoles,
+     assignedStaff: [],
+     breaks: [],
+   });
+ }
+
+ // Utility Methods
+ private static async checkSchedulingConflicts(
+   staffId: string,
+   startTime: Date,
+   endTime: Date
+ ): Promise<boolean> {
+   const existingShifts = await prisma.shiftAssignment.findMany({
+     where: {
+       staffId,
+       shift: {
+         OR: [
+           {
+             startTime: {
+               lte: startTime,
+               gte: endTime,
+             },
+           },
+           {
+             endTime: {
+               gte: startTime,
+               lte: endTime,
+             },
+           },
+         ],
+       },
+     },
+   });
+
+   return existingShifts.length > 0;
+ }
+
+ private static async calculateWeeklyHours(
+   staffId: string,
+   weekStart: Date,
+   weekEnd: Date
+ ): Promise<number> {
+   const shifts = await prisma.shift.findMany({
+     where: {
+       assignedStaff: {
+         some: {
+           staffId,
+         },
+       },
+       startTime: {
+         gte: weekStart,
+         lte: weekEnd,
+       },
+     },
+   });
+
+   return shifts.reduce((total, shift) => {
+     return total + calculateShiftHours(shift.startTime, shift.endTime);
+   }, 0);
+ }
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/scheduling/services/staff-service.ts
+import { prisma } from "@/lib/db/prisma";
+import { Staff, Availability, StaffSchedule } from "@/types/scheduling/staff";
+import { StaffRole } from "@prisma/client";
+import { calculateShiftHours } from "../utils/schedule-utils";
+
+export class StaffService {
+ // Staff Operations
+ static async createStaff(staffData: Omit<Staff, 'id' | 'createdAt' | 'updatedAt'>): Promise<Staff> {
+   return prisma.staff.create({
+     data: staffData,
+     include: {
+       availability: true,
+     },
+   });
+ }
+
+ static async updateStaff(
+   id: string,
+   staffData: Partial<Omit<Staff, 'id' | 'createdAt' | 'updatedAt'>>
+ ): Promise<Staff> {
+   return prisma.staff.update({
+     where: { id },
+     data: staffData,
+     include: {
+       availability: true,
+     },
+   });
+ }
+
+ static async getStaffByRole(role: StaffRole): Promise<Staff[]> {
+   return prisma.staff.findMany({
+     where: { role },
+     include: {
+       availability: true,
+     },
+   });
+ }
+
+ static async getStaffWithCertifications(certifications: string[]): Promise<Staff[]> {
+   return prisma.staff.findMany({
+     where: {
+       certifications: {
+         hasEvery: certifications,
+       },
+     },
+     include: {
+       availability: true,
+     },
+   });
+ }
+
+ // Availability Management
+ static async setAvailability(
+   staffId: string,
+   availabilityData: Omit<Availability, 'id' | 'staffId' | 'createdAt' | 'updatedAt'>[]
+ ): Promise<Availability[]> {
+   // Remove existing availability
+   await prisma.availability.deleteMany({
+     where: { staffId },
+   });
+
+   // Create new availability entries
+   const availability = await Promise.all(
+     availabilityData.map(data =>
+       prisma.availability.create({
+         data: {
+           ...data,
+           staffId,
+         },
+       })
+     )
+   );
+
+   return availability;
+ }
+
+ static async getStaffSchedule(
+   staffId: string,
+   startDate: Date,
+   endDate: Date
+ ): Promise<StaffSchedule> {
+   const staff = await prisma.staff.findUnique({
+     where: { id: staffId },
+     include: {
+       availability: true,
+     },
+   });
+
+   if (!staff) {
+     throw new Error('Staff member not found');
+   }
+
+   const assignments = await prisma.shiftAssignment.findMany({
+     where: {
+       staffId,
+       shift: {
+         startTime: {
+           gte: startDate,
+           lte: endDate,
+         },
+       },
+     },
+     include: {
+       shift: true,
+     },
+     orderBy: {
+       shift: {
+         startTime: 'asc',
+       },
+     },
+   });
+
+   // Calculate weekly hours
+   const weeklyHours = assignments.reduce((total, assignment) => {
+     return total + calculateShiftHours(
+       assignment.shift.startTime,
+       assignment.shift.endTime
+     );
+   }, 0);
+
+   // Group assignments by date
+   const groupedAssignments = assignments.reduce((acc, assignment) => {
+     const date = new Date(assignment.shift.startTime);
+     date.setHours(0, 0, 0, 0);
+     
+     const dateString = date.toISOString();
+     
+     if (!acc[dateString]) {
+       acc[dateString] = {
+         date,
+         shifts: [],
+       };
+     }
+
+     acc[dateString].shifts.push({
+       id: assignment.shift.id,
+       type: assignment.shift.type,
+       startTime: assignment.shift.startTime,
+       endTime: assignment.shift.endTime,
+       role: assignment.roleId,
+     });
+
+     return acc;
+   }, {} as Record<string, StaffSchedule['assignments'][0]>);
+
+   return {
+     staff,
+     weeklyHours,
+     assignments: Object.values(groupedAssignments),
+   };
+ }
+
+ // Utility Methods
+ static async getAvailableStaffForShift(
+   startTime: Date,
+   endTime: Date,
+   requiredRole: StaffRole,
+   requiredCertifications: string[] = []
+ ): Promise<Staff[]> {
+   const dayOfWeek = startTime.getDay();
+   const timeStart = startTime.toLocaleTimeString('en-US', { 
+     hour12: false,
+     hour: '2-digit',
+     minute: '2-digit'
+   });
+   const timeEnd = endTime.toLocaleTimeString('en-US', { 
+     hour12: false,
+     hour: '2-digit',
+     minute: '2-digit'
+   });
+
+   return prisma.staff.findMany({
+     where: {
+       role: requiredRole,
+       certifications: {
+         hasEvery: requiredCertifications,
+       },
+       availability: {
+         some: {
+           dayOfWeek,
+           startTime: {
+             lte: timeStart,
+           },
+           endTime: {
+             gte: timeEnd,
+           },
+         },
+       },
+       NOT: {
+         shifts: {
+           some: {
+             shift: {
+               OR: [
+                 {
+                   startTime: {
+                     lte: startTime,
+                     gte: endTime,
+                   },
+                 },
+                 {
+                   endTime: {
+                     gte: startTime,
+                     lte: endTime,
+                   },
+                 },
+               ],
+             },
+           },
+         },
+       },
+     },
+     include: {
+       availability: true,
+     },
+   });
+ }
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/scheduling/utils/schedule-utils.ts
+export function calculateShiftHours(startTime: Date, endTime: Date): number {
+ const diffMs = endTime.getTime() - startTime.getTime();
+ return diffMs / (1000 * 60 * 60);
+}
+
+export function isWithinTimeRange(
+ time: Date,
+ rangeStart: Date,
+ rangeEnd: Date
+): boolean {
+ return time >= rangeStart && time <= rangeEnd;
+}
+
+export function calculateBreakTiming(
+ shiftStart: Date,
+ shiftDuration: number
+): { startTime: Date; duration: number } {
+ // Default break timing is after 4 hours of work
+ const breakStart = new Date(shiftStart);
+ breakStart.setHours(breakStart.getHours() + 4);
+
+ // Default break duration is 30 minutes
+ return {
+   startTime: breakStart,
+   duration: 30,
+ };
+}
+
+export function validateBreakTiming(
+ breakStart: Date,
+ breakDuration: number,
+ shiftStart: Date,
+ shiftEnd: Date
+): boolean {
+ const breakEnd = new Date(breakStart);
+ breakEnd.setMinutes(breakEnd.getMinutes() + breakDuration);
+
+ return (
+   breakStart >= shiftStart &&
+   breakEnd <= shiftEnd &&
+   breakDuration >= 15 && // Minimum break duration
+   breakDuration <= 60 // Maximum break duration
+ );
+}
+
+export function generateWeeklySchedule(
+ startDate: Date,
+ shifts: any[],
+ staff: any[]
+): any[] {
+ const schedule = [];
+ const currentDate = new Date(startDate);
+
+ // Generate 7 days of schedule
+ for (let i = 0; i < 7; i++) {
+   const dayShifts = shifts.filter(shift => {
+     const shiftDate = new Date(shift.startTime);
+     return (
+       shiftDate.getDate() === currentDate.getDate() &&
+       shiftDate.getMonth() === currentDate.getMonth() &&
+       shiftDate.getFullYear() === currentDate.getFullYear()
+     );
+   });
+
+   schedule.push({
+     date: new Date(currentDate),
+     shifts: dayShifts.map(shift => ({
+       ...shift,
+       assignedStaff: shift.assignedStaff.map(assignment => {
+         const staffMember = staff.find(s => s.id === assignment.staffId);
+         return {
+           ...assignment,
+           staff: staffMember,
+         };
+       }),
+     })),
+   });
+
+   currentDate.setDate(currentDate.getDate() + 1);
+ }
+
+ return schedule;
+}
+
+export function calculateStaffUtilization(
+ staff: any,
+ shifts: any[],
+ startDate: Date,
+ endDate: Date
+): number {
+ const totalAssignedHours = shifts.reduce((total, shift) => {
+   const assignedToStaff = shift.assignedStaff.some(
+     assignment => assignment.staffId === staff.id
+   );
+   if (assignedToStaff) {
+     return total + calculateShiftHours(shift.startTime, shift.endTime);
+   }
+   return total;
+ }, 0);
+
+ const maxPossibleHours = staff.maxHoursPerWeek;
+ return (totalAssignedHours / maxPossibleHours) * 100;
+}
+
+export function getShiftRequirements(
+ type: 'COFFEE' | 'WINE',
+ expectedCustomers: number
+): { role: string; count: number }[] {
+ const requirements = [];
+
+ if (type === 'COFFEE') {
+   requirements.push(
+     { role: 'BARISTA', count: Math.ceil(expectedCustomers / 30) },
+     { role: 'MANAGER', count: 1 }
+   );
+ } else {
+   requirements.push(
+     { role: 'SOMMELIER', count: Math.ceil(expectedCustomers / 20) },
+     { role: 'MANAGER', count: 1 }
+   );
+ }
+
+ return requirements;
+}
+
+export function calculateLaborCost(
+ shift: any,
+ assignedStaff: any[]
+): { total: number; byRole: Record<string, number> } {
+ const hours = calculateShiftHours(shift.startTime, shift.endTime);
+ 
+ const costByRole = assignedStaff.reduce((acc, assignment) => {
+   const staff = assignment.staff;
+   if (!acc[staff.role]) {
+     acc[staff.role] = 0;
+   }
+   acc[staff.role] += staff.hourlyRate * hours;
+   return acc;
+ }, {} as Record<string, number>);
+
+ const totalCost = Object.values(costByRole).reduce((a, b) => a + b, 0);
+
+ return {
+   total: totalCost,
+   byRole: costByRole,
+ };
+}
+
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/bufbarista-crm/src/lib/services/db-service.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -25095,6 +30980,328 @@ export const config = {
  ],
 };
 ________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/store/use-scheduling-store.ts
+import { create } from 'zustand';
+import { Shift, Staff, ShiftTemplate } from '@/types/scheduling';
+import { ShiftType, StaffRole } from '@prisma/client';
+
+interface DateRange {
+  from: Date;
+  to: Date;
+}
+
+interface SchedulingState {
+  // Data
+  shifts: Shift[];
+  staff: Staff[];
+  templates: ShiftTemplate[];
+  
+  // UI State
+  selectedDate: Date;
+  dateRange: DateRange;
+  selectedShift: string | null;
+  selectedStaff: string | null;
+  
+  // Filters
+  filter: {
+    shiftType: ShiftType | 'ALL';
+    staffRole: StaffRole | null;
+    certifications: string[];
+    dateRange: DateRange | null;
+  };
+
+  // Loading States
+  isLoading: {
+    shifts: boolean;
+    staff: boolean;
+    templates: boolean;
+  };
+
+  // Actions
+  setShifts: (shifts: Shift[]) => void;
+  setStaff: (staff: Staff[]) => void;
+  setTemplates: (templates: ShiftTemplate[]) => void;
+  setSelectedDate: (date: Date) => void;
+  setDateRange: (range: DateRange) => void;
+  setSelectedShift: (shiftId: string | null) => void;
+  setSelectedStaff: (staffId: string | null) => void;
+  setFilter: (filter: Partial<SchedulingState['filter']>) => void;
+  setLoading: (key: keyof SchedulingState['isLoading'], value: boolean) => void;
+}
+
+export const useSchedulingStore = create<SchedulingState>((set) => ({
+  // Initial Data
+  shifts: [],
+  staff: [],
+  templates: [],
+
+  // Initial UI State
+  selectedDate: new Date(),
+  dateRange: {
+    from: new Date(),
+    to: new Date(new Date().setDate(new Date().getDate() + 7)),
+  },
+  selectedShift: null,
+  selectedStaff: null,
+
+  // Initial Filters
+  filter: {
+    shiftType: 'ALL',
+    staffRole: null,
+    certifications: [],
+    dateRange: null,
+  },
+
+  // Initial Loading States
+  isLoading: {
+    shifts: false,
+    staff: false,
+    templates: false,
+  },
+
+  // Actions
+  setShifts: (shifts) => set({ shifts }),
+  setStaff: (staff) => set({ staff }),
+  setTemplates: (templates) => set({ templates }),
+  setSelectedDate: (selectedDate) => set({ selectedDate }),
+  setDateRange: (dateRange) => set({ dateRange }),
+  setSelectedShift: (selectedShift) => set({ selectedShift }),
+  setSelectedStaff: (selectedStaff) => set({ selectedStaff }),
+  setFilter: (filter) => set((state) => ({
+    filter: { ...state.filter, ...filter }
+  })),
+  setLoading: (key, value) => set((state) => ({
+    isLoading: { ...state.isLoading, [key]: value }
+  })),
+}));
+
+// Selectors
+export const useSelectedShift = () => useSchedulingStore(
+  (state) => state.shifts.find(s => s.id === state.selectedShift)
+);
+
+export const useFilteredShifts = () => useSchedulingStore((state) => {
+  const { shifts, filter } = state;
+  return shifts.filter(shift => {
+    if (filter.shiftType !== 'ALL' && shift.type !== filter.shiftType) return false;
+    if (filter.dateRange) {
+      const shiftDate = new Date(shift.startTime);
+      if (shiftDate < filter.dateRange.from || shiftDate > filter.dateRange.to) return false;
+    }
+    return true;
+  });
+});
+
+export const useFilteredStaff = () => useSchedulingStore((state) => {
+  const { staff, filter } = state;
+  return staff.filter(s => {
+    if (filter.staffRole && s.role !== filter.staffRole) return false;
+    if (filter.certifications.length > 0) {
+      return filter.certifications.every(cert => s.certifications.includes(cert));
+    }
+    return true;
+  });
+});
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/store/use-shift-store.ts
+import { create } from 'zustand';
+import { Shift } from '@/types/scheduling/shift';
+
+interface ShiftStore {
+ shifts: Shift[];
+ selectedShift: Shift | null;
+ loading: boolean;
+ error: string | null;
+ draggingShift: {
+   shift: Shift;
+   type: 'move' | 'resize';
+ } | null;
+ 
+ // Actions
+ setShifts: (shifts: Shift[]) => void;
+ selectShift: (shift: Shift | null) => void;
+ setLoading: (loading: boolean) => void;
+ setError: (error: string | null) => void;
+ setDraggingShift: (dragging: { shift: Shift; type: 'move' | 'resize' } | null) => void;
+ 
+ // Async actions
+ fetchShifts: (startDate: Date, endDate: Date) => Promise<void>;
+ createShift: (shiftData: Partial<Shift>) => Promise<void>;
+ updateShift: (id: string, shiftData: Partial<Shift>) => Promise<void>;
+ deleteShift: (id: string) => Promise<void>;
+ assignStaff: (shiftId: string, staffId: string) => Promise<void>;
+ removeStaffAssignment: (shiftId: string, staffId: string) => Promise<void>;
+}
+
+export const useShiftStore = create<ShiftStore>((set, get) => ({
+ shifts: [],
+ selectedShift: null,
+ loading: false,
+ error: null,
+ draggingShift: null,
+
+ setShifts: (shifts) => set({ shifts }),
+ selectShift: (shift) => set({ selectedShift: shift }),
+ setLoading: (loading) => set({ loading }),
+ setError: (error) => set({ error }),
+ setDraggingShift: (dragging) => set({ draggingShift: dragging }),
+
+ fetchShifts: async (startDate: Date, endDate: Date) => {
+   try {
+     set({ loading: true, error: null });
+     const response = await fetch(
+       `/api/scheduling/shifts?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
+     );
+     
+     if (!response.ok) throw new Error('Failed to fetch shifts');
+     
+     const shifts = await response.json();
+     set({ shifts, loading: false });
+   } catch (error) {
+     set({ 
+       error: error instanceof Error ? error.message : 'Failed to fetch shifts',
+       loading: false 
+     });
+   }
+ },
+
+ createShift: async (shiftData) => {
+   try {
+     set({ loading: true, error: null });
+     const response = await fetch('/api/scheduling/shifts', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify(shiftData),
+     });
+     
+     if (!response.ok) throw new Error('Failed to create shift');
+     
+     const newShift = await response.json();
+     set((state) => ({ 
+       shifts: [...state.shifts, newShift],
+       loading: false 
+     }));
+   } catch (error) {
+     set({ 
+       error: error instanceof Error ? error.message : 'Failed to create shift',
+       loading: false 
+     });
+   }
+ },
+
+ updateShift: async (id, shiftData) => {
+   try {
+     set({ loading: true, error: null });
+     const response = await fetch(`/api/scheduling/shifts/${id}`, {
+       method: 'PATCH',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify(shiftData),
+     });
+     
+     if (!response.ok) throw new Error('Failed to update shift');
+     
+     const updatedShift = await response.json();
+     set((state) => ({
+       shifts: state.shifts.map((s) => s.id === id ? updatedShift : s),
+       loading: false
+     }));
+   } catch (error) {
+     set({ 
+       error: error instanceof Error ? error.message : 'Failed to update shift',
+       loading: false 
+     });
+   }
+ },
+
+ deleteShift: async (id) => {
+   try {
+     set({ loading: true, error: null });
+     const response = await fetch(`/api/scheduling/shifts/${id}`, {
+       method: 'DELETE',
+     });
+     
+     if (!response.ok) throw new Error('Failed to delete shift');
+     
+     set((state) => ({
+       shifts: state.shifts.filter((s) => s.id !== id),
+       selectedShift: null,
+       loading: false
+     }));
+   } catch (error) {
+     set({ 
+       error: error instanceof Error ? error.message : 'Failed to delete shift',
+       loading: false 
+     });
+   }
+ },
+
+ assignStaff: async (shiftId, staffId) => {
+   try {
+     set({ loading: true, error: null });
+     const response = await fetch(`/api/scheduling/shifts/${shiftId}/assignments`, {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({ staffId }),
+     });
+     
+     if (!response.ok) throw new Error('Failed to assign staff');
+     
+     const assignment = await response.json();
+     set((state) => ({
+       shifts: state.shifts.map((s) => {
+         if (s.id === shiftId) {
+           return {
+             ...s,
+             assignedStaff: [...s.assignedStaff, assignment]
+           };
+         }
+         return s;
+       }),
+       loading: false
+     }));
+   } catch (error) {
+     set({ 
+       error: error instanceof Error ? error.message : 'Failed to assign staff',
+       loading: false 
+     });
+   }
+ },
+
+ removeStaffAssignment: async (shiftId, staffId) => {
+   try {
+     set({ loading: true, error: null });
+     const response = await fetch(
+       `/api/scheduling/shifts/${shiftId}/assignments?staffId=${staffId}`,
+       { method: 'DELETE' }
+     );
+     
+     if (!response.ok) throw new Error('Failed to remove staff assignment');
+     
+     set((state) => ({
+       shifts: state.shifts.map((s) => {
+         if (s.id === shiftId) {
+           return {
+             ...s,
+             assignedStaff: s.assignedStaff.filter(
+               (a) => a.staffId !== staffId
+             )
+           };
+         }
+         return s;
+       }),
+       loading: false
+     }));
+   } catch (error) {
+     set({ 
+       error: error instanceof Error ? error.message : 'Failed to remove staff assignment',
+       loading: false 
+     });
+   }
+ }
+}));
+
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/bufbarista-crm/src/store/use-sidebar.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
@@ -25254,5 +31461,93 @@ export interface QuickNote {
 }
 
 
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/types/scheduling/shift.ts
+import { Staff, StaffAssignment } from './staff';
+
+export interface Shift {
+ id: string;
+ type: 'COFFEE' | 'WINE';
+ startTime: string;
+ endTime: string;
+ status: ShiftStatus;
+ notes?: string;
+ assignedStaff: StaffAssignment[];
+ breaks: Break[];
+ createdAt: Date;
+ updatedAt: Date;
+}
+
+export type ShiftStatus = 
+ | 'DRAFT'
+ | 'PUBLISHED'
+ | 'IN_PROGRESS'
+ | 'COMPLETED'
+ | 'CANCELLED';
+
+export interface Break {
+ id?: string;
+ shiftId: string;
+ startTime: string;
+ duration: number;
+ createdAt?: Date;
+ updatedAt?: Date;
+}
+
+export interface ShiftTemplate {
+ name: string;
+ type: 'COFFEE' | 'WINE';
+ duration: number;
+ requiredRoles: RequiredRole[];
+ defaultBreaks: {
+   timing: number;
+   duration: number;
+ }[];
+}
+
+export interface RequiredRole {
+ roleId: string;
+ name: string;
+ requiredCertifications: string[];
+ minStaffCount: number;
+}
+
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/types/scheduling/staff.ts
+export interface Staff {
+ id: string;
+ name: string;
+ email: string;
+ role: 'BARISTA' | 'SOMMELIER' | 'MANAGER' | 'EXECUTIVE';
+ certifications: Certification[];
+ availability: Availability[];
+ createdAt: Date;
+ updatedAt: Date;
+}
+
+export interface Certification {
+ id: string;
+ name: string;
+ staffId: string;
+}
+
+export interface Availability {
+ id: string;
+ dayOfWeek: number;
+ startTime: string;
+ endTime: string;
+ recurring: boolean;
+ staffId: string;
+}
+
+export interface StaffAssignment {
+ id: string;
+ shiftId: string;
+ staffId: string;
+ role: string;
+ staff: Staff;
+ status: 'SCHEDULED' | 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED' | 'NO_SHOW';
+}
 
 ________________________________________________________________________________
