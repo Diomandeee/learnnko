@@ -241,8 +241,13 @@ model Staff {
   preferredShiftLength Int     @default(8)  // in hours
   preferredDays       Int[]   // 0-6 for days of week
   blackoutDates       DateTime[]
+  timeOff          TimeOff[]
+  emergencyContact String?
+  address          String?
+  preferredShifts  String[]
+  maxHoursPerDay   Int       @default(8)
+  notes            String?
 }
-
 model Shift {
   id            String            @id @default(auto()) @map("_id") @db.ObjectId
   type          ShiftType
@@ -355,3 +360,30 @@ enum RuleType {
   TIME_CONSTRAINT
   ROLE_BASED
 }
+
+model TimeOff {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  staffId     String      @db.ObjectId
+  staff       Staff       @relation(fields: [staffId], references: [id])
+  startDate   DateTime
+  endDate     DateTime
+  type        TimeOffType
+  status      TimeOffStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+enum TimeOffType {
+  VACATION
+  SICK
+  PERSONAL
+  OTHER
+}
+
+enum TimeOffStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+

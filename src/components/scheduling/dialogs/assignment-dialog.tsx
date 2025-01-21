@@ -19,13 +19,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Staff, Shift } from "@/types/scheduling";
 import { useToast } from "@/components/ui/use-toast";
 
 interface AssignmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  shift: Shift;
+  shift: any;
   onAssign: (staffIds: string[]) => Promise<void>;
 }
 
@@ -36,7 +35,7 @@ export function AssignmentDialog({
   onAssign,
 }: AssignmentDialogProps) {
   const [loading, setLoading] = useState(false);
-  const [availableStaff, setAvailableStaff] = useState<Staff[]>([]);
+  const [availableStaff, setAvailableStaff] = useState([]);
   const [selectedStaff, setSelectedStaff] = useState<string[]>([]);
   const { toast } = useToast();
 
@@ -44,7 +43,7 @@ export function AssignmentDialog({
     if (open) {
       fetchAvailableStaff();
     } else {
-      setSelectedStaff([]); // Reset selections when dialog closes
+      setSelectedStaff([]);
     }
   }, [open]);
 
@@ -52,10 +51,10 @@ export function AssignmentDialog({
     try {
       const response = await fetch('/api/scheduling/staff');
       if (!response.ok) throw new Error('Failed to fetch staff');
-      const staff: Staff[] = await response.json();
+      const staff = await response.json();
       
       // Filter out staff already assigned to this shift
-      const assignedStaffIds = shift.assignedStaff.map(a => a.staffId);
+      const assignedStaffIds = shift.assignedStaff?.map(a => a.staffId) || [];
       const availableStaff = staff.filter(s => !assignedStaffIds.includes(s.id));
       
       setAvailableStaff(availableStaff);
@@ -70,10 +69,19 @@ export function AssignmentDialog({
   };
 
   const handleAssign = async () => {
+    if (selectedStaff.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one staff member",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setLoading(true);
       await onAssign(selectedStaff);
-      setSelectedStaff([]); // Reset selections
+      setSelectedStaff([]);
       onOpenChange(false);
     } catch (error) {
       console.error('Assignment error:', error);
@@ -93,7 +101,8 @@ export function AssignmentDialog({
         <DialogHeader>
           <DialogTitle>Assign Staff to Shift</DialogTitle>
           <DialogDescription>
-            Select staff members to assign to this shift on {new Date(shift.startTime).toLocaleDateString()}
+            Select staff members to assign to this shift on{" "}
+            {new Date(shift.startTime).toLocaleDateString()}
           </DialogDescription>
         </DialogHeader>
 
@@ -134,7 +143,7 @@ export function AssignmentDialog({
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {staff.certifications.map((cert) => (
+                          {staff.certifications?.map((cert) => (
                             <Badge key={cert} variant="outline">
                               {cert}
                             </Badge>

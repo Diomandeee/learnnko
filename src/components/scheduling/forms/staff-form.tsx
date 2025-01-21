@@ -78,7 +78,7 @@ export function StaffForm({ initialData, onSubmit, onCancel }: StaffFormProps) {
       role: "BARISTA",
       certifications: [],
       maxHoursPerWeek: 40,
-      hourlyRate: 15,
+      hourlyRate: 20,
       availability: DAYS_OF_WEEK.map((_, index) => ({
         dayOfWeek: index,
         startTime: "09:00",

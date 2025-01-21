@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { ShiftCalendar } from "@/components/scheduling/calendar/shift-calendar";
-import { StaffList } from "@/components/scheduling/lists/staff-list";
 import { ShiftList } from "@/components/scheduling/lists/shift-list";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { StaffDialog } from "@/components/scheduling/dialogs/staff-dialog";
 import { ShiftDialog } from "@/components/scheduling/dialogs/shift-dialog";
 import { toast } from "@/components/ui/use-toast";
+import { PageContainer } from "@/components/layout/page-container"
 
 export default function SchedulingPage() {
   const router = useRouter();
@@ -76,6 +76,8 @@ export default function SchedulingPage() {
   };
 
   return (
+    <PageContainer>
+
     <div className="space-y-6 p-8">
       <div className="flex items-center justify-between">
         <div>
@@ -99,16 +101,8 @@ export default function SchedulingPage() {
       <div className="grid gap-6">
         <ShiftCalendar />
 
-        <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Staff Directory</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StaffList />
-            </CardContent>
-          </Card>
-
+        <div className="grid gap-6 md:grid-cols-1">
+  
           <Card>
             <CardHeader>
               <CardTitle>Upcoming Shifts</CardTitle>
@@ -132,5 +126,7 @@ export default function SchedulingPage() {
         onSubmit={handleShiftSubmit}
       />
     </div>
+    </PageContainer>
+
   );
 }

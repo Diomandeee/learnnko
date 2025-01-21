@@ -1,48 +1,34 @@
-import { Staff, StaffAssignment } from './staff';
+import { ShiftType, ShiftStatus } from "@prisma/client";
 
 export interface Shift {
- id: string;
- type: 'COFFEE' | 'WINE';
- startTime: string;
- endTime: string;
- status: ShiftStatus;
- notes?: string;
- assignedStaff: StaffAssignment[];
- breaks: Break[];
- createdAt: Date;
- updatedAt: Date;
+  id: string;
+  type: ShiftType;
+  startTime: string;
+  endTime: string;
+  status: ShiftStatus;
+  notes?: string;
+  requiredRoles: any;
+  assignedStaff: ShiftAssignment[];
+  breaks: Break[];
+  createdAt: string;
+  updatedAt: string;
+  stack?: number;
 }
 
-export type ShiftStatus = 
- | 'DRAFT'
- | 'PUBLISHED'
- | 'IN_PROGRESS'
- | 'COMPLETED'
- | 'CANCELLED';
+export interface ShiftAssignment {
+  id: string;
+  shiftId: string;
+  staffId: string;
+  status: string;
+  staff: {
+    id: string;
+    name: string;
+    role: string;
+  };
+}
 
 export interface Break {
- id?: string;
- shiftId: string;
- startTime: string;
- duration: number;
- createdAt?: Date;
- updatedAt?: Date;
-}
-
-export interface ShiftTemplate {
- name: string;
- type: 'COFFEE' | 'WINE';
- duration: number;
- requiredRoles: RequiredRole[];
- defaultBreaks: {
-   timing: number;
-   duration: number;
- }[];
-}
-
-export interface RequiredRole {
- roleId: string;
- name: string;
- requiredCertifications: string[];
- minStaffCount: number;
+  id: string;
+  startTime: string;
+  duration: number;
 }

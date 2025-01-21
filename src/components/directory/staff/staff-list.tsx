@@ -22,12 +22,19 @@ import { Badge } from "@/components/ui/badge";
 import { MoreHorizontal, Edit, Trash2, Calendar } from "lucide-react";
 import { StaffRole } from "@prisma/client";
 import { useState, useEffect } from "react";
-
-interface StaffListProps {
-  onEdit?: (staff: Staff) => void;
-  onDelete?: (staffId: string) => void;
-  onViewSchedule?: (staffId: string) => void;
-}
+import { useToast } from "@/components/ui/use-toast";
+import { StaffDialog } from "@/components/scheduling/dialogs/staff-dialog";
+import { useRouter } from "next/navigation";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const getRoleColor = (role: StaffRole) => {
   switch (role) {
@@ -44,27 +51,103 @@ const getRoleColor = (role: StaffRole) => {
   }
 };
 
-export function StaffList({ onEdit, onDelete, onViewSchedule }: StaffListProps) {
+export function StaffList() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const { toast } = useToast();
+  const router = useRouter();
 
   useEffect(() => {
-    const fetchStaff = async () => {
-      try {
-        const response = await fetch('/api/scheduling/staff');
-        if (response.ok) {
-          const data = await response.json();
-          setStaff(data);
-        }
-      } catch (error) {
-        console.error('Error fetching staff:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchStaff();
   }, []);
+
+  const fetchStaff = async () => {
+    try {
+      const response = await fetch('/api/scheduling/staff');
+      if (response.ok) {
+        const data = await response.json();
+        setStaff(data);
+      }
+    } catch (error) {
+      console.error('Error fetching staff:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch staff members",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEdit = (staff: Staff) => {
+    setSelectedStaff(staff);
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdate = async (updatedStaff: Staff) => {
+    try {
+      const response = await fetch(`/api/scheduling/staff/${updatedStaff.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedStaff),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Staff member updated successfully",
+        });
+        fetchStaff(); // Refresh the staff list
+      } else {
+        throw new Error('Failed to update staff member');
+      }
+    } catch (error) {
+      console.error('Error updating staff:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update staff member",
+        variant: "destructive",
+      });
+    } finally {
+      setEditDialogOpen(false);
+      setSelectedStaff(null);
+    }
+  };
+
+  const handleViewSchedule = (staffId: string) => {
+    router.push(`/dashboard/staff/${staffId}/schedule`);
+  };
+
+  const handleDelete = async (staffId: string) => {
+    try {
+      const response = await fetch(`/api/scheduling/staff/${staffId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Staff member deleted successfully",
+        });
+        fetchStaff(); // Refresh the staff list
+      } else {
+        throw new Error('Failed to delete staff member');
+      }
+    } catch (error) {
+      console.error('Error deleting staff:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete staff member",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteDialogOpen(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -75,7 +158,7 @@ export function StaffList({ onEdit, onDelete, onViewSchedule }: StaffListProps) 
   }
 
   return (
-    <div className="space-y-4">
+    <>
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -128,19 +211,19 @@ export function StaffList({ onEdit, onDelete, onViewSchedule }: StaffListProps) 
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onSelect={() => onEdit?.(member)}>
+                        <DropdownMenuItem onSelect={() => handleEdit(member)}>
                           <Edit className="mr-2 h-4 w-4" />
                           Edit Staff
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onSelect={() => onViewSchedule?.(member.id)}
+                          onSelect={() => handleViewSchedule(member.id)}
                         >
                           <Calendar className="mr-2 h-4 w-4" />
                           View Schedule
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-red-600"
-                          onSelect={() => onDelete?.(member.id)}
+                          onSelect={() => setDeleteDialogOpen(true)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Delete Staff
@@ -154,6 +237,34 @@ export function StaffList({ onEdit, onDelete, onViewSchedule }: StaffListProps) 
           </TableBody>
         </Table>
       </div>
-    </div>
+
+      <StaffDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        initialData={selectedStaff}
+        onSubmit={handleUpdate}
+      />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the staff member
+              and remove all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => selectedStaff && handleDelete(selectedStaff.id)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

@@ -92,6 +92,12 @@ const routes = [
    href: "/dashboard/scheduling",
     color: "text-red-500",
  },
+ {
+  label: "Directory",
+  icon: Users,
+  href: "/dashboard/directory",
+  color: "text-violet-500"
+},
 ];
 
 export function SideNav() {

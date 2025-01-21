@@ -41,7 +41,7 @@ export async function POST(request: Request) {
         email: body.email,
         role: body.role,
         maxHoursPerWeek: body.maxHoursPerWeek || 40,
-        hourlyRate: body.hourlyRate || 15,
+        hourlyRate: body.hourlyRate || 20,
         certifications: body.certifications || [],
         availability: {
           create: body.availability.map((avail: any) => ({
