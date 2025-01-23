@@ -1,3 +1,17 @@
+export * from './shift';
+export * from './staff';
+export * from './calendar';
+import { Staff } from './staff';
+
+export interface StaffAssignment {
+  id: string;
+  shiftId: string;
+  staffId: string;
+  roleId: string;
+  status: string;
+  staff?: Staff;
+}
+
 export interface DraggedShift {
   id: string;
   startTime: Date;
@@ -28,4 +42,28 @@ export interface DragEndData {
     hour: number;
     minutes: number;
   };
+}
+
+export interface Shift {
+  id: string;
+  type: 'COFFEE' | 'WINE';
+  startTime: string | Date;
+  endTime: string | Date;
+  status: string;
+  requiredRoles: string[];
+  notes?: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+  assignedStaff?: StaffAssignment[];
+  breaks?: Break[];
+}
+
+export interface Break {
+  id: string;
+  shiftId: string;
+  staffId: string;
+  startTime: Date;
+  duration: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }

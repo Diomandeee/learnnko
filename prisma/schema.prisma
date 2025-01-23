@@ -6,224 +6,208 @@ datasource db {
  provider = "mongodb"
  url      = env("DATABASE_URL")
 }
-
 model User {
- id            String       @id @default(auto()) @map("_id") @db.ObjectId
- email         String      @unique
- name          String?
- password      String
- role          Role        @default(USER)
- contacts      Contact[]
- bio           String?
- phoneNumber   String?
- preferences   Json?
- notifications Json?
- activities    Activity[]
- orders        Order[]
- quickNotes    QuickNote[]
- menuItems     MenuItem[]
- createdAt     DateTime    @default(now())
- updatedAt     DateTime    @updatedAt
- qrCodes       QRCode[]
- folders       Folder[]
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  email         String      @unique
+  name          String?
+  password      String
+  role          Role        @default(USER)
+  contacts      Contact[]
+  bio           String?
+  phoneNumber   String?
+  preferences   Json?
+  notifications Json?
+  activities    Activity[]
+  orders        Order[]
+  quickNotes    QuickNote[]
+  menuItems     MenuItem[]
+  visits        Visit[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  qrCodes       QRCode[]
+  folders       Folder[]
+  coffeeShops   CoffeeShop[] // Add this line to complete the relation
+
 }
 
 model Activity {
- id          String   @id @default(auto()) @map("_id") @db.ObjectId
- userId      String   @db.ObjectId
- user        User     @relation(fields: [userId], references: [id])
- contactId   String   @db.ObjectId
- type        String
- description String
- metadata    Json?
- createdAt   DateTime @default(now())
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id])
+  contactId   String   @db.ObjectId
+  type        String
+  description String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  contact     Contact  @relation(fields: [contactId], references: [id])
 }
 
 model Contact {
- id        String   @id @default(auto()) @map("_id") @db.ObjectId
- firstName String
- lastName  String
- email     String
- phone     String?
- company   String?
- notes     String?
- status    Status   @default(NEW)
- userId    String   @db.ObjectId
- user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
- createdAt DateTime @default(now())
- updatedAt DateTime @updatedAt
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  firstName   String
+  lastName    String
+  email       String
+  phone       String?
+  company     String?
+  notes       String?
+  status      Status     @default(NEW)
+  userId      String     @db.ObjectId
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activities  Activity[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  shop        Shop?      @relation(fields: [shopId], references: [id])
+  shopId      String?    @db.ObjectId
 }
 
 model MenuItem {
- id          String    @id @default(auto()) @map("_id") @db.ObjectId
- name        String
- price       Float
- category    String
- popular     Boolean   @default(false)
- active      Boolean   @default(true)
- createdAt   DateTime  @default(now())
- updatedAt   DateTime  @updatedAt
- userId      String    @db.ObjectId
- user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
- orderItems  OrderItem[]
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  price       Float
+  category    String
+  popular     Boolean     @default(false)
+  active      Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  userId      String      @db.ObjectId
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
 }
 
 model Order {
- id              String    @id @default(auto()) @map("_id") @db.ObjectId
- orderNumber     Int
- customerName    String
- status          OrderStatus @default(PENDING)
- timestamp       DateTime  @default(now())
- total          Float
- isComplimentary Boolean   @default(false)
- queueTime      Float
- preparationTime Float?
- startTime      DateTime?
- customerEmail  String?
- customerPhone  String?
- leadInterest   Boolean?
- notes          String?
- items          OrderItem[]
- userId         String    @db.ObjectId
- user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
- createdAt      DateTime  @default(now())
- updatedAt      DateTime  @updatedAt
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  orderNumber     Int
+  customerName    String
+  status          OrderStatus @default(PENDING)
+  timestamp       DateTime    @default(now())
+  total          Float
+  isComplimentary Boolean     @default(false)
+  queueTime      Float
+  preparationTime Float?
+  startTime      DateTime?
+  customerEmail  String?
+  customerPhone  String?
+  leadInterest   Boolean?
+  notes          String?
+  items          OrderItem[]
+  userId         String      @db.ObjectId
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 }
 
 model OrderItem {
- id          String    @id @default(auto()) @map("_id") @db.ObjectId
- menuItem    MenuItem  @relation(fields: [menuItemId], references: [id])
- menuItemId  String    @db.ObjectId
- order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
- orderId     String    @db.ObjectId
- quantity    Int
- price       Float
- createdAt   DateTime  @default(now())
- updatedAt   DateTime  @updatedAt
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  menuItem    MenuItem  @relation(fields: [menuItemId], references: [id])
+  menuItemId  String    @db.ObjectId
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId     String    @db.ObjectId
+  quantity    Int
+  price       Float
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model QuickNote {
- id        String   @id @default(auto()) @map("_id") @db.ObjectId
- content   String
- userId    String   @db.ObjectId
- user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
- createdAt DateTime @default(now())
- updatedAt DateTime @updatedAt
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Folder {
- id        String    @id @default(auto()) @map("_id") @db.ObjectId
- name      String
- color     String?   @default("#94a3b8")
- createdAt DateTime  @default(now())
- updatedAt DateTime  @updatedAt
- qrCodes   QRCode[]
- userId    String    @db.ObjectId
- user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  color     String?  @default("#94a3b8")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  qrCodes   QRCode[]
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model QRCode {
- id            String         @id @default(auto()) @map("_id") @db.ObjectId
- name          String
- defaultUrl    String
- shortCode     String         @unique
- isActive      Boolean        @default(true)
- createdAt     DateTime       @default(now())
- updatedAt     DateTime       @updatedAt
- userId        String         @db.ObjectId
- user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
- folderId      String?        @db.ObjectId
- folder        Folder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
- deviceRules   DeviceRule[]
- scheduleRules ScheduleRule[]
- design        QRDesign?
- scans         Scan[]
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  defaultUrl    String
+  shortCode     String         @unique
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  userId        String         @db.ObjectId
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folderId      String?        @db.ObjectId
+  folder        Folder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  deviceRules   DeviceRule[]
+  scheduleRules ScheduleRule[]
+  design        QRDesign?
+  scans         Scan[]
 }
 
 model QRDesign {
- id                  String   @id @default(auto()) @map("_id") @db.ObjectId
- size                Int      @default(300)
- backgroundColor     String   @default("#FFFFFF")
- foregroundColor     String   @default("#000000")
- logoImage          String?
- logoWidth          Int?
- logoHeight         Int?
- dotStyle           String    @default("squares")
- margin             Int       @default(20)
- errorCorrectionLevel String  @default("M")
- style              Json
- logoStyle          Json?
- imageRendering     String    @default("auto")
- qrCodeId           String    @unique @db.ObjectId
- qrCode            QRCode    @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
- createdAt          DateTime  @default(now())
- updatedAt          DateTime  @updatedAt
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  size                  Int      @default(300)
+  backgroundColor       String   @default("#FFFFFF")
+  foregroundColor       String   @default("#000000")
+  logoImage            String?
+  logoWidth            Int?
+  logoHeight           Int?
+  dotStyle             String    @default("squares")
+  margin               Int       @default(20)
+  errorCorrectionLevel String    @default("M")
+  style                Json
+  logoStyle            Json?
+  imageRendering       String    @default("auto")
+  qrCodeId             String    @unique @db.ObjectId
+  qrCode               QRCode    @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 }
 
-
 model Scan {
- id          String   @id @default(auto()) @map("_id") @db.ObjectId
- qrCodeId    String   @db.ObjectId
- qrCode      QRCode   @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
- userAgent   String?
- ipAddress   String?
- location    String?
- device      String?
- browser     String?
- os          String?
- timestamp   DateTime @default(now())
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  qrCodeId    String   @db.ObjectId
+  qrCode      QRCode   @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  userAgent   String?
+  ipAddress   String?
+  location    String?
+  device      String?
+  browser     String?
+  os          String?
+  timestamp   DateTime @default(now())
 }
 
 model DeviceRule {
- id         String   @id @default(auto()) @map("_id") @db.ObjectId
- qrCodeId   String   @db.ObjectId
- qrCode     QRCode   @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
- deviceType String
- browsers   String[]
- os         String[]
- targetUrl  String
- priority   Int
- createdAt  DateTime @default(now())
- updatedAt  DateTime @updatedAt
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  qrCodeId   String   @db.ObjectId
+  qrCode     QRCode   @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  deviceType String
+  browsers   String[]
+  os         String[]
+  targetUrl  String
+  priority   Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model ScheduleRule {
- id         String    @id @default(auto()) @map("_id") @db.ObjectId
- qrCodeId   String    @db.ObjectId
- qrCode     QRCode    @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
- startDate  DateTime
- endDate    DateTime?
- timeZone   String
- daysOfWeek Int[]
- startTime  String?
- endTime    String?
- targetUrl  String
- priority   Int
- createdAt  DateTime  @default(now())
- updatedAt  DateTime  @updatedAt
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  qrCodeId   String    @db.ObjectId
+  qrCode     QRCode    @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  startDate  DateTime
+  endDate    DateTime?
+  timeZone   String
+  daysOfWeek Int[]
+  startTime  String?
+  endTime    String?
+  targetUrl  String
+  priority   Int
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 }
 
-enum Role {
- USER
- ADMIN
-}
-
-enum Status {
- NEW
- CONTACTED
- QUALIFIED
- CONVERTED
- LOST
-}
-
-enum OrderStatus {
- PENDING
- IN_PROGRESS
- COMPLETED
- CANCELLED
-}
-
-// Scheduling models
 model Staff {
   id                String            @id @default(auto()) @map("_id") @db.ObjectId
   email             String            @unique
@@ -236,18 +220,19 @@ model Staff {
   availability     Availability[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
-  shiftPreferences     Json?  // Store staff scheduling preferences
-  maxShiftsPerWeek    Int     @default(5)
-  preferredShiftLength Int     @default(8)  // in hours
-  preferredDays       Int[]   // 0-6 for days of week
-  blackoutDates       DateTime[]
+  shiftPreferences Json?
+  maxShiftsPerWeek Int               @default(5)
+  preferredShiftLength Int           @default(8)
+  preferredDays    Int[]
+  blackoutDates    DateTime[]
   timeOff          TimeOff[]
   emergencyContact String?
   address          String?
   preferredShifts  String[]
-  maxHoursPerDay   Int       @default(8)
+  maxHoursPerDay   Int               @default(8)
   notes            String?
 }
+
 model Shift {
   id            String            @id @default(auto()) @map("_id") @db.ObjectId
   type          ShiftType
@@ -255,7 +240,7 @@ model Shift {
   endTime       DateTime
   status        ShiftStatus       @default(DRAFT)
   notes         String?
-  requiredRoles Json              // Array of required roles and counts
+  requiredRoles Json
   assignedStaff ShiftAssignment[]
   breaks        Break[]
   createdAt     DateTime          @default(now())
@@ -272,12 +257,13 @@ model ShiftAssignment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
 model Break {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   shiftId   String   @db.ObjectId
   staffId   String   @db.ObjectId
   startTime DateTime
-  duration  Int      // in minutes
+  duration  Int
   shift     Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -286,42 +272,153 @@ model Break {
 model Availability {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   staffId   String   @db.ObjectId
-  dayOfWeek Int      // 0-6 (Sunday-Saturday)
-  startTime String   // 24h format "HH:mm"
-  endTime   String   // 24h format "HH:mm"
+  dayOfWeek Int
+  startTime String
+  endTime   String
   recurring Boolean  @default(true)
   staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-
 model SchedulingRule {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  name        String
-  description String?
-  isActive    Boolean  @default(true)
-  
-  // Rule types
-  ruleType    RuleType @default(BASIC)
-  
-  // Rule conditions
-  minStaffPerShift   Int?
-  maxStaffPerShift   Int?
-  requireCertification Boolean @default(false)
+  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
+  name                 String
+  description          String?
+  isActive             Boolean  @default(true)
+  ruleType             RuleType @default(BASIC)
+  minStaffPerShift     Int?
+  maxStaffPerShift     Int?
+  requireCertification Boolean  @default(false)
   requiredCertifications String[]
-  
-  // Time constraints
   minHoursBetweenShifts Int?
   maxWeeklyHours       Int?
-  preferredDays        Int[] // 0-6 for days of week
-  preferredHours       String[] // ["09:00-17:00", "13:00-21:00"]
-  
-  // Staff requirements
-  roleRequirements Json? // e.g. {"BARISTA": 2, "SOMMELIER": 1}
-  
+  preferredDays        Int[]
+  preferredHours       String[]
+  roleRequirements     Json?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model TimeOff {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  staffId     String       @db.ObjectId
+  staff       Staff        @relation(fields: [staffId], references: [id])
+  startDate   DateTime
+  endDate     DateTime
+  type        TimeOffType
+  status      TimeOffStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model CoffeeShop {
+  id                    String    @id @default(auto()) @map("_id") @db.ObjectId
+  title                 String
+  address               String
+  website               String?
+  manager_present       String?
+  contact_name          String?
+  contact_email         String?
+  phone                 String?
+  visited               Boolean   @default(false)
+  instagram             String?
+  followers             Int?
+  store_doors           String?
+  volume                String?
+  first_visit          DateTime?
+  second_visit         DateTime?
+  third_visit          DateTime?
+  rating                Float?
+  reviews               Int?
+  price_type            String?
+  type                  String?
+  types                 String[]
+  service_options       Json?
+  hours                 String?
+  operating_hours       Json?
+  gps_coordinates       Json?
+  latitude              Float
+  longitude             Float
+  area                  String?
+  is_source             Boolean   @default(false)
+  quality_score         Float?
+  parlor_coffee_leads   Boolean   @default(false)
+  visits                Visit[]
+  userId                String?   @db.ObjectId
+  user                  User?     @relation(fields: [userId], references: [id])
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Visit {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  coffeeShopId    String      @db.ObjectId
+  shopId        String    @db.ObjectId
+  userId        String    @db.ObjectId
+  visitNumber   Int
+  date          DateTime
+  managerPresent Boolean  @default(false)
+  managerName   String?
+  managerContact String?
+  samplesDropped Boolean  @default(false)
+  sampleDetails String?
+  notes         String?
+  nextVisitDate DateTime?
+  photos        Photo[]   
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  shop          Shop      @relation(fields: [shopId], references: [id])
+  user          User      @relation(fields: [userId], references: [id])
+  coffeeShop    CoffeeShop  @relation(fields: [coffeeShopId], references: [id])
+
+}
+
+model Photo {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  visitId   String   @db.ObjectId
+  url       String
+  caption   String?
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  visit     Visit    @relation(fields: [visitId], references: [id])
+}
+
+model Shop {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  address     String
+  latitude    Float
+  longitude   Float
+  rating      Float?
+  reviews     Int?
+  website     String?
+  phone       String?
+  visited     Boolean   @default(false)
+  visits      Visit[]
+  contacts    Contact[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Status {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  LOST
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
 }
 
 enum StaffRole {
@@ -344,34 +441,12 @@ enum ShiftStatus {
   CANCELLED
 }
 
-enum AssignmentStatus {
-  SCHEDULED
-  CONFIRMED
-  CHECKED_IN
-  COMPLETED
-  NO_SHOW
-}
-
-
 enum RuleType {
   BASIC
   ADVANCED
   CERTIFICATION
   TIME_CONSTRAINT
   ROLE_BASED
-}
-
-model TimeOff {
-  id          String      @id @default(auto()) @map("_id") @db.ObjectId
-  staffId     String      @db.ObjectId
-  staff       Staff       @relation(fields: [staffId], references: [id])
-  startDate   DateTime
-  endDate     DateTime
-  type        TimeOffType
-  status      TimeOffStatus @default(PENDING)
-  notes       String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
 }
 
 enum TimeOffType {
@@ -386,4 +461,6 @@ enum TimeOffStatus {
   APPROVED
   REJECTED
 }
+
+
 

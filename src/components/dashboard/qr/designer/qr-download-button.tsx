@@ -60,15 +60,14 @@ export function QRDownloadButton({ qrRef, format }: QRDownloadButtonProps) {
             if (ctx) {
               ctx.drawImage(logoImg, 0, 0)
               const logoData = logoCanvas.toDataURL('image/png').replace(/^data:image\/[^;]+;base64,/, '')
-              
-              svgString + `
-                <image
-                  x="${x}"
-                  y="${y}"
-                  width="${width}"
-                  height="${height}"
-                  xlink:href="data:image/png;base64,${logoData}"
-                />`
+              const newSvgString = svgString + `
+              <image
+                x="${x}"
+                y="${y}"
+                width="${width}"
+                height="${height}"
+                xlink:href="data:image/png;base64,${logoData}"
+              />`;
             }
           }
         }

@@ -1,9 +1,14 @@
-import { addMinutes, differenceInMinutes, format, isBefore } from "date-fns";
+import {  differenceInMinutes, isBefore } from "date-fns";
 
 export const CELL_HEIGHT = 60;
 export const HOURS = Array.from({ length: 19 }, (_, i) => i + 6); // 6 AM to 12 AM
 
-export function getShiftPosition(shift: any) {
+interface Shift {
+  startTime: string | Date;
+  endTime: string | Date;
+}
+
+export function getShiftPosition(shift: Shift) {
   const start = new Date(shift.startTime);
   const startHour = start.getHours() + start.getMinutes() / 60 - 6; // Subtract 6 for offset
   const duration = differenceInMinutes(new Date(shift.endTime), start) / 60;
@@ -14,7 +19,7 @@ export function getShiftPosition(shift: any) {
   };
 }
 
-export function overlapsWithShift(shift1: any, shift2: any) {
+export function overlapsWithShift(shift1: Shift, shift2: Shift) {
   const start1 = new Date(shift1.startTime);
   const end1 = new Date(shift1.endTime);
   const start2 = new Date(shift2.startTime);
@@ -23,8 +28,8 @@ export function overlapsWithShift(shift1: any, shift2: any) {
   return isBefore(start1, end2) && isBefore(start2, end1);
 }
 
-export function calculateShiftStack(shifts: any[]) {
-  const stacks: any[][] = [];
+export function calculateShiftStack(shifts: Shift[]) {
+  const stacks: Shift[][] = [];
   
   shifts.forEach(shift => {
     let added = false;

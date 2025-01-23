@@ -27,7 +27,7 @@ interface ShiftStore {
  removeStaffAssignment: (shiftId: string, staffId: string) => Promise<void>;
 }
 
-export const useShiftStore = create<ShiftStore>((set, get) => ({
+export const useShiftStore = create<ShiftStore>((set) => ({
  shifts: [],
  selectedShift: null,
  loading: false,

@@ -1,5 +1,10 @@
-export function calculateShiftHours(startTime: Date, endTime: Date): number {
- const diffMs = endTime.getTime() - startTime.getTime();
+import { Shift } from '@/types/scheduling/shift';
+import { Staff } from '@/types/scheduling/staff';
+
+export function calculateShiftHours(startTime: Date | string, endTime: Date | string): number {
+ const start = new Date(startTime);
+ const end = new Date(endTime);
+ const diffMs = end.getTime() - start.getTime();
  return diffMs / (1000 * 60 * 60);
 }
 
@@ -15,11 +20,10 @@ export function calculateBreakTiming(
  shiftStart: Date,
  shiftDuration: number
 ): { startTime: Date; duration: number } {
- // Default break timing is after 4 hours of work
+ // Break starts halfway through the shift
  const breakStart = new Date(shiftStart);
- breakStart.setHours(breakStart.getHours() + 4);
+ breakStart.setHours(breakStart.getHours() + (shiftDuration / 2));
 
- // Default break duration is 30 minutes
  return {
    startTime: breakStart,
    duration: 30,
@@ -43,11 +47,24 @@ export function validateBreakTiming(
  );
 }
 
+interface WeeklyScheduleShift extends Omit<Shift, 'assignedStaff'> {
+  assignedStaff: Array<{
+    id: string;
+    shiftId: string;
+    staffId: string;
+    status: string;
+    staff: Staff | undefined;
+  }>;
+}
+
 export function generateWeeklySchedule(
- startDate: Date,
- shifts: any[],
- staff: any[]
-): any[] {
+  startDate: Date,
+  shifts: Shift[],
+  staff: Staff[]
+): Array<{
+  date: Date;
+  shifts: WeeklyScheduleShift[];
+}> {
  const schedule = [];
  const currentDate = new Date(startDate);
 
@@ -83,10 +100,8 @@ export function generateWeeklySchedule(
 }
 
 export function calculateStaffUtilization(
- staff: any,
- shifts: any[],
- startDate: Date,
- endDate: Date
+  staff: Staff,
+  shifts: Shift[]
 ): number {
  const totalAssignedHours = shifts.reduce((total, shift) => {
    const assignedToStaff = shift.assignedStaff.some(
@@ -124,13 +139,12 @@ export function getShiftRequirements(
 }
 
 export function calculateLaborCost(
- shift: any,
- assignedStaff: any[]
+  shift: Shift,
+  assignedStaff: Staff[]
 ): { total: number; byRole: Record<string, number> } {
  const hours = calculateShiftHours(shift.startTime, shift.endTime);
  
- const costByRole = assignedStaff.reduce((acc, assignment) => {
-   const staff = assignment.staff;
+ const costByRole = assignedStaff.reduce((acc, staff) => {
    if (!acc[staff.role]) {
      acc[staff.role] = 0;
    }

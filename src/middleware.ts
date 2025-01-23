@@ -76,5 +76,10 @@ export const config = {
    '/api/:path*',
    '/auth/:path*',
    '/dashboard/:path*',
+   '/api/coffee-shops/:path*',
+   '/api/routes/:path*',
+   '/api/visits/:path*',
+   '/coffee-shops/:path*',
+
  ],
 };

@@ -1,5 +1,7 @@
+import { Shift } from './shift';
+
 export interface ShiftStack {
-  shifts: any[];
+  shifts: Shift[];
   width: number;
   left: number;
 }

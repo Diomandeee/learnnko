@@ -1,4 +1,3 @@
-import { differenceInMinutes } from 'date-fns';
 import type { Shift } from '@/types/scheduling';
 
 const MINUTES_SNAP = 15;

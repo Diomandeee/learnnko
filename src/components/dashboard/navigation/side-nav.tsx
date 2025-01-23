@@ -3,26 +3,28 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { 
-  Home, 
-  Users, 
+import {
+  Home,
   Settings,
   PlusCircle,
   ChevronRight,
   ChevronLeft,
   Coffee,
-  Calendar
+  Calendar,
+  MapPin,
+  Users,
+  ShoppingBag,
+  Warehouse,
+  FileText,
+  BarChart2,
+  QrCode,
+  CreditCard,
+  Trash2,
+  Briefcase,
+  Contact,
+  Route as RouteIcon,
+  Eye,
 } from "lucide-react";
-
-import { 
-  FaChartLine as SalesIcon,
-  FaCashRegister as PosIcon,
-  FaClipboardList as OrdersIcon,
-  FaTrash as WasteIcon,
-  FaBoxes as InventoryIcon,
-  FaCog as SettingsIcon,
-    
-} from "react-icons/fa"; 
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -39,43 +41,43 @@ const routes = [
   },
   {
     label: "QR",
-    icon: SettingsIcon,
+    icon: QrCode,
     href: "/dashboard/qr",
     color: "text-orange-500"
   },
   {
     label: "Contacts",
-    icon: Users,
+    icon: Contact,
     href: "/dashboard/contacts",
     color: "text-violet-500"
   },
   {
     label: "Reports",
-    icon: SalesIcon,
+    icon: BarChart2,
     href: "/dashboard/sales",
     color: "text-red-500"
   },
   {
     label: "POS",
-    icon: PosIcon,
+    icon: CreditCard,
     href: "/dashboard/pos",
     color: "text-blue-500"
   },
   {
     label: "Orders",
-    icon: OrdersIcon,
+    icon: ShoppingBag,
     href: "/dashboard/order",
     color: "text-green-500"
   },
   {
     label: "Waste",
-    icon: WasteIcon,
+    icon: Trash2,
     href: "/dashboard/waste",
     color: "text-yellow-500"
   },
   {
     label: "Inventory",
-    icon: InventoryIcon,
+    icon: Warehouse,
     href: "/dashboard/inventory",
     color: "text-purple-500"
   },
@@ -85,20 +87,38 @@ const routes = [
     href: "/dashboard/settings",
     color: "text-orange-500"
   },
- 
- {
-   label: "Scheduling",
-   icon: Calendar,
-   href: "/dashboard/scheduling",
+  {
+    label: "Scheduling",
+    icon: Calendar,
+    href: "/dashboard/scheduling",
     color: "text-red-500",
- },
- {
-  label: "Directory",
-  icon: Users,
-  href: "/dashboard/directory",
-  color: "text-violet-500"
-},
+  },
+  {
+    label: "Directory",
+    icon: Briefcase,
+    href: "/dashboard/directory",
+    color: "text-emerald-500"
+  },
+  {
+    label: "Route",
+    icon: RouteIcon,
+    href: "/dashboard/routes",
+    color: "text-teal-500"
+  },
+  {
+    label: "Visit",
+    icon: Eye,
+    href: "/dashboard/visits",
+    color: "text-cyan-500"
+  },
+  {
+    label: "Shops",
+    icon: Coffee,
+    href: "/dashboard/coffee-shops",
+    color: "text-indigo-500"
+  },
 ];
+
 
 export function SideNav() {
   const pathname = usePathname();

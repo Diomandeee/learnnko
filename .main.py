@@ -175,12 +175,15 @@ class DirectoryTraversal:
 def main():
     # Configuration
     target_directories = [
-        "src/components/scheduling", 
-        "src/app/api/scheduling",
-        "src/components/directory",
-        "src/app/api/directory",
+        "src/app/dashboard/coffee-shops/",
+        "src/components/coffee-shops/",
+        "src/app/api/coffee-shops/",
+        "src/app/api/routes/",
+        "src/hooks/",
         "prisma/",
-
+        "src/app/dashboard/routes/",
+        "src/components/routes/",
+        "src/store/"
     ]
     
     excluded_directories = [
@@ -205,7 +208,15 @@ def main():
 if __name__ == "__main__":
     main()
 
+    target_directories = [
+        "src/components/scheduling", 
+        "src/app/api/scheduling",
+        "src/components/directory",
+        "src/app/api/directory",
+        "src/types/scheduling",
+        "prisma/",
 
+    ]
 # from selenium import webdriver
 # from selenium.webdriver.common.by import By
 # from selenium.webdriver.support.ui import WebDriverWait

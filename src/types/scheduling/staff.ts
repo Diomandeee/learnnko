@@ -7,6 +7,8 @@ export interface Staff {
  availability: Availability[];
  createdAt: Date;
  updatedAt: Date;
+ hourlyRate: number;
+ maxHoursPerWeek: number;
 }
 
 export interface Certification {
