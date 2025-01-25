@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function CoffeeShopsPage() {
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
+    <div className="container mx-auto max-w-[95%] py-10">
       <CoffeeShopHeader />
       <CoffeeShopsTable />
     </div>

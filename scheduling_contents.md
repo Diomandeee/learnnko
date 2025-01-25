@@ -367,766 +367,1309 @@ import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
- Table,
- TableBody,
- TableCell,
- TableHead,
- TableHeader,
- TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
- DropdownMenu,
- DropdownMenuContent,
- DropdownMenuItem,
- DropdownMenuLabel,
- DropdownMenuTrigger,
- DropdownMenuSeparator,
- DropdownMenuSub,
- DropdownMenuSubTrigger,
- DropdownMenuSubContent,
- DropdownMenuCheckboxItem,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { Edit, MoreHorizontal, Trash2, ChevronLeft, ChevronRight, ArrowDown, ArrowUp, Filter, XCircle } from "lucide-react"
+import { 
+  Edit, 
+  MoreHorizontal, 
+  Trash2, 
+  ChevronLeft, 
+  ChevronRight, 
+  ArrowDown, 
+  ArrowUp, 
+  Filter, 
+  XCircle, 
+  Calendar as CalendarIcon,
+  Pencil,
+  Check,
+  X,
+  Instagram
+} from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import {
- AlertDialog,
- AlertDialogAction,
- AlertDialogCancel,
- AlertDialogContent,
- AlertDialogDescription,
- AlertDialogFooter,
- AlertDialogHeader,
- AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
 import { CoffeeShop } from "@prisma/client"
+import { format } from "date-fns"
 import { useCoffeeShops } from "@/hooks/use-coffee-shops"
+import { FilterValueInput } from "./filter-value-input"
 
-const ITEMS_PER_PAGE = 1000
+const ITEMS_PER_PAGE =1000 
 
-type SortConfig = {
- key: keyof CoffeeShop | null
- direction: 'asc' | 'desc'
+interface EditableCellProps {
+  value: string | null
+  onUpdate: (value: string | null) => Promise<void>
+  type?: 'text' | 'number' | 'instagram' | 'volume'
+  className?: string
 }
 
-type FilterValue = string | number | boolean
-type FilterOperator = 'equals' | 'contains' | 'greaterThan' | 'lessThan'
+function EditableCell({ value, onUpdate, type = 'text', className }: EditableCellProps) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(value || '')
+  const [isUpdating, setIsUpdating] = useState(false)
+  const { toast } = useToast()
 
-interface Filter {
- field: keyof CoffeeShop
- operator: FilterOperator
- value: FilterValue
+  const handleSave = async () => {
+    if (isUpdating) return
+    setIsUpdating(true)
+    
+    try {
+      let processedValue = editValue
+      let isValid = true
+
+      switch (type) {
+        case 'instagram':
+          processedValue = editValue
+            .replace('@', '')
+            .replace('https://www.instagram.com/', '')
+            .replace('https://instagram.com/', '')
+            .trim()
+          break
+          
+        case 'volume':
+          const numValue = parseFloat(editValue)
+          if (isNaN(numValue) || numValue < 0) {
+            isValid = false
+            toast({
+              title: "Invalid value",
+              description: "Please enter a valid number",
+              variant: "destructive"
+            })
+          } else {
+            processedValue = numValue.toString()
+          }
+          break
+          
+        case 'number':
+          if (isNaN(parseFloat(editValue))) {
+            isValid = false
+            toast({
+              title: "Invalid value",
+              description: "Please enter a valid number",
+              variant: "destructive"
+            })
+          }
+          break
+      }
+
+      if (isValid) {
+        await onUpdate(processedValue || null)
+        setIsEditing(false)
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update value",
+        variant: "destructive"
+      })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-2">
+        <Input
+          type={type === 'number' || type === 'volume' ? 'number' : 'text'}
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          className={cn("h-8 w-[200px]", className)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleSave()
+            if (e.key === 'Escape') {
+              setIsEditing(false)
+              setEditValue(value || '')
+            }
+          }}
+          disabled={isUpdating}
+          autoFocus
+        />
+        <Button 
+          size="sm"
+          onClick={handleSave}
+          disabled={isUpdating}
+        >
+          {isUpdating ? (
+            <span className="animate-spin">...</span>
+          ) : (
+            <Check className="h-4 w-4" />
+          )}
+        </Button>
+        <Button 
+          size="sm" 
+          variant="ghost" 
+          onClick={() => {
+            setIsEditing(false)
+            setEditValue(value || '')
+          }}
+          disabled={isUpdating}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    )
+  }
+
+  if (type === 'instagram' && value) {
+    return (
+      <div className="flex items-center gap-2">
+        <a
+          href={`https://instagram.com/${value}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:underline flex items-center"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Instagram className="h-4 w-4 mr-1" />
+          {value}
+        </a>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            setIsEditing(true)
+          }}
+        >
+          <Pencil className="h-3 w-3" />
+        </Button>
+      </div>
+    )
+  }
+
+  if (type === 'volume' && value) {
+    const numValue = parseFloat(value)
+    const arr = (numValue * 52) * 18
+    return (
+      <div 
+        className="space-y-1 cursor-pointer"
+        onClick={() => setIsEditing(true)}
+      >
+        <div className="flex items-center gap-2">
+          <span>{numValue.toLocaleString()}</span>
+          <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+        </div>
+        <div className="text-xs text-muted-foreground">
+          ARR: ${arr.toLocaleString()}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div 
+      className={cn(
+        "flex items-center justify-between group cursor-pointer p-2 rounded hover:bg-muted/50",
+        className
+      )}
+      onClick={() => setIsEditing(true)}
+    >
+      <span>{value || "-"}</span>
+      <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+    </div>
+  )
+}
+
+interface DateCellProps {
+  date: Date | null
+  onUpdate: (date: Date | null) => Promise<void>
+  onRemove: () => Promise<void>
+}
+
+function DateCell({ date, onUpdate, onRemove }: DateCellProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const { toast } = useToast()
+
+  const handleDateSelect = async (newDate: Date | null) => {
+    if (isUpdating) return
+    
+    setIsUpdating(true)
+    try {
+      await onUpdate(newDate)
+      setIsOpen(false)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update date",
+        variant: "destructive"
+      })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleRemove = async () => {
+    if (isUpdating) return
+    
+    setIsUpdating(true)
+    try {
+      await onRemove()
+      setIsOpen(false)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to remove date",
+        variant: "destructive"
+      })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          className={cn(
+            "w-full justify-start text-left font-normal",
+            !date && "text-muted-foreground",
+            isUpdating && "opacity-50 cursor-not-allowed"
+          )}
+          disabled={isUpdating}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {date ? format(date, 'PPP') : <span>Not set</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <div className="p-2 flex flex-col gap-2">
+          <Calendar
+            mode="single"
+            selected={date ?? undefined}
+            onSelect={handleDateSelect}
+            disabled={isUpdating}
+            initialFocus
+          />
+          {date && (
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={handleRemove}
+              disabled={isUpdating}
+            >
+              {isUpdating ? (
+                <span className="animate-spin">...</span>
+              ) : (
+                "Remove Date"
+              )}
+            </Button>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+// Filter types and configurations
+type FilterDataType = 'text' | 'number' | 'boolean' | 'date' | 'rating' | 'followers' | 'volume'
+type FilterOperator = 'equals' | 'contains' | 'greaterThan' | 'lessThan' | 'between' | 'startsWith'
+
+interface FilterConfig {
+  field: keyof CoffeeShop
+  label: string
+  type: FilterDataType
+  operators: FilterOperator[]
+}
+
+interface ActiveFilter {
+  id: string
+  field: keyof CoffeeShop
+  operator: FilterOperator
+  value: any
+  type: FilterDataType
+}
+
+const FILTER_CONFIGS: FilterConfig[] = [
+  {
+    field: 'title',
+    label: 'Name',
+    type: 'text',
+    operators: ['contains', 'equals', 'startsWith']
+  },
+  {
+    field: 'area',
+    label: 'Area',
+    type: 'text',
+    operators: ['contains', 'equals']
+  },
+  {
+    field: 'first_visit',
+    label: 'First Visit',
+    type: 'date',
+    operators: ['equals', 'greaterThan', 'lessThan', 'between']
+  },
+  {
+    field: 'second_visit',
+    label: 'Second Visit',
+    type: 'date',
+    operators: ['equals', 'greaterThan', 'lessThan', 'between']
+  },
+  {
+    field: 'third_visit',
+    label: 'Third Visit',
+    type: 'date',
+    operators: ['equals', 'greaterThan', 'lessThan', 'between']
+  },
+  {
+    field: 'rating',
+    label: 'Rating',
+    type: 'rating',
+    operators: ['equals', 'greaterThan', 'lessThan', 'between']
+  },
+  {
+    field: 'followers',
+    label: 'Followers',
+    type: 'followers',
+    operators: ['equals', 'greaterThan', 'lessThan', 'between']
+  },
+  {
+    field: 'volume',
+    label: 'Volume',
+    type: 'volume',
+    operators: ['equals', 'greaterThan', 'lessThan', 'between']
+  },
+  {
+    field: 'visited',
+    label: 'Visited Status',
+    type: 'boolean',
+    operators: ['equals']
+  },
+  {
+    field: 'parlor_coffee_leads',
+    label: 'Lead Status',
+    type: 'boolean',
+    operators: ['equals']
+  }
+]
+
+const OPERATOR_LABELS: Record<FilterOperator, string> = {
+  equals: 'Equals',
+  contains: 'Contains',
+  greaterThan: 'Greater than',
+  lessThan: 'Less than',
+  between: 'Between',
+  startsWith: 'Starts with'
 }
 
 export function CoffeeShopsTable() {
- const router = useRouter()
- const { toast } = useToast()
- const [searchTerm, setSearchTerm] = useState("")
- const [deleteId, setDeleteId] = useState<string | null>(null)
- const [currentPage, setCurrentPage] = useState(1)
- const [editingCell, setEditingCell] = useState<{id: string, field: string} | null>(null)
- const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: 'asc' })
- const [filters, setFilters] = useState<Filter[]>([])
- const [selectedShops, setSelectedShops] = useState<string[]>([])
- const { shops, loading, error, mutate } = useCoffeeShops()
+  const router = useRouter()
+  const { toast } = useToast()
+  const [searchTerm, setSearchTerm] = useState("")
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [sortConfig, setSortConfig] = useState<{ key: keyof CoffeeShop | null; direction: 'asc' | 'desc' }>({
+    key: null,
+    direction: 'asc'
+  })
+  const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([])
+  const [selectedShops, setSelectedShops] = useState<string[]>([])
+  const { shops, loading, error, mutate } = useCoffeeShops()
 
- const filterOperators: Record<string, FilterOperator[]> = {
-   string: ['equals', 'contains'],
-   number: ['equals', 'greaterThan', 'lessThan'],
-   boolean: ['equals']
- }
+  const handleAddFilter = (filter: Omit<ActiveFilter, 'id'>) => {
+    setActiveFilters(prev => [...prev, { ...filter, id: crypto.randomUUID() }])
+  }
 
- const operatorLabels: Record<FilterOperator, string> = {
-   equals: 'Equals',
-   contains: 'Contains',
-   greaterThan: 'Greater Than',
-   lessThan: 'Less Than'
- }
+  const handleRemoveFilter = (filterId: string) => {
+    setActiveFilters(prev => prev.filter(f => f.id !== filterId))
+  }
 
- const addFilter = (field: keyof CoffeeShop, operator: FilterOperator, value: FilterValue) => {
-   setFilters(prev => [...prev, { field, operator, value }])
- }
+  const handleClearFilters = () => {
+    setActiveFilters([])
+  }
 
- const removeFilter = (index: number) => {
-   setFilters(prev => prev.filter((_, i) => i !== index))
- }
+  const handleCellUpdate = async (
+    shop: CoffeeShop,
+    field: keyof CoffeeShop,
+    value: any
+  ) => {
+    try {
+      const updateData: Partial<CoffeeShop> = {
+        [field]: value
+      }
 
- const clearAllFilters = () => {
-   setFilters([])
- }
+      // If updating volume, calculate ARR
+      if (field === 'volume' && value) {
+        const volume = parseFloat(value)
+        if (!isNaN(volume)) {
+          updateData.arr = (volume * 52) * 18
+        }
+      }
 
- const filteredShops = useMemo(() => {
-   if (!shops) return []
+      console.log('Updating shop:', { field, value, updateData })
 
-   return shops.filter(shop => {
-     // Search filter
-     const matchesSearch = 
-       shop.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       shop.area?.toLowerCase().includes(searchTerm.toLowerCase())
+      const response = await fetch(`/api/coffee-shops/${shop.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData)
+      })
 
-     // Applied filters
-     const matchesFilters = filters.every(filter => {
-       const value = shop[filter.field]
-       
-       switch (filter.operator) {
-         case 'equals':
-           return value === filter.value
-         case 'contains':
-           return String(value).toLowerCase().includes(String(filter.value).toLowerCase())
-         case 'greaterThan':
-           return typeof value === 'number' && value > Number(filter.value)
-         case 'lessThan':
-           return typeof value === 'number' && value < Number(filter.value)
-         default:
-           return true
-       }
-     })
+      if (!response.ok) {
+        throw new Error(`Failed to update ${field}`)
+      }
 
-     return matchesSearch && matchesFilters
-   })
- }, [shops, searchTerm, filters])
+      toast({
+        title: "Updated successfully",
+        description: `${shop.title} has been updated.`
+      })
 
- const sortedShops = useMemo(() => {
-   if (!sortConfig.key) return filteredShops
+      mutate()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update field. Please try again.",
+        variant: "destructive"
+      })
+      console.error('Update error:', error)
+    }
+  }
 
-   return [...filteredShops].sort((a, b) => {
-     const aValue = a[sortConfig.key!]
-     const bValue = b[sortConfig.key!]
+  const handleDateUpdate = async (
+    shop: CoffeeShop, 
+    field: 'first_visit' | 'second_visit' | 'third_visit', 
+    date: Date | null
+  ) => {
+    try {
+      console.log('Updating date:', { field, date, shopId: shop.id })
+      
+      const response = await fetch(`/api/coffee-shops/${shop.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          [field]: date?.toISOString(),
+          // If setting first visit, also update visited status
+          ...(field === 'first_visit' && date && !shop.visited ? { visited: true } : {})
+        })
+      })
 
-     if (aValue === null || aValue === undefined) return 1
-     if (bValue === null || bValue === undefined) return -1
+      if (!response.ok) throw new Error(`Failed to update ${field}`)
 
-     const comparison = 
-       typeof aValue === 'string' 
-         ? aValue.localeCompare(String(bValue))
-         : Number(aValue) - Number(bValue)
+      toast({
+        title: "Visit date updated",
+        description: `${shop.title} has been updated successfully.`
+      })
 
-     return sortConfig.direction === 'asc' ? comparison : -comparison
-   })
- }, [filteredShops, sortConfig])
+      mutate()
+    } catch (error) {
+      console.error('Date update error:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update visit date. Please try again.",
+        variant: "destructive"
+      })
+    }
+  }
 
- const paginatedShops = sortedShops.slice(
-   (currentPage - 1) * ITEMS_PER_PAGE,
-   currentPage * ITEMS_PER_PAGE
- )
+  const handleDateRemove = async (
+    shop: CoffeeShop,
+    field: 'first_visit' | 'second_visit' | 'third_visit'
+  ) => {
+    try {
+      const response = await fetch(`/api/coffee-shops/${shop.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          [field]: null,
+          // Update visited status if removing first visit and no other visits exist
+          ...(field === 'first_visit' && !shop.second_visit && !shop.third_visit 
+            ? { visited: false } 
+            : {})
+        })
+      })
 
- const totalPages = Math.ceil(sortedShops.length / ITEMS_PER_PAGE)
+      if (!response.ok) throw new Error(`Failed to remove ${field}`)
 
- const handleSort = (key: keyof CoffeeShop) => {
-   setSortConfig(current => ({
-     key,
-     direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
-   }))
- }
+      toast({
+        title: "Visit date removed",
+        description: `${shop.title} has been updated successfully.`
+      })
 
- const handleDelete = async (id: string) => {
-   try {
-     const response = await fetch(`/api/coffee-shops/${id}`, {
-       method: "DELETE",
-     })
+      mutate()
+    } catch (error) {
+      console.error('Date removal error:', error)
+      toast({
+        title: "Error",
+        description: "Failed to remove visit date. Please try again.",
+        variant: "destructive"
+      })
+    }
+  }
 
-     if (!response.ok) throw new Error("Failed to delete coffee shop")
+  const filteredShops = useMemo(() => {
+    if (!shops) return []
 
-     toast({
-       title: "Coffee shop deleted",
-       description: "The coffee shop has been deleted successfully.",
-     })
+    return shops.filter(shop => {
+      // Search filter
+      const matchesSearch = searchTerm === '' || 
+        shop.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        shop.area?.toLowerCase().includes(searchTerm.toLowerCase())
 
-     mutate()
-     setDeleteId(null)
-   } catch (error) {
-     toast({
-       title: "Error",
-       description: "Failed to delete coffee shop. Please try again.",
-       variant: "destructive",
-     })
-   }
- }
+      // Active filters
+      const matchesFilters = activeFilters.every(filter => {
+        const value = shop[filter.field]
 
- const handleDeleteSelected = async () => {
-   try {
-     await Promise.all(
-       selectedShops.map(id =>
-         fetch(`/api/coffee-shops/${id}`, { method: "DELETE" })
-       )
-     )
+        switch (filter.operator) {
+          case 'equals':
+            if (filter.type === 'boolean') {
+              return value === (filter.value === 'true')
+            }
+            return value === filter.value
+          
+          case 'contains':
+            return String(value).toLowerCase().includes(String(filter.value).toLowerCase())
+          
+          case 'startsWith':
+            return String(value).toLowerCase().startsWith(String(filter.value).toLowerCase())
+          
+          case 'greaterThan':
+            if (filter.type === 'date') {
+              return new Date(value) > new Date(filter.value)
+            }
+            return Number(value) > Number(filter.value)
+          
+          case 'lessThan':
+            if (filter.type === 'date') {
+              return new Date(value) < new Date(filter.value)
+            }
+            return Number(value) < Number(filter.value)
+          
+          case 'between':
+            if (filter.type === 'date') {
+              const date = new Date(value)
+              return date >= new Date(filter.value.min) && date <= new Date(filter.value.max)
+            }
+            return Number(value) >= Number(filter.value.min) && Number(value) <= Number(filter.value.max)
+          
+          default:
+            return true
+        }
+      })
 
-     toast({
-       title: "Coffee shops deleted",
-       description: `${selectedShops.length} shops have been deleted successfully.`,
-     })
+      return matchesSearch && matchesFilters
+    })
+  }, [shops, searchTerm, activeFilters])
 
-     mutate()
-     setSelectedShops([])
-   } catch (error) {
-     toast({
-       title: "Error",
-       description: "Failed to delete selected coffee shops. Please try again.",
-       variant: "destructive",
-     })
-   }
- }
+  const sortedShops = useMemo(() => {
+    if (!sortConfig.key) return filteredShops
 
- const handleStatusToggle = async (shop: CoffeeShop, field: 'visited' | 'parlor_coffee_leads') => {
-   try {
-     const response = await fetch(`/api/coffee-shops/${shop.id}`, {
-       method: "PATCH",
-       headers: { "Content-Type": "application/json" },
-       body: JSON.stringify({ [field]: !shop[field] }),
-     })
+    return [...filteredShops].sort((a, b) => {
+      const aValue = a[sortConfig.key!]
+      const bValue = b[sortConfig.key!]
 
-     if (!response.ok) throw new Error(`Failed to update ${field}`)
+      // Handle null/undefined values
+      if (aValue === null || aValue === undefined) return 1
+      if (bValue === null || bValue === undefined) return -1
 
-     toast({
-       title: "Status updated",
-       description: `${shop.title} has been updated successfully.`,
-     })
+      // Special handling for dates
+      if (sortConfig.key.includes('visit')) {
+        const aDate = aValue ? new Date(aValue).getTime() : 0
+        const bDate = bValue ? new Date(bValue).getTime() : 0
+        return sortConfig.direction === 'asc' ? aDate - bDate : bDate - aDate
+      }
 
-     mutate()
-   } catch (error) {
-     toast({
-       title: "Error",
-       description: "Failed to update status. Please try again.",
-       variant: "destructive",
-     })
-   }
- }
+      // Handle volume and ARR sorting numerically
+      if (sortConfig.key === 'volume' || sortConfig.key === 'arr') {
+        const aNum = parseFloat(aValue as string) || 0
+        const bNum = parseFloat(bValue as string) || 0
+        return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum
+      }
 
- const handleBulkStatusUpdate = async (field: 'visited' | 'parlor_coffee_leads', value: boolean) => {
-   try {
-     await Promise.all(
-       selectedShops.map(id =>
-         fetch(`/api/coffee-shops/${id}`, {
-           method: "PATCH",
-           headers: { "Content-Type": "application/json" },
-           body: JSON.stringify({ [field]: value }),
-         })
-       )
-     )
+      // Regular comparison
+      const comparison = 
+        typeof aValue === 'string' 
+          ? aValue.localeCompare(String(bValue))
+          : Number(aValue) - Number(bValue)
 
-     toast({
-       title: "Status updated",
-       description: `${selectedShops.length} shops have been updated successfully.`,
-     })
+      return sortConfig.direction === 'asc' ? comparison : -comparison
+    })
+  }, [filteredShops, sortConfig])
 
-     mutate()
-     setSelectedShops([])
-   } catch (error) {
-     toast({
-       title: "Error",
-       description: "Failed to update status. Please try again.",
-       variant: "destructive",
-     })
-   }
- }
+  const paginatedShops = sortedShops.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  )
 
- const EditableCell = ({
-   shop,
-   field,
-   value,
-   type = 'text'
- }: {
-   shop: CoffeeShop
-   field: string
-   value: any
-   type?: 'text' | 'number'
- }) => {
-   const isEditing = editingCell?.id === shop.id && editingCell?.field === field
-   const [editValue, setEditValue] = useState(value?.toString() || '')
+  const totalPages = Math.ceil(sortedShops.length / ITEMS_PER_PAGE)
 
-   const handleCellEdit = async (newValue: string) => {
-     try {
-       const response = await fetch(`/api/coffee-shops/${shop.id}`, {
-         method: "PATCH",
-         headers: { "Content-Type": "application/json" },
-         body: JSON.stringify({ [field]: type === 'number' ? Number(newValue) : newValue }),
-       })
+  const handleSort = (key: keyof CoffeeShop) => {
+    setSortConfig(current => ({
+      key,
+      direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
+    }))
+  }
 
-       if (!response.ok) throw new Error("Failed to update coffee shop")
+  if (loading) return <div>Loading...</div>
+  if (error) return <div>Error loading coffee shops</div>
 
-       toast({
-         title: "Coffee shop updated",
-         description: "The coffee shop has been updated successfully.",
-       })
-
-       mutate()
-       setEditingCell(null)
-     } catch (error) {
-       toast({
-         title: "Error",
-         description: "Failed to update coffee shop. Please try again.",
-         variant: "destructive",
-       })
-     }
-   }
-
-   if (isEditing) {
-     return (
-       <div className="flex items-center gap-2">
-         <Input
-           type={type}
-           value={editValue}
-           onChange={(e) => setEditValue(e.target.value)}
-           className="h-8 w-[200px]"
-           onKeyPress={(e) => {
-             if (e.key === 'Enter') {
-               handleCellEdit(editValue)
-             }
-           }}
-         />
-         <Button
-           size="sm"
-           onClick={() => handleCellEdit(editValue)}
-         >
-           Save
-         </Button>
-         <Button
-           size="sm"
-           variant="ghost"
-           onClick={() => setEditingCell(null)}
-         >
-           Cancel
-         </Button>
-       </div>
-     )
-   }
-
-   return (
-     <div
-       className="cursor-pointer hover:bg-muted/50 p-2 rounded"
-       onClick={() => setEditingCell({ id: shop.id, field })}
-     >
-       {value || "-"}
-     </div>
-   )
- }
-
- if (loading) return <div>Loading...</div>
- if (error) return <div>Error loading coffee shops</div>
-
- return (
-   <div className="space-y-4">
-     <div className="flex items-center justify-between">
-       <div className="flex items-center gap-4">
-         <Input
-           placeholder="Search coffee shops..."
-           value={searchTerm}
-           onChange={(e) => setSearchTerm(e.target.value)}
-           className="w-[300px]"
-         />
-         <DropdownMenu>
-           <DropdownMenuTrigger asChild>
-             <Button variant="outline">
-               <Filter className="mr-2 h-4 w-4" />
-               Filters {filters.length > 0 && `(${filters.length})`}
-             </Button>
-           </DropdownMenuTrigger>
-           <DropdownMenuContent align="start" className="w-[300px]">
-             <DropdownMenuLabel>Add Filter</DropdownMenuLabel>
-             <DropdownMenuSeparator />
-             {Object.entries(filterOperators).map(([type, operators]) => (
-               <DropdownMenuSub key={type}>
-                 <DropdownMenuSubTrigger>
-                   {type.charAt(0).toUpperCase() + type.slice(1)} Fields
-                 </DropdownMenuSubTrigger>
-                 <DropdownMenuSubContent>
-                   {operators.map(operator => (
-                     <DropdownMenuItem
-                       key={operator}
-                       onClick={() => {
-                         // Add specific field filter logic here
-                       }}
-                     >
-                       {operatorLabels[operator]}
-                     </DropdownMenuItem>
-                   ))}
-                 </DropdownMenuSubContent>
-               </DropdownMenuSub>
-             ))}
-             {filters.length > 0 && (
-               <>
-                 <DropdownMenuSeparator />
-                 <DropdownMenuItem
-                   className="text-red-600"
-                   onClick={clearAllFilters}
-                 >
-                   <XCircle className="mr-2 h-4 w-4" />
-                   Clear All Filters
-                 </DropdownMenuItem>
-               </>
-             )}
-           </DropdownMenuContent>
-         </DropdownMenu>
-       </div>
-       <div className="flex items-center gap-2">
-         <Button
-           variant="outline"
-           onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-           disabled={currentPage === 1}
-         >
-           <ChevronLeft className="h-4 w-4" />
-         </Button>
-         <span>
-           Page {currentPage} of {totalPages}
-         </span>
-         <Button
-           variant="outline"
-           onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-           disabled={currentPage === totalPages}
-         >
-           <ChevronRight className="h-4 w-4" />
-         </Button>
-       </div>
-     </div>
-
-     {filters.length > 0 && (
-       <div className="flex flex-wrap gap-2">
-         {filters.map((filter, index) => (
-           <Badge
-             key={index}
-             variant="secondary"
-             className="flex items-center gap-2"
-           >
-             {filter.field} {filter.operator} {filter.value}
-             <XCircle
-               className="h-4 w-4 cursor-pointer"
-               onClick={() => removeFilter(index)}
-             />
-           </Badge>
-         ))}
-       </div>
-     )}
-
-     <div className="rounded-md border">
-       <Table>
-         <TableHeader>
-           <TableRow>
-             <TableHead className="w-12">
-               <Checkbox
-                 checked={selectedShops.length === paginatedShops.length}
-                 onCheckedChange={(checked) => {
-                   setSelectedShops(
-                     checked
-                       ? paginatedShops.map(shop => shop.id)
-                       : []
-                   )
-                 }}
-               />
-             </TableHead>
-             <TableHead>
-               <div className="flex items-center gap-2">
-                 Name
-                 <Button
-                   variant="ghost"
-                   size="sm"
-                   onClick={() => handleSort('title')}
-                 >
-                   {sortConfig.key === 'title' ? (
-                     sortConfig.direction === 'asc' ? (
-                       <ArrowUp className="h-4 w-4" />
-                     ) : (
-                       <ArrowDown className="h-4 w-4" />
-                     )
-                   ) : (
-                     <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
-                    )}
-                    </Button>
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    Area
-                    <Button
-                      variant="ghost"
-                      size="sm" 
-                      onClick={() => handleSort('area')}
-                    >
-                      {sortConfig.key === 'area' ? (
-                        sortConfig.direction === 'asc' ? (
-                          <ArrowUp className="h-4 w-4" />
-                        ) : (
-                          <ArrowDown className="h-4 w-4" />
-                        )
-                      ) : (
-                        <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
-                      )}
-                    </Button>
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    Status
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSort('visited')}
-                    >
-                      {sortConfig.key === 'visited' ? (
-                        sortConfig.direction === 'asc' ? (
-                          <ArrowUp className="h-4 w-4" />
-                        ) : (
-                          <ArrowDown className="h-4 w-4" />
-                        )
-                      ) : (
-                        <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
-                      )}
-                    </Button>
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    Rating
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSort('rating')}
-                    >
-                      {sortConfig.key === 'rating' ? (
-                        sortConfig.direction === 'asc' ? (
-                          <ArrowUp className="h-4 w-4" />
-                        ) : (
-                          <ArrowDown className="h-4 w-4" />
-                        )
-                      ) : (
-                        <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
-                      )}
-                    </Button>
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    Instagram
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSort('instagram')}
-                    >
-                      {sortConfig.key === 'instagram' ? (
-                        sortConfig.direction === 'asc' ? (
-                          <ArrowUp className="h-4 w-4" />
-                        ) : (
-                          <ArrowDown className="h-4 w-4" />
-                        )
-                      ) : (
-                        <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
-                      )}
-                    </Button>
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    Followers
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSort('followers')}
-                    >
-                      {sortConfig.key === 'followers' ? (
-                        sortConfig.direction === 'asc' ? (
-                          <ArrowUp className="h-4 w-4" />
-                        ) : (
-                          <ArrowDown className="h-4 w-4" />
-                        )
-                      ) : (
-                        <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
-                      )}
-                    </Button>
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    Lead
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSort('parlor_coffee_leads')}
-                    >
-                      {sortConfig.key === 'parlor_coffee_leads' ? (
-                        sortConfig.direction === 'asc' ? (
-                          <ArrowUp className="h-4 w-4" />
-                        ) : (
-                          <ArrowDown className="h-4 w-4" />
-                        )
-                      ) : (
-                        <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
-                      )}
-                    </Button>
-                  </div>
-                </TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedShops.map((shop) => (
-                <TableRow key={shop.id}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedShops.includes(shop.id)}
-                      onCheckedChange={(checked) => {
-                        setSelectedShops(
-                          checked
-                            ? [...selectedShops, shop.id]
-                            : selectedShops.filter(id => id !== shop.id)
-                        )
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      href={`/dashboard/coffee-shops/${shop.id}`}
-                      className="font-medium hover:underline"
-                    >
-                      {shop.title}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <EditableCell shop={shop} field="area" value={shop.area} />
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={shop.visited ? "success" : "default"}
-                      className="cursor-pointer"
-                      onClick={() => handleStatusToggle(shop, 'visited')}
-                    >
-                      {shop.visited ? "Visited" : "Not Visited"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <EditableCell 
-                      shop={shop} 
-                      field="rating" 
-                      value={shop.rating} 
-                      type="number" 
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <EditableCell 
-                      shop={shop} 
-                      field="instagram" 
-                      value={shop.instagram} 
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <EditableCell 
-                      shop={shop} 
-                      field="followers" 
-                      value={shop.followers} 
-                      type="number"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={shop.parlor_coffee_leads ? "warning" : "default"}
-                      className="cursor-pointer"
-                      onClick={() => handleStatusToggle(shop, 'parlor_coffee_leads')}
-                    >
-                      {shop.parlor_coffee_leads ? "Lead" : "No Lead"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem 
-                          onClick={() => router.push(`/dashboard/coffee-shops/${shop.id}`)}
-                        >
-                          <Edit className="mr-2 h-4 w-4" />
-                          View
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="text-red-600"
-                          onClick={() => setDeleteId(shop.id)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Input
+            placeholder="Search coffee shops..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-[300px]"
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Filter className="mr-2 h-4 w-4" />
+                Filters {activeFilters.length > 0 && `(${activeFilters.length})`}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56">
+              <DropdownMenuLabel>Add Filter</DropdownMenuLabel>
+              {FILTER_CONFIGS.map((config) => (
+                <DropdownMenuSub key={config.field}>
+                  <DropdownMenuSubTrigger>
+                    {config.label}
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    {config.operators.map((operator) => (
+                      <DropdownMenuSub key={operator}>
+                        <DropdownMenuSubTrigger>
+                          {OPERATOR_LABELS[operator]}
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="p-2">
+                          <div className="space-y-2">
+                            <FilterValueInput
+                              type={config.type}
+                              value={null}
+                              onChange={(value) => {
+                                handleAddFilter({
+                                  field: config.field,
+                                  operator,
+                                  value,
+                                  type: config.type
+                                })
+                              }}
+                              operator={operator}
+                            />
+                          </div>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
               ))}
-            </TableBody>
-          </Table>
-        </div>
-   
-        {selectedShops.length > 0 && (
-          <div className="fixed bottom-4 right-4 p-4 bg-background border rounded-lg shadow-lg">
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-medium">
-                {selectedShops.length} selected
-              </span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    Bulk Actions
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuLabel>Update Status</DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={() => handleBulkStatusUpdate('visited', true)}
-                  >
-                    Mark as Visited
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleBulkStatusUpdate('visited', false)}
-                  >
-                    Mark as Not Visited
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleBulkStatusUpdate('parlor_coffee_leads', true)}
-                  >
-                    Mark as Lead
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleBulkStatusUpdate('parlor_coffee_leads', false)}
-                  >
-                    Remove Lead Status
-                  </DropdownMenuItem>
+              {activeFilters.length > 0 && (
+                <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-red-600"
-                    onClick={handleDeleteSelected}
+                    onClick={handleClearFilters}
                   >
-                    Delete Selected
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Clear All Filters
                   </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        )}
-   
-        <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the coffee shop
-                and all associated data.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                className="bg-red-600 hover:bg-red-700"
-                onClick={() => deleteId && handleDelete(deleteId)}
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span>
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
-    )
-   }________________________________________________________________________________
+
+      {activeFilters.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {activeFilters.map((filter) => (
+            <Badge
+              key={filter.id}
+              variant="secondary"
+              className="flex items-center gap-2"
+            >
+              <span>
+                {FILTER_CONFIGS.find(c => c.field === filter.field)?.label} 
+                {' '}
+                {OPERATOR_LABELS[filter.operator]}
+                {' '}
+                {filter.operator === 'between' 
+                  ? `${filter.value.min} - ${filter.value.max}`
+                  : String(filter.value)
+                }
+              </span>
+              <XCircle
+                className="h-4 w-4 cursor-pointer"
+                onClick={() => handleRemoveFilter(filter.id)}
+              />
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-12">
+                <Checkbox
+                  checked={selectedShops.length === paginatedShops.length}
+                  onCheckedChange={(checked) => {
+                    setSelectedShops(
+                      checked
+                        ? paginatedShops.map(shop => shop.id)
+                        : []
+                    )
+                  }}
+                />
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
+                  Name
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSort('title')}
+                  >
+                    {sortConfig.key === 'title' ? (
+                      sortConfig.direction === 'asc' ? (
+                        <ArrowUp className="h-4 w-4" />
+                      ) : (
+                        <ArrowDown className="h-4 w-4" />
+                      )
+                    ) : (
+                      <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
+                    )}
+                  </Button>
+                </div>
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
+                  Area
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSort('area')}
+                  >
+                    {sortConfig.key === 'area' ? (
+                      sortConfig.direction === 'asc' ? (
+                        <ArrowUp className="h-4 w-4" />
+                      ) : (
+                        <ArrowDown className="h-4 w-4" />
+                      )
+                    ) : (
+                      <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
+                    )}
+                  </Button>
+                </div>
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
+                  First Visit
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSort('first_visit')}
+                  >
+                    {sortConfig.key === 'first_visit' ? (
+                      sortConfig.direction === 'asc' ? (
+                        <ArrowUp className="h-4 w-4" />
+                      ) : (
+                        <ArrowDown className="h-4 w-4" />
+                      )
+                    ) : (
+                      <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
+                    )}
+                  </Button>
+                </div>
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
+                  Second Visit
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSort('second_visit')}
+                  >
+                    {sortConfig.key === 'second_visit' ? (
+                      sortConfig.direction === 'asc' ? (
+                        <ArrowUp className="h-4 w-4" />
+                      ) : (
+                        <ArrowDown className="h-4 w-4" />
+                      )
+                    ) : (
+                      <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
+                    )}
+                  </Button>
+                </div>
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
+                  Third Visit
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSort('third_visit')}
+                  >
+                    {sortConfig.key === 'third_visit' ? (
+                      sortConfig.direction === 'asc' ? (
+                        <ArrowUp className="h-4 w-4" />
+                      ) : (
+                        <ArrowDown className="h-4 w-4" />
+                      )
+                    ) : (
+                      <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
+                    )}
+                  </Button>
+                </div>
+              </TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Rating</TableHead>
+              <TableHead>Instagram</TableHead>
+              <TableHead>Followers</TableHead>
+              <TableHead>Volume</TableHead>
+              <TableHead>ARR</TableHead>
+              <TableHead>Lead</TableHead>
+              <TableHead className="w-[100px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+
+          <TableBody>
+          {paginatedShops.map((shop) => (
+              <TableRow key={shop.id}>
+                <TableCell>
+                  <Checkbox
+                    checked={selectedShops.includes(shop.id)}
+                    onCheckedChange={(checked) => {
+                      setSelectedShops(
+                        checked
+                          ? [...selectedShops, shop.id]
+                          : selectedShops.filter(id => id !== shop.id)
+                      )
+                    }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Link
+                    href={`/dashboard/coffee-shops/${shop.id}`}
+                    className="font-medium hover:underline"
+                  >
+                    {shop.title}
+                  </Link>
+                </TableCell>
+                <TableCell>
+                  <EditableCell 
+                    value={shop.area} 
+                    onUpdate={(value) => handleCellUpdate(shop, 'area', value)}
+                  />
+                </TableCell>
+                <TableCell>
+                  <DateCell
+                    date={shop.first_visit ? new Date(shop.first_visit) : null}
+                    onUpdate={(date) => handleDateUpdate(shop, 'first_visit', date)}
+                    onRemove={() => handleDateRemove(shop, 'first_visit')}
+                  />
+                </TableCell>
+                <TableCell>
+                  <DateCell
+                    date={shop.second_visit ? new Date(shop.second_visit) : null}
+                    onUpdate={(date) => handleDateUpdate(shop, 'second_visit', date)}
+                    onRemove={() => handleDateRemove(shop, 'second_visit')}
+                  />
+                </TableCell>
+                <TableCell>
+                  <DateCell
+                    date={shop.third_visit ? new Date(shop.third_visit) : null}
+                    onUpdate={(date) => handleDateUpdate(shop, 'third_visit', date)}
+                    onRemove={() => handleDateRemove(shop, 'third_visit')}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={shop.visited ? "success" : "default"}
+                    className="cursor-pointer"
+                    onClick={() => handleCellUpdate(shop, 'visited', !shop.visited)}
+                  >
+                    {shop.visited ? "Visited" : "Not Visited"}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <EditableCell 
+                    value={shop.rating?.toString() || null}
+                    onUpdate={(value) => handleCellUpdate(shop, 'rating', value ? parseFloat(value) : null)}
+                    type="number"
+                  />
+                </TableCell>
+                <TableCell>
+                  <EditableCell 
+                    value={shop.instagram}
+                    onUpdate={(value) => handleCellUpdate(shop, 'instagram', value)}
+                    type="instagram"
+                  />
+                </TableCell>
+                <TableCell>
+                  <EditableCell 
+                    value={shop.followers?.toString() || null}
+                    onUpdate={(value) => handleCellUpdate(shop, 'followers', value ? parseInt(value) : null)}
+                    type="number"
+                  />
+                </TableCell>
+                <TableCell>
+                  <EditableCell 
+                    value={shop.volume?.toString() || null}
+                    onUpdate={(value) => handleCellUpdate(shop, 'volume', value)}
+                    type="volume"
+                  />
+                </TableCell>
+                <TableCell>
+                  {shop.volume ? (
+                    <div className="text-sm">
+                      ${((parseFloat(shop.volume) * 52) * 18).toLocaleString()}
+                    </div>
+                  ) : "-"}
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={shop.parlor_coffee_leads ? "warning" : "default"}
+                    className="cursor-pointer"
+                    onClick={() => handleCellUpdate(shop, 'parlor_coffee_leads', !shop.parlor_coffee_leads)}
+                  >
+                    {shop.parlor_coffee_leads ? "Lead" : "No Lead"}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuItem 
+                        onClick={() => router.push(`/dashboard/coffee-shops/${shop.id}`)}
+                      >
+                        <Edit className="mr-2 h-4 w-4" />
+                        View Details
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="text-red-600"
+                        onClick={() => setDeleteId(shop.id)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {selectedShops.length > 0 && (
+        <div className="fixed bottom-4 right-4 p-4 bg-background border rounded-lg shadow-lg">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium">
+              {selectedShops.length} selected
+            </span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Bulk Actions
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuLabel>Update Status</DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    try {
+                      await Promise.all(
+                        selectedShops.map(id =>
+                          fetch(`/api/coffee-shops/${id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ visited: true }),
+                          })
+                        )
+                      )
+                      toast({
+                        title: "Status updated",
+                        description: "Selected shops marked as visited",
+                      })
+                      mutate()
+                      setSelectedShops([])
+                    } catch (error) {
+                      toast({
+                        title: "Error",
+                        description: "Failed to update shops",
+                        variant: "destructive",
+                      })
+                    }
+                  }}
+                >
+                  Mark as Visited
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    try {
+                      await Promise.all(
+                        selectedShops.map(id =>
+                          fetch(`/api/coffee-shops/${id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ parlor_coffee_leads: true }),
+                          })
+                        )
+                      )
+                      toast({
+                        title: "Status updated",
+                        description: "Selected shops marked as leads",
+                      })
+                      mutate()
+                      setSelectedShops([])
+                    } catch (error) {
+                      toast({
+                        title: "Error",
+                        description: "Failed to update shops",
+                        variant: "destructive",
+                      })
+                    }
+                  }}
+                >
+                  Mark as Lead
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-red-600"
+                  onClick={async () => {
+                    try {
+                      await Promise.all(
+                        selectedShops.map(id =>
+                          fetch(`/api/coffee-shops/${id}`, {
+                            method: "DELETE",
+                          })
+                        )
+                      )
+                      toast({
+                        title: "Shops deleted",
+                        description: `${selectedShops.length} shops have been deleted`,
+                      })
+                      mutate()
+                      setSelectedShops([])
+                    } catch (error) {
+                      toast({
+                        title: "Error",
+                        description: "Failed to delete shops",
+                        variant: "destructive",
+                      })
+                    }
+                  }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Selected
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      )}
+
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the coffee shop
+              and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={async () => {
+                if (!deleteId) return
+
+                try {
+                  await fetch(`/api/coffee-shops/${deleteId}`, {
+                    method: "DELETE",
+                  })
+                  toast({
+                    title: "Coffee shop deleted",
+                    description: "The coffee shop has been deleted successfully",
+                  })
+                  mutate()
+                  setDeleteId(null)
+                } catch (error) {
+                  toast({
+                    title: "Error",
+                    description: "Failed to delete shop",
+                    variant: "destructive",
+                  })
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}        ________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/coffee-shops/filter-value-input.tsx
+"use client"
+
+import { useState } from "react"
+import { Input } from "@/components/ui/input"
+import { Calendar } from "@/components/ui/calendar"
+import {
+ DropdownMenuRadioGroup,
+ DropdownMenuRadioItem
+} from "@/components/ui/dropdown-menu"
+
+type FilterDataType = 'text' | 'number' | 'boolean' | 'date' | 'rating' | 'followers' | 'volume'
+type FilterOperator = 'equals' | 'contains' | 'greaterThan' | 'lessThan' | 'between' | 'startsWith'
+
+interface FilterValueInputProps {
+ type: FilterDataType
+ value: any
+ onChange: (value: any) => void
+ operator: FilterOperator
+}
+
+export function FilterValueInput({ 
+ type, 
+ value, 
+ onChange, 
+ operator 
+}: FilterValueInputProps) {
+ const [rangeValue, setRangeValue] = useState<{min?: string | number, max?: string | number}>({})
+
+ switch (type) {
+   case 'date':
+     return (
+       <div className="flex flex-col space-y-2">
+         <Calendar
+           mode={operator === 'between' ? "range" : "single"}
+           selected={value}
+           onSelect={onChange}
+           className="rounded-md border"
+         />
+       </div>
+     )
+   
+   case 'boolean':
+     return (
+       <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
+         <DropdownMenuRadioItem value="true">Yes</DropdownMenuRadioItem>
+         <DropdownMenuRadioItem value="false">No</DropdownMenuRadioItem>
+       </DropdownMenuRadioGroup>
+     )
+   
+   case 'number':
+   case 'rating':
+   case 'followers':
+   case 'volume':
+     return operator === 'between' ? (
+       <div className="flex items-center space-x-2">
+         <Input
+           type="number"
+           value={rangeValue.min ?? ''}
+           onChange={e => {
+             const newValue = { ...rangeValue, min: e.target.value }
+             setRangeValue(newValue)
+             onChange(newValue)
+           }}
+           className="w-20"
+           placeholder="Min"
+         />
+         <span>to</span>
+         <Input
+           type="number"
+           value={rangeValue.max ?? ''}
+           onChange={e => {
+             const newValue = { ...rangeValue, max: e.target.value }
+             setRangeValue(newValue)
+             onChange(newValue)
+           }}
+           className="w-20"
+           placeholder="Max"
+         />
+       </div>
+     ) : (
+       <Input
+         type="number"
+         value={value ?? ''}
+         onChange={e => onChange(e.target.value)}
+         className="w-full"
+         placeholder={type === 'rating' ? "0-5" : type === 'followers' ? "Number of followers" : "Enter number"}
+       />
+     )
+   
+   default:
+     return (
+       <Input
+         type="text"
+         value={value ?? ''}
+         onChange={e => onChange(e.target.value)}
+         className="w-full"
+         placeholder={`Enter ${type}`}
+       />
+     )
+ }
+}
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/coffee-shops/instagram-cell.tsx
 // src/components/coffee-shops/instagram-cell.tsx
 "use client"
@@ -1503,7 +2046,7 @@ import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/db/prisma"
 import { authOptions } from "@/lib/auth/options"
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     console.log("Fetching coffee shops...")  // Debug log
     const session = await getServerSession(authOptions)
@@ -1532,6 +2075,78 @@ import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/db/prisma"
 import { authOptions } from "@/lib/auth/options"
 
+export async function PATCH(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.email) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    if (!params.id) {
+      return new NextResponse("Missing shop ID", { status: 400 })
+    }
+
+    const body = await request.json()
+
+    if (!body || typeof body !== 'object') {
+      return new NextResponse("Invalid request body", { status: 400 })
+    }
+
+    // Handle date conversions
+    const updateData = {
+      ...body,
+      // Only convert dates if they exist in the payload
+      ...(body.first_visit && { first_visit: new Date(body.first_visit) }),
+      ...(body.second_visit && { second_visit: new Date(body.second_visit) }),
+      ...(body.third_visit && { third_visit: new Date(body.third_visit) }),
+      // Update visited status if setting first visit
+      ...(body.first_visit && { visited: true }),
+      updatedAt: new Date()
+    }
+
+    const coffeeShop = await prisma.coffeeShop.update({
+      where: {
+        id: params.id
+      },
+      data: updateData
+    })
+
+    return NextResponse.json(coffeeShop)
+  } catch (error) {
+    console.error("[COFFEE_SHOP_PATCH]", error)
+    
+    // Return more specific error messages
+    if (error instanceof Error) {
+      return new NextResponse(
+        JSON.stringify({ 
+          error: error.message,
+          details: "Failed to update coffee shop"
+        }), 
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+    }
+
+    return new NextResponse(
+      JSON.stringify({ error: "Internal server error" }), 
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    )
+  }
+}
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
@@ -1541,6 +2156,10 @@ export async function GET(
     
     if (!session?.user?.email) {
       return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    if (!params.id) {
+      return new NextResponse("Missing shop ID", { status: 400 })
     }
 
     const coffeeShop = await prisma.coffeeShop.findUnique({
@@ -1556,7 +2175,15 @@ export async function GET(
     return NextResponse.json(coffeeShop)
   } catch (error) {
     console.error("[COFFEE_SHOP_GET]", error)
-    return new NextResponse("Internal error", { status: 500 })
+    return new NextResponse(
+      JSON.stringify({ error: "Internal server error" }), 
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    )
   }
 }
 
@@ -1571,6 +2198,10 @@ export async function DELETE(
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
+    if (!params.id) {
+      return new NextResponse("Missing shop ID", { status: 400 })
+    }
+
     await prisma.coffeeShop.delete({
       where: {
         id: params.id
@@ -1580,37 +2211,18 @@ export async function DELETE(
     return new NextResponse(null, { status: 204 })
   } catch (error) {
     console.error("[COFFEE_SHOP_DELETE]", error)
-    return new NextResponse("Internal error", { status: 500 })
+    return new NextResponse(
+      JSON.stringify({ error: "Internal server error" }), 
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    )
   }
 }
-
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.email) {
-      return new NextResponse("Unauthorized", { status: 401 })
-    }
-
-    const json = await request.json()
-
-    const coffeeShop = await prisma.coffeeShop.update({
-      where: {
-        id: params.id
-      },
-      data: json
-    })
-
-    return NextResponse.json(coffeeShop)
-  } catch (error) {
-    console.error("[COFFEE_SHOP_PATCH]", error)
-    return new NextResponse("Internal error", { status: 500 })
-  }
-}
-________________________________________________________________________________
+ ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/coffee-shops/[id]/visits/route.ts
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
@@ -2395,9 +3007,9 @@ model CoffeeShop {
   followers             Int?
   store_doors           String?
   volume                String?
-  first_visit           DateTime?
-  second_visit          DateTime?
-  third_visit           DateTime?
+  first_visit          DateTime?
+  second_visit         DateTime?
+  third_visit          DateTime?
   rating                Float?
   reviews               Int?
   price_type            String?
@@ -4287,7 +4899,7 @@ interface ShiftStore {
  removeStaffAssignment: (shiftId: string, staffId: string) => Promise<void>;
 }
 
-export const useShiftStore = create<ShiftStore>((set, get) => ({
+export const useShiftStore = create<ShiftStore>((set) => ({
  shifts: [],
  selectedShift: null,
  loading: false,
@@ -4494,7 +5106,7 @@ interface VisitState {
   updateVisit: (visitId: string, data: Partial<VisitFormData>) => Promise<void>
 }
 
-export const useVisitStore = create<VisitState>((set, get) => ({
+export const useVisitStore = create<VisitState>((set) => ({
   visits: [],
   loading: false,
   error: null,

@@ -1,4 +1,3 @@
-cat > "src/components/coffee-shops/owner-cell.tsx" << 'EOF'
 "use client"
 
 import { useState } from "react"
@@ -139,4 +138,3 @@ export function OwnerCell({ owners, onUpdate }: OwnerCellProps) {
    </div>
  )
 }
-EOF
