@@ -1,16 +1,17 @@
-import { CoffeeShop } from "@prisma/client"
-
-export interface MapProps {
-  className?: string
+export interface Location {
+  latitude: number
+  longitude: number
 }
 
-export interface ShopMarkerProps {
-  shop: CoffeeShop
-  selected?: boolean
-  onSelect?: (shop: CoffeeShop) => void
+export interface RouteOptions {
+  mode: "DRIVING" | "WALKING"
+  optimizeWaypoints: boolean
+  avoidTolls?: boolean
+  avoidHighways?: boolean
 }
 
-export interface RouteLayerProps {
-  route?: CoffeeShop[]
-  color?: string
+export interface RouteStats {
+  distance: number
+  duration: number
+  stops: number
 }

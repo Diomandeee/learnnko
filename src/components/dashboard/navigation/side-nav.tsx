@@ -40,15 +40,9 @@ const routes = [
     color: "text-sky-500"
   },
   {
-    label: "QR",
-    icon: QrCode,
-    href: "/dashboard/qr",
-    color: "text-orange-500"
-  },
-  {
-    label: "Contacts",
+    label: "People",
     icon: Contact,
-    href: "/dashboard/contacts",
+    href: "/dashboard/people",
     color: "text-violet-500"
   },
   {
@@ -56,48 +50,6 @@ const routes = [
     icon: BarChart2,
     href: "/dashboard/sales",
     color: "text-red-500"
-  },
-  {
-    label: "POS",
-    icon: CreditCard,
-    href: "/dashboard/pos",
-    color: "text-blue-500"
-  },
-  {
-    label: "Orders",
-    icon: ShoppingBag,
-    href: "/dashboard/order",
-    color: "text-green-500"
-  },
-  {
-    label: "Waste",
-    icon: Trash2,
-    href: "/dashboard/waste",
-    color: "text-yellow-500"
-  },
-  {
-    label: "Inventory",
-    icon: Warehouse,
-    href: "/dashboard/inventory",
-    color: "text-purple-500"
-  },
-  {
-    label: "Settings",
-    icon: Settings,
-    href: "/dashboard/settings",
-    color: "text-orange-500"
-  },
-  {
-    label: "Scheduling",
-    icon: Calendar,
-    href: "/dashboard/scheduling",
-    color: "text-red-500",
-  },
-  {
-    label: "Directory",
-    icon: Briefcase,
-    href: "/dashboard/directory",
-    color: "text-emerald-500"
   },
   {
     label: "Route",

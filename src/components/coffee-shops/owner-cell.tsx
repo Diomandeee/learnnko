@@ -118,7 +118,7 @@ export function OwnerCell({ owners, onUpdate }: OwnerCellProps) {
      {owners.map((owner, index) => (
        <div key={index} className="flex items-center gap-2">
          <span className="text-sm">{owner.name}</span>
-         
+         <a
            href={`mailto:${owner.email}`}
            className="text-blue-600 hover:underline text-sm flex items-center gap-1"
            onClick={(e) => e.stopPropagation()}

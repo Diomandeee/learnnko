@@ -1,89 +1,183 @@
-import { CoffeeShop } from "@prisma/client"
-import { getDistance } from "geolib"
+// src/lib/route-optimizer.ts
+import { CoffeeShop } from "@prisma/client";
+import { calculateDistance } from "@/lib/utils/geo";
 
-interface RouteOptimizerConfig {
-  maxStops: number
-  maxDistance: number // in kilometers
-}
-
-interface RouteStop {
-  shop: CoffeeShop
-  distanceFromPrevious: number
-  cumulativeDistance: number
+interface DistanceMatrix {
+  [key: string]: {
+    [key: string]: number;
+  };
 }
 
 export class RouteOptimizer {
-  private config: RouteOptimizerConfig
+  private buildDistanceMatrix(shops: CoffeeShop[]): DistanceMatrix {
+    const matrix: DistanceMatrix = {};
+    
+    // Build a matrix of distances between all shops
+    shops.forEach(shop1 => {
+      matrix[shop1.id] = {};
+      shops.forEach(shop2 => {
+        if (shop1.id !== shop2.id) {
+          matrix[shop1.id][shop2.id] = calculateDistance(
+            shop1.latitude,
+            shop1.longitude,
+            shop2.latitude,
+            shop2.longitude
+          );
+        }
+      });
+    });
 
-  constructor(config: RouteOptimizerConfig) {
-    this.config = config
+    return matrix;
   }
 
-  async generateRoute(startShop: CoffeeShop, targetShops: CoffeeShop[]): Promise<RouteStop[]> {
-    const route: RouteStop[] = []
-    let currentShop = startShop
-    let totalDistance = 0
+  private findNearestNeighbor(
+    current: string,
+    unvisited: Set<string>,
+    distanceMatrix: DistanceMatrix,
+    maxDistance: number,
+    shopMap: Map<string, CoffeeShop>,
+    optimizeBy: 'distance' | 'time' | 'volume'
+  ): string | null {
+    let nearest: string | null = null;
+    let bestScore = optimizeBy === 'volume' ? -Infinity : Infinity;
 
-    // Filter out the start shop from target shops if it's there
-    targetShops = targetShops.filter(shop => shop.id !== startShop.id)
+    unvisited.forEach(shopId => {
+      const distance = distanceMatrix[current][shopId];
+      if (distance > maxDistance) return;
 
-    while (
-      route.length < this.config.maxStops &&
-      targetShops.length > 0 &&
-      totalDistance < this.config.maxDistance * 1000 // Convert to meters
-    ) {
-      // Find nearest unvisited shop
-      const nearestShop = this.findNearestShop(currentShop, targetShops)
-      if (!nearestShop) break
-
-      // Calculate distances
-      const distanceToNext = nearestShop.distance
-
-      // Check if adding this stop would exceed max distance
-      if (totalDistance + distanceToNext > this.config.maxDistance * 1000) break
-
-      // Add total distance for this leg
-      totalDistance += distanceToNext
-
-      // Add stop to route
-      route.push({
-        shop: nearestShop.shop,
-        distanceFromPrevious: distanceToNext,
-        cumulativeDistance: totalDistance
-      })
-
-      // Update current position and remove visited shop
-      currentShop = nearestShop.shop
-      targetShops = targetShops.filter(shop => shop.id !== nearestShop.shop.id)
-    }
-
-    return route
-  }
-
-  private findNearestShop(currentShop: CoffeeShop, targetShops: CoffeeShop[]): {
-    shop: CoffeeShop
-    distance: number
-  } | null {
-    if (targetShops.length === 0) return null
-
-    let nearestShop = targetShops[0]
-    let minDistance = this.calculateDistance(currentShop, nearestShop)
-
-    for (const shop of targetShops.slice(1)) {
-      const distance = this.calculateDistance(currentShop, shop)
-      if (distance < minDistance) {
-        minDistance = distance
-        nearestShop = shop
+      let score: number;
+      const shop = shopMap.get(shopId);
+      
+      switch (optimizeBy) {
+        case 'volume':
+          // Higher volume is better
+          score = shop ? -parseFloat(shop.volume || '0') : 0;
+          if (score < bestScore) {
+            bestScore = score;
+            nearest = shopId;
+          }
+          break;
+          
+        case 'time':
+          // Consider traffic conditions if available
+          score = distance * (shop?.traffic_factor || 1);
+          if (score < bestScore) {
+            bestScore = score;
+            nearest = shopId;
+          }
+          break;
+          
+        case 'distance':
+        default:
+          // Shorter distance is better
+          if (distance < bestScore) {
+            bestScore = distance;
+            nearest = shopId;
+          }
+          break;
       }
-    }
+    });
 
-    return { shop: nearestShop, distance: minDistance }
+    return nearest;
   }
 
-  private calculateDistance(shop1: CoffeeShop, shop2: CoffeeShop): number {
-    return getDistance(
-      { latitude: shop1.latitude, longitude: shop1.longitude },
-      { latitude: shop2.latitude, longitude: shop2.longitude }
-    )
+  public optimizeRoute(
+    shops: CoffeeShop[],
+    startPointId: string,
+    maxStops: number,
+    maxDistance: number,
+    optimizeBy: 'distance' | 'time' | 'volume' = 'distance'
+  ): CoffeeShop[] {
+    // Handle edge cases
+    if (shops.length === 0) return [];
+    if (shops.length === 1) return shops;
+
+    // Initialize data structures
+    const distanceMatrix = this.buildDistanceMatrix(shops);
+    const unvisited = new Set(shops.map(shop => shop.id));
+    const optimizedRoute: CoffeeShop[] = [];
+    const shopMap = new Map(shops.map(shop => [shop.id, shop]));
+
+    // Start with the specified starting point
+    const startShop = shopMap.get(startPointId);
+    if (!startShop) return [];
+    
+    unvisited.delete(startPointId);
+    optimizedRoute.push(startShop);
+    let currentShopId = startPointId;
+
+    // Build route using nearest neighbor with constraints
+    while (
+      optimizedRoute.length < maxStops && 
+      unvisited.size > 0
+    ) {
+      const nextShopId = this.findNearestNeighbor(
+        currentShopId,
+        unvisited,
+        distanceMatrix,
+        maxDistance,
+        shopMap,
+        optimizeBy
+      );
+
+      if (!nextShopId) break;
+
+      const nextShop = shopMap.get(nextShopId);
+      if (!nextShop) break;
+
+      optimizedRoute.push(nextShop);
+      unvisited.delete(nextShopId);
+      currentShopId = nextShopId;
+    }
+
+    // Apply additional optimization based on strategy
+    return this.finalizeRoute(optimizedRoute, optimizeBy);
+  }
+
+  private finalizeRoute(
+    route: CoffeeShop[], 
+    optimizeBy: 'distance' | 'time' | 'volume'
+  ): CoffeeShop[] {
+    if (route.length <= 2) return route;
+
+    if (optimizeBy === 'volume') {
+      // Keep start point, sort rest by volume
+      const [startPoint, ...rest] = route;
+      const sortedByVolume = rest.sort((a, b) => {
+        const volumeA = parseFloat(a.volume || '0');
+        const volumeB = parseFloat(b.volume || '0');
+        return volumeB - volumeA;
+      });
+      return [startPoint, ...sortedByVolume];
+    }
+
+    // Additional optimizations could be added here
+    // For example, 2-opt optimization for distance
+    
+    return route;
+  }
+
+  public calculateRouteMetrics(route: CoffeeShop[]): {
+    totalDistance: number;
+    estimatedDuration: number;
+  } {
+    let totalDistance = 0;
+
+    for (let i = 1; i < route.length; i++) {
+      totalDistance += calculateDistance(
+        route[i - 1].latitude,
+        route[i - 1].longitude,
+        route[i].latitude,
+        route[i].longitude
+      );
+    }
+
+    // Estimate duration based on average speed (30 km/h for urban areas)
+    const estimatedDuration = (totalDistance / 30) * 60; // minutes
+
+    return {
+      totalDistance,
+      estimatedDuration
+    };
   }
 }

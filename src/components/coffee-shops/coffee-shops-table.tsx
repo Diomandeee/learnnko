@@ -44,7 +44,9 @@ import {
   User,
   Mail,
   Phone,
-  Building
+  Star,
+  Shield,
+  RefreshCw
 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import {
@@ -69,16 +71,43 @@ import { CoffeeShop } from "@prisma/client"
 import { format } from "date-fns"
 import { FilterValueInput } from "./filter-value-input"
 import { useCoffeeShops } from "@/hooks/use-coffee-shops"
+import { Textarea } from "@/components/ui/textarea";
 
 const ITEMS_PER_PAGE = 50
 
 interface EditableCellProps {
   value: string | null
   onUpdate: (value: string | null) => Promise<void>
-  type?: 'text' | 'number' | 'instagram' | 'email' | 'manager' | 'volume' | 'phone'
+  type?: 'text' | 'number' | 'instagram' | 'email' | 'manager' |'owners'|'notes' | 'volume' | 'phone'| 'priority'
   className?: string
 }
 
+function StarRating({ 
+  value, 
+  onUpdate,
+  className 
+}: { 
+  value: number, 
+  onUpdate: (value: number) => void,
+  className?: string 
+}) {
+  return (
+    <div className={cn("flex items-center gap-1", className)}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          className={cn(
+            "h-4 w-4 cursor-pointer transition-colors",
+            star <= value 
+              ? "fill-yellow-500 text-yellow-500" 
+              : "text-muted-foreground hover:text-yellow-500"
+          )}
+          onClick={() => onUpdate(star)}
+        />
+      ))}
+    </div>
+  )
+}
 function EditableCell({ value, onUpdate, type = 'text', className }: EditableCellProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(value || '')
@@ -304,7 +333,153 @@ function EditableCell({ value, onUpdate, type = 'text', className }: EditableCel
       </div>
     )
   }
-
+  if (type === 'owners' && value) {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-1">
+          {value.split(',').map((owner, index) => (
+            <div key={index} className="text-sm">
+              {owner.trim()}
+            </div>
+          ))}
+        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setIsEditing(true)}
+        >
+          <Pencil className="h-3 w-3" />
+        </Button>
+      </div>
+    )
+   }
+   if (type === 'notes' && value) {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="max-w-[200px] truncate text-sm" title={value}>
+          {value}
+        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setIsEditing(true)}
+        >
+          <Pencil className="h-3 w-3" />
+        </Button>
+      </div>
+    )
+   }
+   
+   {/* For notes, you might want to use a Textarea instead of Input when editing: */}
+   
+   if (isEditing && type === 'notes') {
+    return (
+      <div className="flex items-center gap-2">
+        <Textarea
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          className="min-h-[100px] w-[300px]"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+              handleSave()
+            }
+            if (e.key === 'Escape') {
+              setIsEditing(false)
+              setEditValue(value || '')
+            }
+          }}
+          disabled={isUpdating}
+          autoFocus
+        />
+        <div className="flex flex-col gap-2">
+          <Button 
+            size="sm"
+            onClick={handleSave}
+            disabled={isUpdating}
+          >
+            <Check className="h-4 w-4" />
+          </Button>
+          <Button 
+            size="sm" 
+            variant="ghost" 
+            onClick={() => {
+              setIsEditing(false)
+              setEditValue(value || '')
+            }}
+            disabled={isUpdating}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    )
+   }
+   if (type === 'priority') {
+    return (
+      <div className="flex items-center gap-2 group cursor-pointer">
+        <div 
+          className={cn(
+            "flex items-center gap-2",
+            className
+          )}
+          onClick={() => setIsEditing(true)}
+        >
+          <Star className={cn(
+            "h-4 w-4",
+            value && parseInt(value) > 0 ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground"
+          )} />
+          <span>{value || "0"}</span>
+          <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+        </div>
+      </div>
+    )
+  }
+  
+  if (isEditing && type === 'priority') {
+    return (
+      <div className="flex items-center gap-2">
+        <Input
+          type="number"
+          min="0"
+          max="10"
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          className="h-8 w-[80px]"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleSave()
+            if (e.key === 'Escape') {
+              setIsEditing(false)
+              setEditValue(value || '')
+            }
+          }}
+          disabled={isUpdating}
+          autoFocus
+        />
+        <Button 
+          size="sm"
+          onClick={handleSave}
+          disabled={isUpdating}
+        >
+          {isUpdating ? (
+            <span className="animate-spin">...</span>
+          ) : (
+            <Check className="h-4 w-4" />
+          )}
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            setIsEditing(false)
+            setEditValue(value || '')
+          }}
+          disabled={isUpdating}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    )
+  }
   return (
     <div 
       className={cn(
@@ -409,7 +584,7 @@ function DateCell({ date, onUpdate, onRemove }: DateCellProps) {
 }
 
 // Filter types and configurations
-type FilterDataType = 'text' | 'number' | 'boolean' | 'date' | 'rating' | 'reviews' | 'followers' | 'volume'
+type FilterDataType = 'text' | 'number' | 'boolean' | 'date' | 'rating' | 'reviews' | 'followers' | 'volume' | 'priority'
 type FilterOperator = 'equals' | 'contains' | 'greaterThan' | 'lessThan' | 'between' | 'startsWith'
 
 interface FilterConfig {
@@ -542,7 +717,35 @@ const FILTER_CONFIGS: FilterConfig[] = [
   const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([])
   const [selectedShops, setSelectedShops] = useState<string[]>([])
   const { shops, loading, error, mutate } = useCoffeeShops()
- 
+  const [isRecalculating, setIsRecalculating] = useState(false)
+
+  const handleRecalculatePriorities = async () => {
+    setIsRecalculating(true)
+    try {
+      const response = await fetch('/api/coffee-shops/priority', { 
+        method: 'POST' 
+      })
+      
+      if (response.ok) {
+        // Optionally refresh the table or show a toast
+        toast({
+          title: "Priorities Recalculated",
+          description: "Shop priorities have been updated"
+        })
+        // Trigger a reload of the shops data
+        mutate()
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to recalculate priorities",
+        variant: "destructive"
+      })
+    } finally {
+      setIsRecalculating(false)
+    }
+  }
+
   const handleAddFilter = (filter: Omit<ActiveFilter, 'id'>) => {
     setActiveFilters(prev => [...prev, { ...filter, id: crypto.randomUUID() }])
   }
@@ -789,6 +992,18 @@ const sortedShops = useMemo(() => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-[300px]"
           />
+               <Button 
+        variant="outline" 
+        onClick={handleRecalculatePriorities}
+        disabled={isRecalculating}
+      >
+        {isRecalculating ? (
+          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <RefreshCw className="mr-2 h-4 w-4" />
+        )}
+        Recalculate Priorities
+      </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
@@ -953,6 +1168,28 @@ const sortedShops = useMemo(() => {
               </TableHead>
               <TableHead>
                 <div className="flex items-center gap-2">
+                  Priority
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSort('priority')}
+                  >
+                    {sortConfig.key === 'priority' ? (
+                      sortConfig.direction === 'asc' ? (
+                        <ArrowUp className="h-4 w-4" />
+                      ) : (
+                        <ArrowDown className="h-4 w-4" />
+                      )
+                    ) : (
+                      <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
+                    )}
+                  </Button>
+                </div>
+              </TableHead>
+              <TableHead>Partner Status</TableHead>
+
+              <TableHead>
+                <div className="flex items-center gap-2">
                   Manager Present
                   <Button
                     variant="ghost"
@@ -1012,6 +1249,26 @@ const sortedShops = useMemo(() => {
                  </Button>
                </div>
              </TableHead>
+             <TableHead>
+              <div className="flex items-center gap-2">
+                Owners
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSort('owners')}
+                >
+                  {sortConfig.key === 'owners' ? (
+                    sortConfig.direction === 'asc' ? (
+                      <ArrowUp className="h-4 w-4" />
+                    ) : (
+                      <ArrowDown className="h-4 w-4" />
+                    )
+                  ) : (
+                    <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
+                  )}
+                </Button>
+              </div>
+            </TableHead>
              <TableHead>
               <div className="flex items-center gap-2">
                 Volume
@@ -1175,6 +1432,26 @@ const sortedShops = useMemo(() => {
                </div>
              </TableHead>
              <TableHead>Lead</TableHead>
+             <TableHead>
+              <div className="flex items-center gap-2">
+                Notes
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSort('notes')}
+                >
+                  {sortConfig.key === 'notes' ? (
+                    sortConfig.direction === 'asc' ? (
+                      <ArrowUp className="h-4 w-4" />
+                    ) : (
+                      <ArrowDown className="h-4 w-4" />
+                    )
+                  ) : (
+                    <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
+                  )}
+                </Button>
+              </div>
+            </TableHead>
              <TableHead className="w-[100px]">Actions</TableHead>
            </TableRow>
          </TableHeader>
@@ -1207,6 +1484,29 @@ const sortedShops = useMemo(() => {
                    onUpdate={(value) => handleCellUpdate(shop, 'area', value)}
                  />
                </TableCell>
+
+               <TableCell>
+                <div className="flex items-center gap-2 group cursor-pointer">
+                  <StarRating
+                    value={shop.priority || 0}
+                    onUpdate={(value) => handleCellUpdate(shop, 'priority', value)}
+                    className="group-hover:opacity-100"
+                  />
+                </div>
+              </TableCell>
+              <TableCell>
+                <Badge 
+                  variant={shop.isPartner ? "success" : "secondary"}
+                  className="cursor-pointer"
+                  onClick={() => handleCellUpdate(shop, 'isPartner', !shop.isPartner)}
+                >
+                  {shop.isPartner ? (
+                    <><Shield className="h-4 w-4 mr-1" /> Partner</>
+                  ) : "Not Partner"}
+                </Badge>
+              </TableCell>
+
+
                <TableCell>
                  <EditableCell
                    value={shop.manager_present}
@@ -1227,6 +1527,27 @@ const sortedShops = useMemo(() => {
                    type="email"
                  />
                </TableCell>
+               <TableCell>
+                <EditableCell
+                  value={shop.owners.map(owner => `${owner.name} (${owner.email})`).join(', ') || null}
+                  onUpdate={async (value) => {
+                    // Parse owner string into array of objects
+                    const owners = value ? value.split(',').map(owner => {
+                      const match = owner.trim().match(/^(.+?)\s*\((.+?)\)$/);
+                      if (match) {
+                        return {
+                          name: match[1].trim(),
+                          email: match[2].trim()
+                        };
+                      }
+                      return null;
+                    }).filter(Boolean) : [];
+                    
+                    await handleCellUpdate(shop, 'owners', owners);
+                  }}
+                  type="owners"
+                />
+              </TableCell>
                <TableCell>
                   <EditableCell 
                     value={shop.volume?.toString() || null}
@@ -1308,6 +1629,13 @@ const sortedShops = useMemo(() => {
                    {shop.parlor_coffee_leads ? "Lead" : "No Lead"}
                  </Badge>
                </TableCell>
+               <TableCell>
+                <EditableCell
+                  value={shop.notes}
+                  onUpdate={(value) => handleCellUpdate(shop, 'notes', value)}
+                  type="notes"
+                />
+                </TableCell>
                <TableCell>
                  <DropdownMenu>
                    <DropdownMenuTrigger asChild>

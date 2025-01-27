@@ -2,6 +2,7 @@ import { Metadata } from "next"
 import { VisitManagement } from "@/components/visits/visit-management"
 import { VisitAnalytics } from "@/components/visits/visit-analytics"
 import { RouteAnalytics } from "@/components/routes/analytics/route-analytics"
+import { PageContainer } from "@/components/layout/page-container";
 
 export const metadata: Metadata = {
   title: "Visit Management | BUF BARISTA CRM",
@@ -10,6 +11,8 @@ export const metadata: Metadata = {
 
 export default function VisitsPage() {
   return (
+    <PageContainer>
+
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between">
         <div>
@@ -29,5 +32,7 @@ export default function VisitsPage() {
       <RouteAnalytics />
 
     </div>
+    </PageContainer>
+
   )
 }
