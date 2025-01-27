@@ -27,6 +27,7 @@ model User {
   qrCodes       QRCode[]
   folders       Folder[]
   coffeeShops   CoffeeShop[] // Add this line to complete the relation
+  people        Person[]    // Add relation to Person model
 
 }
 
@@ -59,6 +60,25 @@ model Contact {
   shop        Shop?      @relation(fields: [shopId], references: [id])
   shopId      String?    @db.ObjectId
 }
+
+model Person {
+  id                String     @id @default(auto()) @map("_id") @db.ObjectId
+  firstName         String?
+  lastName          String?
+  email             String
+  phone             String?
+  emailType         String?    // "professional" or "generic"
+  verificationStatus String?   // "VALID", "INVALID", etc.
+  lastVerifiedAt    DateTime?
+  notes             String?
+  userId            String     @db.ObjectId
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coffeeShop        CoffeeShop @relation(fields: [coffeeShopId], references: [id])
+  coffeeShopId      String     @db.ObjectId
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
 
 model MenuItem {
   id          String      @id @default(auto()) @map("_id") @db.ObjectId
@@ -312,47 +332,55 @@ model TimeOff {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 }
-
 model CoffeeShop {
- id                    String    @id @default(auto()) @map("_id") @db.ObjectId
- title                 String
- address               String
- website               String?
- manager_present       String?
- contact_name          String?
- contact_email         String?
- phone                 String?
- visited               Boolean   @default(false)
- instagram            String?
- followers            Int?
- store_doors          String?
- volume               String?
- first_visit          DateTime?
- second_visit         DateTime?
- third_visit          DateTime?
- rating               Float?
- reviews              Int?
- price_type           String?
- type                 String?
- types                String[]
- service_options      Json?
- hours                String?
- operating_hours      Json?
- gps_coordinates      Json?
- latitude             Float
- longitude            Float
- area                 String?
- is_source            Boolean   @default(false)
- quality_score        Float?
- parlor_coffee_leads  Boolean   @default(false)
- visits               Visit[]
- userId               String?   @db.ObjectId
- user                 User?     @relation(fields: [userId], references: [id])
- owners               Owner[]   // New field for multiple owners
- notes                String?   // New field for notes
- createdAt            DateTime  @default(now())
- updatedAt            DateTime  @updatedAt
+  id                    String    @id @default(auto()) @map("_id") @db.ObjectId
+  title                 String
+  address               String
+  website               String?
+  manager_present       String?
+  contact_name          String?
+  contact_email         String?
+  phone                 String?
+  visited               Boolean   @default(false)
+  instagram            String?
+  followers            Int?
+  store_doors          String?
+  volume               String?
+  first_visit          DateTime?
+  second_visit         DateTime?
+  third_visit          DateTime?
+  rating               Float?
+  reviews              Int?
+  price_type           String?
+  type                 String?
+  types                String[]
+  service_options      Json?
+  hours                String?
+  operating_hours      Json?
+  gps_coordinates      Json?
+  latitude             Float
+  longitude            Float
+  area                 String?
+  is_source            Boolean   @default(false)
+  quality_score        Float?
+  parlor_coffee_leads  Boolean   @default(false)
+  visits               Visit[]
+  userId               String?   @db.ObjectId
+  user                 User?     @relation(fields: [userId], references: [id])
+  owners               Owner[]
+  notes                String?
+  priority             Int       @default(0)
+  isPartner            Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  priorityLastUpdated  DateTime?
+  // Add these fields
+  emails               Json?     // Stores array of discovered emails
+  company_data         Json?     // Stores company enrichment data
+  people               Person[]  // Relation to people discovered from emails
 }
+
+
 
 model Owner {
  id            String      @id @default(auto()) @map("_id") @db.ObjectId

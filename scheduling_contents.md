@@ -1,2346 +1,4 @@
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/coffee-shops/page.tsx
-import { CoffeeShopsTable } from "@/components/coffee-shops/coffee-shops-table"
-import { CoffeeShopHeader } from "@/components/coffee-shops/coffee-shop-header"
-
-export const metadata = {
-  title: "Coffee Shops | BUF BARISTA CRM",
-  description: "Manage your coffee shops",
-}
-
-export default function CoffeeShopsPage() {
-  return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      <CoffeeShopHeader />
-      <CoffeeShopsTable />
-    </div>
-  )
-}
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/coffee-shops/new/page.tsx
-import { Metadata } from "next"
-import { NewCoffeeShopForm } from "@/components/coffee-shops/new-coffee-shop-form"
-
-export const metadata: Metadata = {
-  title: "Add Coffee Shop | BUF BARISTA CRM",
-  description: "Add a new coffee shop to your network",
-}
-
-export default function NewCoffeeShopPage() {
-  return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      <h1 className="text-3xl font-bold tracking-tight">Add New Coffee Shop</h1>
-      <NewCoffeeShopForm />
-    </div>
-  )
-}
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/coffee-shops/[id]/page.tsx
-import { CoffeeShopProfile } from "@/components/coffee-shops/coffee-shop-profile"
-import { prisma } from "@/lib/db/prisma"
-import { notFound } from "next/navigation"
-
-interface Props {
-  params: {
-    id: string
-  }
-}
-
-export default async function CoffeeShopPage({ params }: Props) {
-  const coffeeShop = await prisma.coffeeShop.findUnique({
-    where: {
-      id: params.id
-    },
-    include: {
-      visits: {
-        orderBy: {
-          date: 'desc'
-        }
-      }
-    }
-  })
-
-  if (!coffeeShop) {
-    notFound()
-  }
-
-  return <CoffeeShopProfile shop={coffeeShop} />
-}
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/coffee-shops/coffee-shop-header.tsx
-"use client"
-
-import { Button } from "@/components/ui/button"
-import { PlusCircle } from "lucide-react"
-import { useRouter } from "next/navigation"
-
-export function CoffeeShopHeader() {
-  const router = useRouter()
-
-  return (
-    <div className="flex items-center justify-between">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Coffee Shops</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage and track coffee shops in your network
-        </p>
-      </div>
-      <Button onClick={() => router.push("/dashboard/coffee-shops/new")}>
-        <PlusCircle className="mr-2 h-4 w-4" />
-        Add Coffee Shop
-      </Button>
-    </div>
-  )
-}________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/coffee-shops/coffee-shop-profile.tsx
-"use client"
-
-import { CoffeeShop, Visit } from "@prisma/client"
-import { format } from "date-fns"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { MapPin, Globe, Phone, Instagram, Calendar, Star, DollarSign, Clock, Users } from "lucide-react"
-import Link from "next/link"
-
-interface CoffeeShopProfileProps {
-  shop: CoffeeShop & {
-    visits: Visit[]
-  }
-}
-
-export function CoffeeShopProfile({ shop }: CoffeeShopProfileProps) {
-  return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      {/* Header Section */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-1">{shop.title}</h1>
-          <div className="flex items-center gap-2">
-            <Badge variant={shop.is_source ? "default" : "secondary"}>
-              {shop.is_source ? "Partner" : "Prospect"}
-            </Badge>
-            {shop.visited && <Badge variant="success">Visited</Badge>}
-            {shop.parlor_coffee_leads && <Badge variant="warning">Lead</Badge>}
-          </div>
-        </div>
-        <Button variant="outline" asChild>
-          <Link href="/dashboard/coffee-shops">Back to List</Link>
-        </Button>
-      </div>
-
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="visits">Visits</TabsTrigger>
-          <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="hours">Hours</TabsTrigger>
-        </TabsList>
-
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {/* Basic Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Basic Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  <span>{shop.address}</span>
-                </div>
-                {shop.website && (
-                  <div className="flex items-center gap-2">
-                    <Globe className="h-4 w-4" />
-                    <a href={shop.website} target="_blank" rel="noopener noreferrer" 
-                       className="text-blue-600 hover:underline">
-                      Website
-                    </a>
-                  </div>
-                )}
-                {shop.phone && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4" />
-                    <span>{shop.phone}</span>
-                  </div>
-                )}
-                {shop.instagram && (
-                  <div className="flex items-center gap-2">
-                    <Instagram className="h-4 w-4" />
-                    <span>@{shop.instagram}</span>
-                    {shop.followers && <span>({shop.followers.toLocaleString()} followers)</span>}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Contact Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Contact Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {shop.contact_name && (
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    <span>Contact: {shop.contact_name}</span>
-                  </div>
-                )}
-                {shop.contact_email && (
-                  <div className="flex items-center gap-2">
-                    <span>Email: {shop.contact_email}</span>
-                  </div>
-                )}
-                {shop.manager_present && (
-                  <div className="flex items-center gap-2">
-                    <span>Manager: {shop.manager_present}</span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Ratings & Reviews */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Ratings & Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {shop.rating && (
-                  <div className="flex items-center gap-2">
-                    <Star className="h-4 w-4" />
-                    <span>{shop.rating} ({shop.reviews} reviews)</span>
-                  </div>
-                )}
-                {shop.price_type && (
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4" />
-                    <span>{shop.price_type}</span>
-                  </div>
-                )}
-                {shop.volume && (
-                  <div className="flex items-center gap-2">
-                    <span>Volume: {shop.volume}</span>
-                  </div>
-                )}
-                {shop.store_doors && (
-                  <div className="flex items-center gap-2">
-                    <span>Store Doors: {shop.store_doors}</span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Visits Tab */}
-        <TabsContent value="visits" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Visit History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {shop.first_visit && (
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    <span>First Visit: {format(new Date(shop.first_visit), 'PPP')}</span>
-                  </div>
-                )}
-                {shop.second_visit && (
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    <span>Second Visit: {format(new Date(shop.second_visit), 'PPP')}</span>
-                  </div>
-                )}
-                {shop.third_visit && (
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    <span>Third Visit: {format(new Date(shop.third_visit), 'PPP')}</span>
-                  </div>
-                )}
-                {shop.visits.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    <h3 className="font-semibold">Detailed Visits</h3>
-                    {shop.visits.map((visit) => (
-                      <Card key={visit.id}>
-                        <CardContent className="p-4">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="font-medium">Visit #{visit.visitNumber}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {format(new Date(visit.date), 'PPP')}
-                              </p>
-                            </div>
-                            {visit.managerPresent && (
-                              <Badge>Manager Present</Badge>
-                            )}
-                          </div>
-                          {visit.notes && (
-                            <p className="mt-2 text-sm">{visit.notes}</p>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Details Tab */}
-        <TabsContent value="details" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Shop Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <h3 className="font-semibold mb-2">Type</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {shop.types.map((type) => (
-                      <Badge key={type} variant="secondary">
-                        {type}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-2">Area</h3>
-                  <Badge variant="outline">{shop.area}</Badge>
-                </div>
-              </div>
-              {shop.service_options && (
-                <div className="mt-4">
-                  <h3 className="font-semibold mb-2">Service Options</h3>
-                  <pre className="bg-muted p-2 rounded-md text-sm">
-                    {JSON.stringify(shop.service_options, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Hours Tab */}
-        <TabsContent value="hours" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Operating Hours</CardTitle>
-              {shop.hours && (
-                <CardDescription>{shop.hours}</CardDescription>
-              )}
-            </CardHeader>
-            <CardContent>
-              {shop.operating_hours ? (
-                <div className="space-y-2">
-                  {Object.entries(shop.operating_hours as Record<string, string>).map(([day, hours]) => (
-                    <div key={day} className="flex justify-between items-center py-2 border-b">
-                      <span className="capitalize">{day}</span>
-                      <span>{hours}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-muted-foreground">No operating hours available</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  )
-}
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/coffee-shops/coffee-shops-table.tsx
-"use client"
-
-import { useState, useMemo } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-  DropdownMenuCheckboxItem,
-} from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
-import { 
-  Edit, 
-  MoreHorizontal, 
-  Trash2, 
-  ChevronLeft, 
-  ChevronRight, 
-  ArrowDown, 
-  ArrowUp, 
-  Filter, 
-  XCircle, 
-  Calendar as CalendarIcon,
-  Pencil,
-  Check,
-  X,
-  Instagram
-} from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Calendar } from "@/components/ui/calendar"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
-import { CoffeeShop } from "@prisma/client"
-import { format } from "date-fns"
-import { useCoffeeShops } from "@/hooks/use-coffee-shops"
-import { FilterValueInput } from "./filter-value-input"
-
-const ITEMS_PER_PAGE =1000 
-
-interface EditableCellProps {
-  value: string | null
-  onUpdate: (value: string | null) => Promise<void>
-  type?: 'text' | 'number' | 'instagram' | 'volume'
-  className?: string
-}
-
-function EditableCell({ value, onUpdate, type = 'text', className }: EditableCellProps) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [editValue, setEditValue] = useState(value || '')
-  const [isUpdating, setIsUpdating] = useState(false)
-  const { toast } = useToast()
-
-  const handleSave = async () => {
-    if (isUpdating) return
-    setIsUpdating(true)
-    
-    try {
-      let processedValue = editValue
-      let isValid = true
-
-      switch (type) {
-        case 'instagram':
-          processedValue = editValue
-            .replace('@', '')
-            .replace('https://www.instagram.com/', '')
-            .replace('https://instagram.com/', '')
-            .trim()
-          break
-          
-        case 'volume':
-          const numValue = parseFloat(editValue)
-          if (isNaN(numValue) || numValue < 0) {
-            isValid = false
-            toast({
-              title: "Invalid value",
-              description: "Please enter a valid number",
-              variant: "destructive"
-            })
-          } else {
-            processedValue = numValue.toString()
-          }
-          break
-          
-        case 'number':
-          if (isNaN(parseFloat(editValue))) {
-            isValid = false
-            toast({
-              title: "Invalid value",
-              description: "Please enter a valid number",
-              variant: "destructive"
-            })
-          }
-          break
-      }
-
-      if (isValid) {
-        await onUpdate(processedValue || null)
-        setIsEditing(false)
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update value",
-        variant: "destructive"
-      })
-    } finally {
-      setIsUpdating(false)
-    }
-  }
-
-  if (isEditing) {
-    return (
-      <div className="flex items-center gap-2">
-        <Input
-          type={type === 'number' || type === 'volume' ? 'number' : 'text'}
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          className={cn("h-8 w-[200px]", className)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleSave()
-            if (e.key === 'Escape') {
-              setIsEditing(false)
-              setEditValue(value || '')
-            }
-          }}
-          disabled={isUpdating}
-          autoFocus
-        />
-        <Button 
-          size="sm"
-          onClick={handleSave}
-          disabled={isUpdating}
-        >
-          {isUpdating ? (
-            <span className="animate-spin">...</span>
-          ) : (
-            <Check className="h-4 w-4" />
-          )}
-        </Button>
-        <Button 
-          size="sm" 
-          variant="ghost" 
-          onClick={() => {
-            setIsEditing(false)
-            setEditValue(value || '')
-          }}
-          disabled={isUpdating}
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-    )
-  }
-
-  if (type === 'instagram' && value) {
-    return (
-      <div className="flex items-center gap-2">
-        <a
-          href={`https://instagram.com/${value}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 hover:underline flex items-center"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Instagram className="h-4 w-4 mr-1" />
-          {value}
-        </a>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            setIsEditing(true)
-          }}
-        >
-          <Pencil className="h-3 w-3" />
-        </Button>
-      </div>
-    )
-  }
-
-  if (type === 'volume' && value) {
-    const numValue = parseFloat(value)
-    const arr = (numValue * 52) * 18
-    return (
-      <div 
-        className="space-y-1 cursor-pointer"
-        onClick={() => setIsEditing(true)}
-      >
-        <div className="flex items-center gap-2">
-          <span>{numValue.toLocaleString()}</span>
-          <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100" />
-        </div>
-        <div className="text-xs text-muted-foreground">
-          ARR: ${arr.toLocaleString()}
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div 
-      className={cn(
-        "flex items-center justify-between group cursor-pointer p-2 rounded hover:bg-muted/50",
-        className
-      )}
-      onClick={() => setIsEditing(true)}
-    >
-      <span>{value || "-"}</span>
-      <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100" />
-    </div>
-  )
-}
-
-interface DateCellProps {
-  date: Date | null
-  onUpdate: (date: Date | null) => Promise<void>
-  onRemove: () => Promise<void>
-}
-
-function DateCell({ date, onUpdate, onRemove }: DateCellProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [isUpdating, setIsUpdating] = useState(false)
-  const { toast } = useToast()
-
-  const handleDateSelect = async (newDate: Date | null) => {
-    if (isUpdating) return
-    
-    setIsUpdating(true)
-    try {
-      await onUpdate(newDate)
-      setIsOpen(false)
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update date",
-        variant: "destructive"
-      })
-    } finally {
-      setIsUpdating(false)
-    }
-  }
-
-  const handleRemove = async () => {
-    if (isUpdating) return
-    
-    setIsUpdating(true)
-    try {
-      await onRemove()
-      setIsOpen(false)
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to remove date",
-        variant: "destructive"
-      })
-    } finally {
-      setIsUpdating(false)
-    }
-  }
-
-  return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full justify-start text-left font-normal",
-            !date && "text-muted-foreground",
-            isUpdating && "opacity-50 cursor-not-allowed"
-          )}
-          disabled={isUpdating}
-        >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, 'PPP') : <span>Not set</span>}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <div className="p-2 flex flex-col gap-2">
-          <Calendar
-            mode="single"
-            selected={date ?? undefined}
-            onSelect={handleDateSelect}
-            disabled={isUpdating}
-            initialFocus
-          />
-          {date && (
-            <Button 
-              variant="destructive" 
-              size="sm"
-              onClick={handleRemove}
-              disabled={isUpdating}
-            >
-              {isUpdating ? (
-                <span className="animate-spin">...</span>
-              ) : (
-                "Remove Date"
-              )}
-            </Button>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
-  )
-}
-
-// Filter types and configurations
-type FilterDataType = 'text' | 'number' | 'boolean' | 'date' | 'rating' | 'followers' | 'volume'
-type FilterOperator = 'equals' | 'contains' | 'greaterThan' | 'lessThan' | 'between' | 'startsWith'
-
-interface FilterConfig {
-  field: keyof CoffeeShop
-  label: string
-  type: FilterDataType
-  operators: FilterOperator[]
-}
-
-interface ActiveFilter {
-  id: string
-  field: keyof CoffeeShop
-  operator: FilterOperator
-  value: any
-  type: FilterDataType
-}
-
-const FILTER_CONFIGS: FilterConfig[] = [
-  {
-    field: 'title',
-    label: 'Name',
-    type: 'text',
-    operators: ['contains', 'equals', 'startsWith']
-  },
-  {
-    field: 'area',
-    label: 'Area',
-    type: 'text',
-    operators: ['contains', 'equals']
-  },
-  {
-    field: 'first_visit',
-    label: 'First Visit',
-    type: 'date',
-    operators: ['equals', 'greaterThan', 'lessThan', 'between']
-  },
-  {
-    field: 'second_visit',
-    label: 'Second Visit',
-    type: 'date',
-    operators: ['equals', 'greaterThan', 'lessThan', 'between']
-  },
-  {
-    field: 'third_visit',
-    label: 'Third Visit',
-    type: 'date',
-    operators: ['equals', 'greaterThan', 'lessThan', 'between']
-  },
-  {
-    field: 'rating',
-    label: 'Rating',
-    type: 'rating',
-    operators: ['equals', 'greaterThan', 'lessThan', 'between']
-  },
-  {
-    field: 'followers',
-    label: 'Followers',
-    type: 'followers',
-    operators: ['equals', 'greaterThan', 'lessThan', 'between']
-  },
-  {
-    field: 'volume',
-    label: 'Volume',
-    type: 'volume',
-    operators: ['equals', 'greaterThan', 'lessThan', 'between']
-  },
-  {
-    field: 'visited',
-    label: 'Visited Status',
-    type: 'boolean',
-    operators: ['equals']
-  },
-  {
-    field: 'parlor_coffee_leads',
-    label: 'Lead Status',
-    type: 'boolean',
-    operators: ['equals']
-  }
-]
-
-const OPERATOR_LABELS: Record<FilterOperator, string> = {
-  equals: 'Equals',
-  contains: 'Contains',
-  greaterThan: 'Greater than',
-  lessThan: 'Less than',
-  between: 'Between',
-  startsWith: 'Starts with'
-}
-
-export function CoffeeShopsTable() {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [searchTerm, setSearchTerm] = useState("")
-  const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [sortConfig, setSortConfig] = useState<{ key: keyof CoffeeShop | null; direction: 'asc' | 'desc' }>({
-    key: null,
-    direction: 'asc'
-  })
-  const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([])
-  const [selectedShops, setSelectedShops] = useState<string[]>([])
-  const { shops, loading, error, mutate } = useCoffeeShops()
-
-  const handleAddFilter = (filter: Omit<ActiveFilter, 'id'>) => {
-    setActiveFilters(prev => [...prev, { ...filter, id: crypto.randomUUID() }])
-  }
-
-  const handleRemoveFilter = (filterId: string) => {
-    setActiveFilters(prev => prev.filter(f => f.id !== filterId))
-  }
-
-  const handleClearFilters = () => {
-    setActiveFilters([])
-  }
-
-  const handleCellUpdate = async (
-    shop: CoffeeShop,
-    field: keyof CoffeeShop,
-    value: any
-  ) => {
-    try {
-      const updateData: Partial<CoffeeShop> = {
-        [field]: value
-      }
-
-      // If updating volume, calculate ARR
-      if (field === 'volume' && value) {
-        const volume = parseFloat(value)
-        if (!isNaN(volume)) {
-          updateData.arr = (volume * 52) * 18
-        }
-      }
-
-      console.log('Updating shop:', { field, value, updateData })
-
-      const response = await fetch(`/api/coffee-shops/${shop.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updateData)
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to update ${field}`)
-      }
-
-      toast({
-        title: "Updated successfully",
-        description: `${shop.title} has been updated.`
-      })
-
-      mutate()
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update field. Please try again.",
-        variant: "destructive"
-      })
-      console.error('Update error:', error)
-    }
-  }
-
-  const handleDateUpdate = async (
-    shop: CoffeeShop, 
-    field: 'first_visit' | 'second_visit' | 'third_visit', 
-    date: Date | null
-  ) => {
-    try {
-      console.log('Updating date:', { field, date, shopId: shop.id })
-      
-      const response = await fetch(`/api/coffee-shops/${shop.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          [field]: date?.toISOString(),
-          // If setting first visit, also update visited status
-          ...(field === 'first_visit' && date && !shop.visited ? { visited: true } : {})
-        })
-      })
-
-      if (!response.ok) throw new Error(`Failed to update ${field}`)
-
-      toast({
-        title: "Visit date updated",
-        description: `${shop.title} has been updated successfully.`
-      })
-
-      mutate()
-    } catch (error) {
-      console.error('Date update error:', error)
-      toast({
-        title: "Error",
-        description: "Failed to update visit date. Please try again.",
-        variant: "destructive"
-      })
-    }
-  }
-
-  const handleDateRemove = async (
-    shop: CoffeeShop,
-    field: 'first_visit' | 'second_visit' | 'third_visit'
-  ) => {
-    try {
-      const response = await fetch(`/api/coffee-shops/${shop.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          [field]: null,
-          // Update visited status if removing first visit and no other visits exist
-          ...(field === 'first_visit' && !shop.second_visit && !shop.third_visit 
-            ? { visited: false } 
-            : {})
-        })
-      })
-
-      if (!response.ok) throw new Error(`Failed to remove ${field}`)
-
-      toast({
-        title: "Visit date removed",
-        description: `${shop.title} has been updated successfully.`
-      })
-
-      mutate()
-    } catch (error) {
-      console.error('Date removal error:', error)
-      toast({
-        title: "Error",
-        description: "Failed to remove visit date. Please try again.",
-        variant: "destructive"
-      })
-    }
-  }
-
-  const filteredShops = useMemo(() => {
-    if (!shops) return []
-
-    return shops.filter(shop => {
-      // Search filter
-      const matchesSearch = searchTerm === '' || 
-        shop.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        shop.area?.toLowerCase().includes(searchTerm.toLowerCase())
-
-      // Active filters
-      const matchesFilters = activeFilters.every(filter => {
-        const value = shop[filter.field]
-
-        switch (filter.operator) {
-          case 'equals':
-            if (filter.type === 'boolean') {
-              return value === (filter.value === 'true')
-            }
-            return value === filter.value
-          
-          case 'contains':
-            return String(value).toLowerCase().includes(String(filter.value).toLowerCase())
-          
-          case 'startsWith':
-            return String(value).toLowerCase().startsWith(String(filter.value).toLowerCase())
-          
-          case 'greaterThan':
-            if (filter.type === 'date') {
-              return new Date(value) > new Date(filter.value)
-            }
-            return Number(value) > Number(filter.value)
-          
-          case 'lessThan':
-            if (filter.type === 'date') {
-              return new Date(value) < new Date(filter.value)
-            }
-            return Number(value) < Number(filter.value)
-          
-          case 'between':
-            if (filter.type === 'date') {
-              const date = new Date(value)
-              return date >= new Date(filter.value.min) && date <= new Date(filter.value.max)
-            }
-            return Number(value) >= Number(filter.value.min) && Number(value) <= Number(filter.value.max)
-          
-          default:
-            return true
-        }
-      })
-
-      return matchesSearch && matchesFilters
-    })
-  }, [shops, searchTerm, activeFilters])
-
-  const sortedShops = useMemo(() => {
-    if (!sortConfig.key) return filteredShops
-
-    return [...filteredShops].sort((a, b) => {
-      const aValue = a[sortConfig.key!]
-      const bValue = b[sortConfig.key!]
-
-      // Handle null/undefined values
-      if (aValue === null || aValue === undefined) return 1
-      if (bValue === null || bValue === undefined) return -1
-
-      // Special handling for dates
-      if (sortConfig.key.includes('visit')) {
-        const aDate = aValue ? new Date(aValue).getTime() : 0
-        const bDate = bValue ? new Date(bValue).getTime() : 0
-        return sortConfig.direction === 'asc' ? aDate - bDate : bDate - aDate
-      }
-
-      // Handle volume and ARR sorting numerically
-      if (sortConfig.key === 'volume' || sortConfig.key === 'arr') {
-        const aNum = parseFloat(aValue as string) || 0
-        const bNum = parseFloat(bValue as string) || 0
-        return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum
-      }
-
-      // Regular comparison
-      const comparison = 
-        typeof aValue === 'string' 
-          ? aValue.localeCompare(String(bValue))
-          : Number(aValue) - Number(bValue)
-
-      return sortConfig.direction === 'asc' ? comparison : -comparison
-    })
-  }, [filteredShops, sortConfig])
-
-  const paginatedShops = sortedShops.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  )
-
-  const totalPages = Math.ceil(sortedShops.length / ITEMS_PER_PAGE)
-
-  const handleSort = (key: keyof CoffeeShop) => {
-    setSortConfig(current => ({
-      key,
-      direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
-    }))
-  }
-
-  if (loading) return <div>Loading...</div>
-  if (error) return <div>Error loading coffee shops</div>
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Input
-            placeholder="Search coffee shops..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-[300px]"
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <Filter className="mr-2 h-4 w-4" />
-                Filters {activeFilters.length > 0 && `(${activeFilters.length})`}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56">
-              <DropdownMenuLabel>Add Filter</DropdownMenuLabel>
-              {FILTER_CONFIGS.map((config) => (
-                <DropdownMenuSub key={config.field}>
-                  <DropdownMenuSubTrigger>
-                    {config.label}
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    {config.operators.map((operator) => (
-                      <DropdownMenuSub key={operator}>
-                        <DropdownMenuSubTrigger>
-                          {OPERATOR_LABELS[operator]}
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent className="p-2">
-                          <div className="space-y-2">
-                            <FilterValueInput
-                              type={config.type}
-                              value={null}
-                              onChange={(value) => {
-                                handleAddFilter({
-                                  field: config.field,
-                                  operator,
-                                  value,
-                                  type: config.type
-                                })
-                              }}
-                              operator={operator}
-                            />
-                          </div>
-                        </DropdownMenuSubContent>
-                      </DropdownMenuSub>
-                    ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              ))}
-              {activeFilters.length > 0 && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-red-600"
-                    onClick={handleClearFilters}
-                  >
-                    <XCircle className="mr-2 h-4 w-4" />
-                    Clear All Filters
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span>
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {activeFilters.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {activeFilters.map((filter) => (
-            <Badge
-              key={filter.id}
-              variant="secondary"
-              className="flex items-center gap-2"
-            >
-              <span>
-                {FILTER_CONFIGS.find(c => c.field === filter.field)?.label} 
-                {' '}
-                {OPERATOR_LABELS[filter.operator]}
-                {' '}
-                {filter.operator === 'between' 
-                  ? `${filter.value.min} - ${filter.value.max}`
-                  : String(filter.value)
-                }
-              </span>
-              <XCircle
-                className="h-4 w-4 cursor-pointer"
-                onClick={() => handleRemoveFilter(filter.id)}
-              />
-            </Badge>
-          ))}
-        </div>
-      )}
-
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <Checkbox
-                  checked={selectedShops.length === paginatedShops.length}
-                  onCheckedChange={(checked) => {
-                    setSelectedShops(
-                      checked
-                        ? paginatedShops.map(shop => shop.id)
-                        : []
-                    )
-                  }}
-                />
-              </TableHead>
-              <TableHead>
-                <div className="flex items-center gap-2">
-                  Name
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleSort('title')}
-                  >
-                    {sortConfig.key === 'title' ? (
-                      sortConfig.direction === 'asc' ? (
-                        <ArrowUp className="h-4 w-4" />
-                      ) : (
-                        <ArrowDown className="h-4 w-4" />
-                      )
-                    ) : (
-                      <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
-                    )}
-                  </Button>
-                </div>
-              </TableHead>
-              <TableHead>
-                <div className="flex items-center gap-2">
-                  Area
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleSort('area')}
-                  >
-                    {sortConfig.key === 'area' ? (
-                      sortConfig.direction === 'asc' ? (
-                        <ArrowUp className="h-4 w-4" />
-                      ) : (
-                        <ArrowDown className="h-4 w-4" />
-                      )
-                    ) : (
-                      <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
-                    )}
-                  </Button>
-                </div>
-              </TableHead>
-              <TableHead>
-                <div className="flex items-center gap-2">
-                  First Visit
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleSort('first_visit')}
-                  >
-                    {sortConfig.key === 'first_visit' ? (
-                      sortConfig.direction === 'asc' ? (
-                        <ArrowUp className="h-4 w-4" />
-                      ) : (
-                        <ArrowDown className="h-4 w-4" />
-                      )
-                    ) : (
-                      <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
-                    )}
-                  </Button>
-                </div>
-              </TableHead>
-              <TableHead>
-                <div className="flex items-center gap-2">
-                  Second Visit
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleSort('second_visit')}
-                  >
-                    {sortConfig.key === 'second_visit' ? (
-                      sortConfig.direction === 'asc' ? (
-                        <ArrowUp className="h-4 w-4" />
-                      ) : (
-                        <ArrowDown className="h-4 w-4" />
-                      )
-                    ) : (
-                      <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
-                    )}
-                  </Button>
-                </div>
-              </TableHead>
-              <TableHead>
-                <div className="flex items-center gap-2">
-                  Third Visit
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleSort('third_visit')}
-                  >
-                    {sortConfig.key === 'third_visit' ? (
-                      sortConfig.direction === 'asc' ? (
-                        <ArrowUp className="h-4 w-4" />
-                      ) : (
-                        <ArrowDown className="h-4 w-4" />
-                      )
-                    ) : (
-                      <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
-                    )}
-                  </Button>
-                </div>
-              </TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Rating</TableHead>
-              <TableHead>Instagram</TableHead>
-              <TableHead>Followers</TableHead>
-              <TableHead>Volume</TableHead>
-              <TableHead>ARR</TableHead>
-              <TableHead>Lead</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-
-          <TableBody>
-          {paginatedShops.map((shop) => (
-              <TableRow key={shop.id}>
-                <TableCell>
-                  <Checkbox
-                    checked={selectedShops.includes(shop.id)}
-                    onCheckedChange={(checked) => {
-                      setSelectedShops(
-                        checked
-                          ? [...selectedShops, shop.id]
-                          : selectedShops.filter(id => id !== shop.id)
-                      )
-                    }}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Link
-                    href={`/dashboard/coffee-shops/${shop.id}`}
-                    className="font-medium hover:underline"
-                  >
-                    {shop.title}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <EditableCell 
-                    value={shop.area} 
-                    onUpdate={(value) => handleCellUpdate(shop, 'area', value)}
-                  />
-                </TableCell>
-                <TableCell>
-                  <DateCell
-                    date={shop.first_visit ? new Date(shop.first_visit) : null}
-                    onUpdate={(date) => handleDateUpdate(shop, 'first_visit', date)}
-                    onRemove={() => handleDateRemove(shop, 'first_visit')}
-                  />
-                </TableCell>
-                <TableCell>
-                  <DateCell
-                    date={shop.second_visit ? new Date(shop.second_visit) : null}
-                    onUpdate={(date) => handleDateUpdate(shop, 'second_visit', date)}
-                    onRemove={() => handleDateRemove(shop, 'second_visit')}
-                  />
-                </TableCell>
-                <TableCell>
-                  <DateCell
-                    date={shop.third_visit ? new Date(shop.third_visit) : null}
-                    onUpdate={(date) => handleDateUpdate(shop, 'third_visit', date)}
-                    onRemove={() => handleDateRemove(shop, 'third_visit')}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant={shop.visited ? "success" : "default"}
-                    className="cursor-pointer"
-                    onClick={() => handleCellUpdate(shop, 'visited', !shop.visited)}
-                  >
-                    {shop.visited ? "Visited" : "Not Visited"}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <EditableCell 
-                    value={shop.rating?.toString() || null}
-                    onUpdate={(value) => handleCellUpdate(shop, 'rating', value ? parseFloat(value) : null)}
-                    type="number"
-                  />
-                </TableCell>
-                <TableCell>
-                  <EditableCell 
-                    value={shop.instagram}
-                    onUpdate={(value) => handleCellUpdate(shop, 'instagram', value)}
-                    type="instagram"
-                  />
-                </TableCell>
-                <TableCell>
-                  <EditableCell 
-                    value={shop.followers?.toString() || null}
-                    onUpdate={(value) => handleCellUpdate(shop, 'followers', value ? parseInt(value) : null)}
-                    type="number"
-                  />
-                </TableCell>
-                <TableCell>
-                  <EditableCell 
-                    value={shop.volume?.toString() || null}
-                    onUpdate={(value) => handleCellUpdate(shop, 'volume', value)}
-                    type="volume"
-                  />
-                </TableCell>
-                <TableCell>
-                  {shop.volume ? (
-                    <div className="text-sm">
-                      ${((parseFloat(shop.volume) * 52) * 18).toLocaleString()}
-                    </div>
-                  ) : "-"}
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant={shop.parlor_coffee_leads ? "warning" : "default"}
-                    className="cursor-pointer"
-                    onClick={() => handleCellUpdate(shop, 'parlor_coffee_leads', !shop.parlor_coffee_leads)}
-                  >
-                    {shop.parlor_coffee_leads ? "Lead" : "No Lead"}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem 
-                        onClick={() => router.push(`/dashboard/coffee-shops/${shop.id}`)}
-                      >
-                        <Edit className="mr-2 h-4 w-4" />
-                        View Details
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="text-red-600"
-                        onClick={() => setDeleteId(shop.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      {selectedShops.length > 0 && (
-        <div className="fixed bottom-4 right-4 p-4 bg-background border rounded-lg shadow-lg">
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-medium">
-              {selectedShops.length} selected
-            </span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  Bulk Actions
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuLabel>Update Status</DropdownMenuLabel>
-                <DropdownMenuItem
-                  onClick={async () => {
-                    try {
-                      await Promise.all(
-                        selectedShops.map(id =>
-                          fetch(`/api/coffee-shops/${id}`, {
-                            method: "PATCH",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ visited: true }),
-                          })
-                        )
-                      )
-                      toast({
-                        title: "Status updated",
-                        description: "Selected shops marked as visited",
-                      })
-                      mutate()
-                      setSelectedShops([])
-                    } catch (error) {
-                      toast({
-                        title: "Error",
-                        description: "Failed to update shops",
-                        variant: "destructive",
-                      })
-                    }
-                  }}
-                >
-                  Mark as Visited
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={async () => {
-                    try {
-                      await Promise.all(
-                        selectedShops.map(id =>
-                          fetch(`/api/coffee-shops/${id}`, {
-                            method: "PATCH",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ parlor_coffee_leads: true }),
-                          })
-                        )
-                      )
-                      toast({
-                        title: "Status updated",
-                        description: "Selected shops marked as leads",
-                      })
-                      mutate()
-                      setSelectedShops([])
-                    } catch (error) {
-                      toast({
-                        title: "Error",
-                        description: "Failed to update shops",
-                        variant: "destructive",
-                      })
-                    }
-                  }}
-                >
-                  Mark as Lead
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-red-600"
-                  onClick={async () => {
-                    try {
-                      await Promise.all(
-                        selectedShops.map(id =>
-                          fetch(`/api/coffee-shops/${id}`, {
-                            method: "DELETE",
-                          })
-                        )
-                      )
-                      toast({
-                        title: "Shops deleted",
-                        description: `${selectedShops.length} shops have been deleted`,
-                      })
-                      mutate()
-                      setSelectedShops([])
-                    } catch (error) {
-                      toast({
-                        title: "Error",
-                        description: "Failed to delete shops",
-                        variant: "destructive",
-                      })
-                    }
-                  }}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Selected
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      )}
-
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the coffee shop
-              and all associated data.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
-              onClick={async () => {
-                if (!deleteId) return
-
-                try {
-                  await fetch(`/api/coffee-shops/${deleteId}`, {
-                    method: "DELETE",
-                  })
-                  toast({
-                    title: "Coffee shop deleted",
-                    description: "The coffee shop has been deleted successfully",
-                  })
-                  mutate()
-                  setDeleteId(null)
-                } catch (error) {
-                  toast({
-                    title: "Error",
-                    description: "Failed to delete shop",
-                    variant: "destructive",
-                  })
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  )
-}        ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/coffee-shops/filter-value-input.tsx
-"use client"
-
-import { useState } from "react"
-import { Input } from "@/components/ui/input"
-import { Calendar } from "@/components/ui/calendar"
-import {
- DropdownMenuRadioGroup,
- DropdownMenuRadioItem
-} from "@/components/ui/dropdown-menu"
-
-type FilterDataType = 'text' | 'number' | 'boolean' | 'date' | 'rating' | 'followers' | 'volume'
-type FilterOperator = 'equals' | 'contains' | 'greaterThan' | 'lessThan' | 'between' | 'startsWith'
-
-interface FilterValueInputProps {
- type: FilterDataType
- value: any
- onChange: (value: any) => void
- operator: FilterOperator
-}
-
-export function FilterValueInput({ 
- type, 
- value, 
- onChange, 
- operator 
-}: FilterValueInputProps) {
- const [rangeValue, setRangeValue] = useState<{min?: string | number, max?: string | number}>({})
-
- switch (type) {
-   case 'date':
-     return (
-       <div className="flex flex-col space-y-2">
-         <Calendar
-           mode={operator === 'between' ? "range" : "single"}
-           selected={value}
-           onSelect={onChange}
-           className="rounded-md border"
-         />
-       </div>
-     )
-   
-   case 'boolean':
-     return (
-       <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
-         <DropdownMenuRadioItem value="true">Yes</DropdownMenuRadioItem>
-         <DropdownMenuRadioItem value="false">No</DropdownMenuRadioItem>
-       </DropdownMenuRadioGroup>
-     )
-   
-   case 'number':
-   case 'rating':
-   case 'followers':
-   case 'volume':
-     return operator === 'between' ? (
-       <div className="flex items-center space-x-2">
-         <Input
-           type="number"
-           value={rangeValue.min ?? ''}
-           onChange={e => {
-             const newValue = { ...rangeValue, min: e.target.value }
-             setRangeValue(newValue)
-             onChange(newValue)
-           }}
-           className="w-20"
-           placeholder="Min"
-         />
-         <span>to</span>
-         <Input
-           type="number"
-           value={rangeValue.max ?? ''}
-           onChange={e => {
-             const newValue = { ...rangeValue, max: e.target.value }
-             setRangeValue(newValue)
-             onChange(newValue)
-           }}
-           className="w-20"
-           placeholder="Max"
-         />
-       </div>
-     ) : (
-       <Input
-         type="number"
-         value={value ?? ''}
-         onChange={e => onChange(e.target.value)}
-         className="w-full"
-         placeholder={type === 'rating' ? "0-5" : type === 'followers' ? "Number of followers" : "Enter number"}
-       />
-     )
-   
-   default:
-     return (
-       <Input
-         type="text"
-         value={value ?? ''}
-         onChange={e => onChange(e.target.value)}
-         className="w-full"
-         placeholder={`Enter ${type}`}
-       />
-     )
- }
-}
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/coffee-shops/instagram-cell.tsx
-// src/components/coffee-shops/instagram-cell.tsx
-"use client"
-
-import { useState } from "react"
-import { Instagram, Edit, Check, X } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { useToast } from "@/components/ui/use-toast"
-import Link from "next/link"
-import { CoffeeShop } from "@prisma/client"
-
-interface InstagramCellProps {
-  shop: CoffeeShop
-  onUpdate: (value: string) => Promise<void>
-}
-
-export function InstagramCell({ shop, onUpdate }: InstagramCellProps) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [editValue, setEditValue] = useState(shop.instagram || "")
-  const [isLoading, setIsLoading] = useState(false)
-  const { toast } = useToast()
-
-  const handleSave = async () => {
-    setIsLoading(true)
-    try {
-      // Clean the Instagram handle
-      const cleanedValue = editValue
-        .trim()
-        .replace("@", "")
-        .replace("https://www.instagram.com/", "")
-        .replace("/", "")
-
-      await onUpdate(cleanedValue)
-      setIsEditing(false)
-      toast({
-        title: "Success",
-        description: "Instagram handle updated successfully",
-      })
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update Instagram handle",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const formatInstagramUrl = (handle: string) => {
-    const cleanHandle = handle
-      .replace("@", "")
-      .replace("https://www.instagram.com/", "")
-      .replace("/", "")
-    return `https://www.instagram.com/${cleanHandle}`
-  }
-
-  if (isEditing) {
-    return (
-      <div className="flex items-center gap-2">
-        <Input
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          placeholder="Instagram handle"
-          className="h-8 w-[200px]"
-          disabled={isLoading}
-          onKeyPress={(e) => {
-            if (e.key === "Enter") {
-              handleSave()
-            }
-          }}
-        />
-        <Button
-          size="sm"
-          onClick={handleSave}
-          disabled={isLoading}
-          className="h-8 px-2"
-        >
-          <Check className="h-4 w-4" />
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => {
-            setIsEditing(false)
-            setEditValue(shop.instagram || "")
-          }}
-          disabled={isLoading}
-          className="h-8 px-2"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex items-center gap-2">
-      {shop.instagram ? (
-        <Link
-          href={formatInstagramUrl(shop.instagram)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 text-blue-600 hover:underline"
-        >
-          <Instagram className="h-4 w-4" />
-          {shop.instagram.startsWith("@") ? shop.instagram : `@${shop.instagram}`}
-        </Link>
-      ) : (
-        <span className="text-muted-foreground">-</span>
-      )}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-6 w-6 p-0"
-        onClick={() => setIsEditing(true)}
-      >
-        <Edit className="h-3 w-3" />
-      </Button>
-    </div>
-  )
-}________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/coffee-shops/new-coffee-shop-form.tsx
-"use client"
-
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import { Button } from "@/components/ui/button"
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
-import { useToast } from "@/components/ui/use-toast"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-
-const coffeeShopSchema = z.object({
-  title: z.string().min(2, "Title must be at least 2 characters"),
-  address: z.string().min(5, "Please enter a valid address"),
-  area: z.string().min(2, "Area must be at least 2 characters"),
-  website: z.string().url().optional().or(z.literal("")),
-  phone: z.string().optional(),
-  latitude: z.number(),
-  longitude: z.number(),
-  rating: z.number().min(0).max(5).optional(),
-  reviews: z.number().optional(),
-  price: z.string().optional(),
-  type: z.string().optional(),
-  types: z.array(z.string()).default([]),
-  is_source: z.boolean().default(false),
-  parlor_coffee_leads: z.boolean().default(false),
-})
-
-type FormData = z.infer<typeof coffeeShopSchema>
-
-export function NewCoffeeShopForm() {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [loading, setLoading] = useState(false)
-
-  const form = useForm<FormData>({
-    resolver: zodResolver(coffeeShopSchema),
-    defaultValues: {
-      is_source: false,
-      parlor_coffee_leads: false,
-      types: [],
-    },
-  })
-
-  async function onSubmit(data: FormData) {
-    setLoading(true)
-    try {
-      const response = await fetch("/api/coffee-shops", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to create coffee shop")
-      }
-
-      toast({
-        title: "Coffee shop created",
-        description: "The coffee shop has been created successfully.",
-      })
-
-      router.push("/dashboard/coffee-shops")
-      router.refresh()
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create coffee shop. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Coffee Shop Details</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Shop Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Coffee Shop Name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="area"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Area</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., Upper East Side" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="address"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Address</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Full address" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="latitude"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Latitude</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        step="any"
-                        placeholder="40.7128"
-                        {...field}
-                        onChange={e => field.onChange(parseFloat(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="longitude"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Longitude</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number"
-                        step="any"
-                        placeholder="-74.0060"
-                        {...field}
-                        onChange={e => field.onChange(parseFloat(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="is_source"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Source Location</FormLabel>
-                      <FormDescription>
-                        Mark this as a source/partner location
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="parlor_coffee_leads"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Potential Lead</FormLabel>
-                      <FormDescription>
-                        Mark this as a potential lead
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="flex justify-end space-x-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push("/dashboard/coffee-shops")}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? "Creating..." : "Create Coffee Shop"}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
-  )
-}
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/coffee-shops/route.ts
-import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { prisma } from "@/lib/db/prisma"
-import { authOptions } from "@/lib/auth/options"
-
-export async function GET() {
-  try {
-    console.log("Fetching coffee shops...")  // Debug log
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.email) {
-      return new NextResponse("Unauthorized", { status: 401 })
-    }
-
-    const coffeeShops = await prisma.coffeeShop.findMany({
-      orderBy: {
-        createdAt: "desc"
-      }
-    })
-
-    console.log(`Found ${coffeeShops.length} coffee shops`)  // Debug log
-    return NextResponse.json(coffeeShops)
-  } catch (error) {
-    console.error("[COFFEE_SHOPS_GET]", error)
-    return new NextResponse("Internal error", { status: 500 })
-  }
-}
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/coffee-shops/[id]/route.ts
-import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { prisma } from "@/lib/db/prisma"
-import { authOptions } from "@/lib/auth/options"
-
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.email) {
-      return new NextResponse("Unauthorized", { status: 401 })
-    }
-
-    if (!params.id) {
-      return new NextResponse("Missing shop ID", { status: 400 })
-    }
-
-    const body = await request.json()
-
-    if (!body || typeof body !== 'object') {
-      return new NextResponse("Invalid request body", { status: 400 })
-    }
-
-    // Handle date conversions
-    const updateData = {
-      ...body,
-      // Only convert dates if they exist in the payload
-      ...(body.first_visit && { first_visit: new Date(body.first_visit) }),
-      ...(body.second_visit && { second_visit: new Date(body.second_visit) }),
-      ...(body.third_visit && { third_visit: new Date(body.third_visit) }),
-      // Update visited status if setting first visit
-      ...(body.first_visit && { visited: true }),
-      updatedAt: new Date()
-    }
-
-    const coffeeShop = await prisma.coffeeShop.update({
-      where: {
-        id: params.id
-      },
-      data: updateData
-    })
-
-    return NextResponse.json(coffeeShop)
-  } catch (error) {
-    console.error("[COFFEE_SHOP_PATCH]", error)
-    
-    // Return more specific error messages
-    if (error instanceof Error) {
-      return new NextResponse(
-        JSON.stringify({ 
-          error: error.message,
-          details: "Failed to update coffee shop"
-        }), 
-        { 
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }
-      )
-    }
-
-    return new NextResponse(
-      JSON.stringify({ error: "Internal server error" }), 
-      { 
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
-    )
-  }
-}
-
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.email) {
-      return new NextResponse("Unauthorized", { status: 401 })
-    }
-
-    if (!params.id) {
-      return new NextResponse("Missing shop ID", { status: 400 })
-    }
-
-    const coffeeShop = await prisma.coffeeShop.findUnique({
-      where: {
-        id: params.id
-      }
-    })
-
-    if (!coffeeShop) {
-      return new NextResponse("Coffee shop not found", { status: 404 })
-    }
-
-    return NextResponse.json(coffeeShop)
-  } catch (error) {
-    console.error("[COFFEE_SHOP_GET]", error)
-    return new NextResponse(
-      JSON.stringify({ error: "Internal server error" }), 
-      { 
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
-    )
-  }
-}
-
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.email) {
-      return new NextResponse("Unauthorized", { status: 401 })
-    }
-
-    if (!params.id) {
-      return new NextResponse("Missing shop ID", { status: 400 })
-    }
-
-    await prisma.coffeeShop.delete({
-      where: {
-        id: params.id
-      }
-    })
-
-    return new NextResponse(null, { status: 204 })
-  } catch (error) {
-    console.error("[COFFEE_SHOP_DELETE]", error)
-    return new NextResponse(
-      JSON.stringify({ error: "Internal server error" }), 
-      { 
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
-    )
-  }
-}
- ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/coffee-shops/[id]/visits/route.ts
-import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { prisma } from "@/lib/db/prisma"
-import { authOptions } from "@/lib/auth/options"
-
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.email) {
-      return new NextResponse("Unauthorized", { status: 401 })
-    }
-
-    if (!params.id) {
-      return new NextResponse("Coffee shop ID is required", { status: 400 })
-    }
-
-    // Validate that the coffee shop exists
-    const coffeeShop = await prisma.coffeeShop.findUnique({
-      where: { id: params.id }
-    })
-
-    if (!coffeeShop) {
-      return new NextResponse("Coffee shop not found", { status: 404 })
-    }
-
-    const visits = await prisma.visit.findMany({
-      where: {
-        coffeeShopId: params.id
-      },
-      orderBy: {
-        date: "desc"
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true
-          }
-        }
-      }
-    })
-
-    return NextResponse.json(visits)
-  } catch (error) {
-    console.error("[COFFEE_SHOP_VISITS_GET]", error)
-    return new NextResponse("Internal error", { status: 500 })
-  }
-}
-
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.email) {
-      return new NextResponse("Unauthorized", { status: 401 })
-    }
-
-    if (!params.id) {
-      return new NextResponse("Coffee shop ID is required", { status: 400 })
-    }
-
-    // Validate that the coffee shop exists
-    const coffeeShop = await prisma.coffeeShop.findUnique({
-      where: { id: params.id }
-    })
-
-    if (!coffeeShop) {
-      return new NextResponse("Coffee shop not found", { status: 404 })
-    }
-
-    const json = await request.json()
-
-    // Get previous visits count for visitNumber
-    const visitCount = await prisma.visit.count({
-      where: { 
-        coffeeShopId: params.id 
-      }
-    })
-
-    const visit = await prisma.visit.create({
-      data: {
-        ...json,
-        coffeeShopId: params.id,
-        userId: session.user.id,
-        visitNumber: visitCount + 1
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true
-          }
-        }
-      }
-    })
-
-    // Update coffee shop's visited status
-    await prisma.coffeeShop.update({
-      where: { id: params.id },
-      data: { visited: true }
-    })
-
-    return NextResponse.json(visit)
-  } catch (error) {
-    console.error("[COFFEE_SHOP_VISIT_CREATE]", error)
-    return new NextResponse("Internal error", { status: 500 })
-  }
-}
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/routes/[shopId]/visits/route.ts
+### /Users/mohameddiomande/Desktop/koatji-crm/src/app/api/routes/[shopId]/visits/route.ts
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/db/prisma"
@@ -2422,7 +80,7 @@ export async function GET(
   }
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/api/routes/generate/route.ts
+### /Users/mohameddiomande/Desktop/koatji-crm/src/app/api/routes/generate/route.ts
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/db/prisma"
@@ -2478,7 +136,7 @@ export async function POST(req: Request) {
   }
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/hooks/use-calendar-intersection.ts
+### /Users/mohameddiomande/Desktop/koatji-crm/src/hooks/use-calendar-intersection.ts
 import { useState, useEffect, useRef } from 'react';
 
 interface UseCalendarIntersectionOptions {
@@ -2512,7 +170,7 @@ export function useCalendarIntersection(
  return [targetRef, isIntersecting] as const;
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/hooks/use-coffee-shops.ts
+### /Users/mohameddiomande/Desktop/koatji-crm/src/hooks/use-coffee-shops.ts
 // src/hooks/use-coffee-shops.ts
 import useSWR from 'swr'
 import { CoffeeShop } from '@prisma/client'
@@ -2542,7 +200,122 @@ export function useCoffeeShops() {
     mutate,
   }
 }________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/hooks/use-media-query.ts
+### /Users/mohameddiomande/Desktop/koatji-crm/src/hooks/use-google-maps.ts
+import { useState, useEffect } from "react"
+
+export function useGoogleMaps() {
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [loadError, setLoadError] = useState(null)
+
+  useEffect(() => {
+    const loadGoogleMaps = async () => {
+      try {
+        const script = document.createElement("script")
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places,geometry`
+        script.async = true
+        script.onload = () => setIsLoaded(true)
+        script.onerror = () => setLoadError(new Error("Failed to load Google Maps"))
+        document.body.appendChild(script)
+      } catch (error) {
+        setLoadError(error)
+      }
+    }
+
+    loadGoogleMaps()
+  }, [])
+
+  return { isLoaded, loadError }
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/hooks/use-location-tracking.ts
+import { useState, useEffect, useCallback } from 'react'
+import { calculateDistance, calculateBearing } from '@/lib/utils/geo'
+
+interface LocationTrackingOptions {
+  onLocationUpdate?: (position: GeolocationPosition) => void
+  onLocationError?: (error: GeolocationError) => void
+  onDestinationReached?: () => void
+  destinationThreshold?: number // meters
+  enableHighAccuracy?: boolean
+  maximumAge?: number
+  timeout?: number
+}
+
+export function useLocationTracking(options: LocationTrackingOptions = {}) {
+  const [currentPosition, setCurrentPosition] = useState<GeolocationPosition | null>(null)
+  const [error, setError] = useState<GeolocationError | null>(null)
+  const [isTracking, setIsTracking] = useState(false)
+
+  const {
+    onLocationUpdate,
+    onLocationError,
+    onDestinationReached,
+    destinationThreshold = 50,
+    enableHighAccuracy = true,
+    maximumAge = 0,
+    timeout = 5000
+  } = options
+
+  const startTracking = useCallback(() => {
+    if (!navigator.geolocation) {
+      setError(new Error('Geolocation is not supported') as GeolocationError)
+      return
+    }
+
+    setIsTracking(true)
+  }, [])
+
+  const stopTracking = useCallback(() => {
+    setIsTracking(false)
+  }, [])
+
+  useEffect(() => {
+    if (!isTracking) return
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        setCurrentPosition(position)
+        onLocationUpdate?.(position)
+
+        if (options.destination) {
+          const distance = calculateDistance(
+            position.coords.latitude,
+            position.coords.longitude,
+            options.destination.latitude,
+            options.destination.longitude
+          )
+
+          if (distance * 1000 <= destinationThreshold) {
+            onDestinationReached?.()
+          }
+        }
+      },
+      (error) => {
+        setError(error)
+        onLocationError?.(error)
+      },
+      {
+        enableHighAccuracy,
+        maximumAge,
+        timeout
+      }
+    )
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId)
+    }
+  }, [isTracking, options.destination])
+
+  return {
+    currentPosition,
+    error,
+    isTracking,
+    startTracking,
+    stopTracking
+  }
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/hooks/use-media-query.ts
 import { useState, useEffect } from "react";
 
 export function useMediaQuery(query: string): boolean {
@@ -2567,7 +340,47 @@ export function useMediaQuery(query: string): boolean {
   return matches;
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/hooks/use-selected-shop.ts
+### /Users/mohameddiomande/Desktop/koatji-crm/src/hooks/use-route-optimization.ts
+
+// src/hooks/use-route-optimization.ts
+
+import { useState, useCallback } from 'react'
+import { optimizeRoute } from '@/lib/utils/route-optimizer'
+import { useToast } from '@/components/ui/use-toast'
+
+export function useRouteOptimization() {
+  const [isOptimizing, setIsOptimizing] = useState(false)
+  const { toast } = useToast()
+
+  const optimizeLocations = useCallback(async (
+    startLocation,
+    locations,
+    options = {}
+  ) => {
+    setIsOptimizing(true)
+    try {
+      const optimizedRoute = await optimizeRoute(startLocation, locations, options)
+      return optimizedRoute
+    } catch (error) {
+      console.error('Route optimization error:', error)
+      toast({
+        title: "Optimization Failed",
+        description: "Failed to optimize route. Please try again.",
+        variant: "destructive"
+      })
+      throw error
+    } finally {
+      setIsOptimizing(false)
+    }
+  }, [])
+
+  return {
+    isOptimizing,
+    optimizeLocations
+  }
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/hooks/use-selected-shop.ts
 import { useMapStore } from '@/store/use-map'
 
 export function useSelectedShop() {
@@ -2580,7 +393,7 @@ export function useSelectedShop() {
   }
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/hooks/use-shop-visits.ts
+### /Users/mohameddiomande/Desktop/koatji-crm/src/hooks/use-shop-visits.ts
 import useSWR from 'swr'
 import { Visit } from '@prisma/client'
 
@@ -2600,7 +413,7 @@ export function useShopVisits(shopId: string | null) {
   }
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/hooks/use-shops.ts
+### /Users/mohameddiomande/Desktop/koatji-crm/src/hooks/use-shops.ts
 import useSWR from 'swr'
 import { CoffeeShop } from '@prisma/client'
 
@@ -2624,7 +437,57 @@ export function useShops() {
   }
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/hooks/use-visits.ts
+### /Users/mohameddiomande/Desktop/koatji-crm/src/hooks/use-visit-tracking.ts
+
+// src/hooks/use-visit-tracking.ts
+
+import { useState, useCallback } from 'react'
+import { VisitReport } from '@/types/route'
+
+export function useVisitTracking() {
+  const [currentVisit, setCurrentVisit] = useState<VisitReport | null>(null)
+
+  const startVisit = useCallback((locationId: string) => {
+    setCurrentVisit({
+      visitId: crypto.randomUUID(),
+      locationId,
+      visitDate: new Date(),
+    })
+  }, [])
+
+  const updateVisit = useCallback((updates: Partial<VisitReport>) => {
+    setCurrentVisit(prev => prev ? { ...prev, ...updates } : null)
+  }, [])
+
+  const completeVisit = useCallback(async () => {
+    if (!currentVisit) return
+
+    try {
+      // Save visit report to backend
+      const response = await fetch('/api/visits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(currentVisit)
+      })
+
+      if (!response.ok) throw new Error('Failed to save visit')
+
+      setCurrentVisit(null)
+      return await response.json()
+    } catch (error) {
+      console.error('Failed to save visit:', error)
+      throw error
+    }
+  }, [currentVisit])
+
+  return {
+    currentVisit,
+    startVisit,
+    updateVisit,
+    completeVisit
+  }
+}________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/hooks/use-visits.ts
 import useSWR from 'swr'
 import { Visit } from '@prisma/client'
 
@@ -2644,7 +507,7 @@ export function useVisits() {
   }
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/prisma/analytics.prisma
+### /Users/mohameddiomande/Desktop/koatji-crm/prisma/analytics.prisma
 model AnalyticsSnapshot {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   date          DateTime
@@ -2677,7 +540,7 @@ model Alert {
   createdAt     DateTime @default(now())
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/prisma/schema.prisma
+### /Users/mohameddiomande/Desktop/koatji-crm/prisma/schema.prisma
 generator client {
  provider = "prisma-client-js"
 }
@@ -3003,33 +866,48 @@ model CoffeeShop {
   contact_email         String?
   phone                 String?
   visited               Boolean   @default(false)
-  instagram             String?
-  followers             Int?
-  store_doors           String?
-  volume                String?
+  instagram            String?
+  followers            Int?
+  store_doors          String?
+  volume               String?
   first_visit          DateTime?
   second_visit         DateTime?
   third_visit          DateTime?
-  rating                Float?
-  reviews               Int?
-  price_type            String?
-  type                  String?
-  types                 String[]
-  service_options       Json?
-  hours                 String?
-  operating_hours       Json?
-  gps_coordinates       Json?
-  latitude              Float
-  longitude             Float
-  area                  String?
-  is_source             Boolean   @default(false)
-  quality_score         Float?
-  parlor_coffee_leads   Boolean   @default(false)
-  visits                Visit[]
-  userId                String?   @db.ObjectId
-  user                  User?     @relation(fields: [userId], references: [id])
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  rating               Float?
+  reviews              Int?
+  price_type           String?
+  type                 String?
+  types                String[]
+  service_options      Json?
+  hours                String?
+  operating_hours      Json?
+  gps_coordinates      Json?
+  latitude             Float
+  longitude            Float
+  area                 String?
+  is_source            Boolean   @default(false)
+  quality_score        Float?
+  parlor_coffee_leads  Boolean   @default(false)
+  visits               Visit[]
+  userId               String?   @db.ObjectId
+  user                 User?     @relation(fields: [userId], references: [id])
+  owners               Owner[]   // New field for multiple owners
+  notes                String?   // New field for notes
+  priority             Int       @default(0)  // Higher number = higher priority
+  isPartner            Boolean   @default(false)  // Whether they are a current partner
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  priorityLastUpdated DateTime?  // Track when priority was last calculated
+}
+
+model Owner {
+ id            String      @id @default(auto()) @map("_id") @db.ObjectId
+ name          String
+ email         String
+ coffeeShopId  String      @db.ObjectId
+ coffeeShop    CoffeeShop  @relation(fields: [coffeeShopId], references: [id], onDelete: Cascade)
+ createdAt     DateTime    @default(now())
+ updatedAt     DateTime    @updatedAt
 }
 
 model Visit {
@@ -3145,7 +1023,7 @@ enum TimeOffStatus {
 
 
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/prisma/seed.ts
+### /Users/mohameddiomande/Desktop/koatji-crm/prisma/seed.ts
 import { PrismaClient } from '@prisma/client';
 import { INITIAL_MENU_ITEMS } from '../src/constants/pos-data';
 
@@ -3184,7 +1062,7 @@ main()
    await prisma.$disconnect();
  });
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/routes/layout.tsx
+### /Users/mohameddiomande/Desktop/koatji-crm/src/app/dashboard/routes/layout.tsx
 import { getServerSession } from "next-auth"
 import { redirect } from "next/navigation"
 
@@ -3206,45 +1084,156 @@ export default async function RoutesLayout({
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/app/dashboard/routes/page.tsx
-import { Map } from "@/components/routes/map/map"
-import { RouteControls } from "@/components/routes/map/route-controls"
-import { VisitManagement } from "@/components/routes/visit/visit-management"
+### /Users/mohameddiomande/Desktop/koatji-crm/src/app/dashboard/routes/page.tsx
+"use client"
 
-export const metadata = {
-  title: "Route Planning & Visits | BUF BARISTA CRM",
-  description: "Plan and optimize your coffee shop visits",
-}
+import { useState } from "react"
+import { RouteMap } from "@/components/routes/map/route-map"
+import { RouteControls } from "@/components/routes/controls/route-controls"
+import { RouteList } from "@/components/routes/list/route-list"
+import { RouteMetrics } from "@/components/routes/shared/route-metrics"
+import { Button } from "@/components/ui/button"
+import { useRouteStore } from "@/store/route-store"
+import { useToast } from "@/components/ui/use-toast"
+import {
+  Map,
+  FileSpreadsheet,
+  Calendar,
+  Share2,
+  Settings,
+} from "lucide-react"
 
-export default function RoutePlanningPage() {
+export default function RoutesPage() {
+  const [isExporting, setIsExporting] = useState(false)
+  const { clearRoute, exportToCalendar, shareRoute } = useRouteStore()
+  const { toast } = useToast()
+
+  const handleExport = async () => {
+    setIsExporting(true)
+    try {
+      // Export implementation
+      setIsExporting(false)
+      toast({
+        title: "Route Exported",
+        description: "Your route has been exported successfully."
+      })
+    } catch (error) {
+      toast({
+        title: "Export Failed",
+        description: "Failed to export route. Please try again.",
+        variant: "destructive"
+      })
+      setIsExporting(false)
+    }
+  }
+
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Route Planning & Visits</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Route Planning</h1>
           <p className="text-muted-foreground">
-            Plan your routes and manage coffee shop visits
+            Plan and optimize your coffee shop visits
           </p>
-        </div>        
-      </div>
-      
-      <div className="grid gap-4 grid-cols-12">
-        {/* Left Panel - Controls */}
-        <div className="col-span-3 space-y-4">
-          <RouteControls />
-          <VisitManagement shop={null} />
         </div>
-        
-        {/* Right Panel - Map */}
-        <div className="col-span-9">
-          <Map />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleExport} disabled={isExporting}>
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
+            Export Route
+          </Button>
+          <Button variant="outline" onClick={exportToCalendar}>
+            <Calendar className="mr-2 h-4 w-4" />
+            Add to Calendar
+          </Button>
+          <Button variant="outline" onClick={shareRoute}>
+            <Share2 className="mr-2 h-4 w-4" />
+            Share Route
+          </Button>
+          <Button variant="destructive" onClick={clearRoute}>
+            Clear Route
+          </Button>
         </div>
       </div>
 
+      <div className="grid grid-cols-12 gap-4">
+        {/* Route Controls and List */}
+        <div className="col-span-3 space-y-4">
+          <RouteControls />
+          <RouteMetrics />
+          <RouteList />
+        </div>
+
+        {/* Map */}
+        <div className="col-span-9">
+          <RouteMap />
+        </div>
+      </div>
     </div>
   )
-}________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/routes/visit/visit-form.tsx
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/shared/route-metrics.tsx
+"use client"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useRouteStore } from "@/store/route-store"
+import { Clock, MapPin, Navigation } from "lucide-react"
+
+export function RouteMetrics() {
+  const { metrics, settings } = useRouteStore()
+
+  if (!metrics) return null
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Route Metrics</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">Total Distance</p>
+            <p className="text-2xl font-bold">
+              {metrics.totalDistance.toFixed(1)} km
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">Duration</p>
+            <p className="text-2xl font-bold">
+              {Math.round(metrics.totalDuration)} min
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">Stops</p>
+            <p className="text-2xl font-bold">{metrics.numberOfStops}</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">Arrival</p>
+<p className="text-2xl font-bold">{metrics.estimatedArrival}</p>
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Navigation className="h-4 w-4" />
+            <span>{settings.transportMode.toLowerCase()}</span>
+          </div>
+          {settings.avoidHighways && (
+            <span>Avoiding highways</span>
+          )}
+          {settings.avoidTolls && (
+            <span>Avoiding tolls</span>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/visit/visit-form.tsx
 "use client"
 
 import { useState } from "react"
@@ -3501,7 +1490,7 @@ export function VisitForm({ shopId, onComplete }: VisitFormProps) {
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/routes/visit/visit-history.tsx
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/visit/visit-history.tsx
 "use client"
 
 import { formatDistanceToNow as formatDistance } from "date-fns"
@@ -3560,7 +1549,7 @@ export function VisitHistory({ visits }: VisitHistoryProps) {
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/routes/visit/visit-management.tsx
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/visit/visit-management.tsx
 "use client"
 
 import { useState } from "react"
@@ -3648,7 +1637,451 @@ export function VisitManagement({ shop }: VisitManagementProps) {
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/routes/map/location-action-dialog.tsx
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/controls/location-selector.tsx
+"use client"
+
+import { useState, useCallback } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { useRouteStore } from "@/store/route-store"
+import { useCoffeeShops } from "@/hooks/use-coffee-shops"
+import {
+  Search,
+  Filter,
+  MapPin,
+  DollarSign,
+  Building2,
+} from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+export function LocationSelector() {
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedArea, setSelectedArea] = useState("all")
+  const [showVisited, setShowVisited] = useState("all")
+  const { shops, loading } = useCoffeeShops()
+  const { addLocation, selectedLocations } = useRouteStore()
+
+  const filteredShops = shops?.filter(shop => {
+    const matchesSearch = shop.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      shop.address.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesArea = selectedArea === "all" || shop.area === selectedArea
+    
+    const matchesVisited = showVisited === "all" ||
+      (showVisited === "visited" && shop.visited) ||
+      (showVisited === "not_visited" && !shop.visited)
+
+    const isNotSelected = !selectedLocations.find(loc => loc.id === shop.id)
+
+    return matchesSearch && matchesArea && matchesVisited && isNotSelected
+  }) || []
+
+  const areas = shops ? [...new Set(shops.map(shop => shop.area))] : []
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <p className="text-center text-muted-foreground">
+            Loading locations...
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Add Locations</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Search and Filters */}
+        <div className="space-y-2">
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search locations..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Select
+              value={selectedArea}
+              onValueChange={setSelectedArea}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select area" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Areas</SelectItem>
+                {areas.map(area => (
+                  <SelectItem key={area} value={area}>{area}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={showVisited}
+              onValueChange={setShowVisited}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Visit status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Locations</SelectItem>
+                <SelectItem value="visited">Visited Only</SelectItem>
+                <SelectItem value="not_visited">Not Visited</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Location List */}
+        <ScrollArea className="h-[300px]">
+          <div className="space-y-2">
+            {filteredShops.map(shop => (
+              <div
+                key={shop.id}
+                className="flex items-start justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <p className="font-medium truncate">{shop.title}</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {shop.address}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {shop.volume && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <DollarSign className="h-3 w-3" />
+                        <span>{shop.volume}</span>
+                      </div>
+                    )}
+                    {shop.visited && (
+                      <Badge variant="success" className="text-xs">
+                        Visited
+                      </Badge>
+                    )}
+                    {shop.parlor_coffee_leads && (
+                      <Badge variant="warning" className="text-xs">
+                        Lead
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => addLocation(shop)}
+                >
+                  Add
+                </Button>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/controls/navigation-controller.tsx
+"use client"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { useRouteStore } from "@/store/route-store"
+import { useToast } from "@/components/ui/use-toast"
+import {
+  Play,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  MapPin,
+  Navigation,
+  Check,
+} from "lucide-react"
+
+export function NavigationController() {
+  const {
+    currentRoute,
+    isNavigating,
+    currentStep,
+    startNavigation,
+    stopNavigation,
+    nextStep,
+    previousStep,
+  } = useRouteStore()
+  const { toast } = useToast()
+
+  const currentLocation = currentRoute[currentStep]
+
+  const handleStartNavigation = () => {
+    if (currentRoute.length === 0) {
+      toast({
+        title: "No route selected",
+        description: "Please create a route first.",
+        variant: "destructive"
+      })
+      return
+    }
+    startNavigation()
+  }
+
+  if (!isNavigating) {
+    return (
+      <Button 
+        className="w-full" 
+        onClick={handleStartNavigation}
+      >
+        <Play className="mr-2 h-4 w-4" />
+        Start Navigation
+      </Button>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>Navigation</CardTitle>
+          <Badge variant="secondary">
+            Stop {currentStep + 1} of {currentRoute.length}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Current Location Info */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <h3 className="font-medium">{currentLocation?.title}</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {currentLocation?.address}
+          </p>
+          {currentLocation?.volume && (
+            <p className="text-sm">
+              Volume: {currentLocation.volume} | ARR: ${((parseFloat(currentLocation.volume) * 52) * 18).toLocaleString()}
+            </p>
+          )}
+        </div>
+
+        {/* Navigation Controls */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={previousStep}
+            disabled={currentStep === 0}
+            className="flex-1"
+          >
+            <ChevronLeft className="mr-2 h-4 w-4" />
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            onClick={nextStep}
+            disabled={currentStep === currentRoute.length - 1}
+            className="flex-1"
+          >
+            Next
+            <ChevronRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="grid grid-cols-2 gap-2">
+          <Button 
+            variant="secondary"
+            onClick={() => {
+              // Mark current location as visited
+              // Update visit status
+            }}
+          >
+            <Check className="mr-2 h-4 w-4" />
+            Mark Visited
+          </Button>
+          <Button 
+            variant="destructive"
+            onClick={stopNavigation}
+          >
+            <X className="mr-2 h-4 w-4" />
+            Exit
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/controls/route-controls.tsx
+"use client"
+
+import { useEffect } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { Slider } from "@/components/ui/slider"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { useRouteStore } from "@/store/route-store"
+import { Settings2, Navigation, Car } from "lucide-react"
+
+export function RouteControls() {
+  const {
+    settings,
+    updateSettings,
+    optimizeRoute,
+    isOptimizing,
+  } = useRouteStore()
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Route Settings</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Max Stops */}
+        <div className="space-y-2">
+          <Label>Maximum Stops</Label>
+          <div className="flex items-center gap-4">
+            <Slider
+              value={[settings.maxStops]}
+              onValueChange={(value) => updateSettings({ maxStops: value[0] })}
+              min={5}
+              max={50}
+              step={5}
+              className="flex-1"
+            />
+            <span className="min-w-[4ch] text-right">{settings.maxStops}</span>
+          </div>
+        </div>
+
+        {/* Max Distance */}
+        <div className="space-y-2">
+          <Label>Maximum Distance (km)</Label>
+          <div className="flex items-center gap-4">
+            <Slider
+              value={[settings.maxDistance]}
+              onValueChange={(value) => updateSettings({ maxDistance: value[0] })}
+              min={1}
+              max={20}
+              step={1}
+              className="flex-1"
+            />
+            <span className="min-w-[4ch] text-right">{settings.maxDistance}km</span>
+          </div>
+        </div>
+
+        {/* Transport Mode */}
+        <div className="space-y-2">
+          <Label>Transport Mode</Label>
+          <Select
+            value={settings.transportMode}
+            onValueChange={(value) => updateSettings({ transportMode: value })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="DRIVING">
+                <div className="flex items-center gap-2">
+                  <Car className="h-4 w-4" />
+                  <span>Driving</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="WALKING">
+                <div className="flex items-center gap-2">
+                  <Navigation className="h-4 w-4" />
+                  <span>Walking</span>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Route Optimization */}
+        <div className="space-y-2">
+          <Label>Optimize By</Label>
+          <Select
+            value={settings.optimizeBy}
+            onValueChange={(value) => updateSettings({ optimizeBy: value })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="distance">Distance</SelectItem>
+              <SelectItem value="time">Time</SelectItem>
+              <SelectItem value="volume">Volume Priority</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Additional Options */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="avoid-highways">Avoid Highways</Label>
+            <Switch
+              id="avoid-highways"
+              checked={settings.avoidHighways}
+              onCheckedChange={(checked) => 
+                updateSettings({ avoidHighways: checked })
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Label htmlFor="avoid-tolls">Avoid Tolls</Label>
+            <Switch
+              id="avoid-tolls"
+              checked={settings.avoidTolls}
+              onCheckedChange={(checked) => 
+                updateSettings({ avoidTolls: checked })
+              }
+            />
+          </div>
+        </div>
+
+        {/* Optimize Button */}
+        <Button 
+          className="w-full" 
+          onClick={optimizeRoute}
+          disabled={isOptimizing}
+        >
+          <Settings2 className="mr-2 h-4 w-4" />
+          {isOptimizing ? "Optimizing..." : "Optimize Route"}
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/map/location-action-dialog.tsx
 "use client"
 
 import { useState } from "react"
@@ -3780,7 +2213,7 @@ export function LocationActionDialog({
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/routes/map/map-preview.tsx
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/map/map-preview.tsx
 "use client"
 
 import { useEffect, useState } from "react"
@@ -3824,7 +2257,7 @@ export function MapPreview({
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/routes/map/map.tsx
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/map/map.tsx
 "use client"
 
 import { useEffect, useRef } from "react"
@@ -3872,7 +2305,7 @@ export function Map() {
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/routes/map/route-controls.tsx
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/map/route-controls.tsx
 "use client"
 
 import { useState } from "react"
@@ -3996,7 +2429,7 @@ export function RouteControls() {
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/routes/map/route-generation-dialog.tsx
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/map/route-generation-dialog.tsx
 "use client"
 
 import { useState } from "react"
@@ -4124,7 +2557,7 @@ export function RouteGenerationDialog({
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/routes/map/route-layer.tsx
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/map/route-layer.tsx
 "use client"
 
 import { Polyline } from "react-leaflet"
@@ -4152,7 +2585,329 @@ export function RouteLayer({ route, color = "#3B82F6" }: RouteLayerProps) {
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/routes/map/shop-marker.tsx
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/map/route-map.tsx
+"use client"
+
+import { useEffect, useState, useCallback, useRef } from "react"
+import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { useToast } from "@/components/ui/use-toast"
+import { useRouteStore } from "@/store/route-store"
+import { calculateDistance, degToRad } from "@/lib/utils/geo"
+
+interface GoogleMapWrapper extends google.maps.Map {
+  markers?: google.maps.Marker[]
+  currentLocationMarker?: google.maps.Marker
+}
+
+export function RouteMap() {
+  const mapRef = useRef<HTMLDivElement>(null)
+  const [map, setMap] = useState<GoogleMapWrapper | null>(null)
+  const [directionsService, setDirectionsService] = useState<google.maps.DirectionsService | null>(null)
+  const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null)
+  const {
+    selectedLocations,
+    currentRoute,
+    settings,
+    isNavigating,
+    currentStep,
+    setMetrics,
+  } = useRouteStore()
+  const { toast } = useToast()
+
+  // Initialize Google Maps
+  useEffect(() => {
+    if (!mapRef.current) return
+
+    const initMap = async () => {
+      try {
+        const { Map } = await google.maps.importLibrary("maps") as any
+        const { DirectionsService, DirectionsRenderer } = await google.maps.importLibrary("routes") as any
+
+        const mapInstance = new Map(mapRef.current, {
+          center: { lat: selectedLocations[0]?.latitude || 40.7128, lng: selectedLocations[0]?.longitude || -74.0060 },
+          zoom: 12,
+          styles: [
+            {
+              featureType: "poi",
+              elementType: "labels",
+              stylers: [{ visibility: "off" }]
+            }
+          ]
+        })
+
+        const directionsServiceInstance = new DirectionsService()
+        const directionsRendererInstance = new DirectionsRenderer({
+          map: mapInstance,
+          suppressMarkers: true,  // We'll add custom markers
+        })
+
+        setMap(mapInstance)
+        setDirectionsService(directionsServiceInstance)
+        setDirectionsRenderer(directionsRendererInstance)
+        
+        // Add traffic layer
+        const trafficLayer = new google.maps.TrafficLayer()
+        trafficLayer.setMap(mapInstance)
+
+      } catch (error) {
+        console.error('Failed to initialize map:', error)
+        toast({
+          title: "Error",
+          description: "Failed to load map. Please try refreshing the page.",
+          variant: "destructive"
+        })
+      }
+    }
+
+    const loadGoogleMaps = () => {
+      const script = document.createElement('script')
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places,geometry`
+      script.async = true
+      script.defer = true
+      script.onload = () => initMap()
+      document.head.appendChild(script)
+    }
+
+    loadGoogleMaps()
+
+    return () => {
+      if (map) {
+        map.markers?.forEach(marker => marker.setMap(null))
+        if (directionsRenderer) directionsRenderer.setMap(null)
+      }
+    }
+  }, [])
+
+  // Update markers when locations change
+  useEffect(() => {
+    if (!map) return
+
+    // Clear existing markers
+    map.markers?.forEach(marker => marker.setMap(null))
+    map.markers = []
+
+    const bounds = new google.maps.LatLngBounds()
+
+    // Add markers for selected locations
+    selectedLocations.forEach((location, index) => {
+      const position = { lat: location.latitude, lng: location.longitude }
+      bounds.extend(position)
+
+      const marker = new google.maps.Marker({
+        position,
+        map,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: location.visited ? "#22c55e" : "#3b82f6",
+          fillOpacity: 1,
+          strokeWeight: 2,
+          strokeColor: "#ffffff",
+        },
+        title: location.title,
+        label: {
+          text: (index + 1).toString(),
+          color: "#ffffff",
+          fontSize: "12px",
+          fontWeight: "bold"
+        }
+      })
+
+      const infoWindow = new google.maps.InfoWindow({
+        content: `
+          <div class="p-4">
+            <h3 class="font-bold">${location.title}</h3>
+            <p class="text-sm text-muted-foreground">${location.address}</p>
+            ${location.volume ? `
+              <p class="text-sm mt-2">Volume: ${location.volume}</p>
+              <p class="text-sm">ARR: $${((parseFloat(location.volume) * 52) * 18).toLocaleString()}</p>
+            ` : ''}
+            ${location.manager_present ? `
+              <p class="text-sm">Manager: ${location.manager_present}</p>
+            ` : ''}
+            ${location.visited ? 
+              '<span class="inline-block px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Visited</span>' :
+              '<span class="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Not Visited</span>'
+            }
+          </div>
+        `
+      })
+
+      marker.addListener('click', () => {
+        infoWindow.open(map, marker)
+      })
+
+      if (!map.markers) map.markers = []
+      map.markers.push(marker)
+    })
+
+    if (selectedLocations.length > 0) {
+      map.fitBounds(bounds)
+    }
+  }, [map, selectedLocations])
+
+  // Update route display when route changes
+  useEffect(() => {
+    if (!map || !directionsService || !directionsRenderer || currentRoute.length < 2) return
+
+    const calculateRoute = async () => {
+      try {
+        const waypoints = currentRoute.slice(1, -1).map(location => ({
+          location: { lat: location.latitude, lng: location.longitude },
+          stopover: true
+        }))
+
+        const request = {
+          origin: { lat: currentRoute[0].latitude, lng: currentRoute[0].longitude },
+          destination: { 
+            lat: currentRoute[currentRoute.length - 1].latitude, 
+            lng: currentRoute[currentRoute.length - 1].longitude 
+          },
+          waypoints,
+          optimizeWaypoints: true,
+          travelMode: settings.transportMode as google.maps.TravelMode,
+          avoidHighways: settings.avoidHighways,
+          avoidTolls: settings.avoidTolls,
+        }
+
+        const result = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
+          directionsService.route(request, (result, status) => {
+            if (status === 'OK') resolve(result)
+            else reject(new Error(`Directions request failed: ${status}`))
+          })
+        })
+
+        directionsRenderer.setDirections(result)
+
+        // Calculate metrics
+        let totalDistance = 0
+        let totalDuration = 0
+        result.routes[0].legs.forEach(leg => {
+          totalDistance += leg.distance?.value || 0
+          totalDuration += leg.duration?.value || 0
+        })
+
+        setMetrics({
+          totalDistance: totalDistance / 1000, // Convert to kilometers
+          totalDuration: totalDuration / 60, // Convert to minutes
+          numberOfStops: currentRoute.length,
+          estimatedArrival: new Date(Date.now() + totalDuration * 1000).toLocaleTimeString()
+        })
+
+      } catch (error) {
+        console.error('Failed to calculate route:', error)
+        toast({
+          title: "Error",
+description: "Failed to calculate route. Please try again.",
+          variant: "destructive"
+        })
+      }
+    }
+
+    calculateRoute()
+  }, [map, directionsService, directionsRenderer, currentRoute, settings])
+
+  // Handle navigation mode
+  useEffect(() => {
+    if (!map || !isNavigating) return
+
+    const location = currentRoute[currentStep]
+    if (!location) return
+
+    // Update map view for current location
+    map.panTo({ lat: location.latitude, lng: location.longitude })
+    map.setZoom(16)
+
+    // Update current location marker
+    if (map.currentLocationMarker) {
+      map.currentLocationMarker.setMap(null)
+    }
+
+    map.currentLocationMarker = new google.maps.Marker({
+      position: { lat: location.latitude, lng: location.longitude },
+      map,
+      icon: {
+        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+        scale: 6,
+        fillColor: "#ef4444",
+        fillOpacity: 1,
+        strokeWeight: 2,
+        strokeColor: "#ffffff",
+        rotation: 0
+      }
+    })
+
+    // Start location tracking if available
+    if (navigator.geolocation) {
+      const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const currentPos = new google.maps.LatLng(
+            position.coords.latitude,
+            position.coords.longitude
+          )
+
+          // Update current location marker
+          if (map.currentLocationMarker) {
+            map.currentLocationMarker.setPosition(currentPos)
+
+            // Calculate bearing to destination
+            const heading = google.maps.geometry.spherical.computeHeading(
+              currentPos,
+              new google.maps.LatLng(location.latitude, location.longitude)
+            )
+
+            // Update marker rotation
+            map.currentLocationMarker.setIcon({
+              ...map.currentLocationMarker.getIcon(),
+              rotation: heading
+            })
+
+            // Check if near destination (within 50 meters)
+            const distance = google.maps.geometry.spherical.computeDistanceBetween(
+              currentPos,
+              new google.maps.LatLng(location.latitude, location.longitude)
+            )
+
+            if (distance < 50) {
+              // Trigger arrival event
+              toast({
+                title: "Arrived at destination",
+                description: `You have arrived at ${location.title}`,
+              })
+            }
+          }
+        },
+        (error) => {
+          console.error('Geolocation error:', error)
+          toast({
+            title: "Location Error",
+            description: "Unable to track current location.",
+            variant: "destructive"
+          })
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 5000
+        }
+      )
+
+      return () => navigator.geolocation.clearWatch(watchId)
+    }
+  }, [map, isNavigating, currentStep, currentRoute])
+
+  return (
+    <Card className="relative overflow-hidden">
+      <div 
+        ref={mapRef}
+        className="w-full h-[800px] rounded-lg" 
+      />
+    </Card>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/map/shop-marker.tsx
 "use client"
 
 import { useState } from "react"
@@ -4412,7 +3167,161 @@ export function ShopMarker({ shop, selected, onSelect }: ShopMarkerProps) {
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/routes/analytics/leads-analytics.tsx
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/list/route-list.tsx
+"use client"
+
+import { useCallback } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { useRouteStore } from "@/store/route-store"
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
+import { 
+  GripVertical,
+  MapPin,
+  Building2,
+  Users,
+  DollarSign,
+  ArrowUpDown,
+} from "lucide-react"
+
+export function RouteList() {
+  const {
+    currentRoute,
+    updateRoute,
+    removeLocation,
+    isNavigating,
+    currentStep,
+  } = useRouteStore()
+
+  const handleDragEnd = useCallback((result) => {
+    if (!result.destination) return
+
+    const items = Array.from(currentRoute)
+    const [reorderedItem] = items.splice(result.source.index, 1)
+    items.splice(result.destination.index, 0, reorderedItem)
+
+    updateRoute(items)
+  }, [currentRoute, updateRoute])
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>Route Stops</CardTitle>
+          <Badge variant="secondary">
+            {currentRoute.length} stops
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <ScrollArea className="h-[500px] pr-4">
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId="route-stops">
+              {(provided) => (
+                <div
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  className="space-y-2"
+                >
+                  {currentRoute.map((location, index) => (
+                    <Draggable
+                      key={location.id}
+                      draggableId={location.id}
+                      index={index}
+                      isDragDisabled={isNavigating}
+                    >
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          className={`p-3 rounded-lg border ${
+                            snapshot.isDragging ? "border-primary" : "border-border"
+                          } ${
+                            isNavigating && index === currentStep 
+                              ? "bg-primary/10 border-primary" 
+                              : "bg-background"
+                          }`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <div
+                              {...provided.dragHandleProps}
+                              className="mt-1.5 cursor-grab active:cursor-grabbing"
+                            >
+                              <GripVertical className="h-4 w-4 text-muted-foreground" />
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                                  <span className="text-xs font-medium">
+                                    {index + 1}
+                                  </span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">
+                                    {location.title}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground truncate">
+                                    {location.address}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {location.manager_present && (
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Users className="h-3 w-3" />
+                                    <span>{location.manager_present}</span>
+                                  </div>
+                                )}
+                                {location.volume && (
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <DollarSign className="h-3 w-3" />
+                                    <span>{location.volume}</span>
+                                  </div>
+                                )}
+                                {location.visited && (
+                                  <Badge variant="success" className="text-xs">
+                                    Visited
+                                  </Badge>
+                                )}
+                                {location.parlor_coffee_leads && (
+                                  <Badge variant="warning" className="text-xs">
+                                    Lead
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+
+                            {!isNavigating && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                onClick={() => removeLocation(location.id)}
+                              >
+                                <ArrowUpDown className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/analytics/leads-analytics.tsx
 "use client"
 
 import { useEffect, useState } from "react"
@@ -4463,7 +3372,7 @@ export function LeadsAnalytics() {
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/routes/analytics/route-analytics.tsx
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/analytics/route-analytics.tsx
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -4496,7 +3405,7 @@ export function RouteAnalytics() {
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/routes/analytics/visit-chart.tsx
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/analytics/visit-chart.tsx
 "use client"
 
 import { useEffect, useState } from "react"
@@ -4560,7 +3469,7 @@ export function VisitChart() {
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/components/routes/analytics/visit-stats.tsx
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/analytics/visit-stats.tsx
 "use client"
 
 import { useEffect, useState } from "react"
@@ -4643,7 +3552,144 @@ function StatCard({ title, value, description }: StatCardProps) {
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/store/use-map.ts
+### /Users/mohameddiomande/Desktop/koatji-crm/src/store/route-store.ts
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import { CoffeeShop } from '@prisma/client'
+import { RouteSettings, RouteMetrics } from '@/types/route'
+
+interface RouteState {
+  selectedLocations: CoffeeShop[]
+  currentRoute: CoffeeShop[]
+  settings: RouteSettings
+  metrics: RouteMetrics | null
+  isOptimizing: boolean
+  isNavigating: boolean
+  currentStep: number
+  addLocation: (location: CoffeeShop) => void
+  removeLocation: (locationId: string) => void
+  updateRoute: (route: CoffeeShop[]) => void
+  updateSettings: (settings: Partial<RouteSettings>) => void
+  setMetrics: (metrics: RouteMetrics) => void
+  startNavigation: () => void
+  stopNavigation: () => void
+  nextStep: () => void
+  previousStep: () => void
+  clearRoute: () => void
+  optimizeRoute: () => Promise<void>
+  exportToCalendar: () => Promise<void>
+  shareRoute: () => Promise<void>
+}
+
+const defaultSettings: RouteSettings = {
+  maxStops: 10,
+  maxDistance: 5,
+  optimizeBy: 'distance',
+  avoidHighways: false,
+  avoidTolls: false,
+  transportMode: 'DRIVING',
+}
+
+export const useRouteStore = create<RouteState>()(
+  persist(
+    (set, get) => ({
+      selectedLocations: [],
+      currentRoute: [],
+      settings: defaultSettings,
+      metrics: null,
+      isOptimizing: false,
+      isNavigating: false,
+      currentStep: -1,
+
+      addLocation: (location) => {
+        set((state) => ({
+          selectedLocations: [...state.selectedLocations, location]
+        }))
+      },
+
+      removeLocation: (locationId) => {
+        set((state) => ({
+          selectedLocations: state.selectedLocations.filter(
+            (loc) => loc.id !== locationId
+          )
+        }))
+      },
+
+      updateRoute: (route) => {
+        set({ currentRoute: route })
+      },
+
+      updateSettings: (settings) => {
+        set((state) => ({
+          settings: { ...state.settings, ...settings }
+        }))
+      },
+
+      setMetrics: (metrics) => {
+        set({ metrics })
+      },
+
+      startNavigation: () => {
+        set({ isNavigating: true, currentStep: 0 })
+      },
+
+      stopNavigation: () => {
+        set({ isNavigating: false, currentStep: -1 })
+      },
+
+      nextStep: () => {
+        const { currentStep, currentRoute } = get()
+        if (currentStep < currentRoute.length - 1) {
+          set({ currentStep: currentStep + 1 })
+        }
+      },
+
+      previousStep: () => {
+        const { currentStep } = get()
+        if (currentStep > 0) {
+          set({ currentStep: currentStep - 1 })
+        }
+      },
+
+      clearRoute: () => {
+        set({
+          selectedLocations: [],
+          currentRoute: [],
+          metrics: null,
+          isNavigating: false,
+          currentStep: -1
+        })
+      },
+
+      optimizeRoute: async () => {
+        const state = get()
+        set({ isOptimizing: true })
+        try {
+          // Optimization logic here
+          set({ isOptimizing: false })
+        } catch (error) {
+          set({ isOptimizing: false })
+          throw error
+        }
+      },
+
+      exportToCalendar: async () => {
+        const { currentRoute } = get()
+        // Calendar export logic
+      },
+
+      shareRoute: async () => {
+        const { currentRoute } = get()
+        // Share route logic
+      }
+    }),
+    {
+      name: 'route-storage'
+    }
+  )
+)
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/store/use-map.ts
 import { create } from 'zustand'
 import { Shop } from '@/types/shop'
 
@@ -4665,7 +3711,7 @@ export const useMapStore = create<MapState>((set) => ({
   setZoom: (zoom) => set({ zoom }),
 }))
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/store/use-route.ts
+### /Users/mohameddiomande/Desktop/koatji-crm/src/store/use-route.ts
 import { create } from 'zustand'
 import { CoffeeShop } from '@prisma/client'
 import { RouteOptimizer } from '@/lib/route-optimizer'
@@ -4746,7 +3792,7 @@ export const useRouteStore = create<RouteState>((set, get) => ({
   clearRoute: () => set({ currentRoute: [] }),
 }))
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/store/use-scheduling-store.ts
+### /Users/mohameddiomande/Desktop/koatji-crm/src/store/use-scheduling-store.ts
 import { create } from 'zustand';
 import { Shift, Staff, ShiftTemplate } from '@/types/scheduling';
 import { ShiftType, StaffRole } from '@prisma/client';
@@ -4869,7 +3915,7 @@ export const useFilteredStaff = () => useSchedulingStore((state) => {
   });
 });
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/store/use-shift-store.ts
+### /Users/mohameddiomande/Desktop/koatji-crm/src/store/use-shift-store.ts
 import { create } from 'zustand';
 import { Shift } from '@/types/scheduling/shift';
 
@@ -5066,7 +4112,7 @@ export const useShiftStore = create<ShiftStore>((set) => ({
  }
 }));
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/store/use-sidebar.ts
+### /Users/mohameddiomande/Desktop/koatji-crm/src/store/use-sidebar.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -5093,7 +4139,7 @@ export const useSidebar = create<SidebarState>()(
   )
 );
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/bufbarista-crm/src/store/use-visit.ts
+### /Users/mohameddiomande/Desktop/koatji-crm/src/store/use-visit.ts
 import { create } from 'zustand'
 import { Visit, VisitFormData } from '@/types/visit'
 
