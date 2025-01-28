@@ -142,8 +142,6 @@ export function LocationSelector() {
                         Lead
                       </Badge>
                     )}
-                  </div>
-                </div>
 
                 <Button
                   variant="ghost"
@@ -152,6 +150,8 @@ export function LocationSelector() {
                 >
                   Add
                 </Button>
+                  </div>
+                </div>
               </div>
             ))}
             {filteredShops.length === 0 && (
