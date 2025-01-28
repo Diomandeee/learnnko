@@ -350,7 +350,7 @@ const handlePlacesSelected = async (placesData: any[]) => {
       !['point_of_interest', 'establishment'].includes(type)
     )
   });
-z
+
   // If there's a website, trigger domain search
   if (primaryLocation.website) {
     await handleWebsiteFound(primaryLocation.website);
