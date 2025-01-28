@@ -22,18 +22,17 @@ import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/components/ui/use-toast"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { DomainSearch } from "./domain-search"
+import { PlaceSearch } from "./place-search"
+
+
 import {
   ArrowLeft,
   Building,
   Globe,
-  Instagram,
   Loader2,
   Mail,
-  MapPin,
   Pencil,
   Trash2,
-  User,
-  UserPlus
 } from "lucide-react"
 import Link from "next/link"
 import type { DomainSearchEmail } from "@/types/api"
@@ -151,6 +150,7 @@ function EmailEditRow({
   )
 }
 
+
 // Form Schemas
 const emailSchema = z.object({
   email: z.string().email(),
@@ -195,6 +195,7 @@ const coffeeShopSchema = z.object({
   parlor_coffee_leads: z.boolean().default(false),
   notes: z.string().optional(),
   emails: z.array(emailSchema).default([]),
+  hours: z.string().optional(), // Add this line
   company_data: companyDataSchema
 }).transform((data) => ({
   ...data,
@@ -204,6 +205,7 @@ const coffeeShopSchema = z.object({
   reviews: data.reviews ? Number(data.reviews) : undefined
 }))
 
+
 type FormData = z.infer<typeof coffeeShopSchema>
 
 // Main Form Component
@@ -212,7 +214,73 @@ export function NewCoffeeShopForm() {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [geocodeLoading, setGeocodeLoading] = useState(false)
+  const [additionalLocations, setAdditionalLocations] = useState<any[]>([]);
+  
+  const handleWebsiteFound = async (website: string) => {
+    console.log("Website found:", website);
+    
+    try {
+      // Clean the website URL
+      const cleanUrl = website
+        .replace(/^https?:\/\//, '')  // Remove protocol
+        .replace(/^www\./, '')        // Remove www
+        .replace(/\/$/, '');          // Remove trailing slash
+  
+      // Update the form's website field
+      form.setValue('website', website);
+      
+      // Make request to our API endpoint
+      const response = await fetch("/api/domain-search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          company: cleanUrl,
+          limit: 50,
+          email_type: "all",
+          company_enrichment: true
+        })
+      });
+  
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to search domain");
+      }
+  
+      const data = await response.json();
+  
+      // Update emails in form
+      if (data.response?.email_list?.length > 0) {
+        form.setValue('emails', data.response.email_list);
+        toast({
+          title: "Emails Found",
+          description: `Found ${data.response.email_list.length} email addresses`
+        });
+      }
+  
+      // Update company data if available
+      if (data.response?.company_enrichment) {
+        form.setValue('company_data', {
+          size: data.response.company_enrichment.size,
+          industry: data.response.company_enrichment.industry,
+          founded_in: data.response.company_enrichment.founded_in,
+          description: data.response.company_enrichment.description,
+          linkedin: data.response.company_enrichment.linkedin
+        });
+      }
+  
+    } catch (error) {
+      console.error("Domain search error:", error);
+      toast({
+        title: "Domain Search Error",
+        description: error instanceof Error ? error.message : "Failed to search domain",
+        variant: "destructive"
+      });
+    }
+  };
 
+ 
   // Initialize form
   const form = useForm<FormData>({
     resolver: zodResolver(coffeeShopSchema),
@@ -236,7 +304,7 @@ export function NewCoffeeShopForm() {
         const response = await fetch(
           `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
             address
-          )}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+          )}&key=AIzaSyDrfUenb2mg3cvQdeYW8KDL3EUVYTJPQBE`
         )
         const data = await response.json()
         console.log("Geocoding response:", data)
@@ -260,6 +328,44 @@ export function NewCoffeeShopForm() {
     }
   }
 
+// Replace handlePlacesSelected with this
+const handlePlacesSelected = async (placesData: any[]) => {
+  if (placesData.length === 0) return;
+
+  // Set the first location data to the form
+  const primaryLocation = placesData[0];
+  form.reset({
+    ...form.getValues(), // Keep existing values
+    title: primaryLocation.title,
+    address: primaryLocation.address,
+    phone: primaryLocation.phone,
+    website: primaryLocation.website,
+    rating: primaryLocation.rating,
+    reviews: primaryLocation.reviews,
+    price_type: primaryLocation.price_type,
+    latitude: primaryLocation.latitude,
+    longitude: primaryLocation.longitude,
+    hours: primaryLocation.hours,
+    types: primaryLocation.types.filter((type: string) => 
+      !['point_of_interest', 'establishment'].includes(type)
+    )
+  });
+z
+  // If there's a website, trigger domain search
+  if (primaryLocation.website) {
+    await handleWebsiteFound(primaryLocation.website);
+  }
+
+  // Store additional locations
+  if (placesData.length > 1) {
+    setAdditionalLocations(placesData.slice(1));
+    toast({
+      title: "Multiple Locations Found",
+      description: `Primary location loaded in form. ${placesData.length - 1} additional locations will be created after submission.`,
+    });
+  }
+};
+  
   // Handle emails found from domain search
   const handleEmailsFound = useCallback((emails: DomainSearchEmail[]) => {
     console.log("Emails found:", emails)
@@ -282,103 +388,132 @@ export function NewCoffeeShopForm() {
   }, [form])
 
   // Form submission handler
-  async function onSubmit(data: FormData) {
-    console.log("Form submission started with data:", data);
-    
-    try {
-      setLoading(true);
-      
-      // Validate required fields
-      if (!data.title || !data.address || !data.area) {
-        toast({
-          title: "Validation Error",
-          description: "Please fill in all required fields",
-          variant: "destructive"
-        });
-        return;
-      }
-  
-      // Create coffee shop
-      const response = await fetch("/api/coffee-shops", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-  
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to create coffee shop");
-      }
-  
-      const createdShop = await response.json();
-      console.log("Coffee shop created successfully:", createdShop);
-  
-      // Add discovered emails as people
-      if (data.emails?.length > 0) {
-        let successCount = 0;
-        
-        for (const email of data.emails) {
-          try {
-            const personResponse = await fetch("/api/people", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                firstName: email.first_name || undefined,
-                lastName: email.last_name || undefined,
-                email: email.email,
-                emailType: email.email_type,
-                verificationStatus: email.verification.status,
-                lastVerifiedAt: email.verification.last_verified_at,
-                company: data.title, // Add company name
-                coffeeShopId: createdShop.id
-              })
-            });
-  
-            if (personResponse.ok) {
-              successCount++;
-            }
-          } catch (error) {
-            console.error(`Failed to add person for email ${email.email}:`, error);
-          }
-        }
-  
-        if (successCount > 0) {
-          toast({
-            title: "People Added",
-            description: `Successfully added ${successCount} people from discovered emails`
-          });
-        }
-      }
-  
-      toast({
-        title: "Success",
-        description: "Coffee shop created successfully"
-      });
-  
-      router.push(`/dashboard/coffee-shops/${createdShop.id}`);
-      router.refresh();
-      
-    } catch (error) {
-      console.error("Form submission error:", error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create coffee shop",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  }
+async function onSubmit(data: FormData) {
+  setLoading(true);
+  try {
+    // Create primary location
+    const response = await fetch("/api/coffee-shops", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
 
-  // Validation error handler
-  const onError = (errors: any) => {
-    console.error("Form validation errors:", errors)
+    if (!response.ok) {
+      throw new Error("Failed to create primary location");
+    }
+
+    const createdShop = await response.json();
+
+    // Create people from emails for the primary location
+    if (data.emails?.length > 0) {
+      let successCount = 0;
+      for (const email of data.emails) {
+        try {
+          const personResponse = await fetch("/api/people", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              firstName: email.first_name || undefined,
+              lastName: email.last_name || undefined,
+              email: email.email,
+              emailType: email.email_type,
+              verificationStatus: email.verification.status,
+              lastVerifiedAt: email.verification.last_verified_at,
+              company: data.title,  // Add company name
+              coffeeShopId: createdShop.id,
+              notes: `Added from domain search for ${data.title}`
+            })
+          });
+
+          if (personResponse.ok) {
+            successCount++;
+          } else {
+            console.error(`Failed to create person for email: ${email.email}`);
+          }
+        } catch (error) {
+          console.error(`Error creating person for email ${email.email}:`, error);
+        }
+      }
+
+      if (successCount > 0) {
+        toast({
+          title: "People Added",
+          description: `Successfully added ${successCount} people from emails`
+        });
+      }
+    }
+
+    // Create additional locations if any
+    if (additionalLocations.length > 0) {
+      for (const location of additionalLocations) {
+        try {
+          const additionalResponse = await fetch("/api/coffee-shops", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...location,
+              emails: data.emails,
+              company_data: data.company_data,
+              is_source: data.is_source,
+              parlor_coffee_leads: data.parlor_coffee_leads,
+            })
+          });
+
+          if (!additionalResponse.ok) {
+            console.error(`Failed to create additional location: ${location.title}`);
+            continue;
+          }
+
+          const additionalShop = await additionalResponse.json();
+
+          // Create people for additional location
+          if (data.emails?.length > 0) {
+            for (const email of data.emails) {
+              try {
+                await fetch("/api/people", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    firstName: email.first_name || undefined,
+                    lastName: email.last_name || undefined,
+                    email: email.email,
+                    emailType: email.email_type,
+                    verificationStatus: email.verification.status,
+                    lastVerifiedAt: email.verification.last_verified_at,
+                    company: location.title,
+                    coffeeShopId: additionalShop.id,
+                    notes: `Added from domain search for ${location.title}`
+                  })
+                });
+              } catch (error) {
+                console.error(`Error creating person for email ${email.email} in location ${location.title}:`, error);
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`Error creating additional location: ${location.title}`, error);
+        }
+      }
+    }
+
     toast({
-      title: "Validation Error",
-      description: "Please check the form for errors",
+      title: "Success",
+      description: `Created ${additionalLocations.length + 1} locations successfully`
+    });
+
+    router.push(`/dashboard/coffee-shops/${createdShop.id}`);
+    router.refresh();
+  } catch (error) {
+    console.error("Form submission error:", error);
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "Failed to create coffee shops",
       variant: "destructive"
-    })
+    });
+  } finally {
+    setLoading(false);
   }
+}
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-6">
@@ -404,7 +539,7 @@ export function NewCoffeeShopForm() {
               className="space-y-8"
             >
             {/* Domain Search Section */}
-            <Card className="bg-muted/50">
+            {/* <Card className="bg-muted/50">
                 <CardHeader>
                   <CardTitle className="text-lg">Domain Search</CardTitle>
                 </CardHeader>
@@ -414,8 +549,30 @@ export function NewCoffeeShopForm() {
                     onCompanyData={handleCompanyData}
                   />
                 </CardContent>
+              </Card> */}
+              <Card className="bg-muted/50">
+                <CardHeader>
+                  <CardTitle className="text-lg">Search Business</CardTitle>
+                  <CardDescription>
+                    Search for your coffee shop to auto-fill details
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                <PlaceSearch 
+                    onPlacesSelected={handlePlacesSelected} 
+                    onWebsiteFound={handleWebsiteFound}
+                    onInstagramFound={(instagram) => {
+                      form.setValue('instagram', instagram)
+                    }}
+                    onAreaFound={(area) => {
+                      form.setValue('area', area)
+                    }}
+                    onStoreDoorsUpdate={(count) => {
+                      form.setValue('store_doors', count.toString())
+                    }}
+                  />
+                </CardContent>
               </Card>
-
               {/* Basic Information */}
               <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
                 <FormField
@@ -560,7 +717,7 @@ export function NewCoffeeShopForm() {
                     <CardTitle className="text-lg">Company Details</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-4 md:grid-cols-3">
                       {form.watch('company_data.size') && (
                         <div className="flex items-center gap-2">
                           <Building className="h-4 w-4 text-muted-foreground" />
@@ -583,7 +740,9 @@ export function NewCoffeeShopForm() {
                           </div>
                         </div>
                       )}
+                      
                     </div>
+                    
                     {form.watch('company_data.description') && (
                       <div className="mt-4">
                         <label className="text-sm font-medium">Description</label>
@@ -592,10 +751,38 @@ export function NewCoffeeShopForm() {
                         </p>
                       </div>
                     )}
+                    
                   </CardContent>
                 </Card>
               )}
-
+                {additionalLocations.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Additional Locations</CardTitle>
+                      <CardDescription>
+                        These locations will be created with the same settings after submission
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {additionalLocations.map((location, index) => (
+                        <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div>
+                            <h3 className="font-medium">{location.title}</h3>
+                            <p className="text-sm text-muted-foreground">{location.address}</p>
+                          </div>
+                          <Button 
+                            variant="ghost"
+                            onClick={() => {
+                              setAdditionalLocations(prev => prev.filter((_, i) => i !== index));
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
               {/* Contact Information */}
               <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
                 <FormField

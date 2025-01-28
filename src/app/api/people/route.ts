@@ -85,7 +85,8 @@ export async function POST(request: Request) {
         lastVerifiedAt: data.lastVerifiedAt ? new Date(data.lastVerifiedAt) : null,
         notes: data.notes,
         userId: user.id,
-        coffeeShopId: data.coffeeShopId
+        coffeeShopId: data.coffeeShopId,
+        company: data.company
       }
     })
 

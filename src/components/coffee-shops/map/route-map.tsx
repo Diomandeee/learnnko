@@ -45,17 +45,17 @@ export function RouteMap({ sourceShop, nearbyShops, maxDistance, onRouteCalculat
   // Initialize Google Maps
   useEffect(() => {
     const loadGoogleMaps = () => {
-      if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
-        toast({
-          title: "Configuration Error",
-          description: "Google Maps API key is missing.",
-          variant: "destructive"
-        })
-        return
-      }
+      // if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
+      //   toast({
+      //     title: "Configuration Error",
+      //     description: "Google Maps API key is missing.",
+      //     variant: "destructive"
+      //   })
+      //   return
+      // }
 
       const script = document.createElement("script")
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places,geometry`
+      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyDrfUenb2mg3cvQdeYW8KDL3EUVYTJPQBE&libraries=places,geometry`
       script.async = true
       script.defer = true
       script.onload = initializeMap

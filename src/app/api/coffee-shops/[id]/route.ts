@@ -115,38 +115,51 @@ export async function GET(
   }
 }
 
+
 export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
+    // 1. Get and validate session
     const session = await getServerSession(authOptions)
-    
     if (!session?.user?.email) {
-      return new NextResponse("Unauthorized", { status: 401 })
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
     }
 
-    if (!params.id) {
-      return new NextResponse("Missing shop ID", { status: 400 })
+    // 2. Validate ID parameter
+    const { id } = params
+    if (!id) {
+      return NextResponse.json(
+        { error: "Coffee shop ID is required" },
+        { status: 400 }
+      )
     }
 
-    await prisma.coffeeShop.delete({
-      where: {
-        id: params.id
-      }
+    // 3. Delete associated people first
+    await prisma.person.deleteMany({
+      where: { coffeeShopId: id }
     })
 
-    return new NextResponse(null, { status: 204 })
+    // 4. Delete the coffee shop
+    await prisma.coffeeShop.delete({
+      where: { id }
+    })
+
+    // 5. Return success response
+    return NextResponse.json(
+      { message: "Coffee shop deleted successfully" },
+      { status: 200 }
+    )
   } catch (error) {
-    console.error("[COFFEE_SHOP_DELETE]", error)
-    return new NextResponse(
-      JSON.stringify({ error: "Internal server error" }), 
-      { 
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
+    console.error("[COFFEE_SHOP_DELETE] Error:", error)
+    
+    return NextResponse.json(
+      { error: "Failed to delete coffee shop" },
+      { status: 500 }
     )
   }
 }
