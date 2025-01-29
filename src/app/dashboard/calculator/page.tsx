@@ -3,7 +3,7 @@ import { ProfitCalculator } from "@/components/calculator/profit-calculator";
 import { PageContainer } from "@/components/layout/page-container";
 
 export const metadata: Metadata = {
-  title: "Profit Calculator | BUF BARISTA CRM",
+  title: "Profit Calculator | Milk Man CRM",
   description: "Optimize profit margins and analyze financial scenarios",
 };
 

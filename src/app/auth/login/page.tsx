@@ -5,7 +5,7 @@ import { LoginForm } from "@/components/auth/login-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = {
-  title: "Login | BUF BARISTA CRM",
+  title: "Login | Milk Man CRM",
   description: "Login to your account",
 };
 

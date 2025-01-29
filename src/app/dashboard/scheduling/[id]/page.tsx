@@ -5,7 +5,7 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/db/prisma";
 
 export const metadata: Metadata = {
- title: "Staff Schedule | BUF BARISTA CRM",
+ title: "Staff Schedule | Milk Man CRM",
  description: "View and manage individual staff schedule",
 };
 

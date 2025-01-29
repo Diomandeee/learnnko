@@ -1,24 +1,21 @@
-// src/app/dashboard/coffee-shops/page.tsx
 import { CoffeeShopsTable } from "@/components/coffee-shops/coffee-shops-table"
 import { CoffeeShopHeader } from "@/components/coffee-shops/coffee-shop-header"
 import { CoffeeShopStats } from "@/components/coffee-shops/coffee-shop-stats"
-import { PageContainer } from "@/components/layout/page-container";
+import { PageContainer } from "@/components/layout/page-container"
 
 export const metadata = {
-  title: "Coffee Shops | BUF BARISTA CRM",
+  title: "Coffee Shops | Milk Man CRM",
   description: "Manage your coffee shops",
 }
 
 export default function CoffeeShopsPage() {
   return (
     <PageContainer>
-
-    <div className="container mx-auto max-w-[95%] py-10 space-y-8">
-      <CoffeeShopHeader />
-      <CoffeeShopStats />
-      <CoffeeShopsTable />
-    </div>
+      <div className="container mx-auto space-y-6 p-4 md:p-6 lg:p-8">
+        <CoffeeShopHeader />
+        <CoffeeShopStats />
+        <CoffeeShopsTable />
+      </div>
     </PageContainer>
-
   )
 }

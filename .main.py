@@ -175,15 +175,15 @@ class DirectoryTraversal:
 def main():
     # Configuration
     target_directories = [
-        # "src/app/dashboard/coffee-shops/",
-        # "src/components/coffee-shops/",
+        "src/app/dashboard/coffee-shops/",
+        "src/components/coffee-shops/",
         # "src/app/api/coffee-shops/",
-        "src/app/api/routes/",
-        "src/hooks/",
-        "prisma/",
-        "src/app/dashboard/routes/",
-        "src/components/routes/",
-        "src/store/"
+        # "src/app/api/routes/",
+        # "src/hooks/",
+        # "prisma/",
+        # "src/app/dashboard/routes/",
+        # "src/components/routes/",
+        # "src/store/"
     ]
     
     excluded_directories = [

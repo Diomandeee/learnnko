@@ -45,12 +45,12 @@ const routes = [
     href: "/dashboard/people",
     color: "text-violet-500"
   },
-  {
-    label: "Reports",
-    icon: BarChart2,
-    href: "/dashboard/sales",
-    color: "text-red-500"
-  },
+  // {
+  //   label: "Reports",
+  //   icon: BarChart2,
+  //   href: "/dashboard/sales",
+  //   color: "text-red-500"
+  // },
   {
     label: "Route",
     icon: RouteIcon,
@@ -98,7 +98,7 @@ export function SideNav() {
           {!isCollapsed && (
             <div className="flex items-center gap-2">
               <Coffee className="h-4 w-4" />
-              <span className="font-bold text-sm">BUF BARISTA</span>
+              <span className="font-bold text-sm">Milk Man</span>
             </div>
           )}
           <Button

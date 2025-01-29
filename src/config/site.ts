@@ -1,4 +1,4 @@
 export const siteConfig = {
-  name: "BUF BARISTA CRM",
+  name: "Milk Man CRM",
   url: "https://bufbarista-crm.vercel.app"
 } as const

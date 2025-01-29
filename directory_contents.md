@@ -1963,7 +1963,7 @@ import { LoginForm } from "@/components/auth/login-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = {
-  title: "Login | BUF BARISTA CRM",
+  title: "Login | Milk Man CRM",
   description: "Login to your account",
 };
 
@@ -2000,7 +2000,7 @@ import { RegisterForm } from "@/components/auth/register-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = {
-  title: "Register | BUF BARISTA CRM",
+  title: "Register | Milk Man CRM",
   description: "Create a new account",
 };
 
@@ -2036,7 +2036,7 @@ import { ProfitCalculator } from "@/components/calculator/profit-calculator";
 import { PageContainer } from "@/components/layout/page-container";
 
 export const metadata: Metadata = {
-  title: "Profit Calculator | BUF BARISTA CRM",
+  title: "Profit Calculator | Milk Man CRM",
   description: "Optimize profit margins and analyze financial scenarios",
 };
 
@@ -3805,7 +3805,7 @@ ________________________________________________________________________________
 //      startY: 20
 //    })
 
-//    doc.text('Buf Barista - Complete Order Report', 14, 15)
+//    doc.text('Milk Man - Complete Order Report', 14, 15)
 //    doc.save('buf-barista-all-orders.pdf')
 //  }
 
@@ -4697,7 +4697,7 @@ const ActiveOrders: React.FC = () => {
       startY: 20
     })
 
-    doc.text('Buf Barista - Complete Order Report', 14, 15)
+    doc.text('Milk Man - Complete Order Report', 14, 15)
     doc.save('buf-barista-all-orders.pdf')
   }
 
@@ -5991,7 +5991,7 @@ import { DataExport } from "@/components/contacts/data-export";
 import { Contact } from "@/types/contacts";
 
 export const metadata: Metadata = {
-  title: "Dashboard | BUF BARISTA CRM",
+  title: "Dashboard | Milk Man CRM",
   description: "View your CRM analytics and insights",
 };
 
@@ -10054,7 +10054,7 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/db/prisma";
 
 export const metadata: Metadata = {
- title: "Staff Schedule | BUF BARISTA CRM",
+ title: "Staff Schedule | Milk Man CRM",
  description: "View and manage individual staff schedule",
 };
 
@@ -10244,7 +10244,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageContainer } from "@/components/layout/page-container";
 
 export const metadata: Metadata = {
-  title: "Settings | BUF BARISTA CRM",
+  title: "Settings | Milk Man CRM",
   description: "Manage your account settings and preferences",
 };
 
@@ -11305,7 +11305,7 @@ import { Toaster } from "@/components/ui/toaster";
 
  
 export const metadata: Metadata = {
-  title: "BUF BARISTA CRM",
+  title: "Milk Man CRM",
   description: "A CRM solution for managing contacts",
 };
 
@@ -11345,7 +11345,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-2">
             <Coffee className="h-6 w-6" />
             <Link href="/" className="flex items-center">
-              <span className="text-2xl font-bold">Buf Barista CRM</span>
+              <span className="text-2xl font-bold">Milk Man CRM</span>
             </Link>
           </div>
           <nav className="hidden gap-8 md:flex">
@@ -11412,7 +11412,7 @@ export default function LandingPage() {
           <div>
             <div className="flex items-center gap-2">
               <Coffee className="h-6 w-6" />
-              <span className="text-lg font-bold">Buf Barista</span>
+              <span className="text-lg font-bold">Milk Man</span>
             </div>
             <p className="mt-4 text-sm text-muted-foreground">
               Making coffee shop management easier and more efficient.
@@ -11445,7 +11445,7 @@ export default function LandingPage() {
         </div>
         <div className="container mt-8 border-t pt-8 text-center">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Buf Barista. All rights reserved.
+            © {new Date().getFullYear()} Milk Man. All rights reserved.
           </p>
         </div>
       </footer>
@@ -14612,7 +14612,7 @@ export function ExpenseAllocation() {
             />
           </div>
           <div className="flex items-center space-x-2">
-            <Label htmlFor={`${key}-switch`}>Buf Barista</Label>
+            <Label htmlFor={`${key}-switch`}>Milk Man</Label>
             <Switch
               id={`${key}-switch`}
               checked={value.isBuffBarista}
@@ -14720,32 +14720,32 @@ export function ProfitVisualization() {
   const data = [
     {
       month: "Jan",
-      "Buf Barista": 4000,
+      "Milk Man": 4000,
       "Restaurant": 2400,
     },
     {
       month: "Feb",
-      "Buf Barista": 3000,
+      "Milk Man": 3000,
       "Restaurant": 1398,
     },
     {
       month: "Mar",
-      "Buf Barista": 2000,
+      "Milk Man": 2000,
       "Restaurant": 9800,
     },
     {
       month: "Apr",
-      "Buf Barista": 2780,
+      "Milk Man": 2780,
       "Restaurant": 3908,
     },
     {
       month: "May",
-      "Buf Barista": 1890,
+      "Milk Man": 1890,
       "Restaurant": 4800,
     },
     {
       month: "Jun",
-      "Buf Barista": 2390,
+      "Milk Man": 2390,
       "Restaurant": 3800,
     },
   ];
@@ -14758,7 +14758,7 @@ export function ProfitVisualization() {
           <YAxis />
           <Tooltip />
           <Legend />
-          <Bar dataKey="Buf Barista" fill="#8884d8" />
+          <Bar dataKey="Milk Man" fill="#8884d8" />
           <Bar dataKey="Restaurant" fill="#82ca9d" />
         </BarChart>
       </ResponsiveContainer>
@@ -16547,7 +16547,7 @@ export function SideNav() {
           {!isCollapsed && (
             <div className="flex items-center gap-2">
               <Coffee className="h-4 w-4" />
-              <span className="font-bold text-sm">BUF BARISTA</span>
+              <span className="font-bold text-sm">Milk Man</span>
             </div>
           )}
           <Button
@@ -28978,7 +28978,7 @@ export { useToast, toast }
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/bufbarista-crm/src/config/site.ts
 export const siteConfig = {
-  name: "BUF BARISTA CRM",
+  name: "Milk Man CRM",
   url: "https://bufbarista-crm.vercel.app"
 } as const
 

@@ -2,7 +2,7 @@ import { Metadata } from "next"
 import { NewPersonForm } from "@/components/people/new-person-form"
 
 export const metadata: Metadata = {
-  title: "Add Person | BUF BARISTA CRM",
+  title: "Add Person | Milk Man CRM",
   description: "Add a new person to your network",
 }
 

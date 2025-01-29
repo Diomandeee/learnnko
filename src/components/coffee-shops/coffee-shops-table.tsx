@@ -72,6 +72,7 @@ import { format } from "date-fns"
 import { FilterValueInput } from "./filter-value-input"
 import { useCoffeeShops } from "@/hooks/use-coffee-shops"
 import { Textarea } from "@/components/ui/textarea";
+import { MobileCardView } from "./mobile-card-view";
 
 const ITEMS_PER_PAGE = 50
 
@@ -719,6 +720,52 @@ const FILTER_CONFIGS: FilterConfig[] = [
   const { shops, loading, error, mutate } = useCoffeeShops()
   const [isRecalculating, setIsRecalculating] = useState(false)
 
+  const handleDelete = async (id: string) => {
+    try {
+      const response = await fetch(`/api/coffee-shops/${id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) throw new Error('Failed to delete shop')
+
+      toast({
+        title: "Success",
+        description: "Coffee shop deleted successfully"
+      })
+
+      mutate()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete coffee shop",
+        variant: "destructive"
+      })
+    }
+  }
+  const handleVisitToggle = async (shop) => {
+    try {
+      const response = await fetch(`/api/coffee-shops/${shop.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visited: !shop.visited })
+      })
+
+      if (!response.ok) throw new Error('Failed to update visit status')
+
+      toast({
+        title: "Success",
+        description: `${shop.title} marked as ${!shop.visited ? 'visited' : 'not visited'}`
+      })
+
+      mutate()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update visit status",
+        variant: "destructive"
+      })
+    }
+  }
   const handleRecalculatePriorities = async () => {
     setIsRecalculating(true)
     try {
@@ -984,34 +1031,24 @@ const sortedShops = useMemo(() => {
  
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Input
-            placeholder="Search coffee shops..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-[300px]"
-          />
-               <Button 
-        variant="outline" 
-        onClick={handleRecalculatePriorities}
-        disabled={isRecalculating}
-      >
-        {isRecalculating ? (
-          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-        ) : (
-          <RefreshCw className="mr-2 h-4 w-4" />
-        )}
-        Recalculate Priorities
-      </Button>
+      {/* Mobile header controls */}
+      <div className="flex flex-col gap-4 md">
+        <Input
+          placeholder="Search coffee shops..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full"
+        />
+        
+        <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <Filter className="mr-2 h-4 w-4" />
+              <Button variant="outline" className="flex-1">
+                <Filter className="h-4 w-4 mr-2" />
                 Filters {activeFilters.length > 0 && `(${activeFilters.length})`}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56">
+            <DropdownMenuContent className="w-72">
               <DropdownMenuLabel>Add Filter</DropdownMenuLabel>
               {FILTER_CONFIGS.map((config) => (
                 <DropdownMenuSub key={config.field}>
@@ -1053,79 +1090,85 @@ const sortedShops = useMemo(() => {
                     className="text-red-600"
                     onClick={handleClearFilters}
                   >
-                    <XCircle className="mr-2 h-4 w-4" />
+                    <XCircle className="h-4 w-4 mr-2" />
                     Clear All Filters
                   </DropdownMenuItem>
                 </>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
  
-        <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
+            className="flex-1"
+            onClick={handleRecalculatePriorities}
+            disabled={isRecalculating}
           >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span>
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-          >
-            <ChevronRight className="h-4 w-4" />
+            {isRecalculating ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            <span className="ml-2">Recalculate</span>
           </Button>
         </div>
       </div>
  
-      {activeFilters.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {activeFilters.map((filter) => (
-            <Badge
-              key={filter.id}
-              variant="secondary"
-              className="flex items-center gap-2"
-            >
-              <span>
-                {FILTER_CONFIGS.find(c => c.field === filter.field)?.label} 
-                {' '}
-                {OPERATOR_LABELS[filter.operator]}
-                {' '}
-                {filter.operator === 'between' 
-                  ? `${filter.value.min} - ${filter.value.max}`
-                  : String(filter.value)
-                }
-              </span>
-              <XCircle
-                className="h-4 w-4 cursor-pointer"
-                onClick={() => handleRemoveFilter(filter.id)}
+
+    {/* Active filters */}
+    {activeFilters.length > 0 && (
+      <div className="flex flex-wrap gap-2">
+        {activeFilters.map((filter) => (
+          <Badge
+            key={filter.id}
+            variant="secondary"
+            className="flex items-center gap-2"
+          >
+            <span>
+              {FILTER_CONFIGS.find(c => c.field === filter.field)?.label}
+              {' '}
+              {OPERATOR_LABELS[filter.operator]}
+              {' '}
+              {filter.operator === 'between'
+                ? `${filter.value.min} - ${filter.value.max}`
+                : String(filter.value)
+              }
+            </span>
+            <XCircle
+              className="h-4 w-4 cursor-pointer"
+              onClick={() => handleRemoveFilter(filter.id)}
+            />
+          </Badge>
+        ))}
+      </div>
+    )}
+
+    {/* Mobile Card View */}
+    <div className="block md:hidden">
+      <MobileCardView
+        shops={paginatedShops}
+        onVisitToggle={handleVisitToggle}
+        onDelete={handleDelete}
+      />
+    </div>
+
+    {/* Desktop Table View */}
+    <div className="hidden md:block border rounded-md overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-12">
+              <Checkbox
+                checked={selectedShops.length === paginatedShops.length}
+                onCheckedChange={(checked) => {
+                  setSelectedShops(
+                    checked
+                      ? paginatedShops.map(shop => shop.id)
+                      : []
+                  )
+                }}
               />
-            </Badge>
-          ))}
-        </div>
-      )}
- 
-      <div className="border rounded-md overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <Checkbox
-                  checked={selectedShops.length === paginatedShops.length}
-                  onCheckedChange={(checked) => {
-                    setSelectedShops(
-                      checked
-                        ? paginatedShops.map(shop => shop.id)
-                        : []
-                    )
-                  }}
-                />
-              </TableHead>
+            </TableHead>
               <TableHead>
                 <div className="flex items-center gap-2">
                   Name
@@ -1665,72 +1708,87 @@ const sortedShops = useMemo(() => {
        </Table>
      </div>
 
-     {/* Delete Confirmation Dialog */}
-     <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-       <AlertDialogContent>
-         <AlertDialogHeader>
-           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-           <AlertDialogDescription>
-             This will permanently delete the coffee shop and all associated data.
-           </AlertDialogDescription>
-         </AlertDialogHeader>
-         <AlertDialogFooter>
-           <AlertDialogCancel>Cancel</AlertDialogCancel>
-           <AlertDialogAction
-             className="bg-red-600 hover:bg-red-700"
-             onClick={async () => {
-               if (!deleteId) return
+    {/* Pagination - Show on both views */}
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-sm text-muted-foreground order-2 sm:order-1">
+        Showing {paginatedShops.length} of results
+      </p>
+      <div className="flex items-center justify-end gap-2 order-1 sm:order-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+          disabled={currentPage === 1}
+        >
+          <ChevronLeft className="h-4 w-4" />
+          <span className="sr-only">Previous page</span>
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+          disabled={currentPage === totalPages}
+        >
+          <ChevronRight className="h-4 w-4" />
+          <span className="sr-only">Next page</span>
+        </Button>
+      </div>
+    </div>
 
-               try {
-                 const response = await fetch(`/api/coffee-shops/${deleteId}`, {
-                   method: "DELETE"
-                 })
-
-                 if (!response.ok) throw new Error("Failed to delete coffee shop")
-
-                 toast({
-                   title: "Shop deleted",
-                   description: "The coffee shop has been deleted successfully."
-                 })
-                 
-                 mutate()
-                 setDeleteId(null)
-               } catch (error) {
-                 toast({
-                   title: "Error",
-                   description: "Failed to delete coffee shop. Please try again.",
-                   variant: "destructive"
-                 })
-               }
-             }}
-           >
-             Delete
-           </AlertDialogAction>
-         </AlertDialogFooter>
-       </AlertDialogContent>
-     </AlertDialog>
+    {/* Delete Dialog */}
+    <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete the coffee shop and all associated data.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-red-600 hover:bg-red-700"
+            onClick={() => handleDelete(deleteId!)}
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
      <style jsx>{`
-       .overflow-x-auto {
-         max-width: 100%;
+       @media (max-width: 768px) {
+         .overflow-x-auto {
+           -webkit-overflow-scrolling: touch;
+         }
+         
+         .table {
+           min-width: 100%;
+         }
        }
+       
+       @media (min-width: 769px) {
+         .overflow-x-auto {
+           max-width: 100%;
+         }
 
-       .table {
-         min-width: 100%;
-         width: max-content;
-       }
+         .table {
+           min-width: 100%;
+           width: max-content;
+         }
 
-       th, td {
-         white-space: nowrap;
-         padding: 0.75rem 1rem;
-       }
+         th, td {
+           white-space: nowrap;
+           padding: 0.75rem 1rem;
+         }
 
-       th:first-child,
-       td:first-child {
-         position: sticky;
-         left: 0;
-         background: white;
-         z-index: 1;
+         th:first-child,
+         td:first-child {
+           position: sticky;
+           left: 0;
+           background: white;
+           z-index: 1;
+         }
        }
      `}</style>
    </div>

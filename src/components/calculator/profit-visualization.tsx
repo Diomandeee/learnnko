@@ -15,32 +15,32 @@ export function ProfitVisualization() {
   const data = [
     {
       month: "Jan",
-      "Buf Barista": 4000,
+      "Milk Man": 4000,
       "Restaurant": 2400,
     },
     {
       month: "Feb",
-      "Buf Barista": 3000,
+      "Milk Man": 3000,
       "Restaurant": 1398,
     },
     {
       month: "Mar",
-      "Buf Barista": 2000,
+      "Milk Man": 2000,
       "Restaurant": 9800,
     },
     {
       month: "Apr",
-      "Buf Barista": 2780,
+      "Milk Man": 2780,
       "Restaurant": 3908,
     },
     {
       month: "May",
-      "Buf Barista": 1890,
+      "Milk Man": 1890,
       "Restaurant": 4800,
     },
     {
       month: "Jun",
-      "Buf Barista": 2390,
+      "Milk Man": 2390,
       "Restaurant": 3800,
     },
   ];
@@ -53,7 +53,7 @@ export function ProfitVisualization() {
           <YAxis />
           <Tooltip />
           <Legend />
-          <Bar dataKey="Buf Barista" fill="#8884d8" />
+          <Bar dataKey="Milk Man" fill="#8884d8" />
           <Bar dataKey="Restaurant" fill="#82ca9d" />
         </BarChart>
       </ResponsiveContainer>
