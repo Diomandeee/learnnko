@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import Script from "next/script";
 
 export const metadata: Metadata = {
-  title: "BUF BARISTA CRM",
+  title: "Milk Man CRM",
   description: "A CRM solution for managing contacts",
 };
 

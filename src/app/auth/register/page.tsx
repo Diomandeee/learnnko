@@ -4,7 +4,7 @@ import { RegisterForm } from "@/components/auth/register-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = {
-  title: "Register | BUF BARISTA CRM",
+  title: "Register | Milk Man CRM",
   description: "Create a new account",
 };
 

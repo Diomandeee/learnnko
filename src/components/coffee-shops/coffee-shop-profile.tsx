@@ -113,7 +113,6 @@ function EditableCell({ value, onUpdate, type = 'text' }) {
       className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded"
       onClick={() => setIsEditing(true)}
     >
-      {value || "-"}
       <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
         <Pencil className="h-3 w-3" />
       </Button>
@@ -124,7 +123,7 @@ function EditableCell({ value, onUpdate, type = 'text' }) {
 export function CoffeeShopProfile({ shop }) {
   const [nearbyShops, setNearbyShops] = useState([])
   const [filteredShops, setFilteredShops] = useState([])
-  const [maxLocations, setMaxLocations] = useState(10)
+  const [maxLocations, setMaxLocations] = useState(25)
   const [maxDistance, setMaxDistance] = useState(10)
   const [visitFilter, setVisitFilter] = useState('all')
   const [visitCountFilter, setVisitCountFilter] = useState('all')

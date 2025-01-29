@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { StaffDirectory } from "@/components/directory/staff/staff-directory";
 
 export const metadata: Metadata = {
-  title: "Staff Directory | BUF BARISTA CRM",
+  title: "Staff Directory | Milk Man CRM",
   description: "Manage staff, schedules, and time off",
 };
 

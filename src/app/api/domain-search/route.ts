@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     const validatedData = domainSearchSchema.parse(body)
 
     // Check if we have an API key
-    const apiKey = "d8760477650b3972f49fb99f3c6a4c4c"
+    const apiKey = process.env.PROSPEO_API_KEY
     if (!apiKey) {
       console.error("[DOMAIN_SEARCH] Missing PROSPEO_API_KEY")
       return NextResponse.json(

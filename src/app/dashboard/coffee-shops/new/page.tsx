@@ -2,7 +2,7 @@ import { Metadata } from "next"
 import { NewCoffeeShopForm } from "@/components/coffee-shops/new-coffee-shop-form"
 
 export const metadata: Metadata = {
-  title: "Add Coffee Shop | BUF BARISTA CRM",
+  title: "Add Coffee Shop | Milk Man CRM",
   description: "Add a new coffee shop to your network",
 }
 

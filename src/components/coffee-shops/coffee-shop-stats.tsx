@@ -1,105 +1,70 @@
-// src/components/coffee-shops/coffee-shop-stats.tsx
 "use client"
 
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useCoffeeShops } from "@/hooks/use-coffee-shops"
+import { Users, UserCheck, Briefcase, DollarSign } from "lucide-react"
 
 export function CoffeeShopStats() {
   const { shops } = useCoffeeShops()
 
-  // Calculate stats
   const stats = {
     total: shops?.length || 0,
     visited: shops?.filter(shop => shop.visited).length || 0,
     source: shops?.filter(shop => shop.is_source).length || 0,
-    leads: shops?.filter(shop => shop.isPartner).length || 0,
+    leads: shops?.filter(shop => shop.parlor_coffee_leads).length || 0,
     totalVolume: shops?.reduce((sum, shop) => {
       const volume = shop.volume ? parseFloat(shop.volume) : 0
       return sum + volume
     }, 0) || 0,
-    averageRating: shops?.reduce((sum, shop) => {
-      return sum + (shop.rating || 0)
-    }, 0) / (shops?.filter(shop => shop.rating).length || 1),
   }
 
-  // Calculate estimated annual revenue
   const estimatedAnnualRevenue = stats.totalVolume * 52 * 18
 
+  const statCards = [
+    {
+      title: "Total Shops",
+      value: stats.total,
+      icon: Users,
+      description: "Total locations tracked",
+    },
+    {
+      title: "Visited",
+      value: stats.visited,
+      icon: UserCheck,
+      description: `${((stats.visited / stats.total) * 100).toFixed(1)}% of total`,
+    },
+    {
+      title: "Partners",
+      value: stats.source,
+      icon: Briefcase,
+      description: `${stats.source} partner locations`,
+    },
+    {
+      title: "Weekly Volume",
+      value: stats.totalVolume.toFixed(1),
+      icon: DollarSign,
+      description: `$${estimatedAnnualRevenue.toLocaleString()} ARR`,
+    },
+  ]
+
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Shops</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.total}</div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Visited</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.visited}</div>
-          <p className="text-xs text-muted-foreground">
-            {((stats.visited / stats.total) * 100).toFixed(1)}% of shops
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Source/Partner</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.source}</div>
-          <p className="text-xs text-muted-foreground">
-            {((stats.source / stats.total) * 100).toFixed(1)}% of shops
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Active Leads</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.leads}</div>
-          <p className="text-xs text-muted-foreground">
-            {((stats.leads / stats.total) * 100).toFixed(1)}% potential leads
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Weekly Volume</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.totalVolume.toFixed(1)}</div>
-          <p className="text-xs text-muted-foreground">
-            ${estimatedAnnualRevenue.toLocaleString()} ARR
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.averageRating.toFixed(1)}</div>
-          <p className="text-xs text-muted-foreground">
-            Out of 5 stars
-          </p>
-        </CardContent>
-      </Card>
+    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      {statCards.map((stat, index) => (
+        <Card key={index} className="overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {stat.title}
+            </CardTitle>
+            <stat.icon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stat.value}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {stat.description}
+            </p>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   )
 }

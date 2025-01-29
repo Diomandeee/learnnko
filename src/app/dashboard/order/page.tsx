@@ -356,7 +356,7 @@
 //      startY: 20
 //    })
 
-//    doc.text('Buf Barista - Complete Order Report', 14, 15)
+//    doc.text('Milk Man - Complete Order Report', 14, 15)
 //    doc.save('buf-barista-all-orders.pdf')
 //  }
 
@@ -1248,7 +1248,7 @@ const ActiveOrders: React.FC = () => {
       startY: 20
     })
 
-    doc.text('Buf Barista - Complete Order Report', 14, 15)
+    doc.text('Milk Man - Complete Order Report', 14, 15)
     doc.save('buf-barista-all-orders.pdf')
   }
 

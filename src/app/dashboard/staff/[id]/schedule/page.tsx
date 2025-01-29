@@ -4,7 +4,7 @@ import { StaffSchedule } from "@/components/directory/schedules/staff-schedule";
 import { notFound } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Staff Schedule | BUF BARISTA CRM",
+  title: "Staff Schedule | Milk Man CRM",
   description: "View and manage staff schedule",
 };
 

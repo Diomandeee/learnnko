@@ -539,7 +539,7 @@ async function onSubmit(data: FormData) {
               className="space-y-8"
             >
             {/* Domain Search Section */}
-            {/* <Card className="bg-muted/50">
+           <Card className="bg-muted/50">
                 <CardHeader>
                   <CardTitle className="text-lg">Domain Search</CardTitle>
                 </CardHeader>
@@ -549,7 +549,7 @@ async function onSubmit(data: FormData) {
                     onCompanyData={handleCompanyData}
                   />
                 </CardContent>
-              </Card> */}
+              </Card>
               <Card className="bg-muted/50">
                 <CardHeader>
                   <CardTitle className="text-lg">Search Business</CardTitle>
@@ -574,7 +574,7 @@ async function onSubmit(data: FormData) {
                 </CardContent>
               </Card>
               {/* Basic Information */}
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+              <div className="grid gap-6 grid-cols-1 md:grid-cols-1 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="title"
@@ -634,7 +634,7 @@ async function onSubmit(data: FormData) {
               />
 
               {/* Coordinates */}
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+              <div className="grid gap-6 grid-cols-1 md:grid-cols-1 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="latitude"
@@ -784,7 +784,7 @@ async function onSubmit(data: FormData) {
                   </Card>
                 )}
               {/* Contact Information */}
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+              <div className="grid gap-6 grid-cols-1 md:grid-cols-1 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="manager_present"
@@ -842,7 +842,7 @@ async function onSubmit(data: FormData) {
                 />
               </div>
               {/* Social and Business Info */}
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+              <div className="grid gap-6 grid-cols-1 md:grid-cols-1 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="website"
@@ -997,7 +997,7 @@ async function onSubmit(data: FormData) {
               />
 
               {/* Flags */}
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+              <div className="grid gap-6 grid-cols-1 md:grid-cols-1 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="is_source"

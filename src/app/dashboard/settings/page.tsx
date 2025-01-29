@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageContainer } from "@/components/layout/page-container";
 
 export const metadata: Metadata = {
-  title: "Settings | BUF BARISTA CRM",
+  title: "Settings | Milk Man CRM",
   description: "Manage your account settings and preferences",
 };
 

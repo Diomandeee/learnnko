@@ -15,7 +15,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-2">
             <Coffee className="h-6 w-6" />
             <Link href="/" className="flex items-center">
-              <span className="text-2xl font-bold">Buf Barista CRM</span>
+              <span className="text-2xl font-bold">Milk Man CRM</span>
             </Link>
           </div>
           <nav className="hidden gap-8 md:flex">
@@ -82,7 +82,7 @@ export default function LandingPage() {
           <div>
             <div className="flex items-center gap-2">
               <Coffee className="h-6 w-6" />
-              <span className="text-lg font-bold">Buf Barista</span>
+              <span className="text-lg font-bold">Milk Man</span>
             </div>
             <p className="mt-4 text-sm text-muted-foreground">
               Making coffee shop management easier and more efficient.
@@ -115,7 +115,7 @@ export default function LandingPage() {
         </div>
         <div className="container mt-8 border-t pt-8 text-center">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Buf Barista. All rights reserved.
+            © {new Date().getFullYear()} Milk Man. All rights reserved.
           </p>
         </div>
       </footer>

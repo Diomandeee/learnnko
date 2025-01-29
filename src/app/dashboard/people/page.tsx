@@ -4,7 +4,7 @@ import { PeopleHeader } from "@/components/people/people-header"
 import { PeopleStats } from "@/components/people/people-stats"
 import { PageContainer } from "@/components/layout/page-container";
 export const metadata = {
-  title: "People | BUF BARISTA CRM",
+  title: "People | Milk Man CRM",
   description: "Manage your people",
 }
 

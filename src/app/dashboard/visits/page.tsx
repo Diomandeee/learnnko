@@ -5,7 +5,7 @@ import { RouteAnalytics } from "@/components/routes/analytics/route-analytics"
 import { PageContainer } from "@/components/layout/page-container";
 
 export const metadata: Metadata = {
-  title: "Visit Management | BUF BARISTA CRM",
+  title: "Visit Management | Milk Man CRM",
   description: "Manage and track coffee shop visits",
 }
 

@@ -34,7 +34,7 @@ export function ExpenseAllocation() {
             />
           </div>
           <div className="flex items-center space-x-2">
-            <Label htmlFor={`${key}-switch`}>Buf Barista</Label>
+            <Label htmlFor={`${key}-switch`}>Milk Man</Label>
             <Switch
               id={`${key}-switch`}
               checked={value.isBuffBarista}

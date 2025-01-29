@@ -1,4 +1,4 @@
-# BUF Barista CRM - Scheduling Module
+# Milk Man CRM - Scheduling Module
 
 ## Overview
 The scheduling module manages staff scheduling for both coffee and wine services.
