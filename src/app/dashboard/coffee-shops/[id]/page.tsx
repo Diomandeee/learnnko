@@ -1,6 +1,7 @@
 import { CoffeeShopProfile } from "@/components/coffee-shops/coffee-shop-profile"
 import { prisma } from "@/lib/db/prisma"
 import { notFound } from "next/navigation"
+import { PageContainer } from "@/components/layout/page-container"
 
 interface Props {
   params: {
@@ -26,5 +27,7 @@ export default async function CoffeeShopPage({ params }: Props) {
     notFound()
   }
 
-  return <CoffeeShopProfile shop={coffeeShop} />
+  return    <PageContainer>
+  <CoffeeShopProfile shop={coffeeShop} />
+</PageContainer>
 }

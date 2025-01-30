@@ -1,9 +1,8 @@
 ### /Users/mohameddiomande/Desktop/koatji-crm/src/app/dashboard/coffee-shops/page.tsx
-// src/app/dashboard/coffee-shops/page.tsx
 import { CoffeeShopsTable } from "@/components/coffee-shops/coffee-shops-table"
 import { CoffeeShopHeader } from "@/components/coffee-shops/coffee-shop-header"
 import { CoffeeShopStats } from "@/components/coffee-shops/coffee-shop-stats"
-import { PageContainer } from "@/components/layout/page-container";
+import { PageContainer } from "@/components/layout/page-container"
 
 export const metadata = {
   title: "Coffee Shops | Milk Man CRM",
@@ -13,16 +12,15 @@ export const metadata = {
 export default function CoffeeShopsPage() {
   return (
     <PageContainer>
-
-    <div className="container mx-auto max-w-[95%] py-10 space-y-8">
-      <CoffeeShopHeader />
-      <CoffeeShopStats />
-      <CoffeeShopsTable />
-    </div>
+      <div className="container mx-auto space-y-6 p-4 md:p-6 lg:p-8">
+        <CoffeeShopHeader />
+        <CoffeeShopStats />
+        <CoffeeShopsTable />
+      </div>
     </PageContainer>
-
   )
-}________________________________________________________________________________
+}
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/koatji-crm/src/app/dashboard/coffee-shops/new/page.tsx
 import { Metadata } from "next"
 import { NewCoffeeShopForm } from "@/components/coffee-shops/new-coffee-shop-form"
@@ -75,28 +73,32 @@ export default async function CoffeeShopPage({ params }: Props) {
 ________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/koatji-crm/src/components/coffee-shops/coffee-shop-header.tsx
 "use client"
-
 import { Button } from "@/components/ui/button"
 import { PlusCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 export function CoffeeShopHeader() {
-  const router = useRouter()
-
-  return (
-    <div className="flex items-center justify-between">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Coffee Shops</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage and track coffee shops in your network
-        </p>
-      </div>
-      <Button onClick={() => router.push("/dashboard/coffee-shops/new")}>
-        <PlusCircle className="mr-2 h-4 w-4" />
-        Add Coffee Shop
-      </Button>
-    </div>
-  )
+   const router = useRouter()
+   
+   return (
+     <div className="flex items-center justify-between">
+       <div className="flex items-center gap-4">
+         <div>
+           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Coffee Shops</h1>
+           <p className="text-sm text-muted-foreground">
+             Manage and track coffee shops in your network
+           </p>
+         </div>
+       </div>
+       <Button
+          onClick={() => router.push("/dashboard/coffee-shops/new")}
+          className="flex md:flex"  // Changed from 'hidden md:flex' to 'flex md:flex'
+       >
+         <PlusCircle className="mr-2 h-4 w-4" />
+         Add Shop
+       </Button>
+     </div>
+   )
 }________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/koatji-crm/src/components/coffee-shops/coffee-shop-profile.tsx
 "use client"
@@ -214,7 +216,6 @@ function EditableCell({ value, onUpdate, type = 'text' }) {
       className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded"
       onClick={() => setIsEditing(true)}
     >
-      {value || "-"}
       <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
         <Pencil className="h-3 w-3" />
       </Button>
@@ -225,7 +226,7 @@ function EditableCell({ value, onUpdate, type = 'text' }) {
 export function CoffeeShopProfile({ shop }) {
   const [nearbyShops, setNearbyShops] = useState([])
   const [filteredShops, setFilteredShops] = useState([])
-  const [maxLocations, setMaxLocations] = useState(10)
+  const [maxLocations, setMaxLocations] = useState(25)
   const [maxDistance, setMaxDistance] = useState(10)
   const [visitFilter, setVisitFilter] = useState('all')
   const [visitCountFilter, setVisitCountFilter] = useState('all')
@@ -831,111 +832,77 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 
 export default CoffeeShopProfile________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/koatji-crm/src/components/coffee-shops/coffee-shop-stats.tsx
-// src/components/coffee-shops/coffee-shop-stats.tsx
 "use client"
 
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useCoffeeShops } from "@/hooks/use-coffee-shops"
+import { Users, UserCheck, Briefcase, DollarSign } from "lucide-react"
 
 export function CoffeeShopStats() {
   const { shops } = useCoffeeShops()
 
-  // Calculate stats
   const stats = {
     total: shops?.length || 0,
     visited: shops?.filter(shop => shop.visited).length || 0,
     source: shops?.filter(shop => shop.is_source).length || 0,
-    leads: shops?.filter(shop => shop.isPartner).length || 0,
+    leads: shops?.filter(shop => shop.parlor_coffee_leads).length || 0,
     totalVolume: shops?.reduce((sum, shop) => {
       const volume = shop.volume ? parseFloat(shop.volume) : 0
       return sum + volume
     }, 0) || 0,
-    averageRating: shops?.reduce((sum, shop) => {
-      return sum + (shop.rating || 0)
-    }, 0) / (shops?.filter(shop => shop.rating).length || 1),
   }
 
-  // Calculate estimated annual revenue
   const estimatedAnnualRevenue = stats.totalVolume * 52 * 18
 
+  const statCards = [
+    {
+      title: "Total Shops",
+      value: stats.total,
+      icon: Users,
+      description: "Total locations tracked",
+    },
+    {
+      title: "Visited",
+      value: stats.visited,
+      icon: UserCheck,
+      description: `${((stats.visited / stats.total) * 100).toFixed(1)}% of total`,
+    },
+    {
+      title: "Partners",
+      value: stats.source,
+      icon: Briefcase,
+      description: `${stats.source} partner locations`,
+    },
+    {
+      title: "Weekly Volume",
+      value: stats.totalVolume.toFixed(1),
+      icon: DollarSign,
+      description: `$${estimatedAnnualRevenue.toLocaleString()} ARR`,
+    },
+  ]
+
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Shops</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.total}</div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Visited</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.visited}</div>
-          <p className="text-xs text-muted-foreground">
-            {((stats.visited / stats.total) * 100).toFixed(1)}% of shops
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Source/Partner</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.source}</div>
-          <p className="text-xs text-muted-foreground">
-            {((stats.source / stats.total) * 100).toFixed(1)}% of shops
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Active Leads</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.leads}</div>
-          <p className="text-xs text-muted-foreground">
-            {((stats.leads / stats.total) * 100).toFixed(1)}% potential leads
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Weekly Volume</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.totalVolume.toFixed(1)}</div>
-          <p className="text-xs text-muted-foreground">
-            ${estimatedAnnualRevenue.toLocaleString()} ARR
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.averageRating.toFixed(1)}</div>
-          <p className="text-xs text-muted-foreground">
-            Out of 5 stars
-          </p>
-        </CardContent>
-      </Card>
+    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      {statCards.map((stat, index) => (
+        <Card key={index} className="overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {stat.title}
+            </CardTitle>
+            <stat.icon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stat.value}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {stat.description}
+            </p>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   )
-}________________________________________________________________________________
+}
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/koatji-crm/src/components/coffee-shops/coffee-shops-table.tsx
 "use client"
 
@@ -1011,6 +978,7 @@ import { format } from "date-fns"
 import { FilterValueInput } from "./filter-value-input"
 import { useCoffeeShops } from "@/hooks/use-coffee-shops"
 import { Textarea } from "@/components/ui/textarea";
+import { MobileCardView } from "./mobile-card-view";
 
 const ITEMS_PER_PAGE = 50
 
@@ -1658,6 +1626,52 @@ const FILTER_CONFIGS: FilterConfig[] = [
   const { shops, loading, error, mutate } = useCoffeeShops()
   const [isRecalculating, setIsRecalculating] = useState(false)
 
+  const handleDelete = async (id: string) => {
+    try {
+      const response = await fetch(`/api/coffee-shops/${id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) throw new Error('Failed to delete shop')
+
+      toast({
+        title: "Success",
+        description: "Coffee shop deleted successfully"
+      })
+
+      mutate()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete coffee shop",
+        variant: "destructive"
+      })
+    }
+  }
+  const handleVisitToggle = async (shop) => {
+    try {
+      const response = await fetch(`/api/coffee-shops/${shop.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visited: !shop.visited })
+      })
+
+      if (!response.ok) throw new Error('Failed to update visit status')
+
+      toast({
+        title: "Success",
+        description: `${shop.title} marked as ${!shop.visited ? 'visited' : 'not visited'}`
+      })
+
+      mutate()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update visit status",
+        variant: "destructive"
+      })
+    }
+  }
   const handleRecalculatePriorities = async () => {
     setIsRecalculating(true)
     try {
@@ -1923,34 +1937,24 @@ const sortedShops = useMemo(() => {
  
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Input
-            placeholder="Search coffee shops..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-[300px]"
-          />
-               <Button 
-        variant="outline" 
-        onClick={handleRecalculatePriorities}
-        disabled={isRecalculating}
-      >
-        {isRecalculating ? (
-          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-        ) : (
-          <RefreshCw className="mr-2 h-4 w-4" />
-        )}
-        Recalculate Priorities
-      </Button>
+      {/* Mobile header controls */}
+      <div className="flex flex-col gap-4 md">
+        <Input
+          placeholder="Search coffee shops..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full"
+        />
+        
+        <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <Filter className="mr-2 h-4 w-4" />
+              <Button variant="outline" className="flex-1">
+                <Filter className="h-4 w-4 mr-2" />
                 Filters {activeFilters.length > 0 && `(${activeFilters.length})`}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56">
+            <DropdownMenuContent className="w-72">
               <DropdownMenuLabel>Add Filter</DropdownMenuLabel>
               {FILTER_CONFIGS.map((config) => (
                 <DropdownMenuSub key={config.field}>
@@ -1992,79 +1996,85 @@ const sortedShops = useMemo(() => {
                     className="text-red-600"
                     onClick={handleClearFilters}
                   >
-                    <XCircle className="mr-2 h-4 w-4" />
+                    <XCircle className="h-4 w-4 mr-2" />
                     Clear All Filters
                   </DropdownMenuItem>
                 </>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
  
-        <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
+            className="flex-1"
+            onClick={handleRecalculatePriorities}
+            disabled={isRecalculating}
           >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span>
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-          >
-            <ChevronRight className="h-4 w-4" />
+            {isRecalculating ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            <span className="ml-2">Recalculate</span>
           </Button>
         </div>
       </div>
  
-      {activeFilters.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {activeFilters.map((filter) => (
-            <Badge
-              key={filter.id}
-              variant="secondary"
-              className="flex items-center gap-2"
-            >
-              <span>
-                {FILTER_CONFIGS.find(c => c.field === filter.field)?.label} 
-                {' '}
-                {OPERATOR_LABELS[filter.operator]}
-                {' '}
-                {filter.operator === 'between' 
-                  ? `${filter.value.min} - ${filter.value.max}`
-                  : String(filter.value)
-                }
-              </span>
-              <XCircle
-                className="h-4 w-4 cursor-pointer"
-                onClick={() => handleRemoveFilter(filter.id)}
+
+    {/* Active filters */}
+    {activeFilters.length > 0 && (
+      <div className="flex flex-wrap gap-2">
+        {activeFilters.map((filter) => (
+          <Badge
+            key={filter.id}
+            variant="secondary"
+            className="flex items-center gap-2"
+          >
+            <span>
+              {FILTER_CONFIGS.find(c => c.field === filter.field)?.label}
+              {' '}
+              {OPERATOR_LABELS[filter.operator]}
+              {' '}
+              {filter.operator === 'between'
+                ? `${filter.value.min} - ${filter.value.max}`
+                : String(filter.value)
+              }
+            </span>
+            <XCircle
+              className="h-4 w-4 cursor-pointer"
+              onClick={() => handleRemoveFilter(filter.id)}
+            />
+          </Badge>
+        ))}
+      </div>
+    )}
+
+    {/* Mobile Card View */}
+    <div className="block md:hidden">
+      <MobileCardView
+        shops={paginatedShops}
+        onVisitToggle={handleVisitToggle}
+        onDelete={handleDelete}
+      />
+    </div>
+
+    {/* Desktop Table View */}
+    <div className="hidden md:block border rounded-md overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-12">
+              <Checkbox
+                checked={selectedShops.length === paginatedShops.length}
+                onCheckedChange={(checked) => {
+                  setSelectedShops(
+                    checked
+                      ? paginatedShops.map(shop => shop.id)
+                      : []
+                  )
+                }}
               />
-            </Badge>
-          ))}
-        </div>
-      )}
- 
-      <div className="border rounded-md overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <Checkbox
-                  checked={selectedShops.length === paginatedShops.length}
-                  onCheckedChange={(checked) => {
-                    setSelectedShops(
-                      checked
-                        ? paginatedShops.map(shop => shop.id)
-                        : []
-                    )
-                  }}
-                />
-              </TableHead>
+            </TableHead>
               <TableHead>
                 <div className="flex items-center gap-2">
                   Name
@@ -2604,72 +2614,87 @@ const sortedShops = useMemo(() => {
        </Table>
      </div>
 
-     {/* Delete Confirmation Dialog */}
-     <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-       <AlertDialogContent>
-         <AlertDialogHeader>
-           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-           <AlertDialogDescription>
-             This will permanently delete the coffee shop and all associated data.
-           </AlertDialogDescription>
-         </AlertDialogHeader>
-         <AlertDialogFooter>
-           <AlertDialogCancel>Cancel</AlertDialogCancel>
-           <AlertDialogAction
-             className="bg-red-600 hover:bg-red-700"
-             onClick={async () => {
-               if (!deleteId) return
+    {/* Pagination - Show on both views */}
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-sm text-muted-foreground order-2 sm:order-1">
+        Showing {paginatedShops.length} of results
+      </p>
+      <div className="flex items-center justify-end gap-2 order-1 sm:order-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+          disabled={currentPage === 1}
+        >
+          <ChevronLeft className="h-4 w-4" />
+          <span className="sr-only">Previous page</span>
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+          disabled={currentPage === totalPages}
+        >
+          <ChevronRight className="h-4 w-4" />
+          <span className="sr-only">Next page</span>
+        </Button>
+      </div>
+    </div>
 
-               try {
-                 const response = await fetch(`/api/coffee-shops/${deleteId}`, {
-                   method: "DELETE"
-                 })
-
-                 if (!response.ok) throw new Error("Failed to delete coffee shop")
-
-                 toast({
-                   title: "Shop deleted",
-                   description: "The coffee shop has been deleted successfully."
-                 })
-                 
-                 mutate()
-                 setDeleteId(null)
-               } catch (error) {
-                 toast({
-                   title: "Error",
-                   description: "Failed to delete coffee shop. Please try again.",
-                   variant: "destructive"
-                 })
-               }
-             }}
-           >
-             Delete
-           </AlertDialogAction>
-         </AlertDialogFooter>
-       </AlertDialogContent>
-     </AlertDialog>
+    {/* Delete Dialog */}
+    <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete the coffee shop and all associated data.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-red-600 hover:bg-red-700"
+            onClick={() => handleDelete(deleteId!)}
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
      <style jsx>{`
-       .overflow-x-auto {
-         max-width: 100%;
+       @media (max-width: 768px) {
+         .overflow-x-auto {
+           -webkit-overflow-scrolling: touch;
+         }
+         
+         .table {
+           min-width: 100%;
+         }
        }
+       
+       @media (min-width: 769px) {
+         .overflow-x-auto {
+           max-width: 100%;
+         }
 
-       .table {
-         min-width: 100%;
-         width: max-content;
-       }
+         .table {
+           min-width: 100%;
+           width: max-content;
+         }
 
-       th, td {
-         white-space: nowrap;
-         padding: 0.75rem 1rem;
-       }
+         th, td {
+           white-space: nowrap;
+           padding: 0.75rem 1rem;
+         }
 
-       th:first-child,
-       td:first-child {
-         position: sticky;
-         left: 0;
-         background: white;
-         z-index: 1;
+         th:first-child,
+         td:first-child {
+           position: sticky;
+           left: 0;
+           background: white;
+           z-index: 1;
+         }
        }
      `}</style>
    </div>
@@ -2759,6 +2784,244 @@ export function DomainSearch({ onEmailsFound, onCompanyData }: DomainSearchProps
       </Button>
     </div>
   )
+}________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/coffee-shops/editable-cell.tsx
+// editable-cell.tsx
+import { useState } from "react";
+import { format } from "date-fns";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Check, Pencil, Star, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface EditableCellProps {
+  value: string | null;
+  onUpdate: (value: string | null) => Promise<void>;
+  type?: "text" | "number" | "instagram" | "email" | "manager" | "owners" | "notes" | "volume";
+  className?: string;
+}
+
+export function EditableCell({ value, onUpdate, type = "text", className }: EditableCellProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(value || "");
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleSave = async () => {
+    if (isUpdating) return;
+    setIsUpdating(true);
+
+    try {
+      await onUpdate(editValue || null);
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Update error:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-2">
+        {type === "notes" ? (
+          <Textarea
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            className="min-h-[100px] w-full"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && e.ctrlKey) {
+                handleSave();
+              }
+              if (e.key === "Escape") {
+                setIsEditing(false);
+                setEditValue(value || "");
+              }
+            }}
+            disabled={isUpdating}
+            autoFocus
+          />
+        ) : (
+          <Input
+            type={type === "number" || type === "volume" ? "number" : "text"}
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            className={cn("w-full", className)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSave();
+              if (e.key === "Escape") {
+                setIsEditing(false);
+                setEditValue(value || "");
+              }
+            }}
+            disabled={isUpdating}
+            autoFocus
+          />
+        )}
+        <Button size="sm" onClick={handleSave} disabled={isUpdating}>
+          {isUpdating ? (
+            <span className="animate-spin">...</span>
+          ) : (
+            <Check className="h-4 w-4" />
+          )}
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            setIsEditing(false);
+            setEditValue(value || "");
+          }}
+          disabled={isUpdating}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between group cursor-pointer p-2 rounded hover:bg-muted/50",
+        className
+      )}
+      onClick={() => setIsEditing(true)}
+    >
+      {type === "instagram" && value ? (
+        <a
+          href={`https://instagram.com/${value}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:underline"
+        >
+          @{value}
+        </a>
+      ) : type === "email" && value ? (
+        <a href={`mailto:${value}`} className="text-blue-600 hover:underline">
+          {value}
+        </a>
+      ) : (
+        <span>{value || "-"}</span>
+      )}
+      <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+    </div>
+  );
+}
+
+interface DateCellProps {
+  date: Date | null;
+  onUpdate: (date: Date | null) => Promise<void>;
+  onRemove: () => Promise<void>;
+}
+
+export function DateCell({ date, onUpdate, onRemove }: DateCellProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleDateSelect = async (newDate: Date | undefined) => {
+    if (isUpdating) return;
+    setIsUpdating(true);
+
+    try {
+      await onUpdate(newDate || null);
+      setIsOpen(false);
+    } catch (error) {
+      console.error("Update error:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    if (isUpdating) return;
+    setIsUpdating(true);
+
+    try {
+      await onRemove();
+      setIsOpen(false);
+    } catch (error) {
+      console.error("Remove error:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn(
+            "w-[120px] justify-start text-left font-normal",
+            !date && "text-muted-foreground"
+          )}
+          disabled={isUpdating}
+        >
+          {date ? format(date, "MMM d, yyyy") : "Not set"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={handleDateSelect}
+          initialFocus
+        />
+        {date && (
+          <Button
+            variant="destructive"
+            size="sm"
+            className="mt-2 w-full"
+            onClick={handleRemove}
+            disabled={isUpdating}
+          >
+            Remove Date
+          </Button>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+interface StarRatingProps {
+  value: number;
+  onUpdate: (value: number) => Promise<void>;
+  className?: string;
+}
+
+export function StarRating({ value, onUpdate, className }: StarRatingProps) {
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleUpdate = async (newValue: number) => {
+    if (isUpdating) return;
+    setIsUpdating(true);
+
+    try {
+      await onUpdate(newValue);
+    } catch (error) {
+      console.error("Update error:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  return (
+    <div className={cn("flex items-center gap-1", className)}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          className={cn(
+            "h-4 w-4 cursor-pointer transition-colors",
+            star <= value ? "fill-yellow-500 text-yellow-500" : "text-muted-foreground hover:text-yellow-500"
+          )}
+          onClick={() => handleUpdate(star)}
+        />
+      ))}
+    </div>
+  );
 }________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/koatji-crm/src/components/coffee-shops/email-person-add.tsx
 "use client"
@@ -3278,6 +3541,307 @@ export function InstagramCell({ shop, onUpdate }: InstagramCellProps) {
     </div>
   )
 }________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/coffee-shops/mobile-card-view.tsx
+"use client";
+
+import { useState } from "react";
+import { CoffeeShop } from "@prisma/client";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { MoreHorizontal, Edit, X } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { EditableCell, DateCell, StarRating } from "./editable-cell";
+
+interface MobileCardViewProps {
+  shops: CoffeeShop[];
+  onVisitToggle: (shop: CoffeeShop) => Promise<void>;
+  onDelete: (id: string) => void;
+  onUpdate: (shop: CoffeeShop, field: keyof CoffeeShop, value: any) => Promise<void>;
+}
+
+export function MobileCardView({ shops, onVisitToggle, onDelete, onUpdate }: MobileCardViewProps) {
+  return (
+    <div className="space-y-4">
+      {shops.map((shop) => (
+        <Card key={shop.id}>
+          <CardHeader>
+            <CardTitle>{shop.title}</CardTitle>
+            <CardDescription>{shop.area}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Accordion type="single" collapsible>
+              <AccordionItem value="item-1">
+                <AccordionTrigger>
+                  <div className="flex items-center justify-between">
+                    <div>Details</div>
+                    <Edit className="h-4 w-4" />
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>Priority</div>
+                      <StarRating
+                        value={shop.priority || 0}
+                        onUpdate={(value) => onUpdate(shop, "priority", value)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>Partner Status</div>
+                      <Badge
+                        variant={shop.isPartner ? "success" : "secondary"}
+                        className="cursor-pointer"
+                        onClick={() => onUpdate(shop, "isPartner", !shop.isPartner)}
+                      >
+                        {shop.isPartner ? "Partner" : "Not Partner"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>Manager Present</div>
+                      <EditableCell
+                        value={shop.manager_present}
+                        onUpdate={(value) => onUpdate(shop, "manager_present", value)}
+                        type="manager"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>Contact Name</div>
+                      <EditableCell
+                        value={shop.contact_name}
+                        onUpdate={(value) => onUpdate(shop, "contact_name", value)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>Contact Email</div>
+                      <EditableCell
+                        value={shop.contact_email}
+                        onUpdate={(value) => onUpdate(shop, "contact_email", value)}
+                        type="email"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>Owners</div>
+                      <EditableCell
+                        value={shop.owners.map((owner) => `${owner.name} (${owner.email})`).join(", ") || null}
+                        onUpdate={async (value) => {
+                          const owners = value
+                            ? value
+                                .split(",")
+                                .map((owner) => {
+                                  const match = owner.trim().match(/^(.+?)\s*\((.+?)\)$/);
+                                  if (match) {
+                                    return {
+                                      name: match[1].trim(),
+                                      email: match[2].trim(),
+                                    };
+                                  }
+                                  return null;
+                                })
+                                .filter(Boolean)
+                            : [];
+                          await onUpdate(shop, "owners", owners);
+                        }}
+                        type="owners"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>Volume</div>
+                      <EditableCell
+                        value={shop.volume?.toString() || null}
+                        onUpdate={(value) => onUpdate(shop, "volume", value)}
+                        type="volume"
+                      />
+                    </div>
+                    <div>
+                      <div>ARR</div>
+                      <div>
+                        {shop.volume ? (
+                          <span>${((parseFloat(shop.volume) * 52) * 18).toLocaleString()}</span>
+                        ) : (
+                          "-"
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>First Visit</div>
+                      <DateCell
+                        date={shop.first_visit ? new Date(shop.first_visit) : null}
+                        onUpdate={(date) => onUpdate(shop, "first_visit", date?.toISOString() || null)}
+                        onRemove={() => onUpdate(shop, "first_visit", null)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>Second Visit</div>
+                      <DateCell
+                        date={shop.second_visit ? new Date(shop.second_visit) : null}
+                        onUpdate={(date) => onUpdate(shop, "second_visit", date?.toISOString() || null)}
+                        onRemove={() => onUpdate(shop, "second_visit", null)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>Third Visit</div>
+                      <DateCell
+                        date={shop.third_visit ? new Date(shop.third_visit) : null}
+                        onUpdate={(date) => onUpdate(shop, "third_visit", date?.toISOString() || null)}
+                        onRemove={() => onUpdate(shop, "third_visit", null)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>Rating</div>
+                      <EditableCell
+                        value={shop.rating?.toString()}
+                        onUpdate={(value) => onUpdate(shop, "rating", value ? parseFloat(value) : null)}
+                        type="number"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>Reviews</div>
+                      <EditableCell
+                        value={shop.reviews?.toString()}
+                        onUpdate={(value) => onUpdate(shop, "reviews", value ? parseInt(value) : null)}
+                        type="number"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>Instagram</div>
+                      <EditableCell
+                        value={shop.instagram || ""}
+                        onUpdate={(value) => onUpdate(shop, "instagram", value)}
+                        type="instagram"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>Followers</div>
+                      <EditableCell
+                        value={shop.followers?.toString()}
+                        onUpdate={(value) => onUpdate(shop, "followers", value ? parseInt(value) : null)}
+                        type="number"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>Lead Status</div>
+                      <Badge
+                        variant={shop.parlor_coffee_leads ? "warning" : "default"}
+                        className="cursor-pointer"
+                        onClick={() => onUpdate(shop, "parlor_coffee_leads", !shop.parlor_coffee_leads)}
+                      >
+                        {shop.parlor_coffee_leads ? "Lead" : "No Lead"}
+                      </Badge>
+                    </div>
+                    <div>
+                      <div>Notes</div>
+                      <EditableCell
+                        value={shop.notes}
+                        onUpdate={(value) => onUpdate(shop, "notes", value)}
+                        type="notes"
+                      />
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+            <div className="mt-4 flex items-center justify-between">
+              <div>Visit Status</div>
+              <Badge
+                variant={shop.visited ? "success" : "default"}
+                className="cursor-pointer"
+                onClick={() => onUpdate(shop, "visited", !shop.visited)}
+              >
+                {shop.visited ? "Visited" : "Not Visited"}
+              </Badge>
+            </div>
+          </CardContent>
+          <CardContent className="flex justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="text-red-600"
+                  onClick={() => onDelete(shop.id)}
+                >
+                  <X className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/coffee-shops/mobile-nav.tsx
+"use client"
+
+import { useState } from "react"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { Menu, PlusCircle, X } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { usePathname } from "next/navigation"
+
+const routes = [
+  {
+    label: "Coffee Shops",
+    href: "/dashboard/coffee-shops",
+  },
+  {
+    label: "Add New",
+    href: "/dashboard/coffee-shops/new",
+    icon: PlusCircle
+  }
+]
+
+export function MobileNav() {
+  const [open, setOpen] = useState(false)
+  const pathname = usePathname()
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" className="md:hidden">
+          <Menu className="h-6 w-6" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="w-72">
+        <div className="flex flex-col space-y-4 p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-lg font-semibold">Coffee Shops</span>
+            <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+          <nav className="flex flex-col space-y-2">
+            {routes.map((route) => (
+              <Link
+                key={route.href}
+                href={route.href}
+                onClick={() => setOpen(false)}
+                className={cn(
+                  "flex items-center rounded-lg px-3 py-2 text-sm font-medium",
+                  pathname === route.href 
+                    ? "bg-primary text-primary-foreground" 
+                    : "hover:bg-muted"
+                )}
+              >
+                {route.icon && <route.icon className="mr-2 h-4 w-4" />}
+                {route.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/koatji-crm/src/components/coffee-shops/new-coffee-shop-form.tsx
 "use client"
 
@@ -3585,7 +4149,7 @@ export function NewCoffeeShopForm() {
         const response = await fetch(
           `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
             address
-          )}&key=AIzaSyDrfUenb2mg3cvQdeYW8KDL3EUVYTJPQBE`
+          )}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
         )
         const data = await response.json()
         console.log("Geocoding response:", data)
@@ -3820,7 +4384,7 @@ async function onSubmit(data: FormData) {
               className="space-y-8"
             >
             {/* Domain Search Section */}
-            {/* <Card className="bg-muted/50">
+           <Card className="bg-muted/50">
                 <CardHeader>
                   <CardTitle className="text-lg">Domain Search</CardTitle>
                 </CardHeader>
@@ -3830,7 +4394,7 @@ async function onSubmit(data: FormData) {
                     onCompanyData={handleCompanyData}
                   />
                 </CardContent>
-              </Card> */}
+              </Card>
               <Card className="bg-muted/50">
                 <CardHeader>
                   <CardTitle className="text-lg">Search Business</CardTitle>
@@ -3855,7 +4419,7 @@ async function onSubmit(data: FormData) {
                 </CardContent>
               </Card>
               {/* Basic Information */}
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+              <div className="grid gap-6 grid-cols-1 md:grid-cols-1 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="title"
@@ -3915,7 +4479,7 @@ async function onSubmit(data: FormData) {
               />
 
               {/* Coordinates */}
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+              <div className="grid gap-6 grid-cols-1 md:grid-cols-1 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="latitude"
@@ -4065,7 +4629,7 @@ async function onSubmit(data: FormData) {
                   </Card>
                 )}
               {/* Contact Information */}
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+              <div className="grid gap-6 grid-cols-1 md:grid-cols-1 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="manager_present"
@@ -4123,7 +4687,7 @@ async function onSubmit(data: FormData) {
                 />
               </div>
               {/* Social and Business Info */}
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+              <div className="grid gap-6 grid-cols-1 md:grid-cols-1 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="website"
@@ -4278,7 +4842,7 @@ async function onSubmit(data: FormData) {
               />
 
               {/* Flags */}
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+              <div className="grid gap-6 grid-cols-1 md:grid-cols-1 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="is_source"
@@ -4777,6 +5341,21 @@ const handlePlaceToggle = async (place: google.maps.places.PlaceResult) => {
     </div>
   )
 }________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/coffee-shops/responsive-table.tsx
+interface ResponsiveTableProps {
+  children: React.ReactNode
+}
+
+export function ResponsiveTable({ children }: ResponsiveTableProps) {
+  return (
+    <div className="relative w-full overflow-auto">
+      <div className="rounded-md border">
+        {children}
+      </div>
+    </div>
+  )
+}
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/koatji-crm/src/components/coffee-shops/map/DirectionsPanel.tsx
 "use client"
 
@@ -5161,7 +5740,7 @@ export function MapTabContent({ shop, nearbyShops, maxDistance }: MapTabContentP
           </div>
         </>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="md:col-span-2">
             <RouteMap
               sourceShop={shop}
@@ -5914,7 +6493,7 @@ export function RouteMap({ sourceShop, nearbyShops, maxDistance, onRouteCalculat
       // }
 
       const script = document.createElement("script")
-      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyDrfUenb2mg3cvQdeYW8KDL3EUVYTJPQBE&libraries=places,geometry`
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places,geometry`
       script.async = true
       script.defer = true
       script.onload = initializeMap

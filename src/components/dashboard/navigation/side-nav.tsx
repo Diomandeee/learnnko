@@ -57,12 +57,12 @@ const routes = [
     href: "/dashboard/routes",
     color: "text-teal-500"
   },
-  {
-    label: "Visit",
-    icon: Eye,
-    href: "/dashboard/visits",
-    color: "text-cyan-500"
-  },
+  // {
+  //   label: "Visit",
+  //   icon: Eye,
+  //   href: "/dashboard/visits",
+  //   color: "text-cyan-500"
+  // },
   {
     label: "Shops",
     icon: Coffee,
@@ -115,7 +115,7 @@ export function SideNav() {
           {isCollapsed ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link href="/dashboard/contacts/new">
+                <Link href="/dashboard/people/new">
                   <Button size="icon" className="w-full">
                     <PlusCircle className="h-4 w-4" />
                   </Button>
@@ -126,7 +126,7 @@ export function SideNav() {
               </TooltipContent>
             </Tooltip>
           ) : (
-            <Link href="/dashboard/contacts/new">
+            <Link href="/dashboard/people/new">
               <Button className="w-full">
                 <PlusCircle className="mr-2 h-4 w-4" />
                 New Contact

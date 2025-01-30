@@ -304,7 +304,7 @@ export function NewCoffeeShopForm() {
         const response = await fetch(
           `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
             address
-          )}&key=AIzaSyDrfUenb2mg3cvQdeYW8KDL3EUVYTJPQBE`
+          )}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
         )
         const data = await response.json()
         console.log("Geocoding response:", data)

@@ -8,7 +8,7 @@ export function useGoogleMaps() {
     const loadGoogleMaps = async () => {
       try {
         const script = document.createElement("script")
-        script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyDrfUenb2mg3cvQdeYW8KDL3EUVYTJPQBE&libraries=places,geometry`
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places,geometry`
         script.async = true
         script.onload = () => setIsLoaded(true)
         script.onerror = () => setLoadError(new Error("Failed to load Google Maps"))

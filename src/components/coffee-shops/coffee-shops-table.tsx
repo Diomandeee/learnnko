@@ -1211,6 +1211,26 @@ const sortedShops = useMemo(() => {
               </TableHead>
               <TableHead>
                 <div className="flex items-center gap-2">
+                  Address
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSort('Address')}
+                  >
+                    {sortConfig.key === 'area' ? (
+                      sortConfig.direction === 'asc' ? (
+                        <ArrowUp className="h-4 w-4" />
+                      ) : (
+                        <ArrowDown className="h-4 w-4" />
+                      )
+                    ) : (
+                      <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
+                    )}
+                  </Button>
+                </div>
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
                   Priority
                   <Button
                     variant="ghost"
@@ -1260,7 +1280,7 @@ const sortedShops = useMemo(() => {
                     size="sm"
                     onClick={() => handleSort('contact_name')}
                   >
-{sortConfig.key === 'contact_name' ? (
+                  {sortConfig.key === 'contact_name' ? (
                      sortConfig.direction === 'asc' ? (
                        <ArrowUp className="h-4 w-4" />
                      ) : (
@@ -1527,7 +1547,12 @@ const sortedShops = useMemo(() => {
                    onUpdate={(value) => handleCellUpdate(shop, 'area', value)}
                  />
                </TableCell>
-
+               <TableCell>
+                 <EditableCell
+                   value={shop.address}
+                   onUpdate={(value) => handleCellUpdate(shop, 'address', value)}
+                 />
+               </TableCell>
                <TableCell>
                 <div className="flex items-center gap-2 group cursor-pointer">
                   <StarRating

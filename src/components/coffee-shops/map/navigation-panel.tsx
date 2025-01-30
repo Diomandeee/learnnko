@@ -63,43 +63,6 @@ export function NavigationPanel({
               </button>
             </div>
 
-            {showSteps && (
-              <ScrollArea className="h-[400px]">
-                <div className="space-y-2 pr-4">
-                  {routeSteps.map((step, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                        currentStep === index
-                          ? "bg-primary/10 border border-primary"
-                          : index < currentStep
-                          ? "bg-muted/50 opacity-50"
-                          : "hover:bg-muted/50"
-                      }`}
-                      onClick={() => onStepChange(index)}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-                          <span className="text-xs font-medium">{index + 1}</span>
-                        </div>
-                        <div>
-                          <div
-                            dangerouslySetInnerHTML={{ __html: step.instructions }}
-                            className="text-sm"
-                          />
-                          <div className="text-xs mt-1 opacity-80">
-                            {step.distance} • {step.duration}
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </ScrollArea>
-            )}
           </div>
         </div>
       </CardContent>

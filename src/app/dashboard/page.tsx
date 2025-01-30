@@ -3,12 +3,8 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { Calendar } from "@/components/ui/calendar"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -283,350 +279,353 @@ export default function DashboardPage() {
 
   return (
     <PageContainer>
-
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      {/* Header with Controls */}
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <Select
-              value={selectedTimeRange}
-              onValueChange={setSelectedTimeRange}
-            >
-              <SelectTrigger className="w-[120px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="week">Week</SelectItem>
-                <SelectItem value="month">Month</SelectItem>
-                <SelectItem value="year">Year</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={selectedArea}
-              onValueChange={setSelectedArea}
-            >
-              <SelectTrigger className="w-[160px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Areas</SelectItem>
-                {metrics.areas.map(area => (
-                  <SelectItem key={area} value={area}>{area}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
+        {/* Header with Controls */}
+        <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h2>
+          <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
+            <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:space-x-2">
+              <Select
+                value={selectedTimeRange}
+                onValueChange={setSelectedTimeRange}
+              >
+                <SelectTrigger className="w-full sm:w-[120px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="week">Week</SelectItem>
+                  <SelectItem value="month">Month</SelectItem>
+                  <SelectItem value="year">Year</SelectItem>
+                </SelectContent>
+              </Select>
+  
+              <Select
+                value={selectedArea}
+                onValueChange={setSelectedArea}
+              >
+                <SelectTrigger className="w-full sm:w-[160px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Areas</SelectItem>
+                  {metrics.areas.map(area => (
+                    <SelectItem key={area} value={area}>{area}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+  
+            <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={exportDashboardData}
+                className="w-full sm:w-auto"
+              >
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export Report
+              </Button>
+              
+              <Button 
+                asChild
+                className="w-full sm:w-auto"
+              >
+                <Link href="/dashboard/coffee-shops">View All Locations</Link>
+              </Button>
+            </div>
           </div>
-
-          <Button variant="outline" onClick={exportDashboardData}>
-            <FileSpreadsheet className="mr-2 h-4 w-4" />
-            Export Report
-          </Button>
-          
-          <Button asChild>
-            <Link href="/dashboard/coffee-shops">View All Locations</Link>
-          </Button>
         </div>
-      </div>
-
-      {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Locations
-              <span className="block text-xs text-muted-foreground">
-                {metrics.visitedShops} visited
-              </span>
-            </CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.totalShops}</div>
-            <div className="mt-2 flex items-center text-xs text-muted-foreground">
-              <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
-                <div 
-                  className="bg-primary h-full"
-                  style={{ width: `${(metrics.visitedShops / metrics.totalShops) * 100}%` }}
-                />
-              </div>
-              <span className="ml-2">
-                {((metrics.visitedShops / metrics.totalShops) * 100).toFixed(1)}%
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Weekly Visits
-              <span className="block text-xs text-muted-foreground">
-                Goal: {metrics.weeklyVisitGoal}
-              </span>
-            </CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.visitedThisWeek}</div>
-            <div className="mt-2 flex items-center text-xs text-muted-foreground">
-              <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
-                <div 
-                  className="bg-primary h-full"
-                  style={{ width: `${metrics.weeklyVisitProgress}%` }}
-                />
-              </div>
-              <span className="ml-2">
-                {metrics.weeklyVisitProgress.toFixed(1)}%
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Weekly Volume
-              <span className="block text-xs text-muted-foreground">
-                Total across all locations
-              </span>
-            </CardTitle>
-            <Coffee className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {metrics.totalVolume.toLocaleString()}
-            </div>
-            <div className="mt-2 flex items-center text-xs text-muted-foreground">
-              <TrendingUp className="h-4 w-4 mr-1" />
-              <span>+12.5% from last week</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total ARR
-              <span className="block text-xs text-muted-foreground">
-                Projected annual revenue
-              </span>
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${metrics.totalARR.toLocaleString()}
-            </div>
-            <div className="mt-2 flex items-center text-xs text-muted-foreground">
-              <TrendingUp className="h-4 w-4 mr-1" />
-              <span>+8.2% from last month</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        {/* Visit Trends */}
-        <Card className="col-span-4">
-          <CardHeader>
-            <CardTitle>Visit Trends</CardTitle>
-            <CardDescription>
-              Number of visits over {selectedTimeRange}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[350px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={metrics.visitsOverTime}>
-                  <defs>
-                    <linearGradient id="visitGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Area 
-                    type="monotone" 
-                    dataKey="visits" 
-                    stroke="#3b82f6" 
-                    fillOpacity={1} 
-                    fill="url(#visitGradient)" 
+  
+        {/* Key Metrics */}
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total Locations
+                <span className="block text-xs text-muted-foreground">
+                  {metrics.visitedShops} visited
+                </span>
+              </CardTitle>
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{metrics.totalShops}</div>
+              <div className="mt-2 flex items-center text-xs text-muted-foreground">
+                <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-primary h-full"
+                    style={{ width: `${(metrics.visitedShops / metrics.totalShops) * 100}%` }}
                   />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Top Performers */}
-        <Card className="col-span-3">
-          <CardHeader>
-            <CardTitle>Top Performers</CardTitle>
-            <CardDescription>
-              Highest volume locations
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[350px]">
-              <div className="space-y-4">
-                {metrics.topPerformers.map((location, index) => (
-                  <div key={location.name} className="flex items-center">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-4">
-                      <span className="font-bold text-primary">
-                        {index + 1}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {location.name}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {location.area}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium">
-                        {location.volume.toLocaleString()}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        ${location.arr.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                </div>
+                <span className="ml-2">
+                  {((metrics.visitedShops / metrics.totalShops) * 100).toFixed(1)}%
+                </span>
               </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Additional Analysis */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        {/* Volume by Area */}
-        <Card className="col-span-4">
-          <CardHeader>
-            <CardTitle>Volume Distribution</CardTitle>
-            <CardDescription>
-              Weekly volume by area
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[350px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={metrics.volumeByArea}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="area" />
-                  <YAxis />
-                  <Tooltip 
-                    formatter={(value) => value.toLocaleString()}
+            </CardContent>
+          </Card>
+  
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Weekly Visits
+                <span className="block text-xs text-muted-foreground">
+                  Goal: {metrics.weeklyVisitGoal}
+                </span>
+              </CardTitle>
+              <Target className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{metrics.visitedThisWeek}</div>
+              <div className="mt-2 flex items-center text-xs text-muted-foreground">
+                <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-primary h-full"
+                    style={{ width: `${metrics.weeklyVisitProgress}%` }}
                   />
-                  <Bar dataKey="volume" fill="#3b82f6">
-                    {metrics.volumeByArea.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]} 
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Recent Activity */}
-        <Card className="col-span-3">
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>
-              Latest visits and updates
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[350px]">
-              <div className="space-y-4">
-                {metrics.recentVisits.map((shop) => (
-                  <div key={shop.id} className="flex items-start space-x-4">
-                    <div className="mt-1">
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        {shop.title}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Visited on {format(new Date(shop.first_visit), 'PPP')}
-                      </p>
-                      {shop.manager_present && (
-                        <Badge variant="secondary" className="text-xs">
-                          Manager: {shop.manager_present}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                </div>
+                <span className="ml-2">
+                  {metrics.weeklyVisitProgress.toFixed(1)}%
+                </span>
               </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Upcoming Visits */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Upcoming Visits</CardTitle>
+            </CardContent>
+          </Card>
+  
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Weekly Volume
+                <span className="block text-xs text-muted-foreground">
+                  Total across all locations
+                </span>
+              </CardTitle>
+              <Coffee className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {metrics.totalVolume.toLocaleString()}
+              </div>
+              <div className="mt-2 flex items-center text-xs text-muted-foreground">
+                <TrendingUp className="h-4 w-4 mr-1" />
+                <span>+12.5% from last week</span>
+              </div>
+            </CardContent>
+          </Card>
+  
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total ARR
+                <span className="block text-xs text-muted-foreground">
+                  Projected annual revenue
+                </span>
+              </CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ${metrics.totalARR.toLocaleString()}
+              </div>
+              <div className="mt-2 flex items-center text-xs text-muted-foreground">
+                <TrendingUp className="h-4 w-4 mr-1" />
+                <span>+8.2% from last month</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+  
+        {/* Charts Grid */}
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
+          <Card className="col-span-1 lg:col-span-4">
+            <CardHeader>
+              <CardTitle>Visit Trends</CardTitle>
               <CardDescription>
-                High-priority locations to visit
+                Number of visits over {selectedTimeRange}
               </CardDescription>
-            </div>
-            <Button variant="outline" asChild>
-              <Link href="/dashboard/routes">
-                <Map className="mr-2 h-4 w-4" />
-                Plan Route
-              </Link>
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {metrics.upcomingVisits.map((shop) => (
-              <Card key={shop.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-start space-x-4">
-                    <div className="mt-1">
-                      <MapPin className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <p className="font-medium">{shop.title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {shop.area}
-                      </p>
-                      {shop.volume && (
-                        <p className="text-sm">
-                          Volume: {shop.volume}
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px] sm:h-[350px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={metrics.visitsOverTime}>
+                    <defs>
+                      <linearGradient id="visitGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Area 
+                      type="monotone" 
+                      dataKey="visits" 
+                      stroke="#3b82f6" 
+                      fillOpacity={1} 
+                      fill="url(#visitGradient)" 
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+  
+          <Card className="col-span-1 lg:col-span-3">
+            <CardHeader>
+              <CardTitle>Top Performers</CardTitle>
+              <CardDescription>
+                Highest volume locations
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[300px] sm:h-[350px]">
+                <div className="space-y-4">
+                  {metrics.topPerformers.map((location, index) => (
+                    <div key={location.name} className="flex items-center">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-4">
+                        <span className="font-bold text-primary">
+                          {index + 1}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {location.name}
                         </p>
-                      )}
-                      {shop.parlor_coffee_leads && (
-                        <Badge variant="default">Lead</Badge>
-                      )}
+                        <p className="text-sm text-muted-foreground">
+                          {location.area}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium">
+                          {location.volume.toLocaleString()}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          ${location.arr.toLocaleString()}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
+  
+        {/* Additional Analysis */}
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
+          <Card className="col-span-1 lg:col-span-4">
+            <CardHeader>
+              <CardTitle>Volume Distribution</CardTitle>
+              <CardDescription>
+                Weekly volume by area
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px] sm:h-[350px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={metrics.volumeByArea}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="area" />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value) => value.toLocaleString()}
+                    />
+                    <Bar dataKey="volume" fill="#3b82f6">
+                      {metrics.volumeByArea.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]} 
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+  
+          <Card className="col-span-1 lg:col-span-3">
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+              <CardDescription>
+                Latest visits and updates
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[300px] sm:h-[350px]">
+                <div className="space-y-4">
+                  {metrics.recentVisits.map((shop) => (
+                    <div key={shop.id} className="flex items-start space-x-4">
+                      <div className="mt-1">
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {shop.title}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Visited on {format(new Date(shop.first_visit), 'PPP')}
+                        </p>
+                        {shop.manager_present && (
+                          <Badge variant="secondary" className="text-xs">
+                            Manager: {shop.manager_present}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
+  
+        {/* Upcoming Visits */}
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <CardTitle>Upcoming Visits</CardTitle>
+                <CardDescription>
+                  High-priority locations to visit
+                </CardDescription>
+              </div>
+              <Button variant="outline" asChild className="w-full sm:w-auto">
+                <Link href="/dashboard/routes">
+                  <Map className="mr-2 h-4 w-4" />
+                  Plan Route
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              {metrics.upcomingVisits.map((shop) => (
+                <Card key={shop.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start space-x-4">
+                      <div className="mt-1">
+                        <MapPin className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <p className="font-medium">{shop.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {shop.area}
+                        </p>
+                        {shop.volume && (
+                          <p className="text-sm">
+                            Volume: {shop.volume}
+                          </p>
+                        )}
+                        {shop.parlor_coffee_leads && (
+                          <Badge variant="default">Lead</Badge>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </PageContainer>
-
   )
 }
