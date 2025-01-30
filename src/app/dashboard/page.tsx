@@ -625,44 +625,6 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-
-              {/* Area Distribution */}
-                <Card>
-          <CardHeader>
-            <CardTitle>Area Distribution</CardTitle>
-            <CardDescription>
-              Locations by area
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px] sm:h-[350px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={metrics.areaDistribution}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    fill="#8884d8"
-                    label
-                  >
-                    {metrics.areaDistribution.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]} 
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-
-        </Card>
       </div>
     </PageContainer>
   )
