@@ -1,15 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { RouteMap } from "./route-map"
+import RouteMap from "./route-map"
 import { CoffeeShop } from "@prisma/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { 
-  Navigation, 
-  MapPin, 
   ArrowRight,
   X,
   Check,
@@ -119,7 +115,7 @@ export function MapTabContent({ shop, nearbyShops, maxDistance }: MapTabContentP
                     <div className="flex-1">
                       <p className="font-medium">{getCurrentLocation()?.title}</p>
                       <p className="text-sm text-muted-foreground">
-                        {getCurrentLocation()?.address}
+                        {getCurrentLocation()?.address}w
                       </p>
                     </div>
                   </div>

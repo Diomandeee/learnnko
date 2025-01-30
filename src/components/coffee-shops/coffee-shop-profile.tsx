@@ -46,36 +46,34 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { MapTabContent } from "./map/map-tab-content"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-// import { DirectionsPanel } from "./map/directions-panel"
 import { QuickEditDialog } from "./map/quick-edit-dialog"
 
 
 function EditableCell({ value, onUpdate, type = 'text' }) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [editValue, setEditValue] = useState(value?.toString() || '')
-  const { toast } = useToast()
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(value?.toString() || '');
+  const { toast } = useToast();
 
   const handleSubmit = async () => {
     try {
-      let processedValue = editValue
+      let processedValue = editValue;
       if (type === 'number' || type === 'volume') {
-        processedValue = parseFloat(editValue)
+        processedValue = parseFloat(editValue);
       }
-      await onUpdate(processedValue)
-      setIsEditing(false)
+      await onUpdate(processedValue);
+      setIsEditing(false);
       toast({
         title: "Updated successfully",
-        description: "The value has been updated."
-      })
+        description: "The value has been updated.",
+      });
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to update value.",
-        variant: "destructive"
-      })
+        variant: "destructive",
+      });
     }
-  }
+  };
 
   if (isEditing) {
     if (type === 'textarea') {
@@ -91,7 +89,7 @@ function EditableCell({ value, onUpdate, type = 'text' }) {
             <Button size="sm" variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
           </div>
         </div>
-      )
+      );
     }
 
     return (
@@ -105,7 +103,7 @@ function EditableCell({ value, onUpdate, type = 'text' }) {
         <Button size="sm" onClick={handleSubmit}>Save</Button>
         <Button size="sm" variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
       </div>
-    )
+    );
   }
 
   return (
@@ -113,11 +111,12 @@ function EditableCell({ value, onUpdate, type = 'text' }) {
       className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded"
       onClick={() => setIsEditing(true)}
     >
+      <span className="flex-1">{value}</span> {/* Display the value here */}
       <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
         <Pencil className="h-3 w-3" />
       </Button>
     </div>
-  )
+  );
 }
 
 export function CoffeeShopProfile({ shop }) {
@@ -127,7 +126,7 @@ export function CoffeeShopProfile({ shop }) {
   const [maxDistance, setMaxDistance] = useState(10)
   const [visitFilter, setVisitFilter] = useState('all')
   const [visitCountFilter, setVisitCountFilter] = useState('all')
-  const [isNearbyShopsExpanded, setIsNearbyShopsExpanded] = useState(true)
+  const [isNearbyShopsExpanded, setIsNearbyShopsExpanded] = useState(false)
   const [transportMode, setTransportMode] = useState('DRIVING')
   const { toast } = useToast()
 
@@ -565,25 +564,6 @@ export function CoffeeShopProfile({ shop }) {
                 </div>
               </div>
 
-              {/* Transport Mode */}
-              <div className="space-y-2">
-                <Label>Transport Mode</Label>
-                <RadioGroup
-                  defaultValue={transportMode}
-                  onValueChange={setTransportMode}
-                  className="grid grid-cols-2 gap-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="DRIVING" id="driving" />
-                    <Label htmlFor="driving">Driving</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="WALKING" id="walking" />
-                    <Label htmlFor="walking">Walking</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
               {/* Filters */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -728,3 +708,5 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 export default CoffeeShopProfile
+
+
