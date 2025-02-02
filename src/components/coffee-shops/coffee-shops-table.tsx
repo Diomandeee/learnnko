@@ -1190,6 +1190,26 @@ const sortedShops = useMemo(() => {
               </TableHead>
               <TableHead>
                 <div className="flex items-center gap-2">
+                  Website
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSort('website')}
+                  >
+                    {sortConfig.key === 'website' ? (
+                      sortConfig.direction === 'asc' ? (
+                        <ArrowUp className="h-4 w-4" />
+                      ) : (
+                        <ArrowDown className="h-4 w-4" />
+                      )
+                    ) : (
+                      <ArrowUp className="h-4 w-4 opacity-0 group-hover:opacity-100" />
+                    )}
+                  </Button>
+                </div>
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
                   Area
                   <Button
                     variant="ghost"
@@ -1216,7 +1236,7 @@ const sortedShops = useMemo(() => {
                     size="sm"
                     onClick={() => handleSort('Address')}
                   >
-                    {sortConfig.key === 'area' ? (
+                    {sortConfig.key === 'Address' ? (
                       sortConfig.direction === 'asc' ? (
                         <ArrowUp className="h-4 w-4" />
                       ) : (
@@ -1541,11 +1561,19 @@ const sortedShops = useMemo(() => {
                  </Link>
                </TableCell>
                <TableCell>
+                  <EditableCell
+                    value={shop.website}
+                    onUpdate={(value) => handleCellUpdate(shop, 'website', value)}
+                    type="url"
+                  />
+                </TableCell>
+               <TableCell>
                  <EditableCell
                    value={shop.area}
                    onUpdate={(value) => handleCellUpdate(shop, 'area', value)}
                  />
                </TableCell>
+                  
                <TableCell>
                  <EditableCell
                    value={shop.address}

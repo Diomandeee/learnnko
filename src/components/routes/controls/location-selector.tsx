@@ -1,4 +1,3 @@
-// src/components/routes/controls/location-selector.tsx
 "use client";
 
 import { useState } from "react";
@@ -14,6 +13,7 @@ import {
   MapPin,
   DollarSign,
   Building2,
+  Users,
 } from "lucide-react";
 import {
   Select,
@@ -28,7 +28,10 @@ export function LocationSelector() {
   const [selectedArea, setSelectedArea] = useState("all");
   const [showVisited, setShowVisited] = useState("all");
   const { shops, loading } = useCoffeeShops();
-  const { addLocation, selectedLocations } = useRouteStore();
+  const { addLocation, addLocations, selectedLocations } = useRouteStore();
+
+  // Filter for partner shops
+  const partnerShops = shops?.filter(shop => shop.isPartner) || [];
 
   const filteredShops = shops?.filter(shop => {
     const matchesSearch = shop.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -47,6 +50,14 @@ export function LocationSelector() {
 
   const areas = shops ? [...new Set(shops.map(shop => shop.area).filter(Boolean))] : [];
 
+  const handleAddAllPartners = () => {
+    // Filter out partners that are already selected
+    const newPartners = partnerShops.filter(
+      partner => !selectedLocations.find(loc => loc.id === partner.id)
+    );
+    addLocations(newPartners);
+  };
+
   if (loading) {
     return (
       <Card>
@@ -61,11 +72,31 @@ export function LocationSelector() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Add Locations</CardTitle>
+      <CardHeader className="space-y-4">
+        <div className="flex items-center justify-between">
+          <CardTitle>Add Locations</CardTitle>
+          {partnerShops.length > 0 && (
+            <Button 
+              variant="secondary" 
+              onClick={handleAddAllPartners}
+              className="whitespace-nowrap"
+            >
+              <Building2 className="mr-2 h-4 w-4" />
+              Add Partners ({partnerShops.length})
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Search and Filters */}
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            Select locations to add to your route
+          </p>
+        </div>
+          
+          {/* Search and filter */}
+            
         <div className="space-y-2">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />

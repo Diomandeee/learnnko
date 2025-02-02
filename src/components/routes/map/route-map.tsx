@@ -1,4 +1,4 @@
-// src/components/routes/map/route-map.tsx
+
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -6,315 +6,295 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouteStore } from "@/store/route-store";
+import { useRouter } from "next/navigation";
 
 interface MapWrapperType extends google.maps.Map {
-  markers?: google.maps.Marker[];
-  currentLocationMarker?: google.maps.Marker;
+ markers?: google.maps.Marker[];
+ currentLocationMarker?: google.maps.Marker;
+ directionsRenderer?: google.maps.DirectionsRenderer;
 }
 
 export function RouteMap() {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const [map, setMap] = useState<MapWrapperType | null>(null);
-  const [directionsService, setDirectionsService] = useState<google.maps.DirectionsService | null>(null);
-  const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
-  const {
-    selectedLocations,
-    currentRoute,
-    settings,
-    isNavigating,
-    currentStep,
-    setMetrics,
-  } = useRouteStore();
-  const { toast } = useToast();
+ const mapRef = useRef<HTMLDivElement>(null);
+ const [map, setMap] = useState<MapWrapperType | null>(null);
+ const [directionsService, setDirectionsService] = useState<google.maps.DirectionsService | null>(null);
+ const {
+   currentRoute,
+   settings,
+   isNavigating,
+   currentStep,
+   currentLocation,
+   setMetrics
+ } = useRouteStore();
+ const { toast } = useToast();
+ const router = useRouter();
 
-  // Initialize Google Maps
-  useEffect(() => {
-    if (!mapRef.current) return;
+ // Helper function to create marker content
+ const createMarkerContent = (location, index: number) => {
+   return `
+     <div class="p-4 min-w-[200px]">
+       <div class="font-bold text-lg mb-2">${index + 1}. ${location.title}</div>
+       <div class="text-sm mb-2">${location.address}</div>
+       ${location.phone ? `<div class="text-sm mb-2">📞 ${location.phone}</div>` : ''}
+       ${location.volume ? `
+         <div class="text-sm mb-2">Volume: ${location.volume}</div>
+         <div class="text-sm mb-2">ARR: $${((parseFloat(location.volume) * 52) * 18).toLocaleString()}</div>
+       ` : ''}
+       <div class="flex flex-wrap gap-2 mt-2">
+         ${location.is_source ? '<span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">Partner</span>' : ''}
+         ${location.visited ? '<span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Visited</span>' : ''}
+         ${location.parlor_coffee_leads ? '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">Lead</span>' : ''}
+       </div>
+       <div class="mt-4">
+         <button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${location.latitude},${location.longitude}', '_blank')" 
+                 class="text-sm text-blue-600 hover:text-blue-800">
+           Open in Google Maps
+         </button>
+       </div>
+     </div>
+   `;
+ };
 
-    const initMap = async () => {
-      try {
-        // Check if Google Maps script is already loaded
-        if (!window.google) {
-          const script = document.createElement('script');
-          script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places,geometry`;
-          script.async = true;
-          script.defer = true;
-          document.head.appendChild(script);
+ // Initialize map
+ useEffect(() => {
+   if (!mapRef.current) return;
 
-          // Wait for script to load
-          await new Promise((resolve) => {
-            script.onload = resolve;
-          });
-        }
+   const initMap = async () => {
+     try {
+       if (!window.google) {
+         const script = document.createElement('script');
+         script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places,geometry`;
+         script.async = true;
+         script.defer = true;
+         document.head.appendChild(script);
 
-        const mapInstance = new google.maps.Map(mapRef.current, {
-          center: { 
-            lat: selectedLocations[0]?.latitude || 40.7128, 
-            lng: selectedLocations[0]?.longitude || -74.0060 
-          },
-          zoom: 12,
-          styles: [
-            {
-              featureType: "poi",
-              elementType: "labels",
-              stylers: [{ visibility: "off" }]
-            }
-          ]
-        }) as MapWrapperType;
+         await new Promise((resolve) => {
+           script.onload = resolve;
+         });
+       }
 
-        const directionsServiceInstance = new google.maps.DirectionsService();
-        const directionsRendererInstance = new google.maps.DirectionsRenderer({
-          map: mapInstance,
-          suppressMarkers: true,  // We'll add custom markers
-        });
+       const mapInstance = new google.maps.Map(mapRef.current, {
+         zoom: 12,
+         center: currentLocation 
+           ? { lat: currentLocation.lat, lng: currentLocation.lng }
+           : { lat: 40.7128, lng: -74.0060 },
+         styles: [
+           {
+             featureType: "poi",
+             elementType: "labels",
+             stylers: [{ visibility: "off" }]
+           }
+         ]
+       }) as MapWrapperType;
 
-        setMap(mapInstance);
-        setDirectionsService(directionsServiceInstance);
-        setDirectionsRenderer(directionsRendererInstance);
-        
-        // Add traffic layer
-        const trafficLayer = new google.maps.TrafficLayer();
-        trafficLayer.setMap(mapInstance);
+       const directionsServiceInstance = new google.maps.DirectionsService();
+       const directionsRendererInstance = new google.maps.DirectionsRenderer({
+         map: mapInstance,
+         suppressMarkers: true,
+       });
 
-      } catch (error) {
-        console.error('Failed to initialize map:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load map. Please try refreshing the page.",
-          variant: "destructive"
-        });
-      }
-    };
+       mapInstance.directionsRenderer = directionsRendererInstance;
+       
+       setMap(mapInstance);
+       setDirectionsService(directionsServiceInstance);
 
-    initMap();
+     } catch (error) {
+       console.error('Failed to initialize map:', error);
+       toast({
+         title: "Error",
+         description: "Failed to load map. Please refresh the page.",
+         variant: "destructive"
+       });
+     }
+   };
 
-    return () => {
-      if (map) {
-        map.markers?.forEach(marker => marker.setMap(null));
-        if (directionsRenderer) directionsRenderer.setMap(null);
-      }
-    };
-  }, []);
+   initMap();
 
-  // Update markers when locations change
-  useEffect(() => {
-    if (!map) return;
+   return () => {
+     if (map) {
+       if (map.markers) {
+         map.markers.forEach(marker => marker.setMap(null));
+       }
+       if (map.directionsRenderer) {
+         map.directionsRenderer.setMap(null);
+       }
+     }
+   };
+ }, []);
 
-    // Clear existing markers
-    map.markers?.forEach(marker => marker.setMap(null));
-    map.markers = [];
+ // Update route display when currentRoute changes
+ useEffect(() => {
+   if (!map || !directionsService || currentRoute.length < 2) {
+     if (map && map.directionsRenderer) {
+       map.directionsRenderer.setDirections({ routes: [] });
+     }
+     return;
+   }
 
-    const bounds = new google.maps.LatLngBounds();
+   const updateRoute = async () => {
+     try {
+       const waypoints = currentRoute.slice(1, -1).map(location => ({
+         location: { lat: location.latitude, lng: location.longitude },
+         stopover: true
+       }));
 
-    // Add markers for selected locations
-    selectedLocations.forEach((location, index) => {
-      const position = { lat: location.latitude, lng: location.longitude };
-      bounds.extend(position);
+       const request = {
+         origin: { lat: currentRoute[0].latitude, lng: currentRoute[0].longitude },
+         destination: { 
+           lat: currentRoute[currentRoute.length - 1].latitude, 
+           lng: currentRoute[currentRoute.length - 1].longitude 
+         },
+         waypoints,
+         optimizeWaypoints: true,
+         travelMode: settings.transportMode as google.maps.TravelMode,
+         avoidHighways: settings.avoidHighways,
+         avoidTolls: settings.avoidTolls,
+       };
 
-      const marker = new google.maps.Marker({
-        position,
-        map,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: location.visited ? "#22c55e" : "#3b82f6",
-          fillOpacity: 1,
-          strokeWeight: 2,
-          strokeColor: "#ffffff",
-        },
-        title: location.title,
-        label: {
-          text: (index + 1).toString(),
-          color: "#ffffff",
-          fontSize: "12px",
-          fontWeight: "bold"
-        }
-      });
+       const result = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
+         directionsService.route(request, (result, status) => {
+           if (status === 'OK') resolve(result);
+           else reject(new Error(`Directions request failed: ${status}`));
+         });
+       });
 
-      const infoWindow = new google.maps.InfoWindow({
-        content: `
-          <div class="p-4">
-            <h3 class="font-bold">${location.title}</h3>
-            <p class="text-sm text-muted-foreground">${location.address}</p>
-            ${location.volume ? `
-              <p class="text-sm mt-2">Volume: ${location.volume}</p>
-              <p class="text-sm">ARR: $${((parseFloat(location.volume) * 52) * 18).toLocaleString()}</p>
-            ` : ''}
-            ${location.visited ? 
-              '<span class="inline-block px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Visited</span>' : 
-              '<span class="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Not Visited</span>'
-            }
-          </div>
-        `
-      });
+       if (map.directionsRenderer) {
+         map.directionsRenderer.setDirections(result);
+       }
 
-      marker.addListener('click', () => {
-        infoWindow.open(map, marker);
-      });
+       // Update markers
+       if (map.markers) {
+         map.markers.forEach(marker => marker.setMap(null));
+       }
 
-      map.markers.push(marker);
-    });
+       map.markers = currentRoute.map((location, index) => {
+         // Create marker
+         const marker = new google.maps.Marker({
+           position: { lat: location.latitude, lng: location.longitude },
+           map,
+           label: {
+             text: (index + 1).toString(),
+             color: "#ffffff",
+             fontSize: "14px",
+             fontWeight: "bold"
+           },
+           icon: {
+             path: google.maps.SymbolPath.CIRCLE,
+             scale: 14,
+             fillColor: location.is_source ? "#ef4444" : "#3b82f6",
+             fillOpacity: 1,
+             strokeWeight: 2,
+             strokeColor: "#ffffff",
+           },
+           title: location.title,
+           optimized: false
+         });
 
-    if (selectedLocations.length > 0) {
-      map.fitBounds(bounds);
-    }
-  }, [map, selectedLocations]);
+         // Create info window
+         const infoWindow = new google.maps.InfoWindow({
+           content: createMarkerContent(location, index),
+           maxWidth: 300
+         });
 
-  // Update route display when route changes
-  useEffect(() => {
-    if (!map || !directionsService || !directionsRenderer || currentRoute.length < 2) return;
+         // Add click listener to open info window
+         marker.addListener('click', () => {
+           // Close any open info windows first
+           map.markers?.forEach(m => {
+             if (m['infoWindow']) {
+               m['infoWindow'].close();
+             }
+           });
+           infoWindow.open(map, marker);
+         });
 
-    const calculateRoute = async () => {
-      try {
-        const waypoints = currentRoute.slice(1, -1).map(location => ({
-          location: { lat: location.latitude, lng: location.longitude },
-          stopover: true
-        }));
+         // Store reference to info window
+         marker['infoWindow'] = infoWindow;
 
-        const request = {
-          origin: { lat: currentRoute[0].latitude, lng: currentRoute[0].longitude },
-          destination: { 
-            lat: currentRoute[currentRoute.length - 1].latitude, 
-            lng: currentRoute[currentRoute.length - 1].longitude 
-          },
-          waypoints,
-          optimizeWaypoints: true,
-          travelMode: settings.transportMode as google.maps.TravelMode,
-          avoidHighways: settings.avoidHighways,
-          avoidTolls: settings.avoidTolls,
-        };
+         return marker;
+       });
 
-        const result = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
-          directionsService.route(request, (result, status) => {
-            if (status === 'OK') resolve(result);
-            else reject(new Error(`Directions request failed: ${status}`));
-          });
-        });
+       // Fit bounds to include all locations
+       const bounds = new google.maps.LatLngBounds();
+       currentRoute.forEach(location => {
+         bounds.extend({ lat: location.latitude, lng: location.longitude });
+       });
+       
+       // Add current location to bounds if available
+       if (currentLocation) {
+         bounds.extend(currentLocation);
+       }
+       
+       map.fitBounds(bounds);
+       
+       // Add padding to the bounds
+       const padded = new google.maps.LatLngBounds(
+         map.getBounds()?.getSouthWest(),
+         map.getBounds()?.getNorthEast()
+       );
+       map.fitBounds(padded);
 
-        directionsRenderer.setDirections(result);
+       // Update route metrics if available
+       if (result.routes[0]) {
+         const route = result.routes[0];
+         let totalDistance = 0;
+         let totalDuration = 0;
 
-        // Calculate metrics
-        let totalDistance = 0;
-        let totalDuration = 0;
-        result.routes[0].legs.forEach(leg => {
-          totalDistance += leg.distance?.value || 0;
-          totalDuration += leg.duration?.value || 0;
-        });
+         route.legs.forEach(leg => {
+           totalDistance += leg.distance?.value || 0;
+           totalDuration += leg.duration?.value || 0;
+         });
 
-        setMetrics({
-          totalDistance: totalDistance / 1000, // Convert to kilometers
-          totalDuration: totalDuration / 60, // Convert to minutes
-          numberOfStops: currentRoute.length,
-          estimatedArrival: new Date(Date.now() + totalDuration * 1000).toLocaleTimeString()
-        });
+         setMetrics({
+           totalDistance: totalDistance / 1000, // Convert to kilometers
+           totalDuration: totalDuration / 60, // Convert to minutes
+           numberOfStops: currentRoute.length,
+           estimatedArrival: new Date(Date.now() + totalDuration * 1000).toLocaleTimeString()
+         });
+       }
 
-      } catch (error) {
-        console.error('Failed to calculate route:', error);
-        toast({
-          title: "Error",
-          description: "Failed to calculate route. Please try again.",
-          variant: "destructive"
-        });
-      }
-    };
+     } catch (error) {
+       console.error('Failed to update route:', error);
+       toast({
+         title: "Error",
+         description: "Failed to update route on map.",
+         variant: "destructive"
+       });
+     }
+   };
 
-    calculateRoute();
-  }, [map, directionsService, directionsRenderer, currentRoute, settings]);
+   updateRoute();
+ }, [map, directionsService, currentRoute, settings, currentLocation]);
 
-  // Handle navigation mode
-  useEffect(() => {
-    if (!map || !isNavigating) return;
+ // Update current location marker
+ useEffect(() => {
+   if (!map || !currentLocation) return;
 
-    const location = currentRoute[currentStep];
-    if (!location) return;
+   if (map.currentLocationMarker) {
+     map.currentLocationMarker.setPosition(currentLocation);
+   } else {
+     map.currentLocationMarker = new google.maps.Marker({
+       position: currentLocation,
+       map,
+       icon: {
+         path: google.maps.SymbolPath.CIRCLE,
+         scale: 8,
+         fillColor: "#10b981",
+         fillOpacity: 1,
+         strokeWeight: 2,
+         strokeColor: "#ffffff",
+       },
+       title: "Current Location",
+       zIndex: 1000
+     });
+   }
+ }, [map, currentLocation]);
 
-    // Update map view for current location
-    map.panTo({ lat: location.latitude, lng: location.longitude });
-    map.setZoom(16);
-
-    // Update current location marker
-    if (map.currentLocationMarker) {
-      map.currentLocationMarker.setMap(null);
-    }
-
-    map.currentLocationMarker = new google.maps.Marker({
-      position: { lat: location.latitude, lng: location.longitude },
-      map,
-      icon: {
-        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-        scale: 6,
-        fillColor: "#ef4444",
-        fillOpacity: 1,
-        strokeWeight: 2,
-        strokeColor: "#ffffff",
-        rotation: 0
-      }
-    });
-
-    // Start location tracking if available
-    if (navigator.geolocation) {
-      const watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          const currentPos = new google.maps.LatLng(
-            position.coords.latitude,
-            position.coords.longitude
-          );
-
-          // Update current location marker
-          if (map.currentLocationMarker) {
-            map.currentLocationMarker.setPosition(currentPos);
-
-            // Calculate bearing to destination
-            const heading = google.maps.geometry.spherical.computeHeading(
-              currentPos,
-              new google.maps.LatLng(location.latitude, location.longitude)
-            );
-
-            // Update marker rotation
-            map.currentLocationMarker.setIcon({
-              ...map.currentLocationMarker.getIcon(),
-              rotation: heading
-            });
-
-            // Check if near destination (within 50 meters)
-            const distance = google.maps.geometry.spherical.computeDistanceBetween(
-              currentPos,
-              new google.maps.LatLng(location.latitude, location.longitude)
-            );
-
-            if (distance < 50) {
-              toast({
-                title: "Arrived at destination",
-                description: `You have arrived at ${location.title}`,
-              });
-            }
-          }
-        },
-        (error) => {
-          console.error('Geolocation error:', error);
-          toast({
-            title: "Location Error",
-            description: "Unable to track current location.",
-            variant: "destructive"
-          });
-        },
-        {
-          enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 5000
-        }
-      );
-
-      return () => navigator.geolocation.clearWatch(watchId);
-    }
-  }, [map, isNavigating, currentStep, currentRoute]);
-
-  return (
-    <Card className="relative overflow-hidden">
-      <div 
-        ref={mapRef}
-        className="w-full h-[800px] rounded-lg" 
-      />
-    </Card>
-  );
+ return (
+   <Card className="relative overflow-hidden">
+     <div 
+       ref={mapRef}
+       className="w-full h-[800px] rounded-lg" 
+     />
+   </Card>
+ );
 }

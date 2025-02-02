@@ -28,7 +28,29 @@ model User {
   folders       Folder[]
   coffeeShops   CoffeeShop[] // Add this line to complete the relation
   people        Person[]    // Add relation to Person model
+  filterHistory   FilterHistory[]
+  savedFilters    SavedFilter[]
+}
 
+
+model SavedFilter {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  filters     Json
+  userId      String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FilterHistory {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  filters     Json
+  results     Int
+  userId      String    @db.ObjectId
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
 }
 
 model Activity {

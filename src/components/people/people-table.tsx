@@ -36,7 +36,6 @@ import {
 } from "lucide-react"
 import { format } from "date-fns"
 import { usePeople } from "@/hooks/use-people"
-import { Person } from "@prisma/client"
 
 type SortField = 'name' | 'email' | 'company' | 'emailType' | 'verificationStatus' | 'createdAt'
 type SortDirection = 'asc' | 'desc'

@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useCoffeeShops } from "@/hooks/use-coffee-shops"
-import { Users, UserCheck, Briefcase, DollarSign } from "lucide-react"
+import { Users, UserCheck, Briefcase, DollarSign, TrendingUp, ShoppingBag } from "lucide-react"
 
 export function CoffeeShopStats() {
   const { shops } = useCoffeeShops()
@@ -10,15 +10,22 @@ export function CoffeeShopStats() {
   const stats = {
     total: shops?.length || 0,
     visited: shops?.filter(shop => shop.visited).length || 0,
-    source: shops?.filter(shop => shop.is_source).length || 0,
+    partner: shops?.filter(shop => shop.isPartner).length || 0,
     leads: shops?.filter(shop => shop.parlor_coffee_leads).length || 0,
     totalVolume: shops?.reduce((sum, shop) => {
+      const volume = shop.volume ? parseFloat(shop.volume) : 0
+      return sum + volume
+    }, 0) || 0,
+    // Calculate partner-specific stats
+    partnerVolume: shops?.reduce((sum, shop) => {
+      if (!shop.isPartner) return sum
       const volume = shop.volume ? parseFloat(shop.volume) : 0
       return sum + volume
     }, 0) || 0,
   }
 
   const estimatedAnnualRevenue = stats.totalVolume * 52 * 18
+  const estimatedPartnerRevenue = stats.partnerVolume * 52 * 18
 
   const statCards = [
     {
@@ -35,20 +42,32 @@ export function CoffeeShopStats() {
     },
     {
       title: "Partners",
-      value: stats.source,
+      value: stats.partner,
       icon: Briefcase,
-      description: `${stats.source} partner locations`,
+      description: `${((stats.partner / stats.total) * 100).toFixed(1)}% of total`,
     },
     {
-      title: "Weekly Volume",
+      title: "Total Weekly Volume",
       value: stats.totalVolume.toFixed(1),
       icon: DollarSign,
       description: `$${estimatedAnnualRevenue.toLocaleString()} ARR`,
     },
+    {
+      title: "Partner Weekly Volume",
+      value: stats.partnerVolume.toFixed(1),
+      icon: ShoppingBag,
+      description: `${((stats.partnerVolume / stats.totalVolume) * 100).toFixed(1)}% of total volume`,
+    },
+    {
+      title: "Partner Revenue",
+      value: `$${estimatedPartnerRevenue.toLocaleString()}`,
+      icon: TrendingUp,
+      description: "Estimated annual partner revenue",
+    },
   ]
 
   return (
-    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {statCards.map((stat, index) => (
         <Card key={index} className="overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
