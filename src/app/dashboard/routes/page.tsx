@@ -1,4 +1,3 @@
-// src/app/dashboard/routes/page.tsx
 "use client";
 
 import { useCallback, useState } from "react";
@@ -14,6 +13,10 @@ import {
   Calendar,
   Share2,
   Settings,
+  Navigation,
+  MapPin,
+  LocateFixed,
+  Trash2,
 } from "lucide-react";
 import { PageContainer } from "@/components/layout/page-container";
 
@@ -46,16 +49,18 @@ const RouteList = dynamic(
   { ssr: false }
 );
 
-const RouteMetrics = dynamic(
-  () => import("@/components/routes/shared/route-metrics").then(mod => ({
-    default: mod.RouteMetrics
-  })),
-  { ssr: false }
-);
-
 export default function RoutesPage() {
   const [isExporting, setIsExporting] = useState(false);
-  const { clearRoute, exportToCalendar, shareRoute } = useRouteStore();
+  const [isLocating, setIsLocating] = useState(false);
+  const { 
+    clearRoute, 
+    exportToCalendar, 
+    shareRoute, 
+    openInGoogleMaps,
+    updateCurrentLocation,
+    currentLocation,
+    currentRoute 
+  } = useRouteStore();
   const { toast } = useToast();
 
   const handleExport = useCallback(async () => {
@@ -77,56 +82,128 @@ export default function RoutesPage() {
     }
   }, [toast]);
 
+  const handleLocateMe = useCallback(async () => {
+    setIsLocating(true);
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject);
+      });
+      
+      updateCurrentLocation({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude
+      });
+
+      toast({
+        title: "Location Updated",
+        description: "Your current location has been updated."
+      });
+    } catch (error) {
+      toast({
+        title: "Location Error",
+        description: "Failed to get your current location. Please check your permissions.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLocating(false);
+    }
+  }, [updateCurrentLocation, toast]);
+
   return (
     <PageContainer>
+      <div className="container mx-auto p-6">
+        <div className="flex flex-col space-y-6">
+          {/* Header */}
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Route Planning</h1>
+              <p className="text-muted-foreground">
+                Plan and optimize your coffee shop visits
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button 
+                variant="outline" 
+                onClick={handleLocateMe} 
+                disabled={isLocating}
+                className="min-w-[140px]"
+              >
+                <LocateFixed className="mr-2 h-4 w-4" />
+                {isLocating ? "Locating..." : "Locate Me"}
+              </Button>
 
-    <div className="container mx-auto p-6">
-      <div className="flex flex-col space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Route Planning</h1>
-            <p className="text-muted-foreground">
-              Plan and optimize your coffee shop visits
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleExport} disabled={isExporting}>
-              <FileSpreadsheet className="mr-2 h-4 w-4" />
-              Export Route
-            </Button>
-            <Button variant="outline" onClick={exportToCalendar}>
-              <Calendar className="mr-2 h-4 w-4" />
-              Add to Calendar
-            </Button>
-            <Button variant="outline" onClick={shareRoute}>
-              <Share2 className="mr-2 h-4 w-4" />
-              Share Route
-            </Button>
-            <Button variant="destructive" onClick={clearRoute}>
-              Clear Route
-            </Button>
-          </div>
-        </div>
+              <Button 
+                variant="outline" 
+                onClick={() => openInGoogleMaps()}
+                disabled={currentRoute.length === 0}
+                className="min-w-[140px]"
+              >
+                <Navigation className="mr-2 h-4 w-4" />
+                Open in Maps
+              </Button>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-12 gap-4">
-          {/* Controls Sidebar */}
-          <div className="col-span-12 lg:col-span-3 space-y-4">
-            <LocationSelector />
-            <RouteControls />
-            <RouteMetrics />
-            <RouteList />
+              <Button 
+                variant="outline" 
+                onClick={handleExport} 
+                disabled={isExporting}
+              >
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export Route
+              </Button>
+
+              <Button 
+                variant="outline" 
+                onClick={shareRoute}
+                disabled={currentRoute.length === 0}
+              >
+                <Share2 className="mr-2 h-4 w-4" />
+                Share Route
+              </Button>
+
+              <Button 
+                variant="destructive" 
+                onClick={clearRoute}
+                disabled={currentRoute.length === 0}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Clear Route
+              </Button>
+            </div>
           </div>
 
-          {/* Map */}
-          <div className="col-span-12 lg:col-span-9">
-            <RouteMap />
+          {/* Current Location Indicator */}
+          {currentLocation && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <MapPin className="h-4 w-4" />
+              <span>
+                Current Location: {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
+              </span>
+            </div>
+          )}
+
+          {/* Main Content */}
+          <div className="grid grid-cols-12 gap-6">
+            {/* Left Column: Location Selector */}
+            <div className="col-span-12 lg:col-span-3">
+              <LocationSelector />
+            </div>
+
+            {/* Center Column: Map and Route List */}
+            <div className="col-span-12 lg:col-span-6 space-y-6">
+              {/* Map */}
+              <RouteMap />
+
+              {/* Route List */}
+              <RouteList />
+            </div>
+
+            {/* Right Column: Route Controls */}
+            <div className="col-span-12 lg:col-span-3">
+              <RouteControls />
+            </div>
           </div>
         </div>
       </div>
-    </div>
     </PageContainer>
-
   );
 }

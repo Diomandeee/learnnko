@@ -1,17 +1,8 @@
-"use client"
-
 import { useState, useMemo } from "react"
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 import {
   DropdownMenu,
@@ -28,15 +19,12 @@ import {
   Building,
   Phone,
   User,
-  Star,
   Trash2,
-  Edit,
-  ArrowUpDown,
   Filter,
+  ArrowUpDown,
 } from "lucide-react"
 import { format } from "date-fns"
 import { usePeople } from "@/hooks/use-people"
-import { Person } from "@prisma/client"
 
 type SortField = 'name' | 'email' | 'company' | 'emailType' | 'verificationStatus' | 'createdAt'
 type SortDirection = 'asc' | 'desc'
@@ -172,7 +160,7 @@ export function PeopleTable() {
 
   return (
     <div className="space-y-4">
-      {/* Search and Filters - Stack on mobile */}
+      {/* Search and Filters */}
       <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 sm:space-x-2">
         <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2">
           <Input
@@ -189,6 +177,17 @@ export function PeopleTable() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuLabel>Sort By</DropdownMenuLabel>
+              {['name', 'email', 'company', 'createdAt'].map((field) => (
+                <DropdownMenuItem
+                  key={field}
+                  onClick={() => handleSort(field as SortField)}
+                >
+                  <ArrowUpDown className="mr-2 h-4 w-4" />
+                  {field.charAt(0).toUpperCase() + field.slice(1)}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
               <DropdownMenuLabel>Email Type</DropdownMenuLabel>
               <DropdownMenuCheckboxItem
                 checked={filters.emailType === 'professional'}
@@ -208,229 +207,107 @@ export function PeopleTable() {
               >
                 Generic
               </DropdownMenuCheckboxItem>
-              
-              <DropdownMenuSeparator />
-              
-              <DropdownMenuLabel>Verification</DropdownMenuLabel>
-              <DropdownMenuCheckboxItem
-                checked={filters.verificationStatus === 'VALID'}
-                onCheckedChange={() => setFilters(f => ({
-                  ...f,
-                  verificationStatus: f.verificationStatus === 'VALID' ? null : 'VALID'
-                }))}
-              >
-                Valid
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={filters.verificationStatus === 'INVALID'}
-                onCheckedChange={() => setFilters(f => ({
-                  ...f,
-                  verificationStatus: f.verificationStatus === 'INVALID' ? null : 'INVALID'
-                }))}
-              >
-                Invalid
-              </DropdownMenuCheckboxItem>
-              
-              <DropdownMenuSeparator />
-              
-              <DropdownMenuLabel>Company</DropdownMenuLabel>
-              <DropdownMenuCheckboxItem
-                checked={filters.hasCompany === true}
-                onCheckedChange={() => setFilters(f => ({
-                  ...f,
-                  hasCompany: f.hasCompany === true ? null : true
-                }))}
-              >
-                Has Company
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={filters.hasCompany === false}
-                onCheckedChange={() => setFilters(f => ({
-                  ...f,
-                  hasCompany: f.hasCompany === false ? null : false
-                }))}
-              >
-                No Company
-              </DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
 
-      {/* Responsive Table */}
-      <div className="rounded-md border overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="min-w-[150px]">
-                <Button 
-                  variant="ghost" 
-                  onClick={() => handleSort('name')}
-                  className="flex items-center gap-2"
-                >
-                  Name
-                  <ArrowUpDown className="h-4 w-4" />
-                </Button>
-              </TableHead>
-              <TableHead className="min-w-[200px]">
-                <Button 
-                  variant="ghost" 
-                  onClick={() => handleSort('email')}
-                  className="flex items-center gap-2"
-                >
-                  Email
-                  <ArrowUpDown className="h-4 w-4" />
-                </Button>
-              </TableHead>
-              <TableHead className="min-w-[150px]">
-                <Button 
-                  variant="ghost" 
-                  onClick={() => handleSort('company')}
-                  className="flex items-center gap-2"
-                >
-                  Company
-                  <ArrowUpDown className="h-4 w-4" />
-                </Button>
-              </TableHead>
-              <TableHead className="min-w-[120px]">Phone</TableHead>
-              <TableHead className="min-w-[120px]">
-                <Button 
-                  variant="ghost" 
-                  onClick={() => handleSort('emailType')}
-                  className="flex items-center gap-2"
-                >
-                  Email Type
-                  <ArrowUpDown className="h-4 w-4" />
-                </Button>
-              </TableHead>
-              <TableHead className="min-w-[120px]">
-                <Button 
-                  variant="ghost" 
-                  onClick={() => handleSort('verificationStatus')}
-                  className="flex items-center gap-2"
-                >
-                  Verification
-                  <ArrowUpDown className="h-4 w-4" />
-                </Button>
-              </TableHead>
-              <TableHead className="min-w-[120px]">
-                <Button 
-                  variant="ghost" 
-                  onClick={() => handleSort('createdAt')}
-                  className="flex items-center gap-2"
-                >
-                  Created
-                  <ArrowUpDown className="h-4 w-4" />
-                </Button>
-              </TableHead>
-              <TableHead className="w-[60px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredAndSortedPeople.length === 0 ? (
-              <TableRow>
-                <TableCell 
-                  colSpan={8} 
-                  className="text-center py-8 text-muted-foreground"
-                >
-                  No people found
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredAndSortedPeople.map((person) => (
-                <TableRow key={person.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      <span className="truncate">
+      {/* Card Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredAndSortedPeople.length === 0 ? (
+          <div className="col-span-full text-center py-8 text-muted-foreground">
+            No people found
+          </div>
+        ) : (
+          filteredAndSortedPeople.map((person) => (
+            <Card key={person.id} className="flex flex-col">
+              <CardContent className="p-6 flex flex-col h-full">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <User className="h-8 w-8 text-muted-foreground" />
+                    <div>
+                      <h3 className="font-semibold">
                         {person.firstName || person.lastName ? (
                           `${person.firstName || ''} ${person.lastName || ''}`
                         ) : (
                           <span className="text-muted-foreground">No name</span>
                         )}
-                      </span>
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        Added {format(new Date(person.createdAt), 'MMM d, yyyy')}
+                      </p>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      <a 
-                        href={`mailto:${person.email}`}
-                        className="text-blue-600 hover:underline truncate"
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem>
+                        <Mail className="mr-2 h-4 w-4" />
+                        Send Email
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => handleDelete(person.id)}
+                        className="text-red-600"
                       >
-                        {person.email}
-                      </a>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Building className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      <span className="truncate">{person.company || 'N/A'}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      <span className="truncate">{person.phone || 'N/A'}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={person.emailType === 'professional' ? 'default' : 'secondary'}>
-                      {person.emailType}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={
-                      person.verificationStatus === 'VALID' ? 'success' :
-                      person.verificationStatus === 'INVALID' ? 'destructive' :
-                      'secondary'
-                    }>
-                      {person.verificationStatus}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <span className="truncate">
-                      {format(new Date(person.createdAt), 'MMM d, yyyy')}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-[160px]">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem>
-                          <Mail className="mr-2 h-4 w-4" />
-                          Send Email
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => handleDelete(person.id)}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                <div className="space-y-3 flex-grow">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <a 
+                      href={`mailto:${person.email}`}
+                      className="text-blue-600 hover:underline truncate"
+                    >
+                      {person.email}
+                    </a>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Building className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="truncate">{person.company || 'No company'}</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="truncate">{person.phone || 'No phone'}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 mt-4 pt-4 border-t">
+                  <Badge variant={person.emailType === 'professional' ? 'default' : 'secondary'}>
+                    {person.emailType}
+                  </Badge>
+                  <Badge variant={
+                    person.verificationStatus === 'VALID' ? 'success' :
+                    person.verificationStatus === 'INVALID' ? 'destructive' :
+                    'secondary'
+                  }>
+                    {person.verificationStatus}
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
-      {/* Mobile View Stats */}
-      <div className="mt-4 sm:hidden">
-        <div className="text-sm text-muted-foreground">
-          {filteredAndSortedPeople.length} 
-          {filteredAndSortedPeople.length === 1 ? ' person' : ' people'} found
-        </div>
+      {/* Results Count */}
+      <div className="text-sm text-muted-foreground">
+        {filteredAndSortedPeople.length} 
+        {filteredAndSortedPeople.length === 1 ? ' person' : ' people'} found
       </div>
     </div>
   )
 }
+
+export default PeopleTable;

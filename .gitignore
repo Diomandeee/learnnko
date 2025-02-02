@@ -39,4 +39,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.dir_struc.py
+.dir_struc.py# Table component build files
+.DS_Store
+*.log

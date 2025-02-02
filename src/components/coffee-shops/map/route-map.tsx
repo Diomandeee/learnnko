@@ -46,6 +46,7 @@ export default function RouteMap({ sourceShop, nearbyShops, maxDistance, onRoute
   const [showUserLocation, setShowUserLocation] = useState(false)
   const { toast } = useToast()
 
+  
   // Clean up function for markers and info windows
   const cleanupMarkers = useCallback(() => {
     shopMarkers.forEach(marker => marker.setMap(null))
