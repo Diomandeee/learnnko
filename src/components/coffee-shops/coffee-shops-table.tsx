@@ -1025,7 +1025,7 @@ const sortedShops = useMemo(() => {
     }
   };
  
-  if (loading) return <div>Loading...</div>
+  if (loading) return <div></div>
   if (error) return <div>Error loading coffee shops</div>
  
   return (
