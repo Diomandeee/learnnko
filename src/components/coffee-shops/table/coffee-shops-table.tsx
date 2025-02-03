@@ -223,13 +223,6 @@ export function CoffeeShopsTable({ shops }: CoffeeShopsTableProps) {
           onClearFilters={() => setActiveFilters([])}
         />
 
-        {/* <SavedFiltersMenu
-          activeFilters={activeFilters}
-          savedFilters={savedFilters}
-          onSave={handleSaveFilter}
-          onDelete={handleDeleteFilter}
-          onLoad={handleLoadFilter}
-        /> */}
       </div>
 
       <div className="flex justify-between items-center">

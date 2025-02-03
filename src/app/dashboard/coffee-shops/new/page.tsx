@@ -1,5 +1,7 @@
+// src/app/dashboard/coffee-shops/new/page.tsx
 import { Metadata } from "next"
 import { NewCoffeeShopForm } from "@/components/coffee-shops/new-coffee-shop-form"
+import { ClientOnly } from "@/components/providers/client-only"
 
 export const metadata: Metadata = {
   title: "Add Coffee Shop | Milk Man CRM",
@@ -9,8 +11,9 @@ export const metadata: Metadata = {
 export default function NewCoffeeShopPage() {
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
-      <h1 className="text-3xl font-bold tracking-tight">Add New Coffee Shop</h1>
-      <NewCoffeeShopForm />
+      <ClientOnly>
+        <NewCoffeeShopForm />
+      </ClientOnly>
     </div>
   )
 }

@@ -22,7 +22,7 @@ import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/components/ui/use-toast"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { DomainSearch } from "./domain-search"
-import { PlaceSearch } from "./place-search"
+// import { PlaceSearch } from "./place-search"
 
 
 import {
@@ -550,7 +550,7 @@ async function onSubmit(data: FormData) {
                   />
                 </CardContent>
               </Card>
-              <Card className="bg-muted/50">
+              {/* <Card className="bg-muted/50">
                 <CardHeader>
                   <CardTitle className="text-lg">Search Business</CardTitle>
                   <CardDescription>
@@ -572,7 +572,7 @@ async function onSubmit(data: FormData) {
                     }}
                   />
                 </CardContent>
-              </Card>
+              </Card> */}
               {/* Basic Information */}
               <div className="grid gap-6 grid-cols-1 md:grid-cols-1 md:grid-cols-2">
                 <FormField

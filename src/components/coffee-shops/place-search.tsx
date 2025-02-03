@@ -8,7 +8,7 @@ import {
   Card,
   CardContent,
 } from "@/components/ui/card"
-import { Loader2, MapPin, Phone, Clock, DollarSign, Star } from "lucide-react"
+import { Loader2, Star } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 
 interface PlaceSearchProps {
@@ -55,45 +55,54 @@ export function PlaceSearch({
     return neighborhood?.long_name || sublocality?.long_name || locality?.long_name;
   };
 
-  const handleSearch = async () => {
-    if (!window.google || !searchTerm) return;
+// Update the handleSearch function in your PlaceSearch component
 
-    setLoading(true);
-    setShowResults(true);
+const handleSearch = async () => {
+  if (!window.google || !searchTerm) return;
 
-    try {
-      // Create a map div (required for PlacesService)
-      const mapDiv = document.createElement('div');
-      const service = new google.maps.places.PlacesService(mapDiv);
+  setLoading(true);
+  setShowResults(true);
 
-      const request = {
-        query: searchTerm,
-        type: ['cafe', 'restaurant'],
-      };
+  try {
+    // Create proper map instance
+    const mapDiv = document.createElement('div');
+    const map = new google.maps.Map(mapDiv, {
+      center: { lat: 0, lng: 0 },
+      zoom: 1
+    });
+    
+    const service = new google.maps.places.PlacesService(map);
 
-      service.textSearch(request, (results, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-          setPlaces(results);
-        } else {
-          toast({
-            title: "Error",
-            description: "Failed to find places",
-            variant: "destructive"
-          });
-        }
-        setLoading(false);
+    // Create a promise wrapper for the textSearch service
+    const searchPlaces = () => {
+      return new Promise((resolve, reject) => {
+        service.textSearch({
+          query: searchTerm,
+          type: ['cafe', 'restaurant']
+        }, (results, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+            resolve(results);
+          } else {
+            reject(new Error(`Places API error: ${status}`));
+          }
+        });
       });
-    } catch (error) {
-      console.error('Place search error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to search places",
-        variant: "destructive"
-      });
-      setLoading(false);
-    }
-  };
+    };
 
+    const results = await searchPlaces();
+    setPlaces(results);
+
+  } catch (error) {
+    console.error('Place search error:', error);
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "Failed to search places",
+      variant: "destructive"
+    });
+  } finally {
+    setLoading(false);
+  }
+};
   const handlePlaceSelect = async (place: google.maps.places.PlaceResult) => {
     if (!place.place_id) return;
 
