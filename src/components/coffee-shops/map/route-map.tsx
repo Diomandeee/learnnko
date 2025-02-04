@@ -536,7 +536,9 @@ export default function RouteMap({ sourceShop, nearbyShops, maxDistance, onRoute
     if (!nearbyShops.length) return null
 
     let url = 'https://www.google.com/maps/dir/?api=1'
-    const startPoint = userLocation || { lat: sourceShop.latitude, lng: sourceShop.longitude }
+    
+    // Always use source shop as starting point if no user location
+    const startPoint = { lat: sourceShop.latitude, lng: sourceShop.longitude }
     
     url += `&origin=${startPoint.lat},${startPoint.lng}`
     url += `&destination=${sourceShop.latitude},${sourceShop.longitude}`
@@ -549,7 +551,7 @@ export default function RouteMap({ sourceShop, nearbyShops, maxDistance, onRoute
     url += `&travelmode=${transportMode.toLowerCase()}`
 
     return url
-  }, [sourceShop, nearbyShops, transportMode, userLocation])
+  }, [sourceShop, nearbyShops, transportMode])
 
   useEffect(() => {
     const loadGoogleMaps = () => {
@@ -642,6 +644,7 @@ export default function RouteMap({ sourceShop, nearbyShops, maxDistance, onRoute
 
         {/* Action Buttons - Grid layout for all screen sizes */}
         <div className="grid grid-cols-2 gap-2">
+          {/* Show/Hide Location Button */}
           <Button
             variant="outline"
             size="sm"
@@ -652,6 +655,7 @@ export default function RouteMap({ sourceShop, nearbyShops, maxDistance, onRoute
             {showUserLocation ? "Hide" : "Show"} Location
           </Button>
           
+          {/* Refresh Button */}
           <Button
             variant="outline"
             size="sm"
@@ -666,42 +670,39 @@ export default function RouteMap({ sourceShop, nearbyShops, maxDistance, onRoute
             Refresh
           </Button>
 
-          {locationEnabled && (
+          {/* Calculate Button - No location dependency */}
+          <Button 
+            onClick={calculateRoute} 
+            disabled={isCalculating}
+            className="w-full"
+          >
+            {isCalculating ? "Calculating..." : "Calculate"}
+          </Button>
+          
+          {routeSteps.length > 0 && (
             <>
               <Button 
-                onClick={calculateRoute} 
-                disabled={isCalculating}
+                onClick={() => {
+                  setNavigationMode(true)
+                  setCurrentStep(0)
+                }}
+                variant="secondary"
                 className="w-full"
               >
-                {isCalculating ? "Calculating..." : "Calculate"}
+                Start
               </Button>
               
-              {routeSteps.length > 0 && (
-                <>
-                  <Button 
-                    onClick={() => {
-                      setNavigationMode(true)
-                      setCurrentStep(0)
-                    }}
-                    variant="secondary"
-                    className="w-full"
-                  >
-                    Start
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      const url = generateGoogleMapsUrl()
-                      if (url) window.open(url, '_blank')
-                    }}
-                    className="w-full col-span-2"
-                  >
-                    <Map className="h-4 w-4 mr-2" />
-                    Open in Maps
-                  </Button>
-                </>
-              )}
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const url = generateGoogleMapsUrl()
+                  if (url) window.open(url, '_blank')
+                }}
+                className="w-full col-span-2"
+              >
+                <Map className="h-4 w-4 mr-2" />
+                Open in Maps
+              </Button>
             </>
           )}
         </div>
