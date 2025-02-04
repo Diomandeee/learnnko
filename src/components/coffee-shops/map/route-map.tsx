@@ -510,13 +510,54 @@ export default function RouteMap({ sourceShop, nearbyShops, maxDistance, onRoute
       setIsAtDestination(false)
       
       const nextLocation = nearbyShops[currentStep + 1]
-      if (map) {
-        map.panTo({ lat: nextLocation.latitude, lng: nextLocation.longitude })
-        map.setZoom(16)
-        await calculateRoute()
+      const currentLocation = nearbyShops[currentStep]
+  
+      if (map && directionsService && directionsRenderer) {
+        // Calculate route between current and next location only
+        try {
+          const request = {
+            origin: { 
+              lat: currentLocation.latitude, 
+              lng: currentLocation.longitude 
+            },
+            destination: { 
+              lat: nextLocation.latitude, 
+              lng: nextLocation.longitude 
+            },
+            travelMode: transportMode === 'WALKING' ? 
+              google.maps.TravelMode.WALKING : 
+              google.maps.TravelMode.DRIVING,
+          }
+  
+          const result = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
+            directionsService.route(request, (result, status) => {
+              if (status === 'OK') resolve(result)
+              else reject(new Error(`Directions failed: ${status}`))
+            })
+          })
+  
+          directionsRenderer.setDirections(result)
+  
+          // Fit the map to show the current route segment
+          const bounds = new google.maps.LatLngBounds()
+          bounds.extend({ lat: currentLocation.latitude, lng: currentLocation.longitude })
+          bounds.extend({ lat: nextLocation.latitude, lng: nextLocation.longitude })
+          
+          // Add some padding to the bounds
+          map.fitBounds(bounds, {
+            padding: { top: 50, right: 50, bottom: 50, left: 50 }
+          })
+        } catch (error) {
+          console.error('Error calculating segment route:', error)
+          toast({
+            title: "Error",
+            description: "Failed to update route view.",
+            variant: "destructive"
+          })
+        }
       }
     }
-  }, [currentStep, nearbyShops, map, calculateRoute])
+  }, [currentStep, nearbyShops, map, directionsService, directionsRenderer, transportMode, toast])
 
   const handlePreviousLocation = useCallback(async () => {
     if (currentStep > 0) {
@@ -524,13 +565,53 @@ export default function RouteMap({ sourceShop, nearbyShops, maxDistance, onRoute
       setIsAtDestination(false)
       
       const previousLocation = nearbyShops[currentStep - 1]
-      if (map) {
-        map.panTo({ lat: previousLocation.latitude, lng: previousLocation.longitude })
-        map.setZoom(16)
-        await calculateRoute()
+      const currentLocation = nearbyShops[currentStep]
+  
+      if (map && directionsService && directionsRenderer) {
+        try {
+          const request = {
+            origin: { 
+              lat: previousLocation.latitude, 
+              lng: previousLocation.longitude 
+            },
+            destination: { 
+              lat: currentLocation.latitude, 
+              lng: currentLocation.longitude 
+            },
+            travelMode: transportMode === 'WALKING' ? 
+              google.maps.TravelMode.WALKING : 
+              google.maps.TravelMode.DRIVING,
+          }
+  
+          const result = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
+            directionsService.route(request, (result, status) => {
+              if (status === 'OK') resolve(result)
+              else reject(new Error(`Directions failed: ${status}`))
+            })
+          })
+  
+          directionsRenderer.setDirections(result)
+  
+          // Fit the map to show the current route segment
+          const bounds = new google.maps.LatLngBounds()
+          bounds.extend({ lat: previousLocation.latitude, lng: previousLocation.longitude })
+          bounds.extend({ lat: currentLocation.latitude, lng: currentLocation.longitude })
+          
+          // Add some padding to the bounds
+          map.fitBounds(bounds, {
+            padding: { top: 50, right: 50, bottom: 50, left: 50 }
+          })
+        } catch (error) {
+          console.error('Error calculating segment route:', error)
+          toast({
+            title: "Error",
+            description: "Failed to update route view.",
+            variant: "destructive"
+          })
+        }
       }
     }
-  }, [currentStep, nearbyShops, map, calculateRoute])
+  }, [currentStep, nearbyShops, map, directionsService, directionsRenderer, transportMode, toast])
 
   const generateGoogleMapsUrl = useCallback(() => {
     if (!nearbyShops.length) return null
