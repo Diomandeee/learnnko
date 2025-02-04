@@ -16,8 +16,6 @@ import { useToast } from "@/components/ui/use-toast"
 import { Badge } from "@/components/ui/badge"
 import {
   MapPin,
-  ArrowRight,
-  ArrowLeft,
   Edit2,
   Save,
   Map,
@@ -120,28 +118,6 @@ export function NavigationControls({
             </div>
           )}
         </div>
-      </div>
-
-      {/* Navigation Controls */}
-      <div className="grid grid-cols-2 gap-2">
-        <Button
-          variant="outline"
-          onClick={onMovePrevious}
-          disabled={!canMovePrevious}
-          className="w-full"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          onClick={onMoveNext}
-          disabled={!canMoveNext}
-          className="w-full"
-        >
-          Next
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </Button>
       </div>
 
       {/* Action Buttons */}
