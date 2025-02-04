@@ -5,18 +5,12 @@ import { Card } from "@/components/ui/card"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { NavigationPanel } from "./navigation-panel"
-import { DestinationReached } from "./destination-reached"
-import { Car, Navigation, Badge, RefreshCw, ChevronLeft, ChevronRight, Map, User } from "lucide-react"
+import { Car, Navigation, RefreshCw, ChevronLeft, ChevronRight, Map, User } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/use-toast"
-
-declare global {
-  interface Window {
-    google: typeof google
-    initMap: () => void
-  }
-}
-
+import { loadGoogleMaps } from "@/lib/google-maps-loader"
+import { Badge } from "@/components/ui/badge"
+  
 interface RouteStep {
   instructions: string
   distance: string
@@ -44,7 +38,79 @@ export default function RouteMap({ sourceShop, nearbyShops, maxDistance, onRoute
   const [watchId, setWatchId] = useState<number | null>(null)
   const [locationEnabled, setLocationEnabled] = useState(false)
   const [showUserLocation, setShowUserLocation] = useState(false)
+  const [isMapInitialized, setIsMapInitialized] = useState(false)
   const { toast } = useToast()
+
+
+  // Initialize map only once when component mounts
+  useEffect(() => {
+    let mapInstance: google.maps.Map | null = null;
+
+    const initializeMap = async () => {
+      try {
+        await loadGoogleMaps();
+        
+        if (!sourceShop || !document.getElementById("route-map")) return;
+
+        mapInstance = new window.google.maps.Map(
+          document.getElementById("route-map")!,
+          {
+            center: { lat: sourceShop.latitude, lng: sourceShop.longitude },
+            zoom: 13,
+            styles: [
+              {
+                featureType: "poi",
+                elementType: "labels",
+                stylers: [{ visibility: "off" }]
+              }
+            ]
+          }
+        );
+
+        const directionsServiceInstance = new window.google.maps.DirectionsService();
+        const directionsRendererInstance = new window.google.maps.DirectionsRenderer({
+          map: mapInstance,
+          suppressMarkers: true,
+          preserveViewport: false
+        });
+
+        setMap(mapInstance);
+        setDirectionsService(directionsServiceInstance);
+        setDirectionsRenderer(directionsRendererInstance);
+        setIsMapInitialized(true);
+
+        // Initialize traffic layer
+        const trafficLayer = new window.google.maps.TrafficLayer();
+        trafficLayer.setMap(mapInstance);
+
+        // Add markers and start location tracking if enabled
+        if (mapInstance) {
+          addShopMarkers(mapInstance);
+          if (locationEnabled) {
+            await startLocationTracking(mapInstance);
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing map:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load Google Maps",
+          variant: "destructive"
+        });
+      }
+    };
+
+    initializeMap();
+
+    return () => {
+      cleanupMarkers();
+      if (directionsRenderer) {
+        directionsRenderer.setMap(null);
+      }
+      stopLocationTracking();
+      setIsMapInitialized(false);
+    };
+  }, [sourceShop]); // Only re-run if sourceShop changes
 
   
   // Clean up function for markers and info windows
@@ -160,12 +226,13 @@ export default function RouteMap({ sourceShop, nearbyShops, maxDistance, onRoute
   }, [sourceShop, nearbyShops, cleanupMarkers, infoWindows])
 
   const updateUserMarker = useCallback((position: google.maps.LatLngLiteral, mapInstance: google.maps.Map) => {
+    if (!isMapInitialized || !mapInstance) return;
     if (!userMarker) {
-      const marker = new google.maps.Marker({
+      const marker = new window.google.maps.Marker({
         position,
         map: mapInstance,
         icon: {
-          path: google.maps.SymbolPath.CIRCLE,
+          path: window.google.maps.SymbolPath.CIRCLE,
           scale: 8,
           fillColor: "#4CAF50",
           fillOpacity: 1,
@@ -178,7 +245,8 @@ export default function RouteMap({ sourceShop, nearbyShops, maxDistance, onRoute
     } else {
       userMarker.setPosition(position)
     }
-  }, [userMarker])
+  }, [userMarker, isMapInitialized])
+
 
   const startLocationTracking = useCallback(async (mapInstance: google.maps.Map) => {
     if (!("geolocation" in navigator)) {
@@ -542,100 +610,101 @@ export default function RouteMap({ sourceShop, nearbyShops, maxDistance, onRoute
 
   return (
     <div className="flex flex-col space-y-4">
-      {/* Controls Card - Full width on mobile */}
-      <Card className="p-4 w-full">
-  <div className="flex flex-col space-y-4">
-    {/* Transport Mode Selection */}
-    <div className="w-full">
-      <RadioGroup
-        defaultValue={transportMode}
-        onValueChange={async (value) => {
-          setTransportMode(value as 'DRIVING' | 'WALKING')
-          if (routeSteps.length > 0) {
-            await calculateRoute()
-          }
-        }}
-        className="flex justify-center sm:justify-start gap-4"
-      >
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem value="DRIVING" id="driving" />
-          <Label htmlFor="driving" className="flex items-center gap-2">
-            <Car className="h-4 w-4" /> Driving
-          </Label>
+    {/* Controls Card - Full width on all devices */}
+    <Card className="p-4 w-full">
+      <div className="flex flex-col space-y-4">
+        {/* Transport Mode Selection */}
+        <div className="w-full">
+          <RadioGroup
+            defaultValue={transportMode}
+            onValueChange={async (value) => {
+              setTransportMode(value as 'DRIVING' | 'WALKING')
+              if (routeSteps.length > 0) {
+                await calculateRoute()
+              }
+            }}
+            className="flex justify-center sm:justify-start gap-4"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="DRIVING" id="driving" />
+              <Label htmlFor="driving" className="flex items-center gap-2">
+                <Car className="h-4 w-4" /> Driving
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="WALKING" id="walking" />
+              <Label htmlFor="walking" className="flex items-center gap-2">
+                <Navigation className="h-4 w-4" /> Walking
+              </Label>
+            </div>
+          </RadioGroup>
         </div>
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem value="WALKING" id="walking" />
-          <Label htmlFor="walking" className="flex items-center gap-2">
-            <Navigation className="h-4 w-4" /> Walking
-          </Label>
-        </div>
-      </RadioGroup>
-    </div>
 
-    {/* Primary Action Buttons */}
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setShowUserLocation(!showUserLocation)}
-        className="w-full"
-      >
-        <User className="h-4 w-4 mr-2" />
-        {showUserLocation ? "Hide" : "Show"} Location
-      </Button>
-      
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleRefresh}
-        disabled={isCalculating}
-        className="w-full"
-      >
-        <RefreshCw className={cn(
-          "h-4 w-4 mr-2",
-          isCalculating && "animate-spin"
-        )} />
-        Refresh
-      </Button>
-
-      {locationEnabled && !navigationMode && (
-        <>
-          <Button 
-            onClick={calculateRoute} 
+        {/* Action Buttons - Grid layout for all screen sizes */}
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowUserLocation(!showUserLocation)}
+            className="w-full"
+          >
+            <User className="h-4 w-4 mr-2" />
+            {showUserLocation ? "Hide" : "Show"} Location
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
             disabled={isCalculating}
             className="w-full"
           >
-            {isCalculating ? "Calculating..." : "Calculate"}
+            <RefreshCw className={cn(
+              "h-4 w-4 mr-2",
+              isCalculating && "animate-spin"
+            )} />
+            Refresh
           </Button>
-          
-          {routeSteps.length > 0 && (
+
+          {locationEnabled && (
             <>
               <Button 
-                onClick={() => {
-                  setNavigationMode(true)
-                  setCurrentStep(0)
-                }}
-                variant="secondary"
+                onClick={calculateRoute} 
+                disabled={isCalculating}
                 className="w-full"
               >
-                Start
+                {isCalculating ? "Calculating..." : "Calculate"}
               </Button>
               
-              <Button
-                variant="outline"
-                onClick={() => {
-                  const url = generateGoogleMapsUrl()
-                  if (url) window.open(url, '_blank')
-                }}
-                className="w-full"
-              >
-                Open Maps
-              </Button>
+              {routeSteps.length > 0 && (
+                <>
+                  <Button 
+                    onClick={() => {
+                      setNavigationMode(true)
+                      setCurrentStep(0)
+                    }}
+                    variant="secondary"
+                    className="w-full"
+                  >
+                    Start
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const url = generateGoogleMapsUrl()
+                      if (url) window.open(url, '_blank')
+                    }}
+                    className="w-full col-span-2"
+                  >
+                    <Map className="h-4 w-4 mr-2" />
+                    Open in Maps
+                  </Button>
+                </>
+              )}
             </>
           )}
-        </>
-      )}
-    </div>
+        </div>
 
     {/* Navigation Controls - Only show when in navigation mode */}
     {navigationMode && (
@@ -674,7 +743,7 @@ export default function RouteMap({ sourceShop, nearbyShops, maxDistance, onRoute
       </div>
     )}
   </div>
-</Card>
+      </Card>
   
       {/* Main Content Grid - Stack on mobile */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
