@@ -6,6 +6,18 @@ datasource db {
  provider = "mongodb"
  url      = env("DATABASE_URL")
 }
+
+enum Stage {
+  PROSPECTING
+  QUALIFICATION
+  MEETING
+  PROPOSAL
+  NEGOTIATION
+  PAUSED
+  WON
+  LOST
+}
+
 model User {
   id            String       @id @default(auto()) @map("_id") @db.ObjectId
   email         String      @unique
@@ -402,6 +414,10 @@ model CoffeeShop {
   emails               Json?     // Stores array of discovered emails
   company_data         Json?     // Stores company enrichment data
   people               Person[]  // Relation to people discovered from emails
+  stage     Stage     @default(PROSPECTING)
+  delivery_frequency String? // Values: "WEEKLY", "BIWEEKLY", "THREE_WEEKS", "FOUR_WEEKS", "FIVE_WEEKS", "SIX_WEEKS"
+
+  
 }
 
 

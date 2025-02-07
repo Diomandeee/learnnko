@@ -24,6 +24,10 @@ import { EditableCell } from "../editable-cell"
 import { DateCell } from "./date-cell"
 import { StarRating } from "./star-rating"
 import { CoffeeShop } from "@prisma/client"
+import { StageCell } from "./stage-cell"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { calculateARR } from "./utils"
+import { DELIVERY_FREQUENCY_LABELS } from "./types"
 
 interface TableRowProps {
   shop: CoffeeShop
@@ -132,6 +136,13 @@ export function TableRow({
           ) : "Not Partner"}
         </Badge>
       </TableCell>
+      <TableCell>
+      <StageCell
+        stage={shop.stage}
+        onUpdate={(value) => handleUpdate('stage', value)}
+        disabled={loading}
+      />
+    </TableCell>
 
       <TableCell>
         <EditableCell
@@ -189,14 +200,32 @@ export function TableRow({
           disabled={loading}
         />
       </TableCell>
-
       <TableCell>
-        {shop.volume ? (
-          <div className="text-sm">
-            ${((parseFloat(shop.volume) * 52) * 18).toLocaleString()}
-          </div>
-        ) : "-"}
+        <Select
+          value={shop.delivery_frequency || 'WEEKLY'}
+          onValueChange={(value) => handleUpdate('delivery_frequency', value)}
+          disabled={loading}
+        >
+          <SelectTrigger className="w-[130px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(DELIVERY_FREQUENCY_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </TableCell>
+
+    <TableCell>
+      {shop.volume ? (
+        <div className="text-sm">
+          ${calculateARR(shop.volume, shop.delivery_frequency).toLocaleString()}
+        </div>
+      ) : "-"}
+    </TableCell>
 
       <TableCell>
         <DateCell

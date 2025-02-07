@@ -39,6 +39,8 @@ export default function RouteMap({ sourceShop, nearbyShops, maxDistance, onRoute
   const [locationEnabled, setLocationEnabled] = useState(false)
   const [showUserLocation, setShowUserLocation] = useState(false)
   const [isMapInitialized, setIsMapInitialized] = useState(false)
+  const [useLocation, setUseLocation] = useState(false)
+  const [selectedSource, setSelectedSource] = useState(sourceShop)
   const { toast } = useToast()
 
 
@@ -389,16 +391,18 @@ export default function RouteMap({ sourceShop, nearbyShops, maxDistance, onRoute
         stopover: true
       }))
 
-      const origin = userLocation || { lat: sourceShop.latitude, lng: sourceShop.longitude }
+      const origin = useLocation && userLocation 
+        ? userLocation 
+        : { lat: selectedSource.latitude, lng: selectedSource.longitude }
 
       const request = {
         origin,
-        destination: { lat: sourceShop.latitude, lng: sourceShop.longitude },
+        destination: { lat: selectedSource.latitude, lng: selectedSource.longitude },
         waypoints,
         optimizeWaypoints: true,
-        travelMode: transportMode === 'WALKING' ? 
-          google.maps.TravelMode.WALKING : 
-          google.maps.TravelMode.DRIVING,
+        travelMode: transportMode === "WALKING" 
+          ? google.maps.TravelMode.WALKING 
+          : google.maps.TravelMode.DRIVING,
       }
 
       const result = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
@@ -616,23 +620,25 @@ export default function RouteMap({ sourceShop, nearbyShops, maxDistance, onRoute
   const generateGoogleMapsUrl = useCallback(() => {
     if (!nearbyShops.length) return null
 
-    let url = 'https://www.google.com/maps/dir/?api=1'
+    let url = "https://www.google.com/maps/dir/?api=1"
     
-    // Always use source shop as starting point if no user location
-    const startPoint = { lat: sourceShop.latitude, lng: sourceShop.longitude }
+    // Use user location if enabled and available, otherwise use selected source
+    const startPoint = useLocation && userLocation 
+      ? userLocation 
+      : { lat: selectedSource.latitude, lng: selectedSource.longitude }
     
     url += `&origin=${startPoint.lat},${startPoint.lng}`
-    url += `&destination=${sourceShop.latitude},${sourceShop.longitude}`
+    url += `&destination=${selectedSource.latitude},${selectedSource.longitude}`
 
     const waypoints = nearbyShops
       .map(shop => `${shop.latitude},${shop.longitude}`)
-      .join('|')
+      .join("|")
     
     url += `&waypoints=${waypoints}`
     url += `&travelmode=${transportMode.toLowerCase()}`
 
     return url
-  }, [sourceShop, nearbyShops, transportMode])
+  }, [selectedSource, nearbyShops, transportMode, useLocation, userLocation])
 
   useEffect(() => {
     const loadGoogleMaps = () => {
@@ -696,6 +702,7 @@ export default function RouteMap({ sourceShop, nearbyShops, maxDistance, onRoute
     {/* Controls Card - Full width on all devices */}
     <Card className="p-4 w-full">
       <div className="flex flex-col space-y-4">
+        
         {/* Transport Mode Selection */}
         <div className="w-full">
           <RadioGroup
@@ -722,6 +729,7 @@ export default function RouteMap({ sourceShop, nearbyShops, maxDistance, onRoute
             </div>
           </RadioGroup>
         </div>
+        
 
         {/* Action Buttons - Grid layout for all screen sizes */}
         <div className="grid grid-cols-2 gap-2">

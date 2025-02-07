@@ -1,8 +1,10 @@
+// src/components/layout/page-container.tsx
 "use client";
 
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/store/use-sidebar";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 interface PageContainerProps {
   children: React.ReactNode;
@@ -12,6 +14,7 @@ interface PageContainerProps {
 export function PageContainer({ children, className }: PageContainerProps) {
   const { isCollapsed } = useSidebar();
   const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     setMounted(true);
@@ -21,15 +24,25 @@ export function PageContainer({ children, className }: PageContainerProps) {
     return null;
   }
 
+  // Check if we're on the pipeline page
+  const isPipelinePage = pathname === "/dashboard/pipeline";
+
   return (
     <div
       className={cn(
         "min-h-screen transition-all duration-300 ease-in-out",
-        isCollapsed ? "ml-[70px]" : "ml-[170px]",
+        {
+          // Only apply left padding if not on pipeline page
+          "pl-[70px]": !isPipelinePage && isCollapsed,
+          "pl-[170px]": !isPipelinePage && !isCollapsed,
+          // For pipeline page, use smaller padding
+          "pl-[50px]": isPipelinePage && isCollapsed,
+          "pl-[150px]": isPipelinePage && !isCollapsed,
+        },
         className
       )}
     >
-      <div className="mx-auto max-w-screen-2xl">
+      <div className="w-full h-full">
         {children}
       </div>
     </div>

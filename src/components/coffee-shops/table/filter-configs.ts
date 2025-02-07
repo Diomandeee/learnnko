@@ -3,7 +3,15 @@
 import { CoffeeShop } from "@prisma/client"
 
 export type FilterOperator = 'equals' | 'contains' | 'greaterThan' | 'lessThan' | 'between' | 'startsWith'
-export type FilterDataType = 'text' | 'number' | 'boolean' | 'date' | 'rating' | 'volume' | 'priority' | 'email' | 'instagram' | 'phone'
+export type FilterDataType = 'text' | 'number' | 'boolean' | 'date' | 'rating' | 'volume' | 'priority' | 'email' | 'instagram' | 'phone' | 'stage'
+export const DELIVERY_FREQUENCY_LABELS = {
+  WEEKLY: "Weekly",
+  BIWEEKLY: "Bi-weekly",
+  THREE_WEEKS: "Every 3 weeks",
+  FOUR_WEEKS: "Every 4 weeks",
+  FIVE_WEEKS: "Every 5 weeks",
+  SIX_WEEKS: "Every 6 weeks"
+} as const
 
 export interface FilterConfig {
   field: keyof CoffeeShop
@@ -51,6 +59,22 @@ export const FILTER_CONFIGS: FilterConfig[] = [
     operators: ['equals'],
   },
   {
+    field: "stage",
+    label: "Stage",
+    type: "stage",
+    operators: ["equals"],
+    options: [
+      { value: "PROSPECTING", label: "Prospecting" },
+      { value: "QUALIFICATION", label: "Qualification" },
+      { value: "MEETING", label: "Meeting" },
+      { value: "PROPOSAL", label: "Proposal" },
+      { value: "NEGOTIATION", label: "Negotiation" },
+      { value: "PAUSED", label: "Paused" },
+      { value: "WON", label: "Won" },
+      { value: "LOST", label: "Lost" }
+    ]
+  },
+  {
     field: 'manager_present',
     label: 'Manager',
     type: 'text',
@@ -78,6 +102,16 @@ export const FILTER_CONFIGS: FilterConfig[] = [
     operators: ['equals', 'greaterThan', 'lessThan', 'between'],
     placeholder: 'Enter weekly volume...',
     help: 'Weekly volume in units'
+  },
+  {
+    field: 'delivery_frequency',
+    label: 'Delivery Frequency',
+    type: 'select',
+    operators: ['equals'],
+    options: Object.entries(DELIVERY_FREQUENCY_LABELS).map(([value, label]) => ({
+      value,
+      label
+    }))
   },
   {
     field: 'first_visit',

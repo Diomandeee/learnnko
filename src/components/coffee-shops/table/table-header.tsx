@@ -76,7 +76,14 @@ export function TableHeader({
       </TableHead>
 
       <TableHead>Partner Status</TableHead>
-
+      <TableHead>
+        <SortHeader 
+          label="Stage"
+          sortKey="stage"
+          currentSort={sortConfig}
+          onSort={onSort}
+        />
+      </TableHead>
       <TableHead>
         <SortHeader 
           label="Manager Present"
@@ -121,6 +128,19 @@ export function TableHeader({
           onSort={onSort}
         />
       </TableHead>
+
+
+      <TableHead>
+        <SortHeader 
+          label="Delivery Frequency"
+          sortKey="delivery_frequency"
+          currentSort={sortConfig}
+          onSort={onSort}
+        />
+      </TableHead>
+
+      
+
 
       <TableHead>ARR</TableHead>
 

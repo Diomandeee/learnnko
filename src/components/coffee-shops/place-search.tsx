@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -33,118 +33,152 @@ export function PlaceSearch({
   const [loading, setLoading] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const { toast } = useToast()
+  
+  // Use refs for service instances
+  const mapRef = useRef<google.maps.Map | null>(null)
+  const placesServiceRef = useRef<google.maps.places.PlacesService | null>(null)
 
-  const extractAreaFromAddress = (addressComponents: google.maps.GeocoderAddressComponent[] | undefined) => {
-    if (!addressComponents) return null;
+  // Initialize services
+  useEffect(() => {
+    // Check if running in browser and Google Maps is loaded
+    if (typeof window === 'undefined' || !window.google || !window.google.maps) {
+      console.error('Google Maps not loaded');
+      return;
+    }
+
+    try {
+      // Create a dummy div that won't be visible
+      const mapDiv = document.createElement('div');
+      mapDiv.style.height = '0';
+      mapDiv.style.width = '0';
+      document.body.appendChild(mapDiv);
+
+      // Initialize the map
+      const map = new window.google.maps.Map(mapDiv, {
+        center: { lat: 40.7128, lng: -74.0060 }, // New York coordinates
+        zoom: 13
+      });
+
+      // Initialize the PlacesService
+      const service = new window.google.maps.places.PlacesService(map);
+
+      // Store references
+      mapRef.current = map;
+      placesServiceRef.current = service;
+
+      // Cleanup function
+      return () => {
+        if (mapDiv.parentNode) {
+          mapDiv.parentNode.removeChild(mapDiv);
+        }
+      };
+    } catch (error) {
+      console.error('Error initializing Google Maps:', error);
+    }
+  }, []); // Empty dependency array means this runs once on mount
+
+  const handleSearch = async () => {
+    if (!searchTerm) return;
     
-    // Try to find neighborhood first
-    const neighborhood = addressComponents.find(
-      component => component.types.includes('neighborhood')
-    );
-    
-    // If no neighborhood, try sublocality
-    const sublocality = addressComponents.find(
-      component => component.types.includes('sublocality')
-    );
-    
-    // If no sublocality, try locality (city)
-    const locality = addressComponents.find(
-      component => component.types.includes('locality')
-    );
-    
-    return neighborhood?.long_name || sublocality?.long_name || locality?.long_name;
+    if (!placesServiceRef.current) {
+      toast({
+        title: "Error",
+        description: "Places service not initialized",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+    setShowResults(true);
+
+    try {
+      const request: google.maps.places.TextSearchRequest = {
+        query: searchTerm,
+        type: 'cafe'
+      };
+
+      placesServiceRef.current.textSearch(request, (results, status) => {
+        setLoading(false);
+
+        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+          setPlaces(results);
+        } else {
+          toast({
+            title: "Error",
+            description: `Search failed: ${status}`,
+            variant: "destructive"
+          });
+          setPlaces([]);
+        }
+      });
+    } catch (error) {
+      setLoading(false);
+      console.error('Place search error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to search places",
+        variant: "destructive"
+      });
+    }
   };
 
-// Update the handleSearch function in your PlaceSearch component
+  const handlePlaceSelect = (place: google.maps.places.PlaceResult) => {
+    if (!place.place_id || !placesServiceRef.current) return;
 
-const handleSearch = async () => {
-  if (!window.google || !searchTerm) return;
-
-  setLoading(true);
-  setShowResults(true);
-
-  try {
-    // Create proper map instance
-    const mapDiv = document.createElement('div');
-    const map = new google.maps.Map(mapDiv, {
-      center: { lat: 0, lng: 0 },
-      zoom: 1
-    });
-    
-    const service = new google.maps.places.PlacesService(map);
-
-    // Create a promise wrapper for the textSearch service
-    const searchPlaces = () => {
-      return new Promise((resolve, reject) => {
-        service.textSearch({
-          query: searchTerm,
-          type: ['cafe', 'restaurant']
-        }, (results, status) => {
-          if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-            resolve(results);
-          } else {
-            reject(new Error(`Places API error: ${status}`));
-          }
-        });
-      });
+    const request: google.maps.places.PlaceDetailsRequest = {
+      placeId: place.place_id,
+      fields: ['name', 'formatted_address', 'formatted_phone_number', 'website', 
+               'rating', 'user_ratings_total', 'price_level', 'opening_hours', 
+               'geometry', 'address_components']
     };
 
-    const results = await searchPlaces();
-    setPlaces(results);
-
-  } catch (error) {
-    console.error('Place search error:', error);
-    toast({
-      title: "Error",
-      description: error instanceof Error ? error.message : "Failed to search places",
-      variant: "destructive"
-    });
-  } finally {
-    setLoading(false);
-  }
-};
-  const handlePlaceSelect = async (place: google.maps.places.PlaceResult) => {
-    if (!place.place_id) return;
-
-    const service = new google.maps.places.PlacesService(document.createElement('div'));
-
-    service.getDetails({
-      placeId: place.place_id,
-      fields: ['name', 'formatted_address', 'formatted_phone_number', 'website', 'rating', 'user_ratings_total', 'price_level', 'opening_hours', 'geometry', 'address_components']
-    }, (placeDetails, status) => {
-      if (status === google.maps.places.PlacesServiceStatus.OK && placeDetails) {
+    placesServiceRef.current.getDetails(request, (details, status) => {
+      if (status === google.maps.places.PlacesServiceStatus.OK && details) {
         const newSelectedPlaces = new Set(selectedPlaces);
         newSelectedPlaces.add(place.place_id!);
         setSelectedPlaces(newSelectedPlaces);
 
-        const area = extractAreaFromAddress(placeDetails.address_components);
+        // Extract area
+        const area = details.address_components?.find(
+          component => component.types.includes('neighborhood') ||
+                      component.types.includes('sublocality_level_1') ||
+                      component.types.includes('sublocality')
+        )?.long_name || '';
+
         if (area && onAreaFound) {
           onAreaFound(area);
         }
 
-        if (placeDetails.website && onWebsiteFound) {
-          onWebsiteFound(placeDetails.website);
+        if (details.website && onWebsiteFound) {
+          onWebsiteFound(details.website);
         }
 
         const placeData = {
-          title: placeDetails.name,
-          address: placeDetails.formatted_address,
-          area: area || '',
-          phone: placeDetails.formatted_phone_number,
-          website: placeDetails.website,
-          rating: placeDetails.rating,
-          reviews: placeDetails.user_ratings_total,
-          latitude: placeDetails.geometry?.location?.lat(),
-          longitude: placeDetails.geometry?.location?.lng(),
-          price_type: placeDetails.price_level ? '$'.repeat(placeDetails.price_level) : null,
-          hours: placeDetails.opening_hours?.weekday_text?.join('\n')
+          title: details.name,
+          address: details.formatted_address,
+          area: area,
+          phone: details.formatted_phone_number,
+          website: details.website,
+          rating: details.rating,
+          reviews: details.user_ratings_total,
+          latitude: details.geometry?.location?.lat(),
+          longitude: details.geometry?.location?.lng(),
+          price_type: details.price_level ? '$'.repeat(details.price_level) : null,
+          hours: details.opening_hours?.weekday_text?.join('\n')
         };
 
-        setSelectedPlacesData([...selectedPlacesData, placeData]);
+        setSelectedPlacesData(prev => [...prev, placeData]);
         
         if (onStoreDoorsUpdate) {
           onStoreDoorsUpdate(selectedPlacesData.length + 1);
         }
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to get place details",
+          variant: "destructive"
+        });
       }
     });
   };
