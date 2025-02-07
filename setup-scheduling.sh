@@ -1,158 +1,240 @@
 #!/bin/bash
 
-# Create ProgressBar component
-cat > src/components/coffee-shops/map/progress-bar.tsx << 'EOL'
+# Update the pipeline stage column component
+cat > src/components/pipeline/board/pipeline-stage-column.tsx << 'EOF'
 "use client"
 
+import { CoffeeShop, Stage } from "@prisma/client"
+import { PipelineDealCard } from "./pipeline-deal-card"
 import { cn } from "@/lib/utils"
 
-interface RouteProgressProps {
-  currentStep: number
-  totalSteps: number
-  currentDistance: number
-  totalDistance: number
+interface PipelineStageColumnProps {
+  stage: Stage
+  shops: CoffeeShop[]
+  total: number
+  label: string
   className?: string
+  onStageChange: (shopId: string, stage: Stage) => Promise<void>
+  disabled?: boolean
 }
 
-export function RouteProgress({ 
-  currentStep, 
-  totalSteps, 
-  currentDistance, 
-  totalDistance,
-  className 
-}: RouteProgressProps) {
-  const progress = ((currentStep + 1) / totalSteps) * 100
-
+export function PipelineStageColumn({
+  stage,
+  shops,
+  total,
+  label,
+  className,
+  onStageChange,
+  disabled
+}: PipelineStageColumnProps) {
   return (
-    <div className={cn("space-y-2", className)}>
-      {/* Progress Bar */}
-      <div className="relative h-2 w-full bg-muted rounded-full overflow-hidden">
-        <div 
-          className="absolute h-full bg-primary transition-all duration-300 ease-in-out rounded-full"
-          style={{ width: `${progress}%` }}
-        />
+    <div className="flex-shrink-0 w-[300px]">
+      <div className="flex flex-col mb-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium">
+            {label} ({shops.length})
+          </h3>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          ${total.toLocaleString()}
+        </p>
       </div>
-      
-      {/* Progress Stats */}
-      <div className="flex justify-between text-sm">
-        <span>Stop {currentStep + 1} of {totalSteps}</span>
-        <span className="text-muted-foreground">
-          {currentDistance.toFixed(1)}km / {totalDistance.toFixed(1)}km
-        </span>
+
+      <div 
+        className={cn(
+          "min-h-[500px] border-l-2 pl-4",
+          className
+        )}
+      >
+        {shops.length === 0 ? (
+          <div className="text-sm text-muted-foreground">
+            No deals in {label.toLowerCase()}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {shops.map((shop) => (
+              <PipelineDealCard
+                key={shop.id}
+                shop={shop}
+                onStageChange={onStageChange}
+                disabled={disabled}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
 }
-EOL
+EOF
 
-# Create route connector arrows
-cat > src/components/coffee-shops/map/route-connectors.ts << 'EOL'
-export function drawRouteConnectors(
-  mapInstance: google.maps.Map,
-  shops: any[],
-  currentStep: number
-) {
-  // Remove existing polylines
-  window.routeConnectors?.forEach(connector => connector.setMap(null))
-  window.routeConnectors = []
+# Update the pipeline deal card component
+cat > src/components/pipeline/board/pipeline-deal-card.tsx << 'EOF'
+"use client"
 
-  // Draw connectors between consecutive stops
-  shops.forEach((shop, index) => {
-    if (index < shops.length - 1) {
-      const nextShop = shops[index + 1]
-      
-      // Create arrow symbol
-      const lineSymbol = {
-        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-        scale: 3,
-        strokeColor: "#666666"
-      }
+import { CoffeeShop, Stage } from "@prisma/client"
+import { Card, CardContent } from "@/components/ui/card"
+import { formatDistanceToNow } from "date-fns"
+import { StageCell } from "../../coffee-shops/table/stage-cell"
+import Link from "next/link"
+import { MapPin } from "lucide-react"
 
-      // Create polyline with arrow
-      const connector = new google.maps.Polyline({
-        path: [
-          { lat: shop.latitude, lng: shop.longitude },
-          { lat: nextShop.latitude, lng: nextShop.longitude }
-        ],
-        icons: [{
-          icon: lineSymbol,
-          offset: '50%'
-        }],
-        map: mapInstance,
-        strokeColor: index === currentStep ? "#3b82f6" : "#666666",
-        strokeWeight: index === currentStep ? 3 : 2,
-        strokeOpacity: index === currentStep ? 1 : 0.5,
+interface PipelineDealCardProps {
+  shop: CoffeeShop
+  onStageChange: (shopId: string, stage: Stage) => Promise<void>
+  disabled?: boolean
+}
+
+export function PipelineDealCard({ 
+  shop, 
+  onStageChange, 
+  disabled 
+}: PipelineDealCardProps) {
+  const estimatedValue = shop.volume ? (parseFloat(shop.volume.toString()) * 52 * 18) : 0
+
+  return (
+    <Card className="hover:bg-muted/50">
+      <CardContent className="p-4 space-y-2">
+        <div className="flex items-start justify-between">
+          <div>
+            <Link 
+              href={`/dashboard/coffee-shops/${shop.id}`}
+              className="font-medium hover:underline line-clamp-1"
+            >
+              {shop.title}
+            </Link>
+            {shop.area && (
+              <div className="flex items-center text-sm text-muted-foreground mt-1">
+                <MapPin className="h-3 w-3 mr-1" />
+                {shop.area}
+              </div>
+            )}
+          </div>
+          <StageCell
+            stage={shop.stage}
+            onUpdate={(stage) => onStageChange(shop.id, stage)}
+            disabled={disabled}
+          />
+        </div>
+
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div>$ {estimatedValue.toLocaleString()}</div>
+          <div>{formatDistanceToNow(new Date(shop.updatedAt), { addSuffix: true })}</div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+EOF
+
+# Update the stage configuration
+cat > src/components/pipeline/stage-config.ts << 'EOF'
+export const STAGE_CONFIG = {
+  PROSPECTING: { 
+    label: "Prospecting", 
+    className: "border-gray-500",
+    description: "Initial contact phase"
+  },
+  QUALIFICATION: { 
+    label: "Qualification", 
+    className: "border-yellow-500",
+    description: "Evaluating fit"
+  },
+  MEETING: { 
+    label: "Meeting", 
+    className: "border-blue-500",
+    description: "Scheduled meetings"
+  },
+  PROPOSAL: { 
+    label: "Proposal", 
+    className: "border-purple-500",
+    description: "Proposal sent"
+  },
+  NEGOTIATION: { 
+    label: "Negotiation", 
+    className: "border-orange-500",
+    description: "Active negotiation"
+  }
+} as const
+
+export type Stage = keyof typeof STAGE_CONFIG
+EOF
+
+# Update the board layout
+cat > src/components/pipeline/board/pipeline-board.tsx << 'EOF'
+"use client"
+
+import { useState } from "react"
+import { CoffeeShop, Stage } from "@prisma/client"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { STAGE_CONFIG } from "../stage-config"
+import { PipelineStageColumn } from "./pipeline-stage-column"
+import { useToast } from "@/components/ui/use-toast"
+
+interface PipelineBoardProps {
+  shops: CoffeeShop[]
+}
+
+export function PipelineBoard({ shops }: PipelineBoardProps) {
+  const [loading, setLoading] = useState(false)
+  const { toast } = useToast()
+
+  // Group shops by stage
+  const shopsByStage = shops.reduce((acc, shop) => {
+    const stage = shop.stage || 'PROSPECTING'
+    if (!acc[stage]) acc[stage] = []
+    acc[stage].push(shop)
+    return acc
+  }, {} as Record<Stage, CoffeeShop[]>)
+
+  // Calculate stage totals
+  const stageTotals = Object.entries(shopsByStage).reduce((acc, [stage, stageShops]) => {
+    acc[stage as Stage] = stageShops.reduce((sum, shop) => {
+      return sum + (shop.volume ? parseFloat(shop.volume.toString()) * 52 * 18 : 0)
+    }, 0)
+    return acc
+  }, {} as Record<Stage, number>)
+
+  const handleStageChange = async (shopId: string, newStage: Stage) => {
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/coffee-shops/${shopId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage: newStage })
       })
 
-      window.routeConnectors.push(connector)
+      if (!response.ok) throw new Error('Failed to update stage')
+      
+      window.location.reload()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update stage",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
     }
-  })
+  }
+
+  return (
+    <ScrollArea className="w-full">
+      <div className="flex gap-4 p-4">
+        {Object.entries(STAGE_CONFIG).map(([stage, config]) => (
+          <PipelineStageColumn
+            key={stage}
+            stage={stage as Stage}
+            label={config.label}
+            shops={shopsByStage[stage as Stage] || []}
+            total={stageTotals[stage as Stage] || 0}
+            className={config.className}
+            onStageChange={handleStageChange}
+            disabled={loading}
+          />
+        ))}
+      </div>
+    </ScrollArea>
+  )
 }
-EOL
-
-# Add marker dragging functionality
-cat > src/components/coffee-shops/map/draggable-markers.ts << 'EOL'
-export function enableMarkerDragging(
-  mapInstance: google.maps.Map,
-  markers: google.maps.Marker[],
-  onReorder: (newOrder: number[]) => void
-) {
-  markers.forEach((marker, index) => {
-    marker.setDraggable(true)
-    
-    marker.addListener('dragstart', () => {
-      window.dragStartIndex = index
-    })
-
-    marker.addListener('dragend', (event: google.maps.MapMouseEvent) => {
-      if (!event.latLng) return
-      
-      // Find nearest marker
-      let minDistance = Infinity
-      let nearestIndex = index
-      
-      markers.forEach((m, i) => {
-        if (i === index) return
-        
-        const distance = google.maps.geometry.spherical.computeDistanceBetween(
-          event.latLng!,
-          m.getPosition()!
-        )
-        
-        if (distance < minDistance) {
-          minDistance = distance
-          nearestIndex = i
-        }
-      })
-
-      // Reorder array
-      const newOrder = [...Array(markers.length)].map((_, i) => i)
-      const [removed] = newOrder.splice(window.dragStartIndex, 1)
-      newOrder.splice(nearestIndex, 0, removed)
-      
-      onReorder(newOrder)
-    })
-  })
-}
-EOL
-
-# Update route-map.tsx to include new features
-echo "Add to route-map.tsx dependencies:"
-echo "1. Import new components"
-echo "2. Add state for distances"
-echo "3. Update marker creation to include dragging"
-echo "4. Add route connectors to map"
-
-echo "Update the JSX to include progress bar:"
-echo '
-  <Card className="p-4">
-    <RouteProgress
-      currentStep={currentStep}
-      totalSteps={nearbyShops.length}
-      currentDistance={currentDistance}
-      totalDistance={totalDistance}
-      className="mb-4"
-    />
-    ...rest of card content
-  </Card>
-'
+EOF

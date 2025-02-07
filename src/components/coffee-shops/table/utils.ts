@@ -4,56 +4,6 @@ import { CoffeeShop } from "@prisma/client"
 import { SortConfig, Filter } from "./types"
 
 /**
- * Filter shops based on active filters
- */
-export function filterShops(shops: CoffeeShop[], filters: Filter[]): CoffeeShop[] {
-  if (!filters.length) return shops
-
-  return shops.filter(shop => {
-    return filters.every(filter => {
-      const value = shop[filter.field]
-
-      switch (filter.operator) {
-        case 'equals':
-          if (filter.type === 'boolean') {
-            return value === (filter.value === 'true')
-          }
-          return value === filter.value
-
-        case 'contains':
-          return String(value).toLowerCase().includes(String(filter.value).toLowerCase())
-
-        case 'startsWith':
-          return String(value).toLowerCase().startsWith(String(filter.value).toLowerCase())
-
-        case 'greaterThan':
-          if (filter.type === 'date') {
-            return new Date(value) > new Date(filter.value)
-          }
-          return Number(value) > Number(filter.value)
-
-        case 'lessThan':
-          if (filter.type === 'date') {
-            return new Date(value) < new Date(filter.value)
-          }
-          return Number(value) < Number(filter.value)
-
-        case 'between':
-          if (filter.type === 'date') {
-            const date = new Date(value)
-            return date >= new Date(filter.value.min) && date <= new Date(filter.value.max)
-          }
-          const numValue = Number(value)
-          return numValue >= Number(filter.value.min) && numValue <= Number(filter.value.max)
-
-        default:
-          return true
-      }
-    })
-  })
-}
-
-/**
  * Sort shops based on sort configuration
  */
 export function sortShops(shops: CoffeeShop[], sortConfig: SortConfig): CoffeeShop[] {
@@ -63,53 +13,38 @@ export function sortShops(shops: CoffeeShop[], sortConfig: SortConfig): CoffeeSh
     const aVal = a[sortConfig.key!]
     const bVal = b[sortConfig.key!]
 
-    // Handle null/undefined values
-    if (aVal === null || aVal === undefined) return 1
-    if (bVal === null || bVal === undefined) return -1
-
-    // Handle special cases
-    switch (sortConfig.key) {
-      case 'first_visit':
-      case 'second_visit':
-      case 'third_visit':
-        return sortConfig.direction === 'asc'
-          ? new Date(aVal).getTime() - new Date(bVal).getTime()
-          : new Date(bVal).getTime() - new Date(aVal).getTime()
-
-      case 'volume':
-      case 'rating':
-      case 'reviews':
-      case 'followers':
-      case 'priority':
-        return sortConfig.direction === 'asc'
-          ? Number(aVal) - Number(bVal)
-          : Number(bVal) - Number(aVal)
-
-      case 'owners':
-        // Sort by number of owners first, then by first owner's name
-        const aOwners = Array.isArray(aVal) ? aVal : []
-        const bOwners = Array.isArray(bVal) ? bVal : []
-        if (aOwners.length !== bOwners.length) {
-          return sortConfig.direction === 'asc'
-            ? aOwners.length - bOwners.length
-            : bOwners.length - aOwners.length
-        }
-        const aFirstOwner = aOwners[0]?.name || ''
-        const bFirstOwner = bOwners[0]?.name || ''
-        return sortConfig.direction === 'asc'
-          ? aFirstOwner.localeCompare(bFirstOwner)
-          : bFirstOwner.localeCompare(aFirstOwner)
-
-      default:
-        // String comparison for everything else
-        const aStr = String(aVal).toLowerCase()
-        const bStr = String(bVal).toLowerCase()
-        return sortConfig.direction === 'asc'
-          ? aStr.localeCompare(bStr)
-          : bStr.localeCompare(aStr)
+    // Special handling for date fields with null values
+    const dateFields = ['first_visit', 'second_visit', 'third_visit']
+    if (dateFields.includes(sortConfig.key)) {
+      // Move null/undefined values to the bottom regardless of sort direction
+      if (!aVal && !bVal) return 0
+      if (!aVal) return 1  // Move 'a' to the bottom
+      if (!bVal) return -1 // Move 'b' to the bottom
+      
+      const aDate = new Date(aVal).getTime()
+      const bDate = new Date(bVal).getTime()
+      
+      // Handle invalid dates
+      if (isNaN(aDate)) return 1
+      if (isNaN(bDate)) return -1
+      
+      return sortConfig.direction === 'asc'
+        ? aDate - bDate
+        : bDate - aDate
     }
+
+ 
+
+    // Default string comparison
+    const aStr = String(aVal).toLowerCase()
+    const bStr = String(bVal).toLowerCase()
+    return sortConfig.direction === 'asc'
+      ? aStr.localeCompare(bStr)
+      : bStr.localeCompare(aStr)
   })
 }
+
+// Rest of the utils.ts file remains the same...
 
 /**
  * Search shops based on search term
@@ -151,10 +86,34 @@ export function searchShops(shops: CoffeeShop[], searchTerm: string): CoffeeShop
 /**
  * Calculate ARR (Annual Recurring Revenue)
  */
-export function calculateARR(volume: string | number | null): number {
+export function calculateARR(volume: string | number | null, frequency: string | null): number {
   if (!volume) return 0
   const weeklyVolume = typeof volume === 'string' ? parseFloat(volume) : volume
-  return (weeklyVolume * 52) * 18
+  
+  // Calculate number of deliveries per year based on frequency
+  let deliveriesPerYear = 52; // Default to weekly
+  switch (frequency) {
+    case 'WEEKLY':
+      deliveriesPerYear = 52;
+      break;
+    case 'BIWEEKLY':
+      deliveriesPerYear = 26;
+      break;
+    case 'THREE_WEEKS':
+      deliveriesPerYear = 17;
+      break;
+    case 'FOUR_WEEKS':
+      deliveriesPerYear = 13;
+      break;
+    case 'FIVE_WEEKS':
+      deliveriesPerYear = 10;
+      break;
+    case 'SIX_WEEKS':
+      deliveriesPerYear = 9;
+      break;
+  }
+
+  return (weeklyVolume * deliveriesPerYear) * 18;
 }
 
 /**

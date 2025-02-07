@@ -22,9 +22,7 @@ import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/components/ui/use-toast"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { DomainSearch } from "./domain-search"
-// import { PlaceSearch } from "./place-search"
-
-
+import { PlaceSearch } from "./place-search"
 import {
   ArrowLeft,
   Building,
@@ -195,16 +193,19 @@ const coffeeShopSchema = z.object({
   parlor_coffee_leads: z.boolean().default(false),
   notes: z.string().optional(),
   emails: z.array(emailSchema).default([]),
-  hours: z.string().optional(), // Add this line
-  company_data: companyDataSchema
+  hours: z.string().optional(),
+  company_data: companyDataSchema,
+  first_visit: z.date().optional(),
+  visited: z.boolean().default(false)
 }).transform((data) => ({
   ...data,
+  // If first_visit is set, ensure visited is true
+  visited: data.first_visit ? true : data.visited,
   volume: data.volume ? data.volume.toString() : undefined,
   followers: data.followers ? Number(data.followers) : undefined,
   rating: data.rating ? Number(data.rating) : undefined,
   reviews: data.reviews ? Number(data.reviews) : undefined
 }))
-
 
 type FormData = z.infer<typeof coffeeShopSchema>
 
@@ -550,7 +551,7 @@ async function onSubmit(data: FormData) {
                   />
                 </CardContent>
               </Card>
-              {/* <Card className="bg-muted/50">
+              <Card className="bg-muted/50">
                 <CardHeader>
                   <CardTitle className="text-lg">Search Business</CardTitle>
                   <CardDescription>
@@ -572,7 +573,7 @@ async function onSubmit(data: FormData) {
                     }}
                   />
                 </CardContent>
-              </Card> */}
+              </Card>
               {/* Basic Information */}
               <div className="grid gap-6 grid-cols-1 md:grid-cols-1 md:grid-cols-2">
                 <FormField
@@ -632,7 +633,39 @@ async function onSubmit(data: FormData) {
                   </FormItem>
                 )}
               />
-
+              <FormField
+                control={form.control}
+                name="first_visit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>First Visit Date</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date"
+                        {...field}
+                        value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            const date = new Date(e.target.value);
+                            field.onChange(date);
+                            // Automatically set visited to true when a date is selected
+                            form.setValue('visited', true, {
+                              shouldValidate: true,
+                              shouldDirty: true
+                            });
+                          } else {
+                            field.onChange(undefined);
+                          }
+                        }}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Adding a first visit date will automatically mark this shop as visited
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               {/* Coordinates */}
               <div className="grid gap-6 grid-cols-1 md:grid-cols-1 md:grid-cols-2">
                 <FormField

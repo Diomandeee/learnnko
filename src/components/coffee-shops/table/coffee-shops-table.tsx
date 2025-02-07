@@ -10,7 +10,8 @@ import { TableRow as CustomTableRow } from "./table-row"
 import { TablePagination } from "./table-pagination"
 import { BulkActions } from "./bulk-actions"
 import { MobileCardView } from "./mobile-card-view"
-// import { SavedFiltersMenu } from "./saved-filters/saved-filters-menu"
+import { VisitReport } from "./visit-reports"
+import { TableExport } from "./table-export"
 
 const ITEMS_PER_PAGE = 50;
 
@@ -42,7 +43,6 @@ export function CoffeeShopsTable({ shops }: CoffeeShopsTableProps) {
         const data = await response.json()
         setSavedFilters(data)
 
-        // Apply default filter if exists and no active filters
         const defaultFilter = data.find(filter => filter.isDefault)
         if (defaultFilter && activeFilters.length === 0) {
           setActiveFilters(defaultFilter.filters)
@@ -108,66 +108,6 @@ export function CoffeeShopsTable({ shops }: CoffeeShopsTableProps) {
     }
   }, [toast])
 
-  const handleSaveFilter = async (name: string, isDefault: boolean) => {
-    try {
-      const response = await fetch('/api/coffee-shops/filters', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          filters: activeFilters,
-          isDefault
-        })
-      })
-
-      if (!response.ok) throw new Error('Failed to save filter')
-
-      const savedFilter = await response.json()
-      setSavedFilters(prev => [savedFilter, ...prev])
-
-      toast({
-        title: "Success",
-        description: "Filter saved successfully"
-      })
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save filter",
-        variant: "destructive"
-      })
-    }
-  }
-
-  const handleDeleteFilter = async (id: string) => {
-    try {
-      const response = await fetch('/api/coffee-shops/filters', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
-      })
-
-      if (!response.ok) throw new Error('Failed to delete filter')
-
-      setSavedFilters(prev => prev.filter(filter => filter.id !== id))
-
-      toast({
-        title: "Success",
-        description: "Filter deleted successfully"
-      })
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete filter",
-        variant: "destructive"
-      })
-    }
-  }
-
-  const handleLoadFilter = (filters) => {
-    setActiveFilters(filters)
-    setCurrentPage(1) // Reset to first page when loading new filters
-  }
-
   const filteredShops = shops.filter(shop => {
     if (searchTerm && !shop.title.toLowerCase().includes(searchTerm.toLowerCase())) {
       return false
@@ -197,13 +137,51 @@ export function CoffeeShopsTable({ shops }: CoffeeShopsTableProps) {
     
     const aVal = a[sortConfig.key]
     const bVal = b[sortConfig.key]
+
+    // Special handling for date fields
+    if (['first_visit', 'second_visit', 'third_visit'].includes(sortConfig.key)) {
+      // Handle null/undefined values - always put them at the bottom
+      if (!aVal && !bVal) return 0
+      if (!aVal) return 1  // Move a to the bottom
+      if (!bVal) return -1 // Move b to the bottom
+
+      // Compare actual dates
+      const aDate = new Date(aVal).getTime()
+      const bDate = new Date(bVal).getTime()
+
+      // Handle invalid dates
+      if (isNaN(aDate)) return 1
+      if (isNaN(bDate)) return -1
+
+      return sortConfig.direction === 'asc' ? aDate - bDate : bDate - aDate
+    }
+
+    // Handle numeric fields
+    if (['volume', 'rating', 'reviews', 'followers', 'priority'].includes(sortConfig.key)) {
+      const aNum = Number(aVal)
+      const bNum = Number(bVal)
+
+      // Handle NaN values
+      if (isNaN(aNum) && isNaN(bNum)) return 0
+      if (isNaN(aNum)) return 1
+      if (isNaN(bNum)) return -1
+
+      return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum
+    }
+
+    // Default string comparison
+    const aStr = String(aVal || '').toLowerCase()
+    const bStr = String(bVal || '').toLowerCase()
     
-    if (aVal === bVal) return 0
-    
-    const compareResult = aVal > bVal ? 1 : -1
+    if (aStr === bStr) return 0
+    if (!aVal) return 1  // Move empty values to the bottom
+    if (!bVal) return -1
+
+    const compareResult = aStr > bStr ? 1 : -1
     return sortConfig.direction === 'asc' ? compareResult : -compareResult
   })
 
+  // Apply pagination after sorting
   const paginatedShops = sortedShops.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
@@ -213,7 +191,7 @@ export function CoffeeShopsTable({ shops }: CoffeeShopsTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col md:flex-row gap-4">
+      <div className="flex flex-col gap-4">
         <TableFilters
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
@@ -222,33 +200,48 @@ export function CoffeeShopsTable({ shops }: CoffeeShopsTableProps) {
           onRemoveFilter={(id) => setActiveFilters(activeFilters.filter(f => f.id !== id))}
           onClearFilters={() => setActiveFilters([])}
         />
-
       </div>
 
-      <div className="flex justify-between items-center">
-        <BulkActions
-          selectedIds={selectedIds}
-          onMailSelected={() => {/* Implement mail action */}}
-          onDeleteSelected={async () => {
-            await Promise.all(selectedIds.map(handleDelete))
-            setSelectedIds([])
-          }}
-        />
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <BulkActions
+            selectedIds={selectedIds}
+            onMailSelected={() => {/* Implement mail action */}}
+            onDeleteSelected={async () => {
+              await Promise.all(selectedIds.map(handleDelete))
+              setSelectedIds([])
+            }}
+          />
+        </div>
+        
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <VisitReport />
+          <TableExport data={shops} />
+        </div>
       </div>
 
-      {/* Mobile View */}
       <div className="block md:hidden">
-        <MobileCardView 
-          shops={paginatedShops}
-          onVisitToggle={async (shop) => {
-            await handleUpdate(shop, 'visited', !shop.visited)
-          }}
-          onDelete={handleDelete}
-          onUpdate={handleUpdate}
-        />
+        <div className="space-y-2">
+          <div className="bg-muted/50 rounded-lg p-3 text-sm">
+            <p>Showing {paginatedShops.length} of {sortedShops.length} shops</p>
+            {selectedIds.length > 0 && (
+              <p className="text-muted-foreground">
+                {selectedIds.length} selected
+              </p>
+            )}
+          </div>
+          
+          <MobileCardView 
+            shops={paginatedShops}
+            onVisitToggle={async (shop) => {
+              await handleUpdate(shop, 'visited', !shop.visited)
+            }}
+            onDelete={handleDelete}
+            onUpdate={handleUpdate}
+          />
+        </div>
       </div>
 
-      {/* Desktop View */}
       <div className="hidden md:block border rounded-md overflow-x-auto">
         <Table>
           <TableHeader>
@@ -288,13 +281,15 @@ export function CoffeeShopsTable({ shops }: CoffeeShopsTableProps) {
         </Table>
       </div>
 
-      <TablePagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={setCurrentPage}
-        itemsPerPage={ITEMS_PER_PAGE}
-        totalItems={sortedShops.length}
-      />
+      <div className="overflow-x-auto">
+        <TablePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          itemsPerPage={ITEMS_PER_PAGE}
+          totalItems={sortedShops.length}
+        />
+      </div>
     </div>
   )
 }

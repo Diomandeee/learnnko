@@ -16,7 +16,7 @@ import {
   ShoppingBag,
   Warehouse,
   FileText,
-  BarChart2,
+  GitBranch,
   QrCode,
   CreditCard,
   Trash2,
@@ -63,6 +63,13 @@ const routes = [
   //   href: "/dashboard/visits",
   //   color: "text-cyan-500"
   // },
+  {
+    label: "Pipeline",
+    icon: GitBranch,
+    href: "/dashboard/pipeline",
+    color: "text-purple-500"
+  }
+    ,
   {
     label: "Shops",
     icon: Coffee,

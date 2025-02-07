@@ -7,11 +7,13 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="relative min-h-screen">
-      <div className="flex min-h-screen">
-        <SideNav />
+      <div className="flex min-h-screen flex-col md:flex-row">
+        <div className="w-full md:w-auto">
+          <SideNav />
+        </div>
         <main className="flex-1 transition-all duration-300 ease-in-out">
           <div className="h-full pt-0">
-            <div className="container mx-auto p-6">
+            <div className="max-w-[2000px] mx-auto p-4 md:px-6 md:py-6">
               {children}
             </div>
           </div>
