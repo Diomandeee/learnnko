@@ -84,7 +84,7 @@ export function CoffeeShopStats() {
       title: "Total Weekly Volume",
       value: stats.totalVolume.toFixed(1),
       icon: DollarSign,
-      description: `$${stats.totalARR.toLocaleString()} ARR`,
+      description: `Estimated weekly volume across all locations`,
     },
     {
       title: "Partner Weekly Volume",
@@ -105,10 +105,10 @@ export function CoffeeShopStats() {
       description: "Average weekly volume per partner",
     },
     {
-      title: "",
-      value: "",
+      title: "Total ARR",
+      value: `$${stats.totalARR.toLocaleString()}`,
       icon: BarChart,
-      description: "",
+      description: "Estimated annual recurring revenue",
     },
   ]
 

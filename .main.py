@@ -175,16 +175,14 @@ class DirectoryTraversal:
 def main():
     # Configuration
     target_directories = [
-        # "src/app/dashboard/visit/",
-        # "src/components/visits/",
-        # "src/components/coffee-shops/table/",
+        "src/app/dashboard/visits/",
+        "src/components/visits/",
         "src/components/coffee-shops/table/",
         "src/app/api/coffee-shops/",
-        # "src/app/api/visits/",
+        "src/app/api/visits/",
         # "src/hooks/",
         "prisma/",
-        # "src/app/dashboard/routes/",
-        # "src/components/routes/",
+        "src/components/follow-ups/",
         # "src/store/"
     ]
     

@@ -27,7 +27,7 @@ import { CoffeeShop } from "@prisma/client"
 import { StageCell } from "./stage-cell"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { calculateARR } from "./utils"
-import { DELIVERY_FREQUENCY_LABELS } from "./types"
+import { DeliveryCell } from "./delivery-cell"
 
 interface TableRowProps {
   shop: CoffeeShop
@@ -50,26 +50,89 @@ export function TableRow({
   const handleUpdate = async (field: keyof CoffeeShop, value: any) => {
     setLoading(true)
     try {
+      // Validate delivery frequency
+      if (field === 'delivery_frequency') {
+        const validFrequencies = ["WEEKLY", "BIWEEKLY", "THREE_WEEKS", "FOUR_WEEKS", "FIVE_WEEKS", "SIX_WEEKS"];
+        if (value && !validFrequencies.includes(value)) {
+          toast({
+            title: "Error",
+            description: "Invalid delivery frequency",
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+  
+      // Validate first delivery week
+      if (field === 'first_delivery_week') {
+        const weekNum = parseInt(value);
+        if (isNaN(weekNum) || weekNum < 1 || weekNum > 53) {
+          toast({
+            title: "Error",
+            description: "First delivery week must be between 1 and 53",
+            variant: "destructive"
+          });
+          return;
+        }
+  
+        // Ensure delivery frequency is set when setting first delivery week
+        if (!shop.delivery_frequency) {
+          // Update both fields together
+          const updatedData = {
+            first_delivery_week: weekNum,
+            delivery_frequency: "WEEKLY" // Default to weekly
+          };
+  
+          setShop(prev => ({
+            ...prev,
+            ...updatedData
+          }));
+  
+          await onUpdate('first_delivery_week', weekNum);
+          await onUpdate('delivery_frequency', "WEEKLY");
+          
+          toast({
+            description: "Delivery schedule set to weekly by default"
+          });
+          
+          return;
+        }
+      }
+  
       // Optimistically update the local state
       setShop(prev => ({
         ...prev,
         [field]: value
-      }))
+      }));
       
       // Make the API call
-      await onUpdate(field, value)
+      await onUpdate(field, value);
+  
+      // Show success message for delivery-related updates
+      if (field === 'delivery_frequency' || field === 'first_delivery_week') {
+        toast({
+          description: `${field.split('_').join(' ')} updated successfully`
+        });
+      }
+  
     } catch (error) {
       // Revert on error
       setShop(prev => ({
         ...prev,
         [field]: initialShop[field]
-      }))
-      throw error
+      }));
+  
+      toast({
+        title: "Error",
+        description: "Failed to update. Please try again.",
+        variant: "destructive"
+      });
+  
+      throw error;
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
-
+  };
   return (
     <UITableRow>
       <TableCell>
@@ -201,22 +264,22 @@ export function TableRow({
         />
       </TableCell>
       <TableCell>
-        <Select
-          value={shop.delivery_frequency || 'WEEKLY'}
-          onValueChange={(value) => handleUpdate('delivery_frequency', value)}
+        <DeliveryCell 
+          shop={shop}
+          onUpdate={handleUpdate}
           disabled={loading}
-        >
-          <SelectTrigger className="w-[130px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(DELIVERY_FREQUENCY_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        />
+      </TableCell>
+
+
+
+      <TableCell>
+        <EditableCell
+          value={shop.first_delivery_week?.toString()}
+          onUpdate={(value) => handleUpdate("first_delivery_week", value ? parseInt(value) : null)}
+          type="number"
+          disabled={loading}
+        />
       </TableCell>
 
     <TableCell>
