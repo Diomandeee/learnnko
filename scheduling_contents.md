@@ -1,3 +1,634 @@
+### /Users/mohameddiomande/Desktop/koatji-crm/src/app/dashboard/visits/page.tsx
+import { Metadata } from "next"
+import { VisitManagement } from "@/components/visits/visit-management"
+import { VisitAnalytics } from "@/components/visits/visit-analytics"
+import { FollowUpManager } from "@/components/follow-ups/follow-up-manager"
+import { PageContainer } from "@/components/layout/page-container"
+
+export const metadata: Metadata = {
+  title: "Visit Management | CRM",
+  description: "Manage and track coffee shop visits and follow-ups",
+}
+
+export default function VisitsPage() {
+  return (
+    <PageContainer>
+      <div className="flex-1 space-y-4 p-8 pt-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Visit Management</h1>
+            <p className="text-sm text-muted-foreground">
+              Track, schedule, and analyze your coffee shop visits and follow-ups
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-7 lg:grid-cols-12">
+          <VisitManagement className="md:col-span-4 lg:col-span-8" />
+          <VisitAnalytics className="md:col-span-3 lg:col-span-4" />
+        </div>
+        
+        <FollowUpManager />
+      </div>
+    </PageContainer>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/app/dashboard/visits/new/page.tsx
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/visits/visit-analytics.tsx
+"use client"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useVisits } from "@/hooks/use-visits"
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
+import { 
+  Activity,
+  Users,
+  Briefcase,
+  TrendingUp,
+  Calendar,
+} from "lucide-react"
+
+interface VisitAnalyticsProps {
+  className?: string
+}
+
+export function VisitAnalytics({ className }: VisitAnalyticsProps) {
+  const { visits, loading } = useVisits()
+
+  if (loading) {
+    return (
+      <Card className={className}>
+        <CardHeader>
+          <CardTitle>Analytics</CardTitle>
+        </CardHeader>
+        <CardContent>Loading analytics...</CardContent>
+      </Card>
+    )
+  }
+
+  // Calculate analytics
+  const totalVisits = visits?.length || 0
+  const managerMeetings = visits?.filter(visit => visit.managerPresent).length || 0
+  const samplesDropped = visits?.filter(visit => visit.samplesDropped).length || 0
+  const scheduledVisits = visits?.filter(visit => visit.nextVisitDate).length || 0
+
+  // Create monthly data for chart
+  const monthlyData = visits?.reduce((acc, visit) => {
+    const month = new Date(visit.date).toLocaleString('default', { month: 'short' })
+    acc[month] = (acc[month] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
+  const chartData = Object.entries(monthlyData || {}).map(([month, count]) => ({
+    month,
+    visits: count
+  }))
+
+  return (
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle>Visit Analytics</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-8">
+        <div className="grid gap-4 grid-cols-2">
+          <StatCard 
+            title="Total Visits"
+            value={totalVisits}
+            icon={Activity}
+            description="All time visits"
+          />
+          <StatCard 
+            title="Manager Meetings"
+            value={managerMeetings}
+            icon={Users}
+            description="With management"
+          />
+          <StatCard 
+            title="Samples Dropped"
+            value={samplesDropped}
+            icon={Briefcase}
+            description="Sample deliveries"
+          />
+          <StatCard 
+            title="Scheduled"
+            value={scheduledVisits}
+            icon={Calendar}
+            description="Upcoming visits"
+          />
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">Monthly Visit Trend</h3>
+          <div className="h-[200px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Bar 
+                  dataKey="visits" 
+                  fill="var(--primary)" 
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+interface StatCardProps {
+  title: string
+  value: number
+  icon: React.ElementType
+  description: string
+}
+
+function StatCard({ title, value, icon: Icon, description }: StatCardProps) {
+  return (
+    <div className="p-4 border rounded-lg">
+      <div className="flex items-center gap-2">
+        <Icon className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm font-medium">{title}</span>
+      </div>
+      <div className="mt-2">
+        <span className="text-2xl font-bold">{value}</span>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/visits/visit-calendar.tsx
+"use client"
+
+import { useState } from "react"
+import { Calendar } from "@/components/ui/calendar"
+import { useVisits } from "@/hooks/use-visits"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+
+export function VisitCalendar() {
+  const { visits } = useVisits()
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
+
+  // Create a map of dates to visit counts
+  const visitDates = visits?.reduce((acc, visit) => {
+    const date = new Date(visit.date).toDateString()
+    acc[date] = (acc[date] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
+  const modifiers = {
+    hasVisits: (date: Date) => {
+      return !!visitDates?.[date.toDateString()]
+    }
+  }
+
+  const modifiersStyles = {
+    hasVisits: {
+      backgroundColor: 'var(--primary)',
+      color: 'white',
+      borderRadius: '50%'
+    }
+  }
+
+  return (
+    <div className="p-4 rounded-lg border">
+      <Calendar
+        mode="single"
+        selected={selectedDate}
+        onSelect={setSelectedDate}
+        modifiers={modifiers}
+        modifiersStyles={modifiersStyles}
+        className="rounded-md border"
+      />
+
+      {selectedDate && visitDates?.[selectedDate.toDateString()] > 0 && (
+        <div className="mt-4">
+          <h3 className="font-medium mb-2">
+            Visits on {selectedDate.toLocaleDateString()}
+          </h3>
+          <div className="space-y-2">
+            {visits?.filter(visit => 
+              new Date(visit.date).toDateString() === selectedDate.toDateString()
+            ).map(visit => (
+              <Card key={visit.id} className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{visit.coffeeShopId}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Visit #{visit.visitNumber}
+                    </p>
+                  </div>
+                  <div className="space-x-2">
+                    {visit.managerPresent && (
+                      <Badge variant="outline">Manager Present</Badge>
+                    )}
+                    {visit.samplesDropped && (
+                      <Badge variant="outline">Samples Dropped</Badge>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/visits/visit-management.tsx
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { CalendarDateRangePicker } from "@/components/ui/date-range-picker"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { VisitTable } from "./visit-table"
+import { VisitCalendar } from "./visit-calendar"
+import { VisitScheduler } from "./visit-scheduler"
+import { VisitedShops } from "./visited-shops"
+import { Plus, Calendar, List, Clock, CheckCircle2 } from "lucide-react"
+
+interface VisitManagementProps {
+  className?: string
+}
+
+export function VisitManagement({ className }: VisitManagementProps) {
+  const router = useRouter()
+  const [view, setView] = useState("list")
+
+  return (
+    <Card className={className}>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>Visit Management</CardTitle>
+          <Button onClick={() => router.push("/dashboard/visits/new")}>
+            <Plus className="mr-2 h-4 w-4" />
+            Record New Visit
+          </Button>
+        </div>
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <CalendarDateRangePicker />
+            <Input
+              placeholder="Search visits..."
+              className="max-w-[250px]"
+            />
+          </div>
+          <Tabs defaultValue={view} onValueChange={setView}>
+            <TabsList>
+              <TabsTrigger value="list">
+                <List className="mr-2 h-4 w-4" />
+                List View
+              </TabsTrigger>
+              <TabsTrigger value="calendar">
+                <Calendar className="mr-2 h-4 w-4" />
+                Calendar View
+              </TabsTrigger>
+              <TabsTrigger value="schedule">
+                <Clock className="mr-2 h-4 w-4" />
+                Schedule
+              </TabsTrigger>
+              <TabsTrigger value="visited">
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Visited Shops
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="list" className="border-none p-0 pt-4">
+              <VisitTable />
+            </TabsContent>
+            <TabsContent value="calendar" className="border-none p-0 pt-4">
+              <VisitCalendar />
+            </TabsContent>
+            <TabsContent value="schedule" className="border-none p-0 pt-4">
+              <VisitScheduler />
+            </TabsContent>
+            <TabsContent value="visited" className="border-none p-0 pt-4">
+              <VisitedShops />
+            </TabsContent>
+          </Tabs>
+        </div>
+      </CardHeader>
+    </Card>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/visits/visit-scheduler.tsx
+"use client"
+
+import { useState } from "react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import { useVisits } from "@/hooks/use-visits"
+import { format } from "date-fns"
+
+export function VisitScheduler() {
+  const { visits } = useVisits()
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
+
+  // Get upcoming scheduled visits
+  const upcomingVisits = visits?.filter(visit => 
+    visit.nextVisitDate && new Date(visit.nextVisitDate) > new Date()
+  ).sort((a, b) => 
+    new Date(a.nextVisitDate!).getTime() - new Date(b.nextVisitDate!).getTime()
+  )
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <div>
+        <h3 className="font-medium mb-2">Schedule New Visit</h3>
+        <Calendar
+          mode="single"
+          selected={selectedDate}
+          onSelect={setSelectedDate}
+          className="rounded-md border"
+        />
+        <Button className="w-full mt-4">
+          Schedule Visit
+        </Button>
+      </div>
+
+      <div>
+        <h3 className="font-medium mb-2">Upcoming Scheduled Visits</h3>
+        <div className="space-y-2">
+          {upcomingVisits?.map(visit => (
+            <Card key={visit.id}>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-medium">{visit.coffeeShopId}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(visit.nextVisitDate!), "MMMM d, yyyy")}
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    Reschedule
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          {(!upcomingVisits || upcomingVisits.length === 0) && (
+            <p className="text-sm text-muted-foreground">
+              No upcoming visits scheduled
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/visits/visit-table.tsx
+"use client"
+
+import { useState } from "react"
+import { format } from "date-fns"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { useVisits } from "@/hooks/use-visits"
+import { Visit, CoffeeShop } from "@prisma/client"
+
+type VisitWithShop = Visit & {
+  coffeeShop: CoffeeShop
+}
+
+export function VisitTable() {
+  const { visits, loading } = useVisits()
+
+  if (loading) return <div>Loading visits...</div>
+
+  return (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Date</TableHead>
+            <TableHead>Coffee Shop</TableHead>
+            <TableHead>Manager Present</TableHead>
+            <TableHead>Samples</TableHead>
+            <TableHead>Next Visit</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {visits?.map((visit: VisitWithShop) => (
+            <TableRow key={visit.id}>
+              <TableCell>
+                {format(new Date(visit.date), 'MMM d, yyyy')}
+              </TableCell>
+              <TableCell>{visit.coffeeShop.title}</TableCell>
+              <TableCell>
+                {visit.managerPresent ? (
+                  <Badge variant="success">Yes</Badge>
+                ) : (
+                  <Badge variant="secondary">No</Badge>
+                )}
+              </TableCell>
+              <TableCell>
+                {visit.samplesDropped ? (
+                  <Badge variant="success">Dropped</Badge>
+                ) : (
+                  <Badge variant="secondary">None</Badge>
+                )}
+              </TableCell>
+              <TableCell>
+                {visit.nextVisitDate ? (
+                  format(new Date(visit.nextVisitDate), 'MMM d, yyyy')
+                ) : (
+                  '-'
+                )}
+              </TableCell>
+              <TableCell>
+                <Badge>
+                  Visit #{visit.visitNumber}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <Button variant="ghost" size="sm">
+                  View Details
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/visits/visited-shops.tsx
+"use client"
+
+import { useMemo, useState } from "react"
+import { useShops } from "@/hooks/use-shops"
+import { Input } from "@/components/ui/input"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { format } from "date-fns"
+import { useVisits } from "@/hooks/use-visits"
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+export function VisitedShops() {
+  const { shops, loading: shopsLoading } = useShops()
+  const { visits, loading: visitsLoading } = useVisits()
+  const [searchTerm, setSearchTerm] = useState("")
+  const [areaFilter, setAreaFilter] = useState("all")
+
+  const visitedShops = useMemo(() => {
+    if (!shops || !visits) return []
+
+    const visitedShopsMap = shops
+      .filter(shop => shop.visited)
+      .map(shop => {
+        const shopVisits = visits.filter(visit => visit.coffeeShopId === shop.id)
+        const lastVisit = shopVisits.sort((a, b) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        )[0]
+
+        return {
+          ...shop,
+          visitCount: shopVisits.length,
+          lastVisit,
+          nextVisit: shopVisits.find(v => v.nextVisitDate && new Date(v.nextVisitDate) > new Date()),
+        }
+      })
+
+    // Apply filters
+    return visitedShopsMap.filter(shop => {
+      const matchesSearch = 
+        shop.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        shop.area?.toLowerCase().includes(searchTerm.toLowerCase())
+      
+      const matchesArea = areaFilter === 'all' || shop.area === areaFilter
+
+      return matchesSearch && matchesArea
+    })
+  }, [shops, visits, searchTerm, areaFilter])
+
+  const areas = useMemo(() => {
+    if (!shops) return []
+    return Array.from(new Set(shops.map(shop => shop.area).filter(Boolean)))
+  }, [shops])
+
+  if (shopsLoading || visitsLoading) {
+    return <div>Loading...</div>
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-4">
+        <Input
+          placeholder="Search visited shops..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="max-w-sm"
+        />
+        <Select value={areaFilter} onValueChange={setAreaFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select area" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Areas</SelectItem>
+            {areas.map(area => (
+              <SelectItem key={area} value={area}>{area}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Coffee Shop</TableHead>
+              <TableHead>Area</TableHead>
+              <TableHead>Visit Count</TableHead>
+              <TableHead>Last Visit</TableHead>
+              <TableHead>Next Scheduled</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {visitedShops.map((shop) => (
+              <TableRow key={shop.id}>
+                <TableCell className="font-medium">{shop.title}</TableCell>
+                <TableCell>{shop.area}</TableCell>
+                <TableCell>{shop.visitCount}</TableCell>
+                <TableCell>
+                  {shop.lastVisit ? (
+                    format(new Date(shop.lastVisit.date), 'MMM d, yyyy')
+                  ) : (
+                    '-'
+                  )}
+                </TableCell>
+                <TableCell>
+                  {shop.nextVisit?.nextVisitDate ? (
+                    format(new Date(shop.nextVisit.nextVisitDate), 'MMM d, yyyy')
+                  ) : (
+                    '-'
+                  )}
+                </TableCell>
+                <TableCell>
+                  {shop.parlor_coffee_leads ? (
+                    <Badge className="bg-yellow-500">Lead</Badge>
+                  ) : (
+                    <Badge variant="secondary">Visited</Badge>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+            {visitedShops.length === 0 && (
+              <TableRow>
+                <TableCell colspan={6} className="text-center py-4">
+                  No visited shops found
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="pt-2 text-sm text-muted-foreground">
+        Total visited shops: {visitedShops.length}
+      </div>
+    </div>
+  )
+}
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/koatji-crm/src/components/coffee-shops/table/bulk-actions.tsx
 "use client"
 
@@ -295,6 +926,7 @@ import { BulkActions } from "./bulk-actions"
 import { MobileCardView } from "./mobile-card-view"
 import { VisitReport } from "./visit-reports"
 import { TableExport } from "./table-export"
+
 const ITEMS_PER_PAGE = 50;
 
 interface CoffeeShopsTableProps {
@@ -325,7 +957,6 @@ export function CoffeeShopsTable({ shops }: CoffeeShopsTableProps) {
         const data = await response.json()
         setSavedFilters(data)
 
-        // Apply default filter if exists and no active filters
         const defaultFilter = data.find(filter => filter.isDefault)
         if (defaultFilter && activeFilters.length === 0) {
           setActiveFilters(defaultFilter.filters)
@@ -391,66 +1022,6 @@ export function CoffeeShopsTable({ shops }: CoffeeShopsTableProps) {
     }
   }, [toast])
 
-  const handleSaveFilter = async (name: string, isDefault: boolean) => {
-    try {
-      const response = await fetch('/api/coffee-shops/filters', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          filters: activeFilters,
-          isDefault
-        })
-      })
-
-      if (!response.ok) throw new Error('Failed to save filter')
-
-      const savedFilter = await response.json()
-      setSavedFilters(prev => [savedFilter, ...prev])
-
-      toast({
-        title: "Success",
-        description: "Filter saved successfully"
-      })
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save filter",
-        variant: "destructive"
-      })
-    }
-  }
-
-  const handleDeleteFilter = async (id: string) => {
-    try {
-      const response = await fetch('/api/coffee-shops/filters', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
-      })
-
-      if (!response.ok) throw new Error('Failed to delete filter')
-
-      setSavedFilters(prev => prev.filter(filter => filter.id !== id))
-
-      toast({
-        title: "Success",
-        description: "Filter deleted successfully"
-      })
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete filter",
-        variant: "destructive"
-      })
-    }
-  }
-
-  const handleLoadFilter = (filters) => {
-    setActiveFilters(filters)
-    setCurrentPage(1) // Reset to first page when loading new filters
-  }
-
   const filteredShops = shops.filter(shop => {
     if (searchTerm && !shop.title.toLowerCase().includes(searchTerm.toLowerCase())) {
       return false
@@ -480,13 +1051,51 @@ export function CoffeeShopsTable({ shops }: CoffeeShopsTableProps) {
     
     const aVal = a[sortConfig.key]
     const bVal = b[sortConfig.key]
+
+    // Special handling for date fields
+    if (['first_visit', 'second_visit', 'third_visit'].includes(sortConfig.key)) {
+      // Handle null/undefined values - always put them at the bottom
+      if (!aVal && !bVal) return 0
+      if (!aVal) return 1  // Move a to the bottom
+      if (!bVal) return -1 // Move b to the bottom
+
+      // Compare actual dates
+      const aDate = new Date(aVal).getTime()
+      const bDate = new Date(bVal).getTime()
+
+      // Handle invalid dates
+      if (isNaN(aDate)) return 1
+      if (isNaN(bDate)) return -1
+
+      return sortConfig.direction === 'asc' ? aDate - bDate : bDate - aDate
+    }
+
+    // Handle numeric fields
+    if (['volume', 'rating', 'reviews', 'followers', 'priority'].includes(sortConfig.key)) {
+      const aNum = Number(aVal)
+      const bNum = Number(bVal)
+
+      // Handle NaN values
+      if (isNaN(aNum) && isNaN(bNum)) return 0
+      if (isNaN(aNum)) return 1
+      if (isNaN(bNum)) return -1
+
+      return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum
+    }
+
+    // Default string comparison
+    const aStr = String(aVal || '').toLowerCase()
+    const bStr = String(bVal || '').toLowerCase()
     
-    if (aVal === bVal) return 0
-    
-    const compareResult = aVal > bVal ? 1 : -1
+    if (aStr === bStr) return 0
+    if (!aVal) return 1  // Move empty values to the bottom
+    if (!bVal) return -1
+
+    const compareResult = aStr > bStr ? 1 : -1
     return sortConfig.direction === 'asc' ? compareResult : -compareResult
   })
 
+  // Apply pagination after sorting
   const paginatedShops = sortedShops.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
@@ -496,7 +1105,6 @@ export function CoffeeShopsTable({ shops }: CoffeeShopsTableProps) {
 
   return (
     <div className="space-y-4">
-      {/* Filters Section */}
       <div className="flex flex-col gap-4">
         <TableFilters
           searchTerm={searchTerm}
@@ -507,8 +1115,7 @@ export function CoffeeShopsTable({ shops }: CoffeeShopsTableProps) {
           onClearFilters={() => setActiveFilters([])}
         />
       </div>
-  
-      {/* Actions Section - Stack on mobile, row on desktop */}
+
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <BulkActions
@@ -526,11 +1133,9 @@ export function CoffeeShopsTable({ shops }: CoffeeShopsTableProps) {
           <TableExport data={shops} />
         </div>
       </div>
-  
-      {/* Mobile View */}
+
       <div className="block md:hidden">
         <div className="space-y-2">
-          {/* Stats summary for mobile */}
           <div className="bg-muted/50 rounded-lg p-3 text-sm">
             <p>Showing {paginatedShops.length} of {sortedShops.length} shops</p>
             {selectedIds.length > 0 && (
@@ -550,8 +1155,7 @@ export function CoffeeShopsTable({ shops }: CoffeeShopsTableProps) {
           />
         </div>
       </div>
-  
-      {/* Desktop View */}
+
       <div className="hidden md:block border rounded-md overflow-x-auto">
         <Table>
           <TableHeader>
@@ -590,8 +1194,7 @@ export function CoffeeShopsTable({ shops }: CoffeeShopsTableProps) {
           </TableBody>
         </Table>
       </div>
-  
-      {/* Pagination - Make it scroll horizontally on mobile if needed */}
+
       <div className="overflow-x-auto">
         <TablePagination
           currentPage={currentPage}
@@ -822,6 +1425,46 @@ function formatDistanceToNow(date: Date): string {
   if (diffInDays < 365) return `${Math.floor(diffInDays / 30)} months ago`
   return `${Math.floor(diffInDays / 365)} years ago`
 }________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/coffee-shops/table/delivery-cell.tsx
+"use client"
+
+import { CoffeeShop } from "@prisma/client"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { DELIVERY_FREQUENCIES } from "@/types/delivery"
+
+interface DeliveryCellProps {
+  shop: CoffeeShop
+  onUpdate: (field: keyof CoffeeShop, value: any) => Promise<void>
+  disabled?: boolean
+}
+
+export function DeliveryCell({ shop, onUpdate, disabled }: DeliveryCellProps) {
+  return (
+    <Select
+      value={shop.delivery_frequency || undefined}
+      onValueChange={(value) => onUpdate("delivery_frequency", value)}
+      disabled={disabled}
+    >
+      <SelectTrigger className="w-[150px]">
+        <SelectValue placeholder="Select frequency" />
+      </SelectTrigger>
+      <SelectContent>
+        {Object.entries(DELIVERY_FREQUENCIES).map(([key, value]) => (
+          <SelectItem key={key} value={value}>
+            {key.replace(/_/g, ' ').toLowerCase()}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/koatji-crm/src/components/coffee-shops/table/editable-cell.tsx
 // editable-cell.tsx
 import { useState } from "react";
@@ -1175,6 +1818,13 @@ export const FILTER_CONFIGS: FilterConfig[] = [
       value,
       label
     }))
+  },
+  {
+    field: 'first_delivery_week',
+    label: 'First Delivery Week',
+    type:  'number',
+    operators: ['equals', 'greaterThan', 'lessThan', 'between'],
+    placeholder: 'Enter week number...'
   },
   {
     field: 'first_visit',
@@ -2572,8 +3222,14 @@ export function TableHeader({
         />
       </TableHead>
 
-      
-
+      <TableHead>
+        <SortHeader 
+          label="First Delivery"
+          sortKey="first_delivery_week"
+          currentSort={sortConfig}
+          onSort={onSort}
+        />
+      </TableHead>
 
       <TableHead>ARR</TableHead>
 
@@ -2736,7 +3392,7 @@ import { CoffeeShop } from "@prisma/client"
 import { StageCell } from "./stage-cell"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { calculateARR } from "./utils"
-import { DELIVERY_FREQUENCY_LABELS } from "./types"
+import { DeliveryCell } from "./delivery-cell"
 
 interface TableRowProps {
   shop: CoffeeShop
@@ -2759,26 +3415,89 @@ export function TableRow({
   const handleUpdate = async (field: keyof CoffeeShop, value: any) => {
     setLoading(true)
     try {
+      // Validate delivery frequency
+      if (field === 'delivery_frequency') {
+        const validFrequencies = ["WEEKLY", "BIWEEKLY", "THREE_WEEKS", "FOUR_WEEKS", "FIVE_WEEKS", "SIX_WEEKS"];
+        if (value && !validFrequencies.includes(value)) {
+          toast({
+            title: "Error",
+            description: "Invalid delivery frequency",
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+  
+      // Validate first delivery week
+      if (field === 'first_delivery_week') {
+        const weekNum = parseInt(value);
+        if (isNaN(weekNum) || weekNum < 1 || weekNum > 53) {
+          toast({
+            title: "Error",
+            description: "First delivery week must be between 1 and 53",
+            variant: "destructive"
+          });
+          return;
+        }
+  
+        // Ensure delivery frequency is set when setting first delivery week
+        if (!shop.delivery_frequency) {
+          // Update both fields together
+          const updatedData = {
+            first_delivery_week: weekNum,
+            delivery_frequency: "WEEKLY" // Default to weekly
+          };
+  
+          setShop(prev => ({
+            ...prev,
+            ...updatedData
+          }));
+  
+          await onUpdate('first_delivery_week', weekNum);
+          await onUpdate('delivery_frequency', "WEEKLY");
+          
+          toast({
+            description: "Delivery schedule set to weekly by default"
+          });
+          
+          return;
+        }
+      }
+  
       // Optimistically update the local state
       setShop(prev => ({
         ...prev,
         [field]: value
-      }))
+      }));
       
       // Make the API call
-      await onUpdate(field, value)
+      await onUpdate(field, value);
+  
+      // Show success message for delivery-related updates
+      if (field === 'delivery_frequency' || field === 'first_delivery_week') {
+        toast({
+          description: `${field.split('_').join(' ')} updated successfully`
+        });
+      }
+  
     } catch (error) {
       // Revert on error
       setShop(prev => ({
         ...prev,
         [field]: initialShop[field]
-      }))
-      throw error
+      }));
+  
+      toast({
+        title: "Error",
+        description: "Failed to update. Please try again.",
+        variant: "destructive"
+      });
+  
+      throw error;
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
-
+  };
   return (
     <UITableRow>
       <TableCell>
@@ -2910,22 +3629,22 @@ export function TableRow({
         />
       </TableCell>
       <TableCell>
-        <Select
-          value={shop.delivery_frequency || 'WEEKLY'}
-          onValueChange={(value) => handleUpdate('delivery_frequency', value)}
+        <DeliveryCell 
+          shop={shop}
+          onUpdate={handleUpdate}
           disabled={loading}
-        >
-          <SelectTrigger className="w-[130px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(DELIVERY_FREQUENCY_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        />
+      </TableCell>
+
+
+
+      <TableCell>
+        <EditableCell
+          value={shop.first_delivery_week?.toString()}
+          onUpdate={(value) => handleUpdate("first_delivery_week", value ? parseInt(value) : null)}
+          type="number"
+          disabled={loading}
+        />
       </TableCell>
 
     <TableCell>
@@ -3147,17 +3866,16 @@ export function sortShops(shops: CoffeeShop[], sortConfig: SortConfig): CoffeeSh
     const aVal = a[sortConfig.key!]
     const bVal = b[sortConfig.key!]
 
-    // Handle null/undefined values - move them to the end
-    if (aVal === null || aVal === undefined) return 1
-    if (bVal === null || bVal === undefined) return -1
-
-    // Handle date fields specifically
+    // Special handling for date fields with null values
     const dateFields = ['first_visit', 'second_visit', 'third_visit']
-    if (dateFields.includes(sortConfig.key)) {  
+    if (dateFields.includes(sortConfig.key)) {
+      // Move null/undefined values to the bottom regardless of sort direction
+      if (!aVal && !bVal) return 0
+      if (!aVal) return 1  // Move 'a' to the bottom
+      if (!bVal) return -1 // Move 'b' to the bottom
+      
       const aDate = new Date(aVal).getTime()
       const bDate = new Date(bVal).getTime()
-
-      
       
       // Handle invalid dates
       if (isNaN(aDate)) return 1
@@ -3166,14 +3884,6 @@ export function sortShops(shops: CoffeeShop[], sortConfig: SortConfig): CoffeeSh
       return sortConfig.direction === 'asc'
         ? aDate - bDate
         : bDate - aDate
-    }
-
-    // Handle numeric fields
-    const numericFields = ['volume', 'rating', 'reviews', 'followers', 'priority']
-    if (numericFields.includes(sortConfig.key)) {
-      return sortConfig.direction === 'asc'
-        ? Number(aVal) - Number(bVal)
-        : Number(bVal) - Number(aVal)
     }
 
  
@@ -3718,6 +4428,7 @@ import { prisma } from "@/lib/db/prisma"
 import { authOptions } from "@/lib/auth/options"
 import { revalidatePath } from "next/cache"
 import { Stage } from "@prisma/client"
+import { isValidDeliveryFrequency } from "@/types/delivery"
 
 // Helper function to calculate stage
 function calculateStage(shop: { isPartner?: boolean; visited?: boolean }): Stage {
@@ -3726,7 +4437,17 @@ function calculateStage(shop: { isPartner?: boolean; visited?: boolean }): Stage
   return "PROSPECTING"
 }
 
-// Helper function to parse numeric values safely
+const DELIVERY_FREQUENCIES = [
+  "WEEKLY",
+  "BIWEEKLY",
+  "THREE_WEEKS",
+  "FOUR_WEEKS",
+  "FIVE_WEEKS",
+  "SIX_WEEKS"
+] as const
+
+
+
 function parseNumericFields(data: any) {
   return {
     ...data,
@@ -3737,9 +4458,9 @@ function parseNumericFields(data: any) {
     latitude: data.latitude ? parseFloat(data.latitude) : null,
     longitude: data.longitude ? parseFloat(data.longitude) : null,
     priority: data.priority ? parseInt(data.priority) : 0,
+    first_delivery_week: data.first_delivery_week ? parseInt(data.first_delivery_week) : null
   }
 }
-
 // Helper function to clean company data
 function cleanCompanyData(data: any) {
   if (!data.company_data) return null
@@ -3953,6 +4674,27 @@ export async function PATCH(request: Request) {
     const data = await request.json()
     const { id, owners, people, domainEmails, ...updateData } = data
 
+    // Validate delivery frequency if present
+    if (updateData.delivery_frequency) {
+      if (!isValidDeliveryFrequency(updateData.delivery_frequency)) {
+        return NextResponse.json(
+          { error: "Invalid delivery frequency" },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Validate first delivery week if present
+    if (updateData.first_delivery_week !== undefined) {
+      const weekNum = parseInt(updateData.first_delivery_week)
+      if (isNaN(weekNum) || weekNum < 1 || weekNum > 53) {
+        return NextResponse.json(
+          { error: "First delivery week must be between 1 and 53" },
+          { status: 400 }
+        )
+      }
+    }
+
     // Parse numeric values
     const parsedData = parseNumericFields(updateData)
 
@@ -3982,6 +4724,18 @@ export async function PATCH(request: Request) {
       }
     }
 
+    // Ensure delivery frequency is set when first delivery week is set
+    if (parsedData.first_delivery_week && !parsedData.delivery_frequency) {
+      parsedData.delivery_frequency = "WEEKLY" // Default to weekly if not specified
+    }
+
+    // Log the update for debugging
+    console.log("Updating shop with data:", {
+      id,
+      delivery_frequency: parsedData.delivery_frequency,
+      first_delivery_week: parsedData.first_delivery_week
+    })
+
     const updatedShop = await prisma.coffeeShop.update({
       where: { id },
       data: {
@@ -4006,6 +4760,12 @@ export async function PATCH(request: Request) {
         owners: true,
         people: true
       }
+    })
+
+    console.log("Shop updated successfully:", {
+      id: updatedShop.id,
+      delivery_frequency: updatedShop.delivery_frequency,
+      first_delivery_week: updatedShop.first_delivery_week
     })
 
     revalidatePath('/dashboard/coffee-shops')
@@ -4749,6 +5509,93 @@ export async function GET(request: Request) {
     )
   }
 }________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/app/api/visits/route.ts
+import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { prisma } from "@/lib/db/prisma"
+import { authOptions } from "@/lib/auth/options"
+import { createAutoFollowUps } from "@/lib/follow-ups/auto-create"
+
+export async function POST(request: Request) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    const data = await request.json()
+    
+    // Create the visit
+    const visit = await prisma.visit.create({
+      data: {
+        ...data,
+        userId: user.id
+      }
+    })
+
+    // Generate automatic follow-ups
+    await createAutoFollowUps(user.id)
+
+    return NextResponse.json({ data: visit })
+  } catch (error) {
+    console.error("[VISIT_CREATE]", error)
+    return NextResponse.json(
+      { error: "Failed to create visit" },
+      { status: 500 }
+    )
+  }
+}
+
+export async function GET() {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.email) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+    const visits = await prisma.visit.findMany({
+      where: {
+        userId: user.id
+      },
+      include: {
+        coffeeShop: true,
+        user: {
+          select: {
+            name: true,
+            email: true
+          }
+        }
+      },
+      orderBy: {
+        date: "desc"
+      }
+    })
+
+    await createAutoFollowUps(user.id)
+
+    return NextResponse.json(visits)
+  } catch (error) {
+    console.error("[VISITS_GET]", error)
+    return new NextResponse("Internal error", { status: 500 })
+  }
+}
+________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/koatji-crm/prisma/analytics.prisma
 model AnalyticsSnapshot {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
@@ -4827,6 +5674,8 @@ model User {
   people        Person[]    // Add relation to Person model
   filterHistory   FilterHistory[]
   savedFilters    SavedFilter[]
+  followUps        FollowUp[]
+
 }
 
 
@@ -5153,6 +6002,44 @@ model TimeOff {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 }
+
+
+model FollowUp {
+  id              String       @id @default(auto()) @map("_id") @db.ObjectId
+  coffeeShopId    String       @db.ObjectId
+  coffeeShop      CoffeeShop   @relation(fields: [coffeeShopId], references: [id])
+  type            FollowUpType
+  status          FollowUpStatus @default(PENDING)
+  priority        Int          @default(3) // 1-5 scale
+  dueDate         DateTime
+  completedDate   DateTime?
+  notes           String?
+  contactMethod   String?      // email, text, visit, call
+  contactDetails  String?      // phone number, email address
+  assignedTo      String       @db.ObjectId
+  user            User         @relation(fields: [assignedTo], references: [id])
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+enum FollowUpType {
+  INITIAL_CONTACT
+  SAMPLE_DELIVERY
+  PROPOSAL_FOLLOW
+  TEAM_MEETING
+  CHECK_IN
+  GENERAL
+}
+
+enum FollowUpStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+}
+
+
 model CoffeeShop {
   id                    String    @id @default(auto()) @map("_id") @db.ObjectId
   title                 String
@@ -5201,8 +6088,21 @@ model CoffeeShop {
   people               Person[]  // Relation to people discovered from emails
   stage     Stage     @default(PROSPECTING)
   delivery_frequency String? // Values: "WEEKLY", "BIWEEKLY", "THREE_WEEKS", "FOUR_WEEKS", "FIVE_WEEKS", "SIX_WEEKS"
-
-  
+  first_delivery_week Int?
+  followUps         FollowUp[]
+  lastFollowUp      DateTime?
+  nextFollowUpDate  DateTime?
+  followUpCount     Int         @default(0)
+  relationshipStage String?     // INITIAL, SAMPLES_DELIVERED, PROPOSAL_SENT, etc.
+  potential         Int?        // 1-5 scale
+  interest          Int?        // 1-5 scale
+  decisionMaker     String?     // Name of the decision maker
+  decisionMakerRole String?     // Role of the decision maker
+  communicationPreference String? // email, phone, in-person
+  bestTimeToVisit   String?
+  competitors       String[]    // Other coffee suppliers they work with
+  budget           Float?      // Estimated monthly budget
+  closingNotes     String?     // Notes about closing strategy
 }
 
 
@@ -5368,4 +6268,1114 @@ main()
  .finally(async () => {
    await prisma.$disconnect();
  });
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/follow-ups/follow-up-create-dialog.tsx
+"use client"
+
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Calendar } from "@/components/ui/calendar"
+import { 
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CalendarIcon, Plus } from "lucide-react"
+import { format } from "date-fns"
+import { toast } from "@/components/ui/use-toast"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import * as z from "zod"
+import { cn } from "@/lib/utils"
+import { CoffeeShop } from "@prisma/client"
+
+interface FollowUpCreateDialogProps {
+  shops: CoffeeShop[]
+  onFollowUpCreated: () => void
+}
+
+const formSchema = z.object({
+  coffeeShopId: z.string({
+    required_error: "Please select a coffee shop",
+  }),
+  type: z.enum(['INITIAL_CONTACT', 'SAMPLE_DELIVERY', 'PROPOSAL_FOLLOW', 'TEAM_MEETING', 'CHECK_IN', 'GENERAL'], {
+    required_error: "Please select a follow-up type",
+  }),
+  priority: z.number().min(1).max(5),
+  dueDate: z.date({
+    required_error: "Please select a due date",
+  }),
+  contactMethod: z.enum(['call', 'email', 'visit', 'text'], {
+    required_error: "Please select a contact method",
+  }),
+  notes: z.string().optional(),
+})
+
+export function FollowUpCreateDialog({ shops, onFollowUpCreated }: FollowUpCreateDialogProps) {
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      priority: 3,
+      type: 'GENERAL',
+      contactMethod: 'call',
+    },
+  })
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/follow-ups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      })
+
+      if (!response.ok) throw new Error('Failed to create follow-up')
+
+      toast({
+        title: "Success",
+        description: "Follow-up created successfully",
+      })
+
+      onFollowUpCreated()
+      setOpen(false)
+      form.reset()
+    } catch (error) {
+      console.error('Error creating follow-up:', error)
+      toast({
+        title: "Error",
+        description: "Failed to create follow-up",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus className="mr-2 h-4 w-4" />
+          New Follow-up
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Create Follow-up</DialogTitle>
+          <DialogDescription>
+            Create a new follow-up task for a coffee shop
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="coffeeShopId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Coffee Shop</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a coffee shop" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {shops.map((shop) => (
+                        <SelectItem key={shop.id} value={shop.id}>
+                          {shop.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Follow-up Type</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="INITIAL_CONTACT">Initial Contact</SelectItem>
+                      <SelectItem value="SAMPLE_DELIVERY">Sample Delivery</SelectItem>
+                      <SelectItem value="PROPOSAL_FOLLOW">Proposal Follow-up</SelectItem>
+                      <SelectItem value="TEAM_MEETING">Team Meeting</SelectItem>
+                      <SelectItem value="CHECK_IN">Check In</SelectItem>
+                      <SelectItem value="GENERAL">General</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="priority"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Priority (1-5)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min={1} 
+                      max={5} 
+                      {...field} 
+                      onChange={e => field.onChange(parseInt(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    5 is highest priority, 1 is lowest
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="dueDate"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Due Date</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) =>
+                          date < new Date(new Date().setHours(0, 0, 0, 0))
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="contactMethod"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contact Method</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select contact method" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="call">Call</SelectItem>
+                      <SelectItem value="email">Email</SelectItem>
+                      <SelectItem value="visit">Visit</SelectItem>
+                      <SelectItem value="text">Text</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notes</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Add any relevant notes..."
+                      className="resize-none"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-end space-x-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setOpen(false)}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Creating..." : "Create Follow-up"}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  )
+}________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/follow-ups/follow-up-dialog.tsx
+"use client"
+
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { toast } from "@/components/ui/use-toast"
+import { format } from "date-fns"
+import { generateFollowUpSuggestions } from "./follow-up-suggestions"
+import { CalendarCheck, CalendarX } from "lucide-react"
+
+interface FollowUpCreateDialogProps {
+  shops: any[]
+  onFollowUpCreated: () => void
+}
+
+export function FollowUpCreateDialog({ 
+  shops,
+  onFollowUpCreated 
+}: FollowUpCreateDialogProps) {
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  const createFollowUp = async (suggestion: any) => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/follow-ups', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(suggestion)
+      })
+
+      if (!response.ok) throw new Error('Failed to create follow-up')
+
+      toast({
+        title: "Follow-up created",
+        description: `Follow-up scheduled for ${format(new Date(suggestion.dueDate), 'MMM d, yyyy')}`
+      })
+
+      onFollowUpCreated()
+      setOpen(false)
+    } catch (error) {
+      console.error('Error creating follow-up:', error)
+      toast({
+        title: "Error",
+        description: "Failed to create follow-up",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Get suggestions for all shops
+  const allSuggestions = shops.flatMap(shop => {
+    const suggestions = generateFollowUpSuggestions(shop)
+    return suggestions.map(suggestion => ({
+      ...suggestion,
+      shopName: shop.title
+    }))
+  })
+
+  // Sort suggestions by priority and due date
+  const sortedSuggestions = allSuggestions.sort((a, b) => {
+    if (b.priority !== a.priority) return b.priority - a.priority
+    return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <CalendarCheck className="mr-2 h-4 w-4" />
+          New Follow-up
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Create Follow-up</DialogTitle>
+          <DialogDescription>
+            Suggested follow-ups based on shop visit history and stages
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-4 py-4">
+          {sortedSuggestions.length > 0 ? (
+            sortedSuggestions.map((suggestion, index) => (
+              <Card key={index}>
+                <CardHeader>
+                  <CardTitle>{suggestion.shopName}</CardTitle>
+                  <CardDescription>
+                    {suggestion.type.split('_').join(' ').toLowerCase()}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div>
+                      <span className="font-medium">Due Date:</span>{' '}
+                      {format(new Date(suggestion.dueDate), 'MMM d, yyyy')}
+                    </div>
+                    <div>
+                      <span className="font-medium">Contact Method:</span>{' '}
+                      {suggestion.contactMethod}
+                    </div>
+                    <div>
+                      <span className="font-medium">Priority:</span>{' '}
+                      {'★'.repeat(suggestion.priority)}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {suggestion.notes}
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button 
+                    onClick={() => createFollowUp(suggestion)}
+                    disabled={loading}
+                  >
+                    Schedule Follow-up
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center p-8 text-center">
+              <CalendarX className="h-12 w-12 text-muted-foreground" />
+              <h3 className="mt-2 font-semibold">No Follow-ups Suggested</h3>
+              <p className="text-sm text-muted-foreground">
+                There are no suggested follow-ups based on current shop data.
+              </p>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/follow-ups/follow-up-manager.tsx
+"use client"
+
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { CoffeeShop } from "@prisma/client"
+import { format } from "date-fns"
+import { 
+  PhoneCall, 
+  Mail, 
+  Calendar,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Building,
+  User,
+  Star
+} from "lucide-react"
+import { FollowUpCreateDialog } from "./follow-up-create-dialog"
+import { GenerateFollowUpsButton } from "./generate-button"
+
+type FollowUp = {
+  id: string
+  type: string
+  status: string
+  priority: number
+  dueDate: string
+  completedDate?: string
+  notes?: string
+  contactMethod?: string
+  contactDetails?: string
+  coffeeShop: {
+    id: string
+    title: string
+    address: string
+    area?: string
+  }
+}
+
+const STATUS_COLORS = {
+  PENDING: "secondary",
+  IN_PROGRESS: "warning",
+  COMPLETED: "success",
+  CANCELLED: "destructive",
+  RESCHEDULED: "default"
+} as const
+
+const PRIORITY_COLORS = {
+  1: 'text-red-500',
+  2: 'text-orange-500',
+  3: 'text-yellow-500',
+  4: 'text-green-500',
+  5: 'text-blue-500'
+} as const
+
+export function FollowUpManager() {
+  const [followUps, setFollowUps] = useState<FollowUp[]>([])
+  const [shops, setShops] = useState<CoffeeShop[]>([])
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState("pending")
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false)
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      const [followUpsResponse, shopsResponse] = await Promise.all([
+        fetch('/api/follow-ups'),
+        fetch('/api/coffee-shops')
+      ])
+
+      if (!followUpsResponse.ok || !shopsResponse.ok) {
+        throw new Error('Failed to fetch data')
+      }
+
+      const followUpsJson = await followUpsResponse.json()
+      const shopsJson = await shopsResponse.json()
+
+      setFollowUps(followUpsJson.data || [])
+      setShops(shopsJson.data || [])
+    } catch (error) {
+      console.error('Error fetching data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleStatusChange = async (followUpId: string, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/follow-ups/${followUpId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      })
+
+      if (!response.ok) throw new Error('Failed to update status')
+      fetchData()
+    } catch (error) {
+      console.error('Error updating status:', error)
+    }
+  }
+
+  const getContactMethodIcon = (method?: string) => {
+    switch (method?.toLowerCase()) {
+      case 'phone':
+      case 'call':
+        return <PhoneCall className="h-4 w-4" />
+      case 'email':
+        return <Mail className="h-4 w-4" />
+      case 'visit':
+        return <Building className="h-4 w-4" />
+      default:
+        return <User className="h-4 w-4" />
+    }
+  }
+
+  const getTypeDisplay = (type: string) => {
+    return type.split('_').map(word => 
+      word.charAt(0) + word.slice(1).toLowerCase()
+    ).join(' ')
+  }
+
+  const handleReschedule = (followUpId: string) => {
+    console.log('Reschedule follow-up:', followUpId)
+  }
+
+
+  const filteredFollowUps = followUps.filter(followUp => {
+    if (activeTab === 'pending') {
+      return ['PENDING', 'IN_PROGRESS'].includes(followUp.status)
+    }
+    if (activeTab === 'completed') {
+      return followUp.status === 'COMPLETED'
+    }
+    if (activeTab === 'cancelled') {
+      return followUp.status === 'CANCELLED'
+    }
+    return true
+  }).sort((a, b) => {
+    // Sort by priority first, then by due date
+    if (a.priority !== b.priority) {
+      return b.priority - a.priority
+    }
+    return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+  })
+
+  const renderTableContent = (status: string) => (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[250px]">Shop & Stage</TableHead>
+            <TableHead>Follow-up Type</TableHead>
+            <TableHead>Visit History</TableHead>
+            <TableHead>Priority</TableHead>
+            <TableHead>{status === 'completed' ? 'Completed' : 'Due'}</TableHead>
+            <TableHead>Contact Info</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filteredFollowUps.map((followUp) => {
+            const shop = shops.find(s => s.id === followUp.coffeeShop.id)
+            const visitCount = [shop?.first_visit, shop?.second_visit, shop?.third_visit].filter(Boolean).length
+            
+            return (
+              <TableRow key={followUp.id}>
+                <TableCell>
+                  <div className="flex flex-col gap-1">
+                    <span className="font-medium">{followUp.coffeeShop.title}</span>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">
+                        {shop?.stage || 'UNKNOWN'}
+                      </Badge>
+                      {shop?.area && (
+                        <span className="text-xs text-muted-foreground">
+                          {shop.area}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col gap-1">
+                    <span>{getTypeDisplay(followUp.type)}</span>
+                    {followUp.notes && (
+                      <span className="text-xs text-muted-foreground line-clamp-2">
+                        {followUp.notes}
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm">
+                      {visitCount} visit{visitCount !== 1 ? 's' : ''}
+                    </span>
+                    {shop?.lastFollowUp && (
+                      <span className="text-xs text-muted-foreground">
+                        Last: {format(new Date(shop.lastFollowUp), 'MMM d')}
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col gap-1">
+                    <span className={PRIORITY_COLORS[followUp.priority as keyof typeof PRIORITY_COLORS]}>
+                      {Array(followUp.priority).fill('★').join('')}
+                    </span>
+                    {shop?.potential && (
+                      <span className="text-xs text-muted-foreground">
+                        Potential: {shop.potential}/5
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col gap-1">
+                    <span>
+                      {format(
+                        new Date(status === 'completed' ? followUp.completedDate! : followUp.dueDate), 
+                        'MMM d'
+                      )}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {format(
+                        new Date(status === 'completed' ? followUp.completedDate! : followUp.dueDate),
+                        'h:mm a'
+                      )}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      {getContactMethodIcon(followUp.contactMethod)}
+                      <span className="capitalize">
+                        {followUp.contactMethod || 'Any'}
+                      </span>
+                    </div>
+                    {shop?.contact_name && (
+                      <span className="text-xs text-muted-foreground">
+                        {shop.contact_name}
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={STATUS_COLORS[followUp.status as keyof typeof STATUS_COLORS]}>
+                    {followUp.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    {status === 'pending' && (
+                      <>
+                        <Button 
+                          size="sm"
+                          onClick={() => handleStatusChange(followUp.id, 'COMPLETED')}
+                        >
+                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                          Complete
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => handleReschedule(followUp.id)}
+                        >
+                          <Calendar className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                    {status === 'completed' && (
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleStatusChange(followUp.id, 'PENDING')}
+                      >
+                        Reopen
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            )
+          })}
+          {filteredFollowUps.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={8} className="text-center py-8">
+                <div className="flex flex-col items-center gap-2">
+                  <AlertCircle className="h-8 w-8 text-muted-foreground" />
+                  <p className="text-muted-foreground">
+                    No {status} follow-ups found
+                  </p>
+                  {status === 'pending' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowGenerateDialog(true)}
+                    >
+                      Generate Follow-ups
+                    </Button>
+                  )}
+                </div>
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  )
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Follow-up Manager</CardTitle>
+          <CardDescription>Loading follow-ups...</CardDescription>
+        </CardHeader>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Follow-up Manager</CardTitle>
+            <CardDescription>
+              Track and manage your follow-ups with coffee shops
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <GenerateFollowUpsButton onGenerated={fetchData} />
+            <FollowUpCreateDialog 
+              shops={shops} 
+              onFollowUpCreated={fetchData} 
+            />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Tabs defaultValue="pending" className="space-y-4" onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="pending">
+              <Clock className="mr-2 h-4 w-4" />
+              Pending & In Progress
+            </TabsTrigger>
+            <TabsTrigger value="completed">
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Completed
+            </TabsTrigger>
+            <TabsTrigger value="cancelled">
+              <XCircle className="mr-2 h-4 w-4" />
+              Cancelled
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="pending" className="space-y-4">
+            {renderTableContent('pending')}
+          </TabsContent>
+
+          <TabsContent value="completed" className="space-y-4">
+            {renderTableContent('completed')}
+          </TabsContent>
+
+          <TabsContent value="cancelled" className="space-y-4">
+            {renderTableContent('cancelled')}
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
+  )
+}________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/follow-ups/follow-up-suggestions.tsx
+import { CoffeeShop } from "@prisma/client"
+import { format, addDays, addBusinessDays, isAfter, differenceInDays } from "date-fns"
+
+interface FollowUpSuggestion {
+  type: string
+  dueDate: Date
+  priority: number
+  contactMethod: string
+  notes: string
+  coffeeShopId: string
+}
+
+interface FollowUpRule {
+  type: string
+  priority: number
+  daysAfter: number
+  contactMethod: string
+  notes: string
+}
+
+// Rules for different stages and scenarios
+const STAGE_RULES: Record<string, FollowUpRule[]> = {
+  PROSPECTING: [
+    {
+      type: "INITIAL_CONTACT",
+      priority: 3,
+      daysAfter: 1,
+      contactMethod: "visit",
+      notes: "Initial visit to introduce products and establish contact."
+    }
+  ],
+  QUALIFICATION: [
+    {
+      type: "SAMPLE_DELIVERY",
+      priority: 4,
+      daysAfter: 3,
+      contactMethod: "visit",
+      notes: "Follow up on initial interest and bring samples."
+    }
+  ],
+  PROPOSAL: [
+    {
+      type: "PROPOSAL_FOLLOW",
+      priority: 5,
+      daysAfter: 2,
+      contactMethod: "call",
+      notes: "Follow up on proposal and address any questions."
+    }
+  ],
+  NEGOTIATION: [
+    {
+      type: "TEAM_MEETING",
+      priority: 5,
+      daysAfter: 1,
+      contactMethod: "visit",
+      notes: "Schedule meeting with decision makers to finalize details."
+    }
+  ]
+}
+
+// Visit-based rules
+const VISIT_RULES: Record<string, FollowUpRule> = {
+  FIRST_VISIT: {
+    type: "INITIAL_CONTACT",
+    priority: 4,
+    daysAfter: 3,
+    contactMethod: "call",
+    notes: "Follow up on initial visit. Discuss first impressions and address questions."
+  },
+  SECOND_VISIT: {
+    type: "SAMPLE_DELIVERY",
+    priority: 5,
+    daysAfter: 4,
+    contactMethod: "visit",
+    notes: "Follow up on samples and discuss potential partnership."
+  },
+  THIRD_VISIT: {
+    type: "PROPOSAL_FOLLOW",
+    priority: 4,
+    daysAfter: 5,
+    contactMethod: "call",
+    notes: "Follow up on final visit and discuss next steps."
+  }
+}
+
+export function generateFollowUpSuggestions(shop: CoffeeShop): FollowUpSuggestion[] {
+  const suggestions: FollowUpSuggestion[] = []
+  const today = new Date()
+
+  // Helper function to create a suggestion
+  const createSuggestion = (
+    rule: FollowUpRule,
+    baseDate: Date,
+    extraNotes?: string
+  ): FollowUpSuggestion => ({
+    type: rule.type,
+    dueDate: addBusinessDays(baseDate, rule.daysAfter),
+    priority: rule.priority,
+    contactMethod: rule.contactMethod,
+    notes: extraNotes ? `${rule.notes} ${extraNotes}` : rule.notes,
+    coffeeShopId: shop.id
+  })
+
+  // Stage-based suggestions
+  if (shop.stage && STAGE_RULES[shop.stage]) {
+    STAGE_RULES[shop.stage].forEach(rule => {
+      const suggestion = createSuggestion(rule, today)
+      if (isAfter(suggestion.dueDate, today)) {
+        suggestions.push(suggestion)
+      }
+    })
+  }
+
+  // Visit-based suggestions
+  if (shop.first_visit && !shop.second_visit) {
+    const firstVisitDate = new Date(shop.first_visit)
+    suggestions.push(createSuggestion(
+      VISIT_RULES.FIRST_VISIT,
+      firstVisitDate,
+      `Previous visit was on ${format(firstVisitDate, 'MMM d')}.`
+    ))
+  }
+
+  if (shop.second_visit && !shop.third_visit) {
+    const secondVisitDate = new Date(shop.second_visit)
+    suggestions.push(createSuggestion(
+      VISIT_RULES.SECOND_VISIT,
+      secondVisitDate,
+      `Samples delivered on ${format(secondVisitDate, 'MMM d')}.`
+    ))
+  }
+
+  if (shop.third_visit) {
+    const thirdVisitDate = new Date(shop.third_visit)
+    const daysSinceThirdVisit = differenceInDays(today, thirdVisitDate)
+    
+    if (daysSinceThirdVisit <= 7) {
+      suggestions.push(createSuggestion(
+        VISIT_RULES.THIRD_VISIT,
+        thirdVisitDate,
+        `Final visit completed on ${format(thirdVisitDate, 'MMM d')}.`
+      ))
+    }
+  }
+
+  // Special case: Long time no contact
+  const lastVisitDate = shop.third_visit || shop.second_visit || shop.first_visit
+  if (lastVisitDate) {
+    const daysSinceLastVisit = differenceInDays(today, new Date(lastVisitDate))
+    if (daysSinceLastVisit > 14 && !shop.isPartner) {
+      suggestions.push({
+        type: "CHECK_IN",
+        dueDate: addBusinessDays(today, 1),
+        priority: 3,
+        contactMethod: "call",
+        notes: `No contact in ${daysSinceLastVisit} days. Reconnect and assess current status.`,
+        coffeeShopId: shop.id
+      })
+    }
+  }
+
+  // Special case: High potential leads without recent contact
+  if (shop.potential && shop.potential >= 4 && !shop.isPartner) {
+    const lastVisit = new Date(lastVisitDate || 0)
+    const daysSinceContact = differenceInDays(today, lastVisit)
+    
+    if (daysSinceContact > 7) {
+      suggestions.push({
+        type: "HIGH_POTENTIAL",
+        dueDate: addBusinessDays(today, 1),
+        priority: 5,
+        contactMethod: "visit",
+        notes: "High potential lead requires immediate follow-up.",
+        coffeeShopId: shop.id
+      })
+    }
+  }
+
+  // Volume-based suggestions
+  if (shop.volume) {
+    const weeklyVolume = parseFloat(shop.volume)
+    if (weeklyVolume > 50 && !shop.isPartner) {
+      suggestions.push({
+        type: "HIGH_VOLUME",
+        dueDate: addBusinessDays(today, 1),
+        priority: 5,
+        contactMethod: "visit",
+        notes: `High volume potential (${weeklyVolume} units/week). Priority follow-up required.`,
+        coffeeShopId: shop.id
+      })
+    }
+  }
+
+  // Sort suggestions by priority and due date
+  return suggestions.sort((a, b) => {
+    if (b.priority !== a.priority) return b.priority - a.priority
+    return a.dueDate.getTime() - b.dueDate.getTime()
+  })
+}________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/follow-ups/generate-button.tsx
+"use client"
+
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { toast } from "@/components/ui/use-toast"
+import { Loader2, RefreshCw } from "lucide-react"
+
+interface GenerateFollowUpsButtonProps {
+  onGenerated: () => void
+}
+
+export function GenerateFollowUpsButton({ onGenerated }: GenerateFollowUpsButtonProps) {
+  const [loading, setLoading] = useState(false)
+
+  const handleGenerate = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/follow-ups/generate', {
+        method: 'POST'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate follow-ups')
+      }
+
+      const data = await response.json()
+      toast({
+        title: "Success",
+        description: `Generated ${data.count} follow-ups`
+      })
+
+      onGenerated()
+    } catch (error) {
+      console.error('Error generating follow-ups:', error)
+      toast({
+        title: "Error",
+        description: "Failed to generate follow-ups",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Button onClick={handleGenerate} disabled={loading}>
+      {loading ? (
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+      ) : (
+        <RefreshCw className="mr-2 h-4 w-4" />
+      )}
+      Generate Follow-ups
+    </Button>
+  )
+}
 ________________________________________________________________________________

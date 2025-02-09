@@ -139,8 +139,14 @@ export function TableHeader({
         />
       </TableHead>
 
-      
-
+      <TableHead>
+        <SortHeader 
+          label="First Delivery"
+          sortKey="first_delivery_week"
+          currentSort={sortConfig}
+          onSort={onSort}
+        />
+      </TableHead>
 
       <TableHead>ARR</TableHead>
 

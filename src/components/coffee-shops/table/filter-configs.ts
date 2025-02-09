@@ -114,6 +114,13 @@ export const FILTER_CONFIGS: FilterConfig[] = [
     }))
   },
   {
+    field: 'first_delivery_week',
+    label: 'First Delivery Week',
+    type:  'number',
+    operators: ['equals', 'greaterThan', 'lessThan', 'between'],
+    placeholder: 'Enter week number...'
+  },
+  {
     field: 'first_visit',
     label: 'First Visit',
     type: 'date',

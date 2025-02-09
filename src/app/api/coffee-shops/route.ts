@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db/prisma"
 import { authOptions } from "@/lib/auth/options"
 import { revalidatePath } from "next/cache"
 import { Stage } from "@prisma/client"
+import { isValidDeliveryFrequency } from "@/types/delivery"
 
 // Helper function to calculate stage
 function calculateStage(shop: { isPartner?: boolean; visited?: boolean }): Stage {
@@ -12,7 +13,17 @@ function calculateStage(shop: { isPartner?: boolean; visited?: boolean }): Stage
   return "PROSPECTING"
 }
 
-// Helper function to parse numeric values safely
+const DELIVERY_FREQUENCIES = [
+  "WEEKLY",
+  "BIWEEKLY",
+  "THREE_WEEKS",
+  "FOUR_WEEKS",
+  "FIVE_WEEKS",
+  "SIX_WEEKS"
+] as const
+
+
+
 function parseNumericFields(data: any) {
   return {
     ...data,
@@ -23,9 +34,9 @@ function parseNumericFields(data: any) {
     latitude: data.latitude ? parseFloat(data.latitude) : null,
     longitude: data.longitude ? parseFloat(data.longitude) : null,
     priority: data.priority ? parseInt(data.priority) : 0,
+    first_delivery_week: data.first_delivery_week ? parseInt(data.first_delivery_week) : null
   }
 }
-
 // Helper function to clean company data
 function cleanCompanyData(data: any) {
   if (!data.company_data) return null
@@ -239,6 +250,27 @@ export async function PATCH(request: Request) {
     const data = await request.json()
     const { id, owners, people, domainEmails, ...updateData } = data
 
+    // Validate delivery frequency if present
+    if (updateData.delivery_frequency) {
+      if (!isValidDeliveryFrequency(updateData.delivery_frequency)) {
+        return NextResponse.json(
+          { error: "Invalid delivery frequency" },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Validate first delivery week if present
+    if (updateData.first_delivery_week !== undefined) {
+      const weekNum = parseInt(updateData.first_delivery_week)
+      if (isNaN(weekNum) || weekNum < 1 || weekNum > 53) {
+        return NextResponse.json(
+          { error: "First delivery week must be between 1 and 53" },
+          { status: 400 }
+        )
+      }
+    }
+
     // Parse numeric values
     const parsedData = parseNumericFields(updateData)
 
@@ -268,6 +300,18 @@ export async function PATCH(request: Request) {
       }
     }
 
+    // Ensure delivery frequency is set when first delivery week is set
+    if (parsedData.first_delivery_week && !parsedData.delivery_frequency) {
+      parsedData.delivery_frequency = "WEEKLY" // Default to weekly if not specified
+    }
+
+    // Log the update for debugging
+    console.log("Updating shop with data:", {
+      id,
+      delivery_frequency: parsedData.delivery_frequency,
+      first_delivery_week: parsedData.first_delivery_week
+    })
+
     const updatedShop = await prisma.coffeeShop.update({
       where: { id },
       data: {
@@ -292,6 +336,12 @@ export async function PATCH(request: Request) {
         owners: true,
         people: true
       }
+    })
+
+    console.log("Shop updated successfully:", {
+      id: updatedShop.id,
+      delivery_frequency: updatedShop.delivery_frequency,
+      first_delivery_week: updatedShop.first_delivery_week
     })
 
     revalidatePath('/dashboard/coffee-shops')

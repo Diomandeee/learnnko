@@ -42,6 +42,8 @@ model User {
   people        Person[]    // Add relation to Person model
   filterHistory   FilterHistory[]
   savedFilters    SavedFilter[]
+  followUps        FollowUp[]
+
 }
 
 
@@ -368,6 +370,44 @@ model TimeOff {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 }
+
+
+model FollowUp {
+  id              String       @id @default(auto()) @map("_id") @db.ObjectId
+  coffeeShopId    String       @db.ObjectId
+  coffeeShop      CoffeeShop   @relation(fields: [coffeeShopId], references: [id])
+  type            FollowUpType
+  status          FollowUpStatus @default(PENDING)
+  priority        Int          @default(3) // 1-5 scale
+  dueDate         DateTime
+  completedDate   DateTime?
+  notes           String?
+  contactMethod   String?      // email, text, visit, call
+  contactDetails  String?      // phone number, email address
+  assignedTo      String       @db.ObjectId
+  user            User         @relation(fields: [assignedTo], references: [id])
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+enum FollowUpType {
+  INITIAL_CONTACT
+  SAMPLE_DELIVERY
+  PROPOSAL_FOLLOW
+  TEAM_MEETING
+  CHECK_IN
+  GENERAL
+}
+
+enum FollowUpStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+}
+
+
 model CoffeeShop {
   id                    String    @id @default(auto()) @map("_id") @db.ObjectId
   title                 String
@@ -416,8 +456,21 @@ model CoffeeShop {
   people               Person[]  // Relation to people discovered from emails
   stage     Stage     @default(PROSPECTING)
   delivery_frequency String? // Values: "WEEKLY", "BIWEEKLY", "THREE_WEEKS", "FOUR_WEEKS", "FIVE_WEEKS", "SIX_WEEKS"
-
-  
+  first_delivery_week Int?
+  followUps         FollowUp[]
+  lastFollowUp      DateTime?
+  nextFollowUpDate  DateTime?
+  followUpCount     Int         @default(0)
+  relationshipStage String?     // INITIAL, SAMPLES_DELIVERED, PROPOSAL_SENT, etc.
+  potential         Int?        // 1-5 scale
+  interest          Int?        // 1-5 scale
+  decisionMaker     String?     // Name of the decision maker
+  decisionMakerRole String?     // Role of the decision maker
+  communicationPreference String? // email, phone, in-person
+  bestTimeToVisit   String?
+  competitors       String[]    // Other coffee suppliers they work with
+  budget           Float?      // Estimated monthly budget
+  closingNotes     String?     // Notes about closing strategy
 }
 
 

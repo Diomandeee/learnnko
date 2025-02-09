@@ -14,8 +14,8 @@ export default async function RoutesLayout({
   }
 
   return (
-    <div className="relative min-h-screen">
-      {children}
+    <div className="max-w-[2000px] mx-auto p-4 md:px-6 md:py-6">
+    {children}
     </div>
   );
 }
