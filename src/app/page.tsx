@@ -18,7 +18,7 @@ export default function LandingPage() {
               <span className="text-2xl font-bold">Milk Man CRM</span>
             </Link>
           </div>
-          <nav className="hidden gap-8 md:flex">
+          {/* <nav className="hidden gap-8 md:flex">
             <Link href="#features" className="text-sm font-medium transition-colors hover:text-primary">
               Features
             </Link>
@@ -28,33 +28,32 @@ export default function LandingPage() {
             <Link href="#pricing" className="text-sm font-medium transition-colors hover:text-primary">
               Pricing
             </Link>
-          </nav>
+          </nav> */}
           <div className="flex items-center gap-4">
             <Link href="/auth/login">
               <Button variant="ghost">Sign In</Button>
             </Link>
-            <Link href="/auth/register">
+            {/* <Link href="/auth/register">
               <Button>Get Started</Button>
-            </Link>
+            </Link> */}
           </div>
         </div>
       </header>
 
       <main className="flex-1">
-        {/* Hero Section */}
-        <Hero />
+        {/* <Hero /> */}
 
         {/* Features Section */}
-        <Features />
+        {/* <Features /> */}
 
         {/* Testimonials Section */}
-        <Testimonials />
+        {/* <Testimonials /> */}
 
         {/* Pricing Section */}
-        <Pricing />
+        {/* <Pricing /> */}
 
         {/* CTA Section */}
-        <section className="border-t bg-muted/50">
+        {/* <section className="border-t bg-muted/50">
           <div className="container py-20 text-center">
             <h2 className="text-3xl font-bold md:text-4xl">Ready to transform your coffee shop?</h2>
             <p className="mx-auto mt-4 max-w-[600px] text-muted-foreground">
@@ -73,11 +72,11 @@ export default function LandingPage() {
               </Link>
             </div>
           </div>
-        </section>
+        </section> */}
       </main>
 
       {/* Footer */}
-      <footer className="border-t py-12">
+      {/* <footer className="border-t py-12">
         <div className="container grid gap-8 md:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-2">
@@ -118,7 +117,7 @@ export default function LandingPage() {
             © {new Date().getFullYear()} Milk Man. All rights reserved.
           </p>
         </div>
-      </footer>
+      </footer> */}
     </>
   )
 }

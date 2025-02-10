@@ -1,4 +1,5 @@
 import { SideNav } from "@/components/dashboard/navigation/side-nav";
+import { ScheduleViewProvider } from "@/contexts/schedule-view-context"
 
 export default function DashboardLayout({
   children,
@@ -7,6 +8,8 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="relative min-h-screen">
+            <ScheduleViewProvider>
+
       <div className="flex min-h-screen flex-col md:flex-row">
         <div className="w-full md:w-auto">
           <SideNav />
@@ -19,6 +22,8 @@ export default function DashboardLayout({
           </div>
         </main>
       </div>
+      </ScheduleViewProvider>
+
     </div>
   );
 }

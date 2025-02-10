@@ -1,630 +1,2783 @@
-### /Users/mohameddiomande/Desktop/koatji-crm/src/app/dashboard/visits/page.tsx
-import { Metadata } from "next"
-import { VisitManagement } from "@/components/visits/visit-management"
-import { VisitAnalytics } from "@/components/visits/visit-analytics"
-import { FollowUpManager } from "@/components/follow-ups/follow-up-manager"
-import { PageContainer } from "@/components/layout/page-container"
+### /Users/mohameddiomande/Desktop/koatji-crm/src/app/dashboard/routes/layout.tsx
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/options";
 
-export const metadata: Metadata = {
-  title: "Visit Management | CRM",
-  description: "Manage and track coffee shop visits and follow-ups",
-}
+export default async function RoutesLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const session = await getServerSession(authOptions);
 
-export default function VisitsPage() {
+  if (!session) {
+    redirect("/auth/login");
+  }
+
   return (
-    <PageContainer>
-      <div className="flex-1 space-y-4 p-8 pt-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Visit Management</h1>
-            <p className="text-sm text-muted-foreground">
-              Track, schedule, and analyze your coffee shop visits and follow-ups
+    <div className="max-w-[2000px] mx-auto p-4 md:px-6 md:py-6">
+    {children}
+    </div>
+  );
+}________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/app/dashboard/routes/page.tsx
+"use client";
+
+import { useCallback, useState } from "react";
+import dynamic from "next/dynamic";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
+import { useRouteStore } from "@/store/route-store";
+import { LocationSelector } from "@/components/routes/controls/location-selector";
+import {
+ Map,
+ FileSpreadsheet,
+ Calendar,
+ Share2,
+ Settings,
+ Navigation,
+ MapPin,
+ LocateFixed,
+ Trash2,
+} from "lucide-react";
+import { PageContainer } from "@/components/layout/page-container";
+import { DeliverySchedule } from "@/components/routes/delivery/delivery-schedule";
+import { useCoffeeShops } from "@/hooks/use-coffee-shops";
+// Dynamically import components with proper typing
+const RouteMap = dynamic(
+ () => import("@/components/routes/map/route-map").then(mod => ({ 
+   default: mod.RouteMap 
+ })),
+ {
+   ssr: false,
+   loading: () => (
+     <Card className="h-[2000ox]">
+       <span className="text-muted-foreground">Loading map...</span>
+     </Card>
+   ),
+ }
+);
+
+const RouteControls = dynamic(
+ () => import("@/components/routes/controls/route-controls").then(mod => ({
+   default: mod.RouteControls
+ })),
+ { ssr: false }
+);
+
+const RouteList = dynamic(
+ () => import("@/components/routes/list/route-list").then(mod => ({
+   default: mod.RouteList
+ })),
+ { ssr: false }
+);
+
+export default function RoutesPage() {
+ const [isExporting, setIsExporting] = useState(false);
+ const [isLocating, setIsLocating] = useState(false);
+ const { shops, loading } = useCoffeeShops();
+
+ const { 
+   clearRoute, 
+   exportToCalendar, 
+   shareRoute, 
+   openInGoogleMaps,
+   updateCurrentLocation,
+   currentLocation,
+   currentRoute 
+ } = useRouteStore();
+ const { toast } = useToast();
+
+ const handleExport = useCallback(async () => {
+   setIsExporting(true);
+   try {
+     // Export implementation here
+     setIsExporting(false);
+     toast({
+       title: "Route Exported",
+       description: "Your route has been exported successfully."
+     });
+   } catch (error) {
+     toast({
+       title: "Export Failed",
+       description: "Failed to export route. Please try again.",
+       variant: "destructive"
+     });
+     setIsExporting(false);
+   }
+ }, [toast]);
+
+ const handleLocateMe = useCallback(async () => {
+   setIsLocating(true);
+   try {
+     const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+       navigator.geolocation.getCurrentPosition(resolve, reject);
+     });
+     
+     updateCurrentLocation({
+       lat: position.coords.latitude,
+       lng: position.coords.longitude
+     });
+
+     toast({
+       title: "Location Updated",
+       description: "Your current location has been updated."
+     });
+   } catch (error) {
+     toast({
+       title: "Location Error",
+       description: "Failed to get your current location. Please check your permissions.",
+       variant: "destructive"
+     });
+   } finally {
+     setIsLocating(false);
+   }
+ }, [updateCurrentLocation, toast]);
+
+ return (
+   <PageContainer>
+     <div className="flex flex-col gap-6 p-6"> 
+       {/* Header */}
+       <div className="flex flex-col gap-4">
+         <div>
+           <h1 className="text-3xl font-bold tracking-tight">Route Planning</h1>
+           <p className="text-muted-foreground">
+             Plan and optimize your coffee shop visits
+           </p>
+         </div>
+         <div className="flex flex-wrap items-center gap-2">
+           <Button 
+             variant="outline" 
+             onClick={handleLocateMe} 
+             disabled={isLocating}
+             className="min-w-[140px]"
+           >
+             <LocateFixed className="mr-2 h-4 w-4" />
+             {isLocating ? "Locating..." : "Locate Me"}
+           </Button>
+
+           <Button 
+             variant="outline" 
+             onClick={() => openInGoogleMaps()}
+             disabled={currentRoute.length === 0}
+             className="min-w-[140px]"
+           >
+             <Navigation className="mr-2 h-4 w-4" />
+             Open in Maps
+           </Button>
+
+           <Button 
+             variant="outline" 
+             onClick={handleExport} 
+             disabled={isExporting}
+           >
+             <FileSpreadsheet className="mr-2 h-4 w-4" />
+             Export Route
+           </Button>
+
+           <Button 
+             variant="outline" 
+             onClick={shareRoute}
+             disabled={currentRoute.length === 0}
+           >
+             <Share2 className="mr-2 h-4 w-4" />
+             Share Route
+           </Button>
+
+           <Button 
+             variant="destructive" 
+             onClick={clearRoute}
+             disabled={currentRoute.length === 0}
+           >
+             <Trash2 className="mr-2 h-4 w-4" />
+             Clear Route
+           </Button>
+         </div>
+       </div>
+
+       {/* Current Location Indicator */}
+       {currentLocation && (
+         <div className="flex items-center gap-2 text-sm text-muted-foreground">
+           <MapPin className="h-4 w-4" />
+           <span>
+             Current Location: {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
+           </span>
+         </div>
+       )}
+
+       {/* Main Content */}
+       <div className="grid grid-cols-12 gap-6">
+         {/* Left Column: Location Selector */}
+         <div className="col-span-12 lg:col-span-3 space-y-6">
+           <LocationSelector />
+           <DeliverySchedule shops={shops || []} />
+         </div>
+
+         {/* Center Column: Map and Route List */}
+         <div className="col-span-12 lg:col-span-6 space-y-6">
+           {/* Map */}
+           <RouteMap />
+
+           {/* Route List */}
+           <RouteList />
+         </div>
+
+         {/* Right Column: Route Controls */}
+         <div className="col-span-12 lg:col-span-3">
+           <RouteControls />
+         </div>
+       </div>
+     </div>
+   </PageContainer>
+ );
+}________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/shared/route-metrics.tsx
+// src/components/routes/shared/route-metrics.tsx
+"use client";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useRouteStore } from "@/store/route-store";
+import { Clock, MapPin, Navigation } from "lucide-react";
+
+export function RouteMetrics() {
+  const { metrics, settings } = useRouteStore();
+
+  if (!metrics) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Route Metrics</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">Total Distance</p>
+            <p className="text-2xl font-bold">
+              {metrics.totalDistance.toFixed(1)} km
             </p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">Duration</p>
+            <p className="text-2xl font-bold">
+              {Math.round(metrics.totalDuration)} min
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">Stops</p>
+            <p className="text-2xl font-bold">{metrics.numberOfStops}</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">Arrival</p>
+            <p className="text-2xl font-bold">{metrics.estimatedArrival}</p>
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-7 lg:grid-cols-12">
-          <VisitManagement className="md:col-span-4 lg:col-span-8" />
-          <VisitAnalytics className="md:col-span-3 lg:col-span-4" />
+        <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Navigation className="h-4 w-4" />
+            <span>{settings.transportMode.toLowerCase()}</span>
+          </div>
+          {settings.avoidHighways && (
+            <span>Avoiding highways</span>
+          )}
+          {settings.avoidTolls && (
+            <span>Avoiding tolls</span>
+          )}
         </div>
-        
-        <FollowUpManager />
-      </div>
-    </PageContainer>
+      </CardContent>
+    </Card>
+  );
+}________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/visit/visit-form.tsx
+"use client"
+
+import { useState } from "react"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import * as z from "zod"
+import { Button } from "@/components/ui/button"
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
+import { Calendar } from "@/components/ui/calendar"
+import { useVisitStore } from "@/store/use-visit"
+import { VisitFormData } from "@/types/visit"
+
+const visitFormSchema = z.object({
+  date: z.date(),
+  managerPresent: z.boolean(),
+  managerName: z.string().optional(),
+  managerContact: z.string().optional(),
+  samplesDropped: z.boolean(),
+  sampleDetails: z.string().optional(),
+  notes: z.string().optional(),
+  nextVisitDate: z.date().optional(),
+  photos: z.array(z.instanceof(File)).optional(),
+})
+
+interface VisitFormProps {
+  shopId: string;
+  onComplete: () => void;
+}
+
+export function VisitForm({ shopId, onComplete }: VisitFormProps) {
+  const [loading, setLoading] = useState(false)
+  const { addVisit } = useVisitStore()
+
+  const form = useForm<VisitFormData>({
+    resolver: zodResolver(visitFormSchema),
+    defaultValues: {
+      date: new Date(),
+      managerPresent: false,
+      samplesDropped: false,
+    },
+  })
+
+  async function onSubmit(data: VisitFormData) {
+    setLoading(true)
+    try {
+      await addVisit(shopId, data)
+      onComplete()
+    } catch (error) {
+      console.error("Failed to save visit:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <FormField
+          control={form.control}
+          name="date"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Visit Date</FormLabel>
+              <FormControl>
+                <Calendar
+                  mode="single"
+                  selected={field.value}
+                  onSelect={field.onChange}
+                  disabled={(date) => date > new Date()}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="managerPresent"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <FormLabel className="text-base">Manager Present</FormLabel>
+                <FormDescription>
+                  Was the manager present during the visit?
+                </FormDescription>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        {form.watch("managerPresent") && (
+          <>
+            <FormField
+              control={form.control}
+              name="managerName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Manager Name</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="managerContact"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Manager Contact</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </>
+        )}
+
+        <FormField
+          control={form.control}
+          name="samplesDropped"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <FormLabel className="text-base">Samples Dropped</FormLabel>
+                <FormDescription>
+                  Did you leave any samples during this visit?
+                </FormDescription>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        {form.watch("samplesDropped") && (
+          <FormField
+            control={form.control}
+            name="sampleDetails"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Sample Details</FormLabel>
+                <FormControl>
+                  <Textarea
+                    {...field}
+                    placeholder="List the samples provided..."
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        <FormField
+          control={form.control}
+          name="notes"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Visit Notes</FormLabel>
+              <FormControl>
+                <Textarea
+                  {...field}
+                  placeholder="Add any notes about the visit..."
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="photos"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Photos</FormLabel>
+              <FormControl>
+                <Input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || [])
+                    field.onChange(files)
+                  }}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="nextVisitDate"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Next Visit Date</FormLabel>
+              <FormControl>
+                <Calendar
+                  mode="single"
+                  selected={field.value}
+                  onSelect={field.onChange}
+                  disabled={(date) => date <= new Date()}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="flex justify-end space-x-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onComplete}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? "Saving..." : "Save Visit"}
+          </Button>
+        </div>
+      </form>
+    </Form>
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/koatji-crm/src/app/dashboard/visits/new/page.tsx
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/koatji-crm/src/components/visits/visit-analytics.tsx
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/visit/visit-history.tsx
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useVisits } from "@/hooks/use-visits"
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
-import { 
-  Activity,
-  Users,
-  Briefcase,
-  TrendingUp,
-  Calendar,
-} from "lucide-react"
+import { formatDistanceToNow as formatDistance } from "date-fns"
+import { Visit } from "@prisma/client"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
-interface VisitAnalyticsProps {
-  className?: string
+interface VisitHistoryProps {
+  visits: Visit[]
 }
 
-export function VisitAnalytics({ className }: VisitAnalyticsProps) {
-  const { visits, loading } = useVisits()
+export function VisitHistory({ visits }: VisitHistoryProps) {
+  if (!visits.length) {
+    return <p className="text-sm text-muted-foreground">No visits recorded yet.</p>
+  }
 
-  if (loading) {
+  return (
+    <ScrollArea className="h-[300px] pr-4">
+      <div className="space-y-4">
+        {visits.map((visit) => (
+          <div
+            key={visit.id}
+            className="flex flex-col space-y-2 rounded-lg border p-4"
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">Visit #{visit.visitNumber}</p>
+              <p className="text-xs text-muted-foreground">
+                {formatDistance(new Date(visit.date), new Date(), { addSuffix: true })}
+              </p>
+            </div>
+
+            {visit.managerPresent && (
+              <p className="text-sm">
+                Manager present: {visit.managerName || "Yes"}
+              </p>
+            )}
+
+            {visit.samplesDropped && (
+              <p className="text-sm">
+                Samples: {visit.sampleDetails || "Dropped off"}
+              </p>
+            )}
+
+            {visit.notes && (
+              <p className="text-sm text-muted-foreground">{visit.notes}</p>
+            )}
+
+            {visit.nextVisitDate && (
+              <p className="text-xs text-muted-foreground">
+                Next visit planned: {formatDistance(new Date(visit.nextVisitDate), new Date(), { addSuffix: true })}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </ScrollArea>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/visit/visit-management.tsx
+"use client"
+
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { VisitForm } from "./visit-form"
+import { VisitHistory } from "./visit-history"
+import { useShopVisits } from "@/hooks/use-shop-visits"
+import { Button } from "@/components/ui/button"
+import { PlusCircle } from "lucide-react"
+import { CoffeeShop } from "@prisma/client"
+
+interface VisitManagementProps {
+  shop: CoffeeShop | null;
+}
+
+export function VisitManagement({ shop }: VisitManagementProps) {
+  const { visits, loading, error, mutate } = useShopVisits(shop?.id || null)
+  const [showForm, setShowForm] = useState(false)
+
+  if (!shop) {
     return (
-      <Card className={className}>
+      <Card>
         <CardHeader>
-          <CardTitle>Analytics</CardTitle>
+          <CardTitle>Visit Management</CardTitle>
         </CardHeader>
-        <CardContent>Loading analytics...</CardContent>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Select a coffee shop to view visit history
+          </p>
+        </CardContent>
       </Card>
     )
   }
 
-  // Calculate analytics
-  const totalVisits = visits?.length || 0
-  const managerMeetings = visits?.filter(visit => visit.managerPresent).length || 0
-  const samplesDropped = visits?.filter(visit => visit.samplesDropped).length || 0
-  const scheduledVisits = visits?.filter(visit => visit.nextVisitDate).length || 0
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Loading visits...</CardTitle>
+        </CardHeader>
+      </Card>
+    )
+  }
 
-  // Create monthly data for chart
-  const monthlyData = visits?.reduce((acc, visit) => {
-    const month = new Date(visit.date).toLocaleString('default', { month: 'short' })
-    acc[month] = (acc[month] || 0) + 1
-    return acc
-  }, {} as Record<string, number>)
-
-  const chartData = Object.entries(monthlyData || {}).map(([month, count]) => ({
-    month,
-    visits: count
-  }))
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Error loading visits</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            There was an error loading the visit history.
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle>Visit Analytics</CardTitle>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardTitle>Visit History - {shop.title}</CardTitle>
+        {!showForm && (
+          <Button size="sm" onClick={() => setShowForm(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Record Visit
+          </Button>
+        )}
       </CardHeader>
-      <CardContent className="space-y-8">
-        <div className="grid gap-4 grid-cols-2">
-          <StatCard 
-            title="Total Visits"
-            value={totalVisits}
-            icon={Activity}
-            description="All time visits"
+      <CardContent>
+        {showForm ? (
+          <VisitForm 
+            shopId={shop.id} 
+            onComplete={() => {
+              setShowForm(false)
+              mutate() // Refresh visits list
+            }} 
           />
-          <StatCard 
-            title="Manager Meetings"
-            value={managerMeetings}
-            icon={Users}
-            description="With management"
-          />
-          <StatCard 
-            title="Samples Dropped"
-            value={samplesDropped}
-            icon={Briefcase}
-            description="Sample deliveries"
-          />
-          <StatCard 
-            title="Scheduled"
-            value={scheduledVisits}
-            icon={Calendar}
-            description="Upcoming visits"
-          />
+        ) : (
+          <VisitHistory visits={visits || []} />
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/visit/visit-scheduler.tsx
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/controls/location-selector.tsx
+"use client";
+
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useRouteStore } from "@/store/route-store";
+import { useCoffeeShops } from "@/hooks/use-coffee-shops";
+import {
+  Search,
+  MapPin,
+  DollarSign,
+  Building2,
+  Users,
+} from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+export function LocationSelector() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedArea, setSelectedArea] = useState("all");
+  const [showVisited, setShowVisited] = useState("all");
+  const { shops, loading } = useCoffeeShops();
+  const { addLocation, addLocations, selectedLocations } = useRouteStore();
+
+  // Filter for partner shops
+  const partnerShops = shops?.filter(shop => shop.isPartner) || [];
+
+  const filteredShops = shops?.filter(shop => {
+    const matchesSearch = shop.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      shop.address.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesArea = selectedArea === "all" || shop.area === selectedArea;
+    
+    const matchesVisited = showVisited === "all" ||
+      (showVisited === "visited" && shop.visited) ||
+      (showVisited === "not_visited" && !shop.visited);
+
+    const isNotSelected = !selectedLocations.find(loc => loc.id === shop.id);
+
+    return matchesSearch && matchesArea && matchesVisited && isNotSelected;
+  }) || [];
+
+  const areas = shops ? [...new Set(shops.map(shop => shop.area).filter(Boolean))] : [];
+
+  const handleAddAllPartners = () => {
+    // Filter out partners that are already selected
+    const newPartners = partnerShops.filter(
+      partner => !selectedLocations.find(loc => loc.id === partner.id)
+    );
+    addLocations(newPartners);
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <p className="text-center text-muted-foreground">
+            Loading locations...
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="space-y-4">
+        <div className="flex items-center justify-between">
+          <CardTitle>Add Locations</CardTitle>
+          {partnerShops.length > 0 && (
+            <Button 
+              variant="secondary" 
+              onClick={handleAddAllPartners}
+              className="whitespace-nowrap"
+            >
+              <Building2 className="mr-2 h-4 w-4" />
+              Add Partners ({partnerShops.length})
+            </Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            Select locations to add to your route
+          </p>
+        </div>
+          
+          {/* Search and filter */}
+            
+        <div className="space-y-2">
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search locations..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Select
+              value={selectedArea}
+              onValueChange={setSelectedArea}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select area" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Areas</SelectItem>
+                {areas.map(area => (
+                  <SelectItem key={area} value={area}>{area}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={showVisited}
+              onValueChange={setShowVisited}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Visit status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Locations</SelectItem>
+                <SelectItem value="visited">Visited Only</SelectItem>
+                <SelectItem value="not_visited">Not Visited</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Monthly Visit Trend</h3>
-          <div className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Bar 
-                  dataKey="visits" 
-                  fill="var(--primary)" 
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+        {/* Location List */}
+        <ScrollArea className="h-[300px]">
+          <div className="space-y-2">
+            {filteredShops.map(shop => (
+              <div
+                key={shop.id}
+                className="flex items-start justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <p className="font-medium truncate">{shop.title}</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {shop.address}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {shop.volume && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <DollarSign className="h-3 w-3" />
+                        <span>{shop.volume}</span>
+                      </div>
+                    )}
+                    {shop.visited && (
+                      <Badge variant="success" className="text-xs">
+                        Visited
+                      </Badge>
+                    )}
+                    {shop.parlor_coffee_leads && (
+                      <Badge variant="warning" className="text-xs">
+                        Lead
+                      </Badge>
+                    )}
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => addLocation(shop)}
+                >
+                  Add
+                </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {filteredShops.length === 0 && (
+              <p className="text-center text-muted-foreground py-4">
+                No locations found
+              </p>
+            )}
           </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  );
+}________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/controls/navigation-controller.tsx
+"use client"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { useRouteStore } from "@/store/route-store"
+import { useToast } from "@/components/ui/use-toast"
+import {
+  Play,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  MapPin,
+  Navigation,
+  Check,
+} from "lucide-react"
+
+export function NavigationController() {
+  const {
+    currentRoute,
+    isNavigating,
+    currentStep,
+    startNavigation,
+    stopNavigation,
+    nextStep,
+    previousStep,
+  } = useRouteStore()
+  const { toast } = useToast()
+
+  const currentLocation = currentRoute[currentStep]
+
+  const handleStartNavigation = () => {
+    if (currentRoute.length === 0) {
+      toast({
+        title: "No route selected",
+        description: "Please create a route first.",
+        variant: "destructive"
+      })
+      return
+    }
+    startNavigation()
+  }
+
+  if (!isNavigating) {
+    return (
+      <Button 
+        className="w-full" 
+        onClick={handleStartNavigation}
+      >
+        <Play className="mr-2 h-4 w-4" />
+        Start Navigation
+      </Button>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>Navigation</CardTitle>
+          <Badge variant="secondary">
+            Stop {currentStep + 1} of {currentRoute.length}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Current Location Info */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <h3 className="font-medium">{currentLocation?.title}</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {currentLocation?.address}
+          </p>
+          {currentLocation?.volume && (
+            <p className="text-sm">
+              Volume: {currentLocation.volume} | ARR: ${((parseFloat(currentLocation.volume) * 52) * 18).toLocaleString()}
+            </p>
+          )}
+        </div>
+
+        {/* Navigation Controls */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={previousStep}
+            disabled={currentStep === 0}
+            className="flex-1"
+          >
+            <ChevronLeft className="mr-2 h-4 w-4" />
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            onClick={nextStep}
+            disabled={currentStep === currentRoute.length - 1}
+            className="flex-1"
+          >
+            Next
+            <ChevronRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="grid grid-cols-2 gap-2">
+          <Button 
+            variant="secondary"
+            onClick={() => {
+              // Mark current location as visited
+              // Update visit status
+            }}
+          >
+            <Check className="mr-2 h-4 w-4" />
+            Mark Visited
+          </Button>
+          <Button 
+            variant="destructive"
+            onClick={stopNavigation}
+          >
+            <X className="mr-2 h-4 w-4" />
+            Exit
+          </Button>
         </div>
       </CardContent>
     </Card>
   )
 }
-
-interface StatCardProps {
-  title: string
-  value: number
-  icon: React.ElementType
-  description: string
-}
-
-function StatCard({ title, value, icon: Icon, description }: StatCardProps) {
-  return (
-    <div className="p-4 border rounded-lg">
-      <div className="flex items-center gap-2">
-        <Icon className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-medium">{title}</span>
-      </div>
-      <div className="mt-2">
-        <span className="text-2xl font-bold">{value}</span>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </div>
-    </div>
-  )
-}
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/koatji-crm/src/components/visits/visit-calendar.tsx
-"use client"
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/controls/route-controls.tsx
+// src/components/routes/controls/route-controls.tsx
+"use client";
 
-import { useState } from "react"
-import { Calendar } from "@/components/ui/calendar"
-import { useVisits } from "@/hooks/use-visits"
-import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { useRouteStore } from "@/store/route-store";
+import { Settings2, Navigation, Car } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-export function VisitCalendar() {
-  const { visits } = useVisits()
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
-
-  // Create a map of dates to visit counts
-  const visitDates = visits?.reduce((acc, visit) => {
-    const date = new Date(visit.date).toDateString()
-    acc[date] = (acc[date] || 0) + 1
-    return acc
-  }, {} as Record<string, number>)
-
-  const modifiers = {
-    hasVisits: (date: Date) => {
-      return !!visitDates?.[date.toDateString()]
-    }
-  }
-
-  const modifiersStyles = {
-    hasVisits: {
-      backgroundColor: 'var(--primary)',
-      color: 'white',
-      borderRadius: '50%'
-    }
-  }
+export function RouteControls() {
+  const {
+    settings,
+    updateSettings,
+    optimizeRoute,
+    isOptimizing,
+  } = useRouteStore();
 
   return (
-    <div className="p-4 rounded-lg border">
-      <Calendar
-        mode="single"
-        selected={selectedDate}
-        onSelect={setSelectedDate}
-        modifiers={modifiers}
-        modifiersStyles={modifiersStyles}
-        className="rounded-md border"
-      />
-
-      {selectedDate && visitDates?.[selectedDate.toDateString()] > 0 && (
-        <div className="mt-4">
-          <h3 className="font-medium mb-2">
-            Visits on {selectedDate.toLocaleDateString()}
-          </h3>
-          <div className="space-y-2">
-            {visits?.filter(visit => 
-              new Date(visit.date).toDateString() === selectedDate.toDateString()
-            ).map(visit => (
-              <Card key={visit.id} className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{visit.coffeeShopId}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Visit #{visit.visitNumber}
-                    </p>
-                  </div>
-                  <div className="space-x-2">
-                    {visit.managerPresent && (
-                      <Badge variant="outline">Manager Present</Badge>
-                    )}
-                    {visit.samplesDropped && (
-                      <Badge variant="outline">Samples Dropped</Badge>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            ))}
+    <Card>
+      <CardHeader>
+        <CardTitle>Route Settings</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Max Stops */}
+        <div className="space-y-2">
+          <Label>Maximum Stops</Label>
+          <div className="flex items-center gap-4">
+            <Slider
+              value={[settings.maxStops]}
+              onValueChange={(value) => updateSettings({ maxStops: value[0] })}
+              min={5}
+              max={50}
+              step={5}
+              className="flex-1"
+            />
+            <span className="min-w-[4ch] text-right">{settings.maxStops}</span>
           </div>
         </div>
-      )}
-    </div>
-  )
-}
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/koatji-crm/src/components/visits/visit-management.tsx
+
+        {/* Max Distance */}
+        <div className="space-y-2">
+          <Label>Maximum Distance (km)</Label>
+          <div className="flex items-center gap-4">
+            <Slider
+              value={[settings.maxDistance]}
+              onValueChange={(value) => updateSettings({ maxDistance: value[0] })}
+              min={1}
+              max={20}
+              step={1}
+              className="flex-1"
+            />
+            <span className="min-w-[4ch] text-right">{settings.maxDistance}km</span>
+          </div>
+        </div>
+
+        {/* Transport Mode */}
+        <div className="space-y-2">
+          <Label>Transport Mode</Label>
+          <Select
+            value={settings.transportMode}
+            onValueChange={(value) => updateSettings({ transportMode: value })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="DRIVING">
+                <div className="flex items-center gap-2">
+                  <Car className="h-4 w-4" />
+                  <span>Driving</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="WALKING">
+                <div className="flex items-center gap-2">
+                  <Navigation className="h-4 w-4" />
+                  <span>Walking</span>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Route Optimization */}
+        <div className="space-y-2">
+          <Label>Optimize By</Label>
+          <Select
+            value={settings.optimizeBy}
+            onValueChange={(value) => updateSettings({ optimizeBy: value })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="distance">Distance</SelectItem>
+              <SelectItem value="time">Time</SelectItem>
+              <SelectItem value="volume">Volume Priority</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Additional Options */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="avoid-highways">Avoid Highways</Label>
+            <Switch
+              id="avoid-highways"
+              checked={settings.avoidHighways}
+              onCheckedChange={(checked) => 
+                updateSettings({ avoidHighways: checked })
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Label htmlFor="avoid-tolls">Avoid Tolls</Label>
+            <Switch
+              id="avoid-tolls"
+              checked={settings.avoidTolls}
+              onCheckedChange={(checked) => 
+                updateSettings({ avoidTolls: checked })
+              }
+            />
+          </div>
+        </div>
+
+        {/* Optimize Button */}
+        <Button 
+          className="w-full" 
+          onClick={() => optimizeRoute()}
+          disabled={isOptimizing}
+        >
+          <Settings2 className="mr-2 h-4 w-4" />
+          {isOptimizing ? "Optimizing..." : "Optimize Route"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/map/location-action-dialog.tsx
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { CalendarDateRangePicker } from "@/components/ui/date-range-picker"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CoffeeShop } from "@prisma/client"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { VisitTable } from "./visit-table"
-import { VisitCalendar } from "./visit-calendar"
-import { VisitScheduler } from "./visit-scheduler"
-import { VisitedShops } from "./visited-shops"
-import { Plus, Calendar, List, Clock, CheckCircle2 } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { useToast } from "@/components/ui/use-toast"
+import { Badge } from "@/components/ui/badge"
+import { RouteGenerationDialog } from "./route-generation-dialog"
 
-interface VisitManagementProps {
+interface LocationActionDialogProps {
+  shop: CoffeeShop
+  onGenerateRoute: (shop: CoffeeShop) => void
+  onVisitRecorded: () => void
+}
+
+export function LocationActionDialog({
+  shop,
+  onGenerateRoute,
+  onVisitRecorded,
+}: LocationActionDialogProps) {
+  const { toast } = useToast()
+  const [managerPresent, setManagerPresent] = useState(false)
+  const [staffSize, setStaffSize] = useState("")
+  const [showRouteDialog, setShowRouteDialog] = useState(false)
+
+  const handleVisitRecord = async () => {
+    try {
+      const response = await fetch(`/api/coffee-shops/${shop.id}/visits`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          managerPresent,
+          staffSize: parseInt(staffSize),
+          date: new Date(),
+        }),
+      })
+
+      if (!response.ok) throw new Error("Failed to record visit")
+
+      toast({
+        title: "Visit Recorded",
+        description: "The visit has been successfully recorded.",
+      })
+      onVisitRecorded()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to record visit. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  return (
+    <Dialog>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{shop.title}</DialogTitle>
+          <DialogDescription>
+            {shop.address}
+            <div className="flex gap-2 mt-2">
+              {shop.visited && <Badge variant="success">Visited</Badge>}
+              {shop.is_source && <Badge variant="default">Source Location</Badge>}
+              {shop.parlor_coffee_leads && <Badge variant="warning">Lead</Badge>}
+            </div>
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-4 py-4">
+          <div className="flex items-center justify-between">
+            <Label>Manager Present</Label>
+            <Switch
+              checked={managerPresent}
+              onCheckedChange={setManagerPresent}
+            />
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="col-span-2">Estimated Staff Size</Label>
+            <Input
+              type="number"
+              value={staffSize}
+              onChange={(e) => setStaffSize(e.target.value)}
+              className="col-span-2"
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            type="button"
+            onClick={() => setShowRouteDialog(true)}
+            className="w-full"
+          >
+            Generate Route from Here
+          </Button>
+          <Button
+            type="submit"
+            onClick={handleVisitRecord}
+            className="w-full"
+            variant={shop.visited ? "outline" : "default"}
+          >
+            {shop.visited ? "Update Visit" : "Mark as Visited"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+
+      <RouteGenerationDialog
+        open={showRouteDialog}
+        onOpenChange={setShowRouteDialog}
+        startingPoint={shop}
+        onGenerate={onGenerateRoute}
+      />
+    </Dialog>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/map/map-preview.tsx
+"use client"
+
+import { useEffect, useState } from "react"
+import { CoffeeShop } from "@prisma/client"
+import { MapContainer, TileLayer, Circle, Marker } from "react-leaflet"
+import { Icon } from "leaflet"
+import "leaflet/dist/leaflet.css"
+
+interface MapPreviewProps {
+  startingPoint: CoffeeShop
+  maxDistance: number
   className?: string
 }
 
-export function VisitManagement({ className }: VisitManagementProps) {
-  const router = useRouter()
-  const [view, setView] = useState("list")
+export function MapPreview({
+  startingPoint,
+  maxDistance,
+  className
+}: MapPreviewProps) {
+  return (
+    <div className={className}>
+      <MapContainer
+        center={[startingPoint.latitude, startingPoint.longitude]}
+        zoom={13}
+        className="h-full w-full"
+      >
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        />
+        <Marker
+          position={[startingPoint.latitude, startingPoint.longitude]}
+        />
+        <Circle
+          center={[startingPoint.latitude, startingPoint.longitude]}
+          radius={maxDistance * 1000}
+          pathOptions={{ fillColor: "blue", fillOpacity: 0.1 }}
+        />
+      </MapContainer>
+    </div>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/map/map.tsx
+"use client"
+
+import { useEffect, useRef } from "react"
+import { useMapStore } from "@/store/use-map"
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
+import "leaflet/dist/leaflet.css"
+import { ShopMarker } from "./shop-marker"
+import { RouteLayer } from "./route-layer"
+import { useShops } from "@/hooks/use-shops"
+
+export function Map() {
+  const mapRef = useRef(null)
+  const { shops = [], loading } = useShops()
+  const { center, zoom, selectedShop, setSelectedShop } = useMapStore()
+
+  if (loading) {
+    return <div>Loading map...</div>
+  }
 
   return (
-    <Card className={className}>
+    <div className="h-[800px] rounded-lg border">
+      <MapContainer
+        ref={mapRef}
+        center={center}
+        zoom={zoom}
+        className="h-full w-full rounded-lg"
+      >
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        />
+        
+        {shops?.map((shop) => (
+          <ShopMarker
+            key={shop.id}
+            shop={shop}
+            selected={selectedShop?.id === shop.id}
+            onSelect={setSelectedShop}
+          />
+        ))}
+
+        <RouteLayer />
+      </MapContainer>
+    </div>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/map/route-controls.tsx
+"use client"
+
+import { useState } from "react"
+import { useRouteStore } from "@/store/use-route"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select"
+import { Slider } from "@/components/ui/slider"
+import { useShops } from "@/hooks/use-shops"
+
+export function RouteControls() {
+  const [loading, setLoading] = useState(false)
+  const { generateRoute, clearRoute, settings, updateSettings } = useRouteStore()
+  const { shops, loading: shopsLoading } = useShops()
+
+  // Filter source shops (either is_source=true or visited=true)
+  const sourceShops = shops?.filter(shop => shop.is_source || shop.visited) || []
+
+  const handleGenerateRoute = async () => {
+    setLoading(true)
+    await generateRoute()
+    setLoading(false)
+  }
+
+  if (shopsLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Route Settings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          Loading source shops...
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Visit Management</CardTitle>
-          <Button onClick={() => router.push("/dashboard/visits/new")}>
-            <Plus className="mr-2 h-4 w-4" />
-            Record New Visit
+        <CardTitle>Route Settings</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <label>Starting Point</label>
+          <Select
+            value={settings.startingPoint}
+            onValueChange={(value) => updateSettings({ startingPoint: value })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select a starting point" />
+            </SelectTrigger>
+            <SelectContent>
+              {sourceShops.map((shop) => (
+                <SelectItem key={shop.id} value={shop.id}>
+                  {shop.title}
+                  {shop.is_source && " (Partner)"}
+                  {shop.visited && !shop.is_source && " (Visited)"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-muted-foreground">
+            Select a partner shop or previously visited location
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label>Max Stops</label>
+          <Input
+            type="number"
+            value={settings.maxStops}
+            onChange={(e) => updateSettings({ maxStops: parseInt(e.target.value) })}
+            min={1}
+            max={20}
+          />
+          <p className="text-sm text-muted-foreground">
+            Maximum number of stops in the route
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label>Max Distance (km)</label>
+          <Slider
+            value={[settings.maxDistance]}
+            onValueChange={(value) => updateSettings({ maxDistance: value[0] })}
+            min={1}
+            max={10}
+            step={0.5}
+          />
+          <p className="text-sm text-muted-foreground">
+            Maximum distance between stops
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Button 
+            onClick={handleGenerateRoute} 
+            className="w-full"
+            disabled={loading || !settings.startingPoint}
+          >
+            {loading ? "Generating..." : "Generate Route"}
+          </Button>
+          <Button 
+            onClick={clearRoute}
+            variant="outline" 
+            className="w-full"
+          >
+            Clear Route
           </Button>
         </div>
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <CalendarDateRangePicker />
-            <Input
-              placeholder="Search visits..."
-              className="max-w-[250px]"
-            />
-          </div>
-          <Tabs defaultValue={view} onValueChange={setView}>
-            <TabsList>
-              <TabsTrigger value="list">
-                <List className="mr-2 h-4 w-4" />
-                List View
-              </TabsTrigger>
-              <TabsTrigger value="calendar">
-                <Calendar className="mr-2 h-4 w-4" />
-                Calendar View
-              </TabsTrigger>
-              <TabsTrigger value="schedule">
-                <Clock className="mr-2 h-4 w-4" />
-                Schedule
-              </TabsTrigger>
-              <TabsTrigger value="visited">
-                <CheckCircle2 className="mr-2 h-4 w-4" />
-                Visited Shops
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="list" className="border-none p-0 pt-4">
-              <VisitTable />
-            </TabsContent>
-            <TabsContent value="calendar" className="border-none p-0 pt-4">
-              <VisitCalendar />
-            </TabsContent>
-            <TabsContent value="schedule" className="border-none p-0 pt-4">
-              <VisitScheduler />
-            </TabsContent>
-            <TabsContent value="visited" className="border-none p-0 pt-4">
-              <VisitedShops />
-            </TabsContent>
-          </Tabs>
-        </div>
-      </CardHeader>
+      </CardContent>
     </Card>
   )
 }
 ________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/koatji-crm/src/components/visits/visit-scheduler.tsx
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/map/route-generation-dialog.tsx
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { useVisits } from "@/hooks/use-visits"
-import { format } from "date-fns"
-
-export function VisitScheduler() {
-  const { visits } = useVisits()
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
-
-  // Get upcoming scheduled visits
-  const upcomingVisits = visits?.filter(visit => 
-    visit.nextVisitDate && new Date(visit.nextVisitDate) > new Date()
-  ).sort((a, b) => 
-    new Date(a.nextVisitDate!).getTime() - new Date(b.nextVisitDate!).getTime()
-  )
-
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <div>
-        <h3 className="font-medium mb-2">Schedule New Visit</h3>
-        <Calendar
-          mode="single"
-          selected={selectedDate}
-          onSelect={setSelectedDate}
-          className="rounded-md border"
-        />
-        <Button className="w-full mt-4">
-          Schedule Visit
-        </Button>
-      </div>
-
-      <div>
-        <h3 className="font-medium mb-2">Upcoming Scheduled Visits</h3>
-        <div className="space-y-2">
-          {upcomingVisits?.map(visit => (
-            <Card key={visit.id}>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-medium">{visit.coffeeShopId}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {format(new Date(visit.nextVisitDate!), "MMMM d, yyyy")}
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    Reschedule
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-          {(!upcomingVisits || upcomingVisits.length === 0) && (
-            <p className="text-sm text-muted-foreground">
-              No upcoming visits scheduled
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/koatji-crm/src/components/visits/visit-table.tsx
-"use client"
-
-import { useState } from "react"
-import { format } from "date-fns"
+import { CoffeeShop } from "@prisma/client"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { useVisits } from "@/hooks/use-visits"
-import { Visit, CoffeeShop } from "@prisma/client"
-
-type VisitWithShop = Visit & {
-  coffeeShop: CoffeeShop
-}
-
-export function VisitTable() {
-  const { visits, loading } = useVisits()
-
-  if (loading) return <div>Loading visits...</div>
-
-  return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Date</TableHead>
-            <TableHead>Coffee Shop</TableHead>
-            <TableHead>Manager Present</TableHead>
-            <TableHead>Samples</TableHead>
-            <TableHead>Next Visit</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {visits?.map((visit: VisitWithShop) => (
-            <TableRow key={visit.id}>
-              <TableCell>
-                {format(new Date(visit.date), 'MMM d, yyyy')}
-              </TableCell>
-              <TableCell>{visit.coffeeShop.title}</TableCell>
-              <TableCell>
-                {visit.managerPresent ? (
-                  <Badge variant="success">Yes</Badge>
-                ) : (
-                  <Badge variant="secondary">No</Badge>
-                )}
-              </TableCell>
-              <TableCell>
-                {visit.samplesDropped ? (
-                  <Badge variant="success">Dropped</Badge>
-                ) : (
-                  <Badge variant="secondary">None</Badge>
-                )}
-              </TableCell>
-              <TableCell>
-                {visit.nextVisitDate ? (
-                  format(new Date(visit.nextVisitDate), 'MMM d, yyyy')
-                ) : (
-                  '-'
-                )}
-              </TableCell>
-              <TableCell>
-                <Badge>
-                  Visit #{visit.visitNumber}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <Button variant="ghost" size="sm">
-                  View Details
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  )
-}
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/koatji-crm/src/components/visits/visited-shops.tsx
-"use client"
-
-import { useMemo, useState } from "react"
-import { useShops } from "@/hooks/use-shops"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Slider } from "@/components/ui/slider"
+import { MapPreview } from "./map-preview"
+
+interface RouteGenerationDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  startingPoint: CoffeeShop
+  onGenerate: (shop: CoffeeShop) => void
+}
+
+export function RouteGenerationDialog({
+  open,
+  onOpenChange,
+  startingPoint,
+  onGenerate,
+}: RouteGenerationDialogProps) {
+  const [maxStops, setMaxStops] = useState(5)
+  const [maxDistance, setMaxDistance] = useState(2)
+  const [loading, setLoading] = useState(false)
+
+  const handleGenerate = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch("/api/routes/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          startingPoint: startingPoint.id,
+          maxStops,
+          maxDistance,
+        }),
+      })
+
+      if (!response.ok) throw new Error("Failed to generate route")
+
+      const route = await response.json()
+      onGenerate(route)
+      onOpenChange(false)
+    } catch (error) {
+      console.error("Failed to generate route:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Generate Route</DialogTitle>
+          <DialogDescription>
+            Generate a route starting from {startingPoint.title}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-4 py-4">
+          <div className="space-y-2">
+            <Label>Maximum Stops</Label>
+            <div className="flex items-center gap-4">
+              <Slider
+                value={[maxStops]}
+                onValueChange={(value) => setMaxStops(value[0])}
+                min={1}
+                max={10}
+                step={1}
+                className="flex-1"
+              />
+              <span className="w-12 text-center">{maxStops}</span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Maximum Distance (km)</Label>
+            <div className="flex items-center gap-4">
+              <Slider
+                value={[maxDistance]}
+                onValueChange={(value) => setMaxDistance(value[0])}
+                min={0.5}
+                max={5}
+                step={0.5}
+                className="flex-1"
+              />
+              <span className="w-12 text-center">{maxDistance}</span>
+            </div>
+          </div>
+
+          <MapPreview
+            startingPoint={startingPoint}
+            maxDistance={maxDistance}
+            className="h-[200px] rounded-lg border"
+          />
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleGenerate} disabled={loading}>
+            {loading ? "Generating..." : "Generate Route"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/map/route-layer.tsx
+"use client"
+
+import { Polyline } from "react-leaflet"
+import { CoffeeShop } from "@prisma/client"
+
+interface RouteLayerProps {
+  route?: CoffeeShop[]
+  color?: string
+}
+
+export function RouteLayer({ route, color = "#3B82F6" }: RouteLayerProps) {
+  if (!route || route.length < 2) return null
+
+  const positions = route.map(shop => [shop.latitude, shop.longitude])
+
+  return (
+    <Polyline
+      positions={positions as [number, number][]}
+      pathOptions={{
+        color,
+        weight: 3,
+        opacity: 0.7,
+      }}
+    />
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/map/route-map.tsx
+
+"use client";
+
+import { useEffect, useState, useCallback, useRef } from "react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
+import { useRouteStore } from "@/store/route-store";
+import { useRouter } from "next/navigation";
+
+interface MapWrapperType extends google.maps.Map {
+ markers?: google.maps.Marker[];
+ currentLocationMarker?: google.maps.Marker;
+ directionsRenderer?: google.maps.DirectionsRenderer;
+}
+
+export function RouteMap() {
+ const mapRef = useRef<HTMLDivElement>(null);
+ const [map, setMap] = useState<MapWrapperType | null>(null);
+ const [directionsService, setDirectionsService] = useState<google.maps.DirectionsService | null>(null);
+ const {
+   currentRoute,
+   settings,
+   isNavigating,
+   currentStep,
+   currentLocation,
+   setMetrics
+ } = useRouteStore();
+ const { toast } = useToast();
+ const router = useRouter();
+
+ // Helper function to create marker content
+ const createMarkerContent = (location, index: number) => {
+   return `
+     <div class="p-4 min-w-[200px]">
+       <div class="font-bold text-lg mb-2">${index + 1}. ${location.title}</div>
+       <div class="text-sm mb-2">${location.address}</div>
+       ${location.phone ? `<div class="text-sm mb-2">📞 ${location.phone}</div>` : ''}
+       ${location.volume ? `
+         <div class="text-sm mb-2">Volume: ${location.volume}</div>
+         <div class="text-sm mb-2">ARR: $${((parseFloat(location.volume) * 52) * 18).toLocaleString()}</div>
+       ` : ''}
+       <div class="flex flex-wrap gap-2 mt-2">
+         ${location.is_source ? '<span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">Partner</span>' : ''}
+         ${location.visited ? '<span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Visited</span>' : ''}
+         ${location.parlor_coffee_leads ? '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">Lead</span>' : ''}
+       </div>
+       <div class="mt-4">
+         <button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${location.latitude},${location.longitude}', '_blank')" 
+                 class="text-sm text-blue-600 hover:text-blue-800">
+           Open in Google Maps
+         </button>
+       </div>
+     </div>
+   `;
+ };
+
+ // Initialize map
+ useEffect(() => {
+   if (!mapRef.current) return;
+
+   const initMap = async () => {
+     try {
+       if (!window.google) {
+         const script = document.createElement('script');
+         script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places,geometry`;
+         script.async = true;
+         script.defer = true;
+         document.head.appendChild(script);
+
+         await new Promise((resolve) => {
+           script.onload = resolve;
+         });
+       }
+
+       const mapInstance = new google.maps.Map(mapRef.current, {
+         zoom: 12,
+         center: currentLocation 
+           ? { lat: currentLocation.lat, lng: currentLocation.lng }
+           : { lat: 40.7128, lng: -74.0060 },
+         styles: [
+           {
+             featureType: "poi",
+             elementType: "labels",
+             stylers: [{ visibility: "off" }]
+           }
+         ]
+       }) as MapWrapperType;
+
+       const directionsServiceInstance = new google.maps.DirectionsService();
+       const directionsRendererInstance = new google.maps.DirectionsRenderer({
+         map: mapInstance,
+         suppressMarkers: true,
+       });
+
+       mapInstance.directionsRenderer = directionsRendererInstance;
+       
+       setMap(mapInstance);
+       setDirectionsService(directionsServiceInstance);
+
+     } catch (error) {
+       console.error('Failed to initialize map:', error);
+       toast({
+         title: "Error",
+         description: "Failed to load map. Please refresh the page.",
+         variant: "destructive"
+       });
+     }
+   };
+
+   initMap();
+
+   return () => {
+     if (map) {
+       if (map.markers) {
+         map.markers.forEach(marker => marker.setMap(null));
+       }
+       if (map.directionsRenderer) {
+         map.directionsRenderer.setMap(null);
+       }
+     }
+   };
+ }, []);
+
+ // Update route display when currentRoute changes
+ useEffect(() => {
+   if (!map || !directionsService || currentRoute.length < 2) {
+     if (map && map.directionsRenderer) {
+       map.directionsRenderer.setDirections({ routes: [] });
+     }
+     return;
+   }
+
+   const updateRoute = async () => {
+     try {
+       const waypoints = currentRoute.slice(1, -1).map(location => ({
+         location: { lat: location.latitude, lng: location.longitude },
+         stopover: true
+       }));
+
+       const request = {
+         origin: { lat: currentRoute[0].latitude, lng: currentRoute[0].longitude },
+         destination: { 
+           lat: currentRoute[currentRoute.length - 1].latitude, 
+           lng: currentRoute[currentRoute.length - 1].longitude 
+         },
+         waypoints,
+         optimizeWaypoints: true,
+         travelMode: settings.transportMode as google.maps.TravelMode,
+         avoidHighways: settings.avoidHighways,
+         avoidTolls: settings.avoidTolls,
+       };
+
+       const result = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
+         directionsService.route(request, (result, status) => {
+           if (status === 'OK') resolve(result);
+           else reject(new Error(`Directions request failed: ${status}`));
+         });
+       });
+
+       if (map.directionsRenderer) {
+         map.directionsRenderer.setDirections(result);
+       }
+
+       // Update markers
+       if (map.markers) {
+         map.markers.forEach(marker => marker.setMap(null));
+       }
+
+       map.markers = currentRoute.map((location, index) => {
+         // Create marker
+         const marker = new google.maps.Marker({
+           position: { lat: location.latitude, lng: location.longitude },
+           map,
+           label: {
+             text: (index + 1).toString(),
+             color: "#ffffff",
+             fontSize: "14px",
+             fontWeight: "bold"
+           },
+           icon: {
+             path: google.maps.SymbolPath.CIRCLE,
+             scale: 14,
+             fillColor: location.is_source ? "#ef4444" : "#3b82f6",
+             fillOpacity: 1,
+             strokeWeight: 2,
+             strokeColor: "#ffffff",
+           },
+           title: location.title,
+           optimized: false
+         });
+
+         // Create info window
+         const infoWindow = new google.maps.InfoWindow({
+           content: createMarkerContent(location, index),
+           maxWidth: 300
+         });
+
+         // Add click listener to open info window
+         marker.addListener('click', () => {
+           // Close any open info windows first
+           map.markers?.forEach(m => {
+             if (m['infoWindow']) {
+               m['infoWindow'].close();
+             }
+           });
+           infoWindow.open(map, marker);
+         });
+
+         // Store reference to info window
+         marker['infoWindow'] = infoWindow;
+
+         return marker;
+       });
+
+       // Fit bounds to include all locations
+       const bounds = new google.maps.LatLngBounds();
+       currentRoute.forEach(location => {
+         bounds.extend({ lat: location.latitude, lng: location.longitude });
+       });
+       
+       // Add current location to bounds if available
+       if (currentLocation) {
+         bounds.extend(currentLocation);
+       }
+       
+       map.fitBounds(bounds);
+       
+       // Add padding to the bounds
+       const padded = new google.maps.LatLngBounds(
+         map.getBounds()?.getSouthWest(),
+         map.getBounds()?.getNorthEast()
+       );
+       map.fitBounds(padded);
+
+       // Update route metrics if available
+       if (result.routes[0]) {
+         const route = result.routes[0];
+         let totalDistance = 0;
+         let totalDuration = 0;
+
+         route.legs.forEach(leg => {
+           totalDistance += leg.distance?.value || 0;
+           totalDuration += leg.duration?.value || 0;
+         });
+
+         setMetrics({
+           totalDistance: totalDistance / 1000, // Convert to kilometers
+           totalDuration: totalDuration / 60, // Convert to minutes
+           numberOfStops: currentRoute.length,
+           estimatedArrival: new Date(Date.now() + totalDuration * 1000).toLocaleTimeString()
+         });
+       }
+
+     } catch (error) {
+       console.error('Failed to update route:', error);
+       toast({
+         title: "Error",
+         description: "Failed to update route on map.",
+         variant: "destructive"
+       });
+     }
+   };
+
+   updateRoute();
+ }, [map, directionsService, currentRoute, settings, currentLocation]);
+
+ // Update current location marker
+ useEffect(() => {
+   if (!map || !currentLocation) return;
+
+   if (map.currentLocationMarker) {
+     map.currentLocationMarker.setPosition(currentLocation);
+   } else {
+     map.currentLocationMarker = new google.maps.Marker({
+       position: currentLocation,
+       map,
+       icon: {
+         path: google.maps.SymbolPath.CIRCLE,
+         scale: 8,
+         fillColor: "#10b981",
+         fillOpacity: 1,
+         strokeWeight: 2,
+         strokeColor: "#ffffff",
+       },
+       title: "Current Location",
+       zIndex: 1000
+     });
+   }
+ }, [map, currentLocation]);
+
+ return (
+   <Card className="relative overflow-hidden">
+     <div 
+       ref={mapRef}
+       className="w-full h-[800px] rounded-lg" 
+     />
+   </Card>
+ );
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/map/shop-marker.tsx
+"use client"
+
+import { useState } from "react"
+import { Marker, Popup } from "react-leaflet"
+import L from "leaflet"
+import { CoffeeShop } from "@prisma/client"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { format } from "date-fns"
-import { useVisits } from "@/hooks/use-visits"
-import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { useToast } from "@/components/ui/use-toast"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { useRouteStore } from "@/store/use-route"
+import "leaflet/dist/leaflet.css"
 
-export function VisitedShops() {
-  const { shops, loading: shopsLoading } = useShops()
-  const { visits, loading: visitsLoading } = useVisits()
-  const [searchTerm, setSearchTerm] = useState("")
-  const [areaFilter, setAreaFilter] = useState("all")
+interface ShopMarkerProps {
+  shop: CoffeeShop
+  selected?: boolean
+  onSelect?: (shop: CoffeeShop) => void
+}
 
-  const visitedShops = useMemo(() => {
-    if (!shops || !visits) return []
+export function ShopMarker({ shop, selected, onSelect }: ShopMarkerProps) {
+  const router = useRouter()
+  const { toast } = useToast()
+  const [visitDialogOpen, setVisitDialogOpen] = useState(false)
+  const [managerPresent, setManagerPresent] = useState(false)
+  const [managerName, setManagerName] = useState("")
+  const [samplesDropped, setSamplesDropped] = useState(false)
+  const [sampleDetails, setSampleDetails] = useState("")
+  const [notes, setNotes] = useState("")
+  const { updateSettings, generateRoute } = useRouteStore()
 
-    const visitedShopsMap = shops
-      .filter(shop => shop.visited)
-      .map(shop => {
-        const shopVisits = visits.filter(visit => visit.coffeeShopId === shop.id)
-        const lastVisit = shopVisits.sort((a, b) => 
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-        )[0]
+  const customIcon = L.divIcon({
+    className: 'custom-marker',
+    html: `
+      <div class="
+        w-8 h-8 rounded-full flex items-center justify-center text-white
+        ${selected ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
+        ${shop.visited ? 'bg-green-500' : shop.is_source ? 'bg-red-500' : 'bg-blue-500'}
+        ${shop.parlor_coffee_leads ? 'border-2 border-yellow-400' : ''}
+      ">
+        ${shop.visited ? '✓' : ''}
+      </div>
+    `,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32],
+  })
 
-        return {
-          ...shop,
-          visitCount: shopVisits.length,
-          lastVisit,
-          nextVisit: shopVisits.find(v => v.nextVisitDate && new Date(v.nextVisitDate) > new Date()),
-        }
+  const handleMarkVisited = async () => {
+    try {
+      const response = await fetch(`/api/coffee-shops/${shop.id}/visits`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          date: new Date(),
+          managerPresent,
+          managerName: managerName || undefined,
+          samplesDropped,
+          sampleDetails: sampleDetails || undefined,
+          notes: notes || undefined,
+        }),
       })
 
-    // Apply filters
-    return visitedShopsMap.filter(shop => {
-      const matchesSearch = 
-        shop.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        shop.area?.toLowerCase().includes(searchTerm.toLowerCase())
-      
-      const matchesArea = areaFilter === 'all' || shop.area === areaFilter
+      if (!response.ok) throw new Error('Failed to record visit')
 
-      return matchesSearch && matchesArea
+      toast({
+        title: "Visit recorded",
+        description: "The shop has been marked as visited",
+      })
+
+      setVisitDialogOpen(false)
+      router.refresh()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to record visit",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleGenerateRoute = async () => {
+    try {
+      await updateSettings({ startingPoint: shop.id })
+      await generateRoute()
+      toast({
+        title: "Route generated",
+        description: `Route generated from ${shop.title}`,
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate route",
+        variant: "destructive",
+      })
+    }
+  }
+
+  return (
+    <>
+      <Marker
+        position={[shop.latitude, shop.longitude]}
+        icon={customIcon}
+        eventHandlers={{
+          click: () => onSelect?.(shop),
+        }}
+      >
+        <Popup>
+          <div className="min-w-[200px] space-y-4">
+            <div>
+              <h3 className="font-bold mb-1">{shop.title}</h3>
+              <p className="text-sm mb-1">{shop.address}</p>
+              {shop.rating && (
+                <p className="text-sm mb-1">⭐ {shop.rating} ({shop.reviews} reviews)</p>
+              )}
+              {shop.visited && (
+                <p className="text-sm text-green-600">✓ Visited</p>
+              )}
+              {shop.parlor_coffee_leads && (
+                <p className="text-sm text-yellow-600">🎯 Lead</p>
+              )}
+              {shop.is_source && (
+                <p className="text-sm text-red-600">📍 Source Location</p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Button 
+                onClick={handleGenerateRoute}
+                className="w-full"
+              >
+                Generate Route From Here
+              </Button>
+              
+              {!shop.visited && (
+                <Button 
+                  onClick={() => setVisitDialogOpen(true)}
+                  variant="secondary"
+                  className="w-full"
+                >
+                  Mark as Visited
+                </Button>
+              )}
+
+              {shop.website && (
+                <Button 
+                  variant="outline"
+                  className="w-full"
+                  asChild
+                >
+                  <a
+                    href={shop.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Visit Website
+                  </a>
+                </Button>
+              )}
+            </div>
+          </div>
+        </Popup>
+      </Marker>
+
+      <Dialog open={visitDialogOpen} onOpenChange={setVisitDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Record Visit - {shop.title}</DialogTitle>
+            <DialogDescription>
+              Record details about your visit to this coffee shop
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="flex items-center justify-between space-x-2">
+              <Label htmlFor="manager-present">Manager Present</Label>
+              <Switch
+                id="manager-present"
+                checked={managerPresent}
+                onCheckedChange={setManagerPresent}
+              />
+            </div>
+
+            {managerPresent && (
+              <div className="space-y-2">
+                <Label htmlFor="manager-name">Manager's Name</Label>
+                <Input
+                  id="manager-name"
+                  value={managerName}
+                  onChange={(e) => setManagerName(e.target.value)}
+                  placeholder="Enter manager's name"
+                />
+              </div>
+            )}
+
+            <div className="flex items-center justify-between space-x-2">
+              <Label htmlFor="samples-dropped">Samples Dropped</Label>
+              <Switch
+                id="samples-dropped"
+                checked={samplesDropped}
+                onCheckedChange={setSamplesDropped}
+              />
+            </div>
+
+            {samplesDropped && (
+              <div className="space-y-2">
+                <Label htmlFor="sample-details">Sample Details</Label>
+                <Input
+                  id="sample-details"
+                  value={sampleDetails}
+                  onChange={(e) => setSampleDetails(e.target.value)}
+                  placeholder="Enter sample details"
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Input
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Add any notes about the visit"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVisitDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleMarkVisited}>
+              Record Visit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/list/route-list.tsx
+// src/components/routes/list/route-list.tsx
+"use client";
+
+import { useCallback } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useRouteStore } from "@/store/route-store";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { 
+  GripVertical,
+  MapPin,
+  Building2,
+  Users,
+  DollarSign,
+  ArrowUpDown,
+} from "lucide-react";
+
+export function RouteList() {
+  const {
+    currentRoute,
+    updateRoute,
+    removeLocation,
+    isNavigating,
+    currentStep,
+  } = useRouteStore();
+
+  const handleDragEnd = useCallback((result: any) => {
+    if (!result.destination) return;
+
+    const items = Array.from(currentRoute);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    updateRoute(items);
+  }, [currentRoute, updateRoute]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>Route Stops</CardTitle>
+          <Badge variant="secondary">
+            {currentRoute.length} stops
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <ScrollArea className="h-[500px] pr-4">
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId="route-stops">
+              {(provided) => (
+                <div
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  className="space-y-2"
+                >
+                  {currentRoute.map((location, index) => (
+                    <Draggable
+                      key={location.id}
+                      draggableId={location.id}
+                      index={index}
+                      isDragDisabled={isNavigating}
+                    >
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          className={`p-3 rounded-lg border ${
+                            snapshot.isDragging ? "border-primary" : "border-border"
+                          } ${
+                            isNavigating && index === currentStep 
+                              ? "bg-primary/10 border-primary" 
+                              : "bg-background"
+                          }`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <div
+                              {...provided.dragHandleProps}
+                              className="mt-1.5 cursor-grab active:cursor-grabbing"
+                            >
+                              <GripVertical className="h-4 w-4 text-muted-foreground" />
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                                  <span className="text-xs font-medium">
+                                    {index + 1}
+                                  </span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">
+                                    {location.title}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground truncate">
+                                    {location.address}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {!isNavigating && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 float-right"
+                                  onClick={() => removeLocation(location.id)}
+                                >
+                                  <ArrowUpDown className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  );
+}________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/delivery/delivery-schedule.tsx
+"use client"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { useWeeklyDeliveries } from "@/hooks/use-weekly-deliveries"
+import { 
+  Calendar, 
+  ChevronLeft, 
+  ChevronRight, 
+  Truck,
+  Package,
+  AlertCircle,
+  Clock,
+} from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+import { useRouteStore } from "@/store/route-store"
+
+interface DeliveryScheduleProps {
+  shops: any[]
+}
+
+export function DeliverySchedule({ shops }: DeliveryScheduleProps) {
+  const { toast } = useToast()
+  const { 
+    currentWeek,
+    weeklyDeliveries,
+    totalVolume,
+    changeWeek,
+    error
+  } = useWeeklyDeliveries(shops)
+
+  const { addLocations, clearRoute } = useRouteStore()
+
+  const generateDeliveryRoute = () => {
+    if (weeklyDeliveries.length === 0) {
+      toast({
+        title: "No deliveries",
+        description: "There are no deliveries scheduled for this week",
+        variant: "destructive"
+      })
+      return
+    }
+    
+    clearRoute()
+    const shopsForDelivery = weeklyDeliveries.map(delivery => delivery.shop)
+    addLocations(shopsForDelivery)
+
+    toast({
+      title: "Route Generated",
+      description: `Created route for ${shopsForDelivery.length} deliveries`
     })
-  }, [shops, visits, searchTerm, areaFilter])
+  }
 
-  const areas = useMemo(() => {
-    if (!shops) return []
-    return Array.from(new Set(shops.map(shop => shop.area).filter(Boolean)))
-  }, [shops])
-
-  if (shopsLoading || visitsLoading) {
-    return <div>Loading...</div>
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    )
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <Input
-          placeholder="Search visited shops..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
-        />
-        <Select value={areaFilter} onValueChange={setAreaFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select area" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Areas</SelectItem>
-            {areas.map(area => (
-              <SelectItem key={area} value={area}>{area}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col space-y-4">
+            <div className="flex items-center justify-between">
+              <CardTitle>Week {currentWeek} Deliveries</CardTitle>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => changeWeek(currentWeek - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Badge variant="secondary">
+                  Week {currentWeek}
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => changeWeek(currentWeek + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <Button
+              onClick={generateDeliveryRoute}
+              disabled={weeklyDeliveries.length === 0}
+              className="w-full"
+            >
+              <Truck className="mr-2 h-4 w-4" />
+              Generate Route for Week {currentWeek}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+       
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Coffee Shop</TableHead>
-              <TableHead>Area</TableHead>
-              <TableHead>Visit Count</TableHead>
-              <TableHead>Last Visit</TableHead>
-              <TableHead>Next Scheduled</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {visitedShops.map((shop) => (
-              <TableRow key={shop.id}>
-                <TableCell className="font-medium">{shop.title}</TableCell>
-                <TableCell>{shop.area}</TableCell>
-                <TableCell>{shop.visitCount}</TableCell>
-                <TableCell>
-                  {shop.lastVisit ? (
-                    format(new Date(shop.lastVisit.date), 'MMM d, yyyy')
-                  ) : (
-                    '-'
-                  )}
-                </TableCell>
-                <TableCell>
-                  {shop.nextVisit?.nextVisitDate ? (
-                    format(new Date(shop.nextVisit.nextVisitDate), 'MMM d, yyyy')
-                  ) : (
-                    '-'
-                  )}
-                </TableCell>
-                <TableCell>
-                  {shop.parlor_coffee_leads ? (
-                    <Badge className="bg-yellow-500">Lead</Badge>
-                  ) : (
-                    <Badge variant="secondary">Visited</Badge>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-            {visitedShops.length === 0 && (
-              <TableRow>
-                <TableCell colspan={6} className="text-center py-4">
-                  No visited shops found
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+            <ScrollArea className="h-[400px]">
+              <div className="space-y-2">
+                {weeklyDeliveries.map(({ shop, volume }) => (
+                  <div
+                    key={shop.id}
+                    className="p-3 rounded-lg border"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-medium">{shop.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {shop.address}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge variant="outline" className="gap-1">
+                            <Package className="h-3 w-3" />
+                            {volume} units
+                          </Badge>
+                          <Badge variant="outline" className="gap-1">
+                            <Clock className="h-3 w-3" />
+                            {shop.delivery_frequency?.toLowerCase() || 'weekly'}
+                          </Badge>
+                          <Badge variant="outline">
+                            First: Week {shop.first_delivery_week}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
 
-      <div className="pt-2 text-sm text-muted-foreground">
-        Total visited shops: {visitedShops.length}
+                {weeklyDeliveries.length === 0 && (
+                  <div className="text-center py-4 text-muted-foreground">
+                    No deliveries scheduled for this week
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Volume Summary</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="font-medium">Total Weekly Volume:</span>
+              <span className="text-xl font-bold">{totalVolume.toFixed(1)} units</span>
+            </div>
+            <div className="flex justify-between items-center text-sm text-muted-foreground">
+              <span>Average Per Partner:</span>
+              <span>
+                {weeklyDeliveries.length > 0 
+                  ? (totalVolume / weeklyDeliveries.length).toFixed(1) 
+                  : 0} units
+              </span>
+            </div>
+            <div className="flex justify-between items-center text-sm text-muted-foreground">
+              <span>Partners This Week:</span>
+              <span>{weeklyDeliveries.length}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/analytics/leads-analytics.tsx
+"use client"
+
+import { useEffect, useState } from "react"
+import { useShops } from "@/hooks/use-shops"
+import { CoffeeShop } from "@prisma/client"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
+
+export function LeadsAnalytics() {
+  const { shops, loading } = useShops()
+  const [leads, setLeads] = useState<CoffeeShop[]>([])
+
+  useEffect(() => {
+    if (shops) {
+      const leadShops = shops
+        .filter(shop => shop.parlor_coffee_leads)
+        .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+      setLeads(leadShops)
+    }
+  }, [shops])
+
+  if (loading) {
+    return <div>Loading leads...</div>
+  }
+
+  return (
+    <ScrollArea className="h-[400px] pr-4">
+      <div className="space-y-4">
+        {leads.map((shop) => (
+          <div key={shop.id} className="flex items-start space-x-4">
+            <Badge variant={shop.visited ? "success" : "default"}>
+              {shop.visited ? "Visited" : "New Lead"}
+            </Badge>
+            <div className="space-y-1">
+              <p className="text-sm font-medium leading-none">{shop.title}</p>
+              <p className="text-sm text-muted-foreground">{shop.area}</p>
+              {shop.rating && (
+                <p className="text-xs">⭐ {shop.rating} ({shop.reviews} reviews)</p>
+              )}
+            </div>
+          </div>
+        ))}
+        {leads.length === 0 && (
+          <p className="text-sm text-muted-foreground">No leads generated yet</p>
+        )}
       </div>
+    </ScrollArea>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/analytics/route-analytics.tsx
+"use client"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { VisitStats } from "./visit-stats"
+import { VisitChart } from "./visit-chart"
+import { LeadsAnalytics } from "./leads-analytics"
+
+export function RouteAnalytics() {
+  return (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 mt-8">
+      <Card className="col-span-4">
+        <CardHeader>
+          <CardTitle>Visit Analytics</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <VisitStats />
+          <VisitChart />
+        </CardContent>
+      </Card>
+      
+      <Card className="col-span-3">
+        <CardHeader>
+          <CardTitle>Leads Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <LeadsAnalytics />
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/analytics/visit-chart.tsx
+"use client"
+
+import { useEffect, useState } from "react"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import { useShops } from "@/hooks/use-shops"
+
+interface VisitData {
+  area: string
+  totalShops: number
+  visitedShops: number
+  leads: number
+}
+
+export function VisitChart() {
+  const { shops, loading } = useShops()
+  const [data, setData] = useState<VisitData[]>([])
+
+  useEffect(() => {
+    if (shops && shops.length > 0) {
+      // Group shops by area
+      const areaData = shops.reduce((acc, shop) => {
+        const area = shop.area || 'Unknown'
+        if (!acc[area]) {
+          acc[area] = {
+            area,
+            totalShops: 0,
+            visitedShops: 0,
+            leads: 0
+          }
+        }
+        
+        acc[area].totalShops++
+        if (shop.visited) acc[area].visitedShops++
+        if (shop.parlor_coffee_leads) acc[area].leads++
+        
+        return acc
+      }, {} as Record<string, VisitData>)
+
+      setData(Object.values(areaData))
+    }
+  }, [shops])
+
+  if (loading) {
+    return <div>Loading chart...</div>
+  }
+
+  return (
+    <div className="h-[300px] mt-4">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="area" />
+          <YAxis />
+          <Tooltip />
+          <Bar dataKey="totalShops" name="Total Shops" fill="#94a3b8" />
+          <Bar dataKey="visitedShops" name="Visited" fill="#22c55e" />
+          <Bar dataKey="leads" name="Leads" fill="#eab308" />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/routes/analytics/visit-stats.tsx
+"use client"
+
+import { useEffect, useState } from "react"
+import { useShops } from "@/hooks/use-shops"
+
+interface VisitStats {
+  totalVisits: number
+  totalShops: number
+  visitedShops: number
+  visitRate: number
+  leadsGenerated: number
+  conversionRate: number
+}
+
+export function VisitStats() {
+  const { shops, loading } = useShops()
+  const [stats, setStats] = useState<VisitStats>({
+    totalVisits: 0,
+    totalShops: 0,
+    visitedShops: 0,
+    visitRate: 0,
+    leadsGenerated: 0,
+    conversionRate: 0
+  })
+
+  useEffect(() => {
+    if (shops && shops.length > 0) {
+      const visitedShops = shops.filter(shop => shop.visited).length
+      const leadsGenerated = shops.filter(shop => shop.parlor_coffee_leads).length
+
+      setStats({
+        totalVisits: 0, // This would come from Visit records
+        totalShops: shops.length,
+        visitedShops,
+        visitRate: (visitedShops / shops.length) * 100,
+        leadsGenerated,
+        conversionRate: (leadsGenerated / visitedShops) * 100 || 0
+      })
+    }
+  }, [shops])
+
+  if (loading) {
+    return <div>Loading stats...</div>
+  }
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <StatCard
+        title="Visit Rate"
+        value={`${stats.visitRate.toFixed(1)}%`}
+        description={`${stats.visitedShops} of ${stats.totalShops} shops`}
+      />
+      <StatCard
+        title="Leads Generated"
+        value={stats.leadsGenerated.toString()}
+        description="Potential opportunities"
+      />
+      <StatCard
+        title="Conversion Rate"
+        value={`${stats.conversionRate.toFixed(1)}%`}
+        description="Visits to leads"
+      />
+    </div>
+  )
+}
+
+interface StatCardProps {
+  title: string
+  value: string
+  description: string
+}
+
+function StatCard({ title, value, description }: StatCardProps) {
+  return (
+    <div className="rounded-lg border p-3 text-center">
+      <h4 className="text-sm font-medium text-muted-foreground">{title}</h4>
+      <div className="mt-2 text-2xl font-bold">{value}</div>
+      <p className="text-xs text-muted-foreground">{description}</p>
     </div>
   )
 }
@@ -2465,6 +4618,71 @@ export function MobileCardView({ shops, onVisitToggle, onDelete, onUpdate }: Mob
  );
 }
 ________________________________________________________________________________
+### /Users/mohameddiomande/Desktop/koatji-crm/src/components/coffee-shops/table/priority-calculator-button.tsx
+"use client"
+
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { toast } from "@/components/ui/use-toast"
+import { Calculator, Loader2 } from "lucide-react"
+
+interface PriorityCalculatorButtonProps {
+  onCalculated?: () => void
+  disabled?: boolean
+}
+
+export function PriorityCalculatorButton({ 
+  onCalculated, 
+  disabled = false 
+}: PriorityCalculatorButtonProps) {
+  const [loading, setLoading] = useState(false)
+
+  const handleCalculate = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/coffee-shops/priority', {
+        method: 'POST'
+      })
+
+      if (!response.ok) throw new Error('Failed to recalculate priorities')
+
+      const data = await response.json()
+      toast({
+        title: "Success",
+        description: "Shop priorities have been recalculated"
+      })
+
+      if (onCalculated) {
+        onCalculated()
+      }
+    } catch (error) {
+      console.error('Error calculating priorities:', error)
+      toast({
+        title: "Error",
+        description: "Failed to recalculate priorities",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Button 
+      variant="outline" 
+      className="gap-2" 
+      onClick={handleCalculate}
+      disabled={disabled || loading}
+    >
+      {loading ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <Calculator className="h-4 w-4" />
+      )}
+      {loading ? "Calculating..." : "Recalculate Priorities"}
+    </Button>
+  )
+}________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/koatji-crm/src/components/coffee-shops/table/sort-header.tsx
 "use client"
 
@@ -2885,6 +5103,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { CoffeeShop } from "@prisma/client"
 import { Card } from "@/components/ui/card"
 import { SavedFiltersMenu } from "./saved-filters/saved-filters-menu"
+import { PriorityCalculatorButton } from "./priority-calculator-button"
 
 interface TableFiltersProps {
   searchTerm: string
@@ -3044,6 +5263,10 @@ export function TableFilters({
             activeFilters={activeFilters}
             onLoadFilter={handleLoadSavedFilters}
           />
+                    <PriorityCalculatorButton onCalculated={() => {
+    // Optionally trigger a refresh of the table data
+    // if you have a refresh function, pass it here
+  }} />
         </div>
 
         {/* Active Filters */}
@@ -5509,93 +7732,6 @@ export async function GET(request: Request) {
     )
   }
 }________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/koatji-crm/src/app/api/visits/route.ts
-import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { prisma } from "@/lib/db/prisma"
-import { authOptions } from "@/lib/auth/options"
-import { createAutoFollowUps } from "@/lib/follow-ups/auto-create"
-
-export async function POST(request: Request) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    })
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
-    }
-
-    const data = await request.json()
-    
-    // Create the visit
-    const visit = await prisma.visit.create({
-      data: {
-        ...data,
-        userId: user.id
-      }
-    })
-
-    // Generate automatic follow-ups
-    await createAutoFollowUps(user.id)
-
-    return NextResponse.json({ data: visit })
-  } catch (error) {
-    console.error("[VISIT_CREATE]", error)
-    return NextResponse.json(
-      { error: "Failed to create visit" },
-      { status: 500 }
-    )
-  }
-}
-
-export async function GET() {
-  try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.email) {
-      return new NextResponse("Unauthorized", { status: 401 })
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    })
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
-    }
-    const visits = await prisma.visit.findMany({
-      where: {
-        userId: user.id
-      },
-      include: {
-        coffeeShop: true,
-        user: {
-          select: {
-            name: true,
-            email: true
-          }
-        }
-      },
-      orderBy: {
-        date: "desc"
-      }
-    })
-
-    await createAutoFollowUps(user.id)
-
-    return NextResponse.json(visits)
-  } catch (error) {
-    console.error("[VISITS_GET]", error)
-    return new NextResponse("Internal error", { status: 500 })
-  }
-}
-________________________________________________________________________________
 ### /Users/mohameddiomande/Desktop/koatji-crm/prisma/analytics.prisma
 model AnalyticsSnapshot {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
@@ -6268,1114 +8404,4 @@ main()
  .finally(async () => {
    await prisma.$disconnect();
  });
-________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/koatji-crm/src/components/follow-ups/follow-up-create-dialog.tsx
-"use client"
-
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Calendar } from "@/components/ui/calendar"
-import { 
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon, Plus } from "lucide-react"
-import { format } from "date-fns"
-import { toast } from "@/components/ui/use-toast"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { cn } from "@/lib/utils"
-import { CoffeeShop } from "@prisma/client"
-
-interface FollowUpCreateDialogProps {
-  shops: CoffeeShop[]
-  onFollowUpCreated: () => void
-}
-
-const formSchema = z.object({
-  coffeeShopId: z.string({
-    required_error: "Please select a coffee shop",
-  }),
-  type: z.enum(['INITIAL_CONTACT', 'SAMPLE_DELIVERY', 'PROPOSAL_FOLLOW', 'TEAM_MEETING', 'CHECK_IN', 'GENERAL'], {
-    required_error: "Please select a follow-up type",
-  }),
-  priority: z.number().min(1).max(5),
-  dueDate: z.date({
-    required_error: "Please select a due date",
-  }),
-  contactMethod: z.enum(['call', 'email', 'visit', 'text'], {
-    required_error: "Please select a contact method",
-  }),
-  notes: z.string().optional(),
-})
-
-export function FollowUpCreateDialog({ shops, onFollowUpCreated }: FollowUpCreateDialogProps) {
-  const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      priority: 3,
-      type: 'GENERAL',
-      contactMethod: 'call',
-    },
-  })
-
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/follow-ups', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
-      })
-
-      if (!response.ok) throw new Error('Failed to create follow-up')
-
-      toast({
-        title: "Success",
-        description: "Follow-up created successfully",
-      })
-
-      onFollowUpCreated()
-      setOpen(false)
-      form.reset()
-    } catch (error) {
-      console.error('Error creating follow-up:', error)
-      toast({
-        title: "Error",
-        description: "Failed to create follow-up",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          New Follow-up
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Create Follow-up</DialogTitle>
-          <DialogDescription>
-            Create a new follow-up task for a coffee shop
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="coffeeShopId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Coffee Shop</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a coffee shop" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {shops.map((shop) => (
-                        <SelectItem key={shop.id} value={shop.id}>
-                          {shop.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Follow-up Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="INITIAL_CONTACT">Initial Contact</SelectItem>
-                      <SelectItem value="SAMPLE_DELIVERY">Sample Delivery</SelectItem>
-                      <SelectItem value="PROPOSAL_FOLLOW">Proposal Follow-up</SelectItem>
-                      <SelectItem value="TEAM_MEETING">Team Meeting</SelectItem>
-                      <SelectItem value="CHECK_IN">Check In</SelectItem>
-                      <SelectItem value="GENERAL">General</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="priority"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Priority (1-5)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="number" 
-                      min={1} 
-                      max={5} 
-                      {...field} 
-                      onChange={e => field.onChange(parseInt(e.target.value))}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    5 is highest priority, 1 is lowest
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="dueDate"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Due Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date) =>
-                          date < new Date(new Date().setHours(0, 0, 0, 0))
-                        }
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="contactMethod"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Contact Method</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select contact method" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="call">Call</SelectItem>
-                      <SelectItem value="email">Email</SelectItem>
-                      <SelectItem value="visit">Visit</SelectItem>
-                      <SelectItem value="text">Text</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Add any relevant notes..."
-                      className="resize-none"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex justify-end space-x-4">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setOpen(false)}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? "Creating..." : "Create Follow-up"}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  )
-}________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/koatji-crm/src/components/follow-ups/follow-up-dialog.tsx
-"use client"
-
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Calendar } from "@/components/ui/calendar"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { toast } from "@/components/ui/use-toast"
-import { format } from "date-fns"
-import { generateFollowUpSuggestions } from "./follow-up-suggestions"
-import { CalendarCheck, CalendarX } from "lucide-react"
-
-interface FollowUpCreateDialogProps {
-  shops: any[]
-  onFollowUpCreated: () => void
-}
-
-export function FollowUpCreateDialog({ 
-  shops,
-  onFollowUpCreated 
-}: FollowUpCreateDialogProps) {
-  const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-
-  const createFollowUp = async (suggestion: any) => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/follow-ups', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(suggestion)
-      })
-
-      if (!response.ok) throw new Error('Failed to create follow-up')
-
-      toast({
-        title: "Follow-up created",
-        description: `Follow-up scheduled for ${format(new Date(suggestion.dueDate), 'MMM d, yyyy')}`
-      })
-
-      onFollowUpCreated()
-      setOpen(false)
-    } catch (error) {
-      console.error('Error creating follow-up:', error)
-      toast({
-        title: "Error",
-        description: "Failed to create follow-up",
-        variant: "destructive"
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Get suggestions for all shops
-  const allSuggestions = shops.flatMap(shop => {
-    const suggestions = generateFollowUpSuggestions(shop)
-    return suggestions.map(suggestion => ({
-      ...suggestion,
-      shopName: shop.title
-    }))
-  })
-
-  // Sort suggestions by priority and due date
-  const sortedSuggestions = allSuggestions.sort((a, b) => {
-    if (b.priority !== a.priority) return b.priority - a.priority
-    return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
-  })
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <CalendarCheck className="mr-2 h-4 w-4" />
-          New Follow-up
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Create Follow-up</DialogTitle>
-          <DialogDescription>
-            Suggested follow-ups based on shop visit history and stages
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="grid gap-4 py-4">
-          {sortedSuggestions.length > 0 ? (
-            sortedSuggestions.map((suggestion, index) => (
-              <Card key={index}>
-                <CardHeader>
-                  <CardTitle>{suggestion.shopName}</CardTitle>
-                  <CardDescription>
-                    {suggestion.type.split('_').join(' ').toLowerCase()}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div>
-                      <span className="font-medium">Due Date:</span>{' '}
-                      {format(new Date(suggestion.dueDate), 'MMM d, yyyy')}
-                    </div>
-                    <div>
-                      <span className="font-medium">Contact Method:</span>{' '}
-                      {suggestion.contactMethod}
-                    </div>
-                    <div>
-                      <span className="font-medium">Priority:</span>{' '}
-                      {'★'.repeat(suggestion.priority)}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {suggestion.notes}
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button 
-                    onClick={() => createFollowUp(suggestion)}
-                    disabled={loading}
-                  >
-                    Schedule Follow-up
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))
-          ) : (
-            <div className="flex flex-col items-center justify-center p-8 text-center">
-              <CalendarX className="h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-2 font-semibold">No Follow-ups Suggested</h3>
-              <p className="text-sm text-muted-foreground">
-                There are no suggested follow-ups based on current shop data.
-              </p>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/koatji-crm/src/components/follow-ups/follow-up-manager.tsx
-"use client"
-
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { CoffeeShop } from "@prisma/client"
-import { format } from "date-fns"
-import { 
-  PhoneCall, 
-  Mail, 
-  Calendar,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  Building,
-  User,
-  Star
-} from "lucide-react"
-import { FollowUpCreateDialog } from "./follow-up-create-dialog"
-import { GenerateFollowUpsButton } from "./generate-button"
-
-type FollowUp = {
-  id: string
-  type: string
-  status: string
-  priority: number
-  dueDate: string
-  completedDate?: string
-  notes?: string
-  contactMethod?: string
-  contactDetails?: string
-  coffeeShop: {
-    id: string
-    title: string
-    address: string
-    area?: string
-  }
-}
-
-const STATUS_COLORS = {
-  PENDING: "secondary",
-  IN_PROGRESS: "warning",
-  COMPLETED: "success",
-  CANCELLED: "destructive",
-  RESCHEDULED: "default"
-} as const
-
-const PRIORITY_COLORS = {
-  1: 'text-red-500',
-  2: 'text-orange-500',
-  3: 'text-yellow-500',
-  4: 'text-green-500',
-  5: 'text-blue-500'
-} as const
-
-export function FollowUpManager() {
-  const [followUps, setFollowUps] = useState<FollowUp[]>([])
-  const [shops, setShops] = useState<CoffeeShop[]>([])
-  const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("pending")
-  const [showGenerateDialog, setShowGenerateDialog] = useState(false)
-
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  const fetchData = async () => {
-    try {
-      setLoading(true)
-      const [followUpsResponse, shopsResponse] = await Promise.all([
-        fetch('/api/follow-ups'),
-        fetch('/api/coffee-shops')
-      ])
-
-      if (!followUpsResponse.ok || !shopsResponse.ok) {
-        throw new Error('Failed to fetch data')
-      }
-
-      const followUpsJson = await followUpsResponse.json()
-      const shopsJson = await shopsResponse.json()
-
-      setFollowUps(followUpsJson.data || [])
-      setShops(shopsJson.data || [])
-    } catch (error) {
-      console.error('Error fetching data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleStatusChange = async (followUpId: string, newStatus: string) => {
-    try {
-      const response = await fetch(`/api/follow-ups/${followUpId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
-      })
-
-      if (!response.ok) throw new Error('Failed to update status')
-      fetchData()
-    } catch (error) {
-      console.error('Error updating status:', error)
-    }
-  }
-
-  const getContactMethodIcon = (method?: string) => {
-    switch (method?.toLowerCase()) {
-      case 'phone':
-      case 'call':
-        return <PhoneCall className="h-4 w-4" />
-      case 'email':
-        return <Mail className="h-4 w-4" />
-      case 'visit':
-        return <Building className="h-4 w-4" />
-      default:
-        return <User className="h-4 w-4" />
-    }
-  }
-
-  const getTypeDisplay = (type: string) => {
-    return type.split('_').map(word => 
-      word.charAt(0) + word.slice(1).toLowerCase()
-    ).join(' ')
-  }
-
-  const handleReschedule = (followUpId: string) => {
-    console.log('Reschedule follow-up:', followUpId)
-  }
-
-
-  const filteredFollowUps = followUps.filter(followUp => {
-    if (activeTab === 'pending') {
-      return ['PENDING', 'IN_PROGRESS'].includes(followUp.status)
-    }
-    if (activeTab === 'completed') {
-      return followUp.status === 'COMPLETED'
-    }
-    if (activeTab === 'cancelled') {
-      return followUp.status === 'CANCELLED'
-    }
-    return true
-  }).sort((a, b) => {
-    // Sort by priority first, then by due date
-    if (a.priority !== b.priority) {
-      return b.priority - a.priority
-    }
-    return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
-  })
-
-  const renderTableContent = (status: string) => (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[250px]">Shop & Stage</TableHead>
-            <TableHead>Follow-up Type</TableHead>
-            <TableHead>Visit History</TableHead>
-            <TableHead>Priority</TableHead>
-            <TableHead>{status === 'completed' ? 'Completed' : 'Due'}</TableHead>
-            <TableHead>Contact Info</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredFollowUps.map((followUp) => {
-            const shop = shops.find(s => s.id === followUp.coffeeShop.id)
-            const visitCount = [shop?.first_visit, shop?.second_visit, shop?.third_visit].filter(Boolean).length
-            
-            return (
-              <TableRow key={followUp.id}>
-                <TableCell>
-                  <div className="flex flex-col gap-1">
-                    <span className="font-medium">{followUp.coffeeShop.title}</span>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">
-                        {shop?.stage || 'UNKNOWN'}
-                      </Badge>
-                      {shop?.area && (
-                        <span className="text-xs text-muted-foreground">
-                          {shop.area}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col gap-1">
-                    <span>{getTypeDisplay(followUp.type)}</span>
-                    {followUp.notes && (
-                      <span className="text-xs text-muted-foreground line-clamp-2">
-                        {followUp.notes}
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm">
-                      {visitCount} visit{visitCount !== 1 ? 's' : ''}
-                    </span>
-                    {shop?.lastFollowUp && (
-                      <span className="text-xs text-muted-foreground">
-                        Last: {format(new Date(shop.lastFollowUp), 'MMM d')}
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col gap-1">
-                    <span className={PRIORITY_COLORS[followUp.priority as keyof typeof PRIORITY_COLORS]}>
-                      {Array(followUp.priority).fill('★').join('')}
-                    </span>
-                    {shop?.potential && (
-                      <span className="text-xs text-muted-foreground">
-                        Potential: {shop.potential}/5
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col gap-1">
-                    <span>
-                      {format(
-                        new Date(status === 'completed' ? followUp.completedDate! : followUp.dueDate), 
-                        'MMM d'
-                      )}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {format(
-                        new Date(status === 'completed' ? followUp.completedDate! : followUp.dueDate),
-                        'h:mm a'
-                      )}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      {getContactMethodIcon(followUp.contactMethod)}
-                      <span className="capitalize">
-                        {followUp.contactMethod || 'Any'}
-                      </span>
-                    </div>
-                    {shop?.contact_name && (
-                      <span className="text-xs text-muted-foreground">
-                        {shop.contact_name}
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={STATUS_COLORS[followUp.status as keyof typeof STATUS_COLORS]}>
-                    {followUp.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    {status === 'pending' && (
-                      <>
-                        <Button 
-                          size="sm"
-                          onClick={() => handleStatusChange(followUp.id, 'COMPLETED')}
-                        >
-                          <CheckCircle2 className="h-4 w-4 mr-2" />
-                          Complete
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => handleReschedule(followUp.id)}
-                        >
-                          <Calendar className="h-4 w-4" />
-                        </Button>
-                      </>
-                    )}
-                    {status === 'completed' && (
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => handleStatusChange(followUp.id, 'PENDING')}
-                      >
-                        Reopen
-                      </Button>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            )
-          })}
-          {filteredFollowUps.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={8} className="text-center py-8">
-                <div className="flex flex-col items-center gap-2">
-                  <AlertCircle className="h-8 w-8 text-muted-foreground" />
-                  <p className="text-muted-foreground">
-                    No {status} follow-ups found
-                  </p>
-                  {status === 'pending' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowGenerateDialog(true)}
-                    >
-                      Generate Follow-ups
-                    </Button>
-                  )}
-                </div>
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </div>
-  )
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Follow-up Manager</CardTitle>
-          <CardDescription>Loading follow-ups...</CardDescription>
-        </CardHeader>
-      </Card>
-    )
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Follow-up Manager</CardTitle>
-            <CardDescription>
-              Track and manage your follow-ups with coffee shops
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <GenerateFollowUpsButton onGenerated={fetchData} />
-            <FollowUpCreateDialog 
-              shops={shops} 
-              onFollowUpCreated={fetchData} 
-            />
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="pending" className="space-y-4" onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="pending">
-              <Clock className="mr-2 h-4 w-4" />
-              Pending & In Progress
-            </TabsTrigger>
-            <TabsTrigger value="completed">
-              <CheckCircle2 className="mr-2 h-4 w-4" />
-              Completed
-            </TabsTrigger>
-            <TabsTrigger value="cancelled">
-              <XCircle className="mr-2 h-4 w-4" />
-              Cancelled
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="pending" className="space-y-4">
-            {renderTableContent('pending')}
-          </TabsContent>
-
-          <TabsContent value="completed" className="space-y-4">
-            {renderTableContent('completed')}
-          </TabsContent>
-
-          <TabsContent value="cancelled" className="space-y-4">
-            {renderTableContent('cancelled')}
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
-  )
-}________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/koatji-crm/src/components/follow-ups/follow-up-suggestions.tsx
-import { CoffeeShop } from "@prisma/client"
-import { format, addDays, addBusinessDays, isAfter, differenceInDays } from "date-fns"
-
-interface FollowUpSuggestion {
-  type: string
-  dueDate: Date
-  priority: number
-  contactMethod: string
-  notes: string
-  coffeeShopId: string
-}
-
-interface FollowUpRule {
-  type: string
-  priority: number
-  daysAfter: number
-  contactMethod: string
-  notes: string
-}
-
-// Rules for different stages and scenarios
-const STAGE_RULES: Record<string, FollowUpRule[]> = {
-  PROSPECTING: [
-    {
-      type: "INITIAL_CONTACT",
-      priority: 3,
-      daysAfter: 1,
-      contactMethod: "visit",
-      notes: "Initial visit to introduce products and establish contact."
-    }
-  ],
-  QUALIFICATION: [
-    {
-      type: "SAMPLE_DELIVERY",
-      priority: 4,
-      daysAfter: 3,
-      contactMethod: "visit",
-      notes: "Follow up on initial interest and bring samples."
-    }
-  ],
-  PROPOSAL: [
-    {
-      type: "PROPOSAL_FOLLOW",
-      priority: 5,
-      daysAfter: 2,
-      contactMethod: "call",
-      notes: "Follow up on proposal and address any questions."
-    }
-  ],
-  NEGOTIATION: [
-    {
-      type: "TEAM_MEETING",
-      priority: 5,
-      daysAfter: 1,
-      contactMethod: "visit",
-      notes: "Schedule meeting with decision makers to finalize details."
-    }
-  ]
-}
-
-// Visit-based rules
-const VISIT_RULES: Record<string, FollowUpRule> = {
-  FIRST_VISIT: {
-    type: "INITIAL_CONTACT",
-    priority: 4,
-    daysAfter: 3,
-    contactMethod: "call",
-    notes: "Follow up on initial visit. Discuss first impressions and address questions."
-  },
-  SECOND_VISIT: {
-    type: "SAMPLE_DELIVERY",
-    priority: 5,
-    daysAfter: 4,
-    contactMethod: "visit",
-    notes: "Follow up on samples and discuss potential partnership."
-  },
-  THIRD_VISIT: {
-    type: "PROPOSAL_FOLLOW",
-    priority: 4,
-    daysAfter: 5,
-    contactMethod: "call",
-    notes: "Follow up on final visit and discuss next steps."
-  }
-}
-
-export function generateFollowUpSuggestions(shop: CoffeeShop): FollowUpSuggestion[] {
-  const suggestions: FollowUpSuggestion[] = []
-  const today = new Date()
-
-  // Helper function to create a suggestion
-  const createSuggestion = (
-    rule: FollowUpRule,
-    baseDate: Date,
-    extraNotes?: string
-  ): FollowUpSuggestion => ({
-    type: rule.type,
-    dueDate: addBusinessDays(baseDate, rule.daysAfter),
-    priority: rule.priority,
-    contactMethod: rule.contactMethod,
-    notes: extraNotes ? `${rule.notes} ${extraNotes}` : rule.notes,
-    coffeeShopId: shop.id
-  })
-
-  // Stage-based suggestions
-  if (shop.stage && STAGE_RULES[shop.stage]) {
-    STAGE_RULES[shop.stage].forEach(rule => {
-      const suggestion = createSuggestion(rule, today)
-      if (isAfter(suggestion.dueDate, today)) {
-        suggestions.push(suggestion)
-      }
-    })
-  }
-
-  // Visit-based suggestions
-  if (shop.first_visit && !shop.second_visit) {
-    const firstVisitDate = new Date(shop.first_visit)
-    suggestions.push(createSuggestion(
-      VISIT_RULES.FIRST_VISIT,
-      firstVisitDate,
-      `Previous visit was on ${format(firstVisitDate, 'MMM d')}.`
-    ))
-  }
-
-  if (shop.second_visit && !shop.third_visit) {
-    const secondVisitDate = new Date(shop.second_visit)
-    suggestions.push(createSuggestion(
-      VISIT_RULES.SECOND_VISIT,
-      secondVisitDate,
-      `Samples delivered on ${format(secondVisitDate, 'MMM d')}.`
-    ))
-  }
-
-  if (shop.third_visit) {
-    const thirdVisitDate = new Date(shop.third_visit)
-    const daysSinceThirdVisit = differenceInDays(today, thirdVisitDate)
-    
-    if (daysSinceThirdVisit <= 7) {
-      suggestions.push(createSuggestion(
-        VISIT_RULES.THIRD_VISIT,
-        thirdVisitDate,
-        `Final visit completed on ${format(thirdVisitDate, 'MMM d')}.`
-      ))
-    }
-  }
-
-  // Special case: Long time no contact
-  const lastVisitDate = shop.third_visit || shop.second_visit || shop.first_visit
-  if (lastVisitDate) {
-    const daysSinceLastVisit = differenceInDays(today, new Date(lastVisitDate))
-    if (daysSinceLastVisit > 14 && !shop.isPartner) {
-      suggestions.push({
-        type: "CHECK_IN",
-        dueDate: addBusinessDays(today, 1),
-        priority: 3,
-        contactMethod: "call",
-        notes: `No contact in ${daysSinceLastVisit} days. Reconnect and assess current status.`,
-        coffeeShopId: shop.id
-      })
-    }
-  }
-
-  // Special case: High potential leads without recent contact
-  if (shop.potential && shop.potential >= 4 && !shop.isPartner) {
-    const lastVisit = new Date(lastVisitDate || 0)
-    const daysSinceContact = differenceInDays(today, lastVisit)
-    
-    if (daysSinceContact > 7) {
-      suggestions.push({
-        type: "HIGH_POTENTIAL",
-        dueDate: addBusinessDays(today, 1),
-        priority: 5,
-        contactMethod: "visit",
-        notes: "High potential lead requires immediate follow-up.",
-        coffeeShopId: shop.id
-      })
-    }
-  }
-
-  // Volume-based suggestions
-  if (shop.volume) {
-    const weeklyVolume = parseFloat(shop.volume)
-    if (weeklyVolume > 50 && !shop.isPartner) {
-      suggestions.push({
-        type: "HIGH_VOLUME",
-        dueDate: addBusinessDays(today, 1),
-        priority: 5,
-        contactMethod: "visit",
-        notes: `High volume potential (${weeklyVolume} units/week). Priority follow-up required.`,
-        coffeeShopId: shop.id
-      })
-    }
-  }
-
-  // Sort suggestions by priority and due date
-  return suggestions.sort((a, b) => {
-    if (b.priority !== a.priority) return b.priority - a.priority
-    return a.dueDate.getTime() - b.dueDate.getTime()
-  })
-}________________________________________________________________________________
-### /Users/mohameddiomande/Desktop/koatji-crm/src/components/follow-ups/generate-button.tsx
-"use client"
-
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { toast } from "@/components/ui/use-toast"
-import { Loader2, RefreshCw } from "lucide-react"
-
-interface GenerateFollowUpsButtonProps {
-  onGenerated: () => void
-}
-
-export function GenerateFollowUpsButton({ onGenerated }: GenerateFollowUpsButtonProps) {
-  const [loading, setLoading] = useState(false)
-
-  const handleGenerate = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/follow-ups/generate', {
-        method: 'POST'
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to generate follow-ups')
-      }
-
-      const data = await response.json()
-      toast({
-        title: "Success",
-        description: `Generated ${data.count} follow-ups`
-      })
-
-      onGenerated()
-    } catch (error) {
-      console.error('Error generating follow-ups:', error)
-      toast({
-        title: "Error",
-        description: "Failed to generate follow-ups",
-        variant: "destructive"
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <Button onClick={handleGenerate} disabled={loading}>
-      {loading ? (
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-      ) : (
-        <RefreshCw className="mr-2 h-4 w-4" />
-      )}
-      Generate Follow-ups
-    </Button>
-  )
-}
 ________________________________________________________________________________

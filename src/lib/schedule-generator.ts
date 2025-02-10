@@ -1,7 +1,3 @@
-#!/bin/bash
-
-# Update the schedule generator
-cat > "src/lib/schedule-generator.ts" << 'EOF'
 import { 
   WeeklySchedule, 
   DaySchedule, 
@@ -203,6 +199,3 @@ function getWeekNumber(date: Date): number {
   const yearStart = new Date(d.getFullYear(), 0, 1);
   return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
 }
-EOF
-
-echo "Updated schedule generator to exclude partners and duplicate priority locations"
