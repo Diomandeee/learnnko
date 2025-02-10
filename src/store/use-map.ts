@@ -1,11 +1,11 @@
 import { create } from 'zustand'
-import { Shop } from '@/types/shop'
+import { CoffeeShop } from '@prisma/client'
 
 interface MapState {
   center: [number, number]
   zoom: number
-  selectedShop: Shop | null
-  setSelectedShop: (shop: Shop | null) => void
+  selectedShop: CoffeeShop | null
+  setSelectedShop: (shop: CoffeeShop | null) => void
   setCenter: (center: [number, number]) => void
   setZoom: (zoom: number) => void
 }
@@ -18,3 +18,5 @@ export const useMapStore = create<MapState>((set) => ({
   setCenter: (center) => set({ center }),
   setZoom: (zoom) => set({ zoom }),
 }))
+
+

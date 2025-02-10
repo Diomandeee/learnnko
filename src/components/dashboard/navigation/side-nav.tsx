@@ -18,7 +18,7 @@ import {
   FileText,
   GitBranch,
   QrCode,
-  CreditCard,
+  Star,
   Trash2,
   Briefcase,
   Contact,
@@ -68,6 +68,12 @@ const routes = [
     icon: GitBranch,
     href: "/dashboard/pipeline",
     color: "text-purple-500"
+  },
+  {
+    label: 'Priority',
+    icon: Star,
+    href: '/dashboard/priority',
+    color: 'text-yellow-500'
   }
     ,
   {

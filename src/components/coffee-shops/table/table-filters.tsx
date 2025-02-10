@@ -22,6 +22,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { CoffeeShop } from "@prisma/client"
 import { Card } from "@/components/ui/card"
 import { SavedFiltersMenu } from "./saved-filters/saved-filters-menu"
+import { PriorityCalculatorButton } from "./priority-calculator-button"
 
 interface TableFiltersProps {
   searchTerm: string
@@ -181,6 +182,10 @@ export function TableFilters({
             activeFilters={activeFilters}
             onLoadFilter={handleLoadSavedFilters}
           />
+                    <PriorityCalculatorButton onCalculated={() => {
+    // Optionally trigger a refresh of the table data
+    // if you have a refresh function, pass it here
+  }} />
         </div>
 
         {/* Active Filters */}
