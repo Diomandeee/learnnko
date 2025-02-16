@@ -11,11 +11,11 @@ export async function middleware(request: NextRequest) {
      secret: process.env.NEXTAUTH_SECRET,
    });
 
-   // Debug logging for development
-   console.log(`[Middleware] Path: ${request.nextUrl.pathname}`);
-   console.log(`[Middleware] Token exists: ${!!token}`);
-   console.log(`[Middleware] Environment: ${process.env.NODE_ENV}`);
-   console.log(`[Middleware] Auth URL: ${process.env.NEXTAUTH_URL}`);
+  //  // Debug logging for development
+  //  console.log(`[Middleware] Path: ${request.nextUrl.pathname}`);
+  //  console.log(`[Middleware] Token exists: ${!!token}`);
+  //  console.log(`[Middleware] Environment: ${process.env.NODE_ENV}`);
+  //  console.log(`[Middleware] Auth URL: ${process.env.NEXTAUTH_URL}`);
 
    // API route protection
    if (request.nextUrl.pathname.startsWith('/api')) {

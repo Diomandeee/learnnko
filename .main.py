@@ -524,16 +524,45 @@ def main():
     # Configuration
     targets = [
         # Directories
-        "src/app/dashboard/priority/",
-        "src/components/priority/",
+        # "src/app/dashboard/routes/",
+        # "src/components/routes/",
+        # "src/store/route-store.ts",
+        # "src/hooks/use-coffee-shops.ts",
+        # "src/hooks/use-weekly-deliveries.ts",
+        # "src/hooks/use-shops.ts",
+        # "src/lib/routes/delivery-calculator.ts",
+        # "src/lib/routes/route-optimizer.ts",
+        # "src/components/deliveries/",
+        # "src/store/delivery-store.ts",
+        # "src/app/api/routes/",
+        # "src/app/api/deliveries/",
+        # "src/types/delivery.ts",
+        "src/app/dashboard/translate/",
+        "src/components/translate/",
+        "src/app/api/translate/",
+        "src/app/api/translations",
+        "src/app/api/tts/",
+        "src/app/api/wordbank",
+        "src/app/api/stt",
+        "src/app/api/conversation",
+        "src/app/api/conversations",
+        "src/lib/gemini.ts",
+        "src/app/api/chat",
+        "src/app/api/generate",
+        "src/app/api/situations",
+        "src/lib/audio-converter.ts",
+        "src/lib/audio-utils.ts",
+
+
+        # "src/components/coffee-shops/map",
         "prisma/",
-        "src/lib/route-optimization/",
-        "src/store/priority-store.ts",
-        "src/lib/schedule-generator.ts",
-        # Individual files
-        "src/types/schedule.ts",
-        "src/store/schedule-store.ts",
-        "src/hooks/use-coffee-shops.ts"
+        # "src/lib/route-optimization/",
+        # "src/store/priority-store.ts",
+        # "src/lib/schedule-generator.ts",
+        # # Individual files
+        # "src/types/schedule.ts",
+        # "src/store/schedule-store.ts",
+        # "src/hooks/use-coffee-shops.ts"
     ]
     
     excluded_directories = [
@@ -555,3 +584,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+

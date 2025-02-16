@@ -1,5 +1,5 @@
 import { Metadata } from "next"
-import { ConversationTab } from "@/components/translate/conversation-tab"
+import { TranslateContainer } from "@/components/translate/translate-container"
 import { PageContainer } from "@/components/layout/page-container"
 
 export const metadata: Metadata = {
@@ -18,7 +18,7 @@ export default function TranslatePage() {
           </p>
         </div>
 
-        {/* <ConversationTab /> */}
+        <TranslateContainer />
       </div>
     </PageContainer>
   )

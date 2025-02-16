@@ -1,208 +1,470 @@
 #!/bin/bash
 
-# Update the schedule generator
-cat > "src/lib/schedule-generator.ts" << 'EOF'
-import { 
-  WeeklySchedule, 
-  DaySchedule, 
-  TimeBlock,
-  ScheduleSettings,
-  ScheduledVisit
-} from "@/types/schedule"
-import { CoffeeShop } from "@prisma/client"
-import { findNearbyLocations, calculateDistance } from "./route-optimization"
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-interface GenerateScheduleParams {
-  priorityLocations: CoffeeShop[]
-  settings: ScheduleSettings
-  timeBlocks: TimeBlock[]
-  startDate: Date
+print_status() {
+    echo -e "${BLUE}[INFO]${NC} $1"
 }
 
-// Create clusters of locations based on proximity
-function createLocationClusters(
-  priorityLocations: CoffeeShop[],
-  allLocations: CoffeeShop[],
-  settings: ScheduleSettings
-): Array<{
-  priority: CoffeeShop,
-  nearby: CoffeeShop[]
-}> {
-  const clusters = [];
-  const usedLocations = new Set<string>();
-
-  // Filter locations to exclude partners and priority locations
-  const availableLocations = allLocations.filter(location => 
-    !location.isPartner && // Exclude partners
-    !priorityLocations.some(pl => pl.id === location.id) && // Exclude priority locations
-    !usedLocations.has(location.id)
-  );
-
-  for (const priority of priorityLocations) {
-    // Skip if this location is already part of another cluster
-    if (usedLocations.has(priority.id)) continue;
-
-    // Find nearby locations within radius
-    const nearbyShops = findNearbyLocations(
-      { lat: priority.latitude, lng: priority.longitude },
-      availableLocations.filter(l => !usedLocations.has(l.id)),
-      settings.nearbyRadius
-    )
-    .filter(shop => 
-      !shop.isPartner && // Double check no partners
-      !priorityLocations.includes(shop) // Double check no priority locations
-    )
-    .slice(0, 3); // Limit to 3 nearby locations per priority location
-
-    // Mark all locations in this cluster as used
-    usedLocations.add(priority.id);
-    nearbyShops.forEach(shop => usedLocations.add(shop.id));
-
-    clusters.push({
-      priority,
-      nearby: nearbyShops
-    });
-  }
-
-  return clusters;
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
-// Find optimal day for a cluster based on location distribution
-function findOptimalDay(
-  cluster: { priority: CoffeeShop, nearby: CoffeeShop[] },
-  days: DaySchedule[],
-  settings: ScheduleSettings
-): number {
-  let bestDay = 0;
-  let minScore = Infinity;
-
-  days.forEach((day, index) => {
-    if (day.visits.length >= settings.maxVisitsPerDay) return;
-
-    // Calculate score based on multiple factors
-    let score = 0;
-
-    // Factor 1: Number of existing visits that day
-    score += day.visits.length * 2;
-
-    // Factor 2: Geographic distribution
-    const dayLocations = day.visits.map(v => v.shop);
-    if (dayLocations.length > 0) {
-      const avgLat = dayLocations.reduce((sum, loc) => sum + loc.latitude, 0) / dayLocations.length;
-      const avgLng = dayLocations.reduce((sum, loc) => sum + loc.longitude, 0) / dayLocations.length;
-      
-      // Distance from day's center to cluster's priority location
-      score += calculateDistance(
-        { lat: avgLat, lng: avgLng },
-        { lat: cluster.priority.latitude, lng: cluster.priority.longitude }
-      );
-    }
-
-    // Factor 3: Balance visits across week
-    score += Math.abs(index - Math.floor(days.length / 2)) * 
-             (settings.balanceWeekly ? 2 : 0);
-
-    if (score < minScore && 
-        (day.visits.length + 1 + cluster.nearby.length) <= settings.maxVisitsPerDay) {
-      minScore = score;
-      bestDay = index;
-    }
-  });
-
-  return bestDay;
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
 }
 
-export async function generateWeeklySchedule({
-  priorityLocations,
-  settings,
-  timeBlocks,
-  startDate
-}: GenerateScheduleParams): Promise<WeeklySchedule> {
-  // Initialize week structure
-  const days: DaySchedule[] = Array.from({ length: 5 }, (_, i) => ({
-    day: i,
-    date: new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000),
-    timeBlocks: timeBlocks.filter(block => block.day === i),
-    visits: [],
-    availableMinutes: 480 // 8 hours default
-  }));
+# Create necessary directories
+print_status "Creating API route directories..."
+mkdir -p src/app/api/suggestions
+mkdir -p src/app/api/suggestions/save
+mkdir -p src/app/api/suggestions/saved
+mkdir -p src/app/api/suggestions/saved/{id}/favorite
+mkdir -p src/app/api/suggestions/use
 
+# Create base suggestions API route
+print_status "Creating base suggestions route..."
+cat > src/app/api/suggestions/route.ts << 'EOF'
+import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { prisma } from "@/lib/db/prisma"
+import { GoogleGenerativeAI } from "@google/generative-ai"
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "")
+
+interface GeneratedSuggestion {
+  text: string
+  translation: string
+  category: 'response' | 'question' | 'clarification'
+}
+
+export async function POST(req: Request) {
   try {
-    // Get all locations from API
-    const response = await fetch('/api/coffee-shops');
-    const allLocations: CoffeeShop[] = await response.json();
-
-    // Filter out partners and create clusters
-    const nonPartnerLocations = allLocations.filter(location => !location.isPartner);
-    const clusters = createLocationClusters(priorityLocations, nonPartnerLocations, settings);
-
-    // Distribute clusters across days
-    for (const cluster of clusters) {
-      const bestDay = findOptimalDay(cluster, days, settings);
-      const daySchedule = days[bestDay];
-
-      // Add priority location
-      daySchedule.visits.push({
-        id: crypto.randomUUID(),
-        shopId: cluster.priority.id,
-        shop: cluster.priority,
-        day: bestDay,
-        isPriority: true,
-        estimatedDuration: settings.priorityVisitDuration
-      });
-
-      // Add nearby locations
-      cluster.nearby.forEach(nearby => {
-        daySchedule.visits.push({
-          id: crypto.randomUUID(),
-          shopId: nearby.id,
-          shop: nearby,
-          day: bestDay,
-          isPriority: false,
-          estimatedDuration: settings.visitDuration
-        });
-      });
-
-      // Sort visits by location for optimal route
-      daySchedule.visits.sort((a, b) => {
-        const distA = calculateDistance(
-          { lat: cluster.priority.latitude, lng: cluster.priority.longitude },
-          { lat: a.shop.latitude, lng: a.shop.longitude }
-        );
-        const distB = calculateDistance(
-          { lat: cluster.priority.latitude, lng: cluster.priority.longitude },
-          { lat: b.shop.latitude, lng: b.shop.longitude }
-        );
-        return distA - distB;
-      });
+    const session = await getServerSession()
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
     }
 
-    return {
-      weekNumber: getWeekNumber(startDate),
-      startDate,
-      endDate: new Date(startDate.getTime() + 4 * 24 * 60 * 60 * 1000),
-      days: days.map(day => ({
-        ...day,
-        visits: day.visits.map((visit, index) => ({
-          ...visit,
-          order: index + 1
-        }))
-      }))
-    };
-  } catch (error) {
-    console.error('Error generating schedule:', error);
-    throw new Error(`Failed to generate schedule: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-}
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
 
-// Helper function to get week number
-function getWeekNumber(date: Date): number {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
-  const yearStart = new Date(d.getFullYear(), 0, 1);
-  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      )
+    }
+
+    const { lastMessage } = await req.json()
+
+    // Get user's saved suggestions for context
+    const savedSuggestions = await prisma.savedSuggestion.findMany({
+      where: {
+        userId: user.id,
+        isFavorite: true
+      },
+      take: 5,
+      orderBy: {
+        useCount: 'desc'
+      }
+    })
+
+    const prompt = `
+      Generate natural French responses to: "${lastMessage}"
+      Include different types: direct responses, questions, clarifications.
+      Format as JSON array:
+      {
+        "text": "French response",
+        "translation": "English translation",
+        "category": "response|question|clarification"
+      }
+      ${savedSuggestions.length > 0 ? `
+      Consider user's preferred responses:
+      ${savedSuggestions.map(s => s.text).join('\n')}
+      ` : ''}
+    `
+
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+    const result = await model.generateContent(prompt)
+    const response = await result.response.text()
+
+    let suggestions: GeneratedSuggestion[]
+    try {
+      suggestions = JSON.parse(response)
+    } catch (error) {
+      console.error("Error parsing Gemini response:", error)
+      throw new Error("Invalid response format")
+    }
+
+    const suggestionsWithMeta = await Promise.all(
+      suggestions.map(async (suggestion) => {
+        const isSaved = await prisma.savedSuggestion.findFirst({
+          where: {
+            userId: user.id,
+            text: suggestion.text
+          }
+        })
+
+        return {
+          ...suggestion,
+          id: crypto.randomUUID(),
+          isSaved: !!isSaved
+        }
+      })
+    )
+
+    await prisma.suggestionHistory.create({
+      data: {
+        userId: user.id,
+        prompt: lastMessage,
+        suggestions: suggestionsWithMeta
+      }
+    })
+
+    return NextResponse.json({ suggestions: suggestionsWithMeta })
+  } catch (error) {
+    console.error("Error generating suggestions:", error)
+    return NextResponse.json(
+      { error: "Failed to generate suggestions" },
+      { status: 500 }
+    )
+  }
 }
 EOF
 
-echo "Updated schedule generator to exclude partners and duplicate priority locations"
+# Create save suggestion route
+print_status "Creating save suggestion route..."
+cat > src/app/api/suggestions/save/route.ts << 'EOF'
+import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { prisma } from "@/lib/db/prisma"
+
+export async function POST(req: Request) {
+  try {
+    const session = await getServerSession()
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      )
+    }
+
+    const suggestion = await req.json()
+
+    const existingSuggestion = await prisma.savedSuggestion.findFirst({
+      where: {
+        userId: user.id,
+        text: suggestion.text
+      }
+    })
+
+    if (existingSuggestion) {
+      return NextResponse.json(
+        { error: "Suggestion already saved" },
+        { status: 400 }
+      )
+    }
+
+    const savedSuggestion = await prisma.savedSuggestion.create({
+      data: {
+        userId: user.id,
+        text: suggestion.text,
+        translation: suggestion.translation,
+        category: suggestion.category,
+        context: suggestion.context
+      }
+    })
+
+    return NextResponse.json(savedSuggestion)
+  } catch (error) {
+    console.error("Error saving suggestion:", error)
+    return NextResponse.json(
+      { error: "Failed to save suggestion" },
+      { status: 500 }
+    )
+  }
+}
+EOF
+
+# Create saved suggestions route
+print_status "Creating saved suggestions route..."
+cat > src/app/api/suggestions/saved/route.ts << 'EOF'
+import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { prisma } from "@/lib/db/prisma"
+
+export async function GET() {
+  try {
+    const session = await getServerSession()
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      )
+    }
+
+    const savedSuggestions = await prisma.savedSuggestion.findMany({
+      where: {
+        userId: user.id
+      },
+      orderBy: [
+        { isFavorite: 'desc' },
+        { useCount: 'desc' },
+        { createdAt: 'desc' }
+      ]
+    })
+
+    return NextResponse.json(savedSuggestions)
+  } catch (error) {
+    console.error("Error fetching saved suggestions:", error)
+    return NextResponse.json(
+      { error: "Failed to fetch saved suggestions" },
+      { status: 500 }
+    )
+  }
+}
+EOF
+
+# Create delete saved suggestion route
+print_status "Creating delete suggestion route..."
+cat > src/app/api/suggestions/saved/[id]/route.ts << 'EOF'
+import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { prisma } from "@/lib/db/prisma"
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession()
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      )
+    }
+
+    await prisma.savedSuggestion.delete({
+      where: {
+        id: params.id,
+        userId: user.id
+      }
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("Error deleting suggestion:", error)
+    return NextResponse.json(
+      { error: "Failed to delete suggestion" },
+      { status: 500 }
+    )
+  }
+}
+EOF
+
+# Create toggle favorite route
+print_status "Creating toggle favorite route..."
+cat > src/app/api/suggestions/saved/[id]/favorite/route.ts << 'EOF'
+import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { prisma } from "@/lib/db/prisma"
+
+export async function POST(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession()
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      )
+    }
+
+    const suggestion = await prisma.savedSuggestion.findUnique({
+      where: {
+        id: params.id,
+        userId: user.id
+      }
+    })
+
+    if (!suggestion) {
+      return NextResponse.json(
+        { error: "Suggestion not found" },
+        { status: 404 }
+      )
+    }
+
+    const updatedSuggestion = await prisma.savedSuggestion.update({
+      where: {
+        id: params.id,
+        userId: user.id
+      },
+      data: {
+        isFavorite: !suggestion.isFavorite
+      }
+    })
+
+    return NextResponse.json(updatedSuggestion)
+  } catch (error) {
+    console.error("Error updating favorite status:", error)
+    return NextResponse.json(
+      { error: "Failed to update favorite status" },
+      { status: 500 }
+    )
+  }
+}
+EOF
+
+# Create use suggestion route
+print_status "Creating use suggestion route..."
+cat > src/app/api/suggestions/use/route.ts << 'EOF'
+import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { prisma } from "@/lib/db/prisma"
+
+export async function POST(req: Request) {
+  try {
+    const session = await getServerSession()
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      )
+    }
+
+    const { suggestionId } = await req.json()
+
+    const updatedSuggestion = await prisma.savedSuggestion.update({
+      where: {
+        id: suggestionId,
+        userId: user.id
+      },
+      data: {
+        useCount: {
+          increment: 1
+        }
+      }
+    })
+
+    return NextResponse.json(updatedSuggestion)
+  } catch (error) {
+    console.error("Error updating use count:", error)
+    return NextResponse.json(
+      { error: "Failed to update use count" },
+      { status: 500 }
+    )
+  }
+}
+EOF
+
+# Update Prisma schema
+print_status "Creating Prisma models for suggestions..."
+cat >> prisma/schema.prisma << 'EOF'
+
+model SavedSuggestion {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String    @db.ObjectId
+  user          User      @relation(fields: [userId], references: [id])
+  text          String
+  translation   String
+  category      String    // 'response', 'question', 'clarification'
+  context       String?   // Original message that prompted this suggestion
+  isFavorite    Boolean   @default(false)
+  useCount      Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model SuggestionHistory {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String    @db.ObjectId
+  user          User      @relation(fields: [userId], references: [id])
+  prompt        String    // The message that triggered the suggestion
+  suggestions   Json      // Array of generated suggestions
+  selectedId    String?   // ID of the suggestion that was selected
+  createdAt     DateTime  @default(now())
+}
+EOF
+
+# Run Prisma migration
+print_status "Running Prisma migration..."
+npx prisma generate
+npx prisma db push
+
+print_success "Suggestion API setup complete!"
+print_status "API routes created:"
+echo "  - /api/suggestions"
+echo "  - /api/suggestions/save"
+echo "  - /api/suggestions/saved"
+echo "  - /api/suggestions/saved/[id]"
+echo "  - /api/suggestions/saved/[id]/favorite"
+echo "  - /api/suggestions/use"
+
+# Make script executable
+chmod +x setup-suggestions-api.sh
