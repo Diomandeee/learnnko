@@ -43,6 +43,14 @@ model User {
   filterHistory   FilterHistory[]
   savedFilters    SavedFilter[]
   followUps        FollowUp[]
+  WordBank        WordBank[]
+  translations    Translation[]
+  generatedSentences GeneratedSentence[]
+  translationHistory TranslationHistory[]
+  conversations   ConversationSession[]
+  todos           Todo[]
+  savedSuggestions   SavedSuggestion[]
+  suggestionHistory  SuggestionHistory[]
 
 }
 
@@ -407,6 +415,48 @@ enum FollowUpStatus {
   RESCHEDULED
 }
 
+model DeliveryHistory {
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  coffeeShopId    String      @db.ObjectId
+  coffeeShop      CoffeeShop  @relation(fields: [coffeeShopId], references: [id])
+  weekNumber      Int
+  year            Int
+  volume          Float
+  revenue         Float
+  isCurrentWeek   Boolean     @default(false)
+  delivered       Boolean     @default(false)
+  deliveryDate    DateTime?
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@unique([coffeeShopId, weekNumber, year], name: "delivery_period")
+}
+
+model WeeklyVolumeSnapshot {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  weekNumber    Int
+  year          Int
+  totalVolume   Float
+  partnerCount  Int
+  averageVolume Float
+  metadata      Json?
+  createdAt     DateTime  @default(now())
+}
+
+
+
+model DeliverySchedule {
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  coffeeShopId    String      @db.ObjectId
+  coffeeShop      CoffeeShop  @relation(fields: [coffeeShopId], references: [id])
+  startDate       DateTime
+  frequency       String      // WEEKLY, BIWEEKLY, etc.
+  volume          Float
+  isActive        Boolean     @default(true)
+  lastUpdated     DateTime    @updatedAt
+  createdAt       DateTime    @default(now())
+}
 
 model CoffeeShop {
   id                    String    @id @default(auto()) @map("_id") @db.ObjectId
@@ -471,6 +521,22 @@ model CoffeeShop {
   competitors       String[]    // Other coffee suppliers they work with
   budget           Float?      // Estimated monthly budget
   closingNotes     String?     // Notes about closing strategy
+  deliveryHistory    DeliveryHistory[]
+deliverySchedule   DeliverySchedule[]
+  currentVolume      Float?
+  averageVolume      Float?
+  revenueYTD         Float?
+  growthRate         Float?
+  lastDelivery       DateTime?
+  nextDelivery       DateTime?
+  weeklyVolumes     Json?          // Stores current week's volume data
+  historicalVolumes Json?          // Stores previous weeks' volume data
+  volumeLastUpdated DateTime?      // Tracks when volume was last modified
+  weekNumber        Int?           // Current week number
+  yearNumber        Int?           // Current year
+  volumeStats       Json?          // Aggregated volume statistics
+ delivery_day String? @default("TUESDAY")
+
 }
 
 
@@ -597,3 +663,150 @@ enum TimeOffStatus {
 
 
 
+
+model WordBank {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @db.ObjectId
+  user        User      @relation(fields: [userId], references: [id])
+  word        String
+  translation String
+  definition  String
+  context     String?
+  language    String    @default("fr")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Translation {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @db.ObjectId
+  user        User      @relation(fields: [userId], references: [id])
+  sourceText  String
+  translation String
+  similar     String[]  @default([])
+  createdAt   DateTime  @default(now())
+}
+
+
+
+model GeneratedSentence {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id])
+  original    String
+  generated   String[]
+  translations String[]
+  createdAt   DateTime @default(now())
+}
+
+model TranslationHistory {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id])
+  sourceText  String
+  translation String
+  audioUrl    String?
+  createdAt   DateTime @default(now())
+}
+
+
+
+model ConversationSession {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String    @db.ObjectId
+  user          User      @relation(fields: [userId], references: [id])
+  topic         String
+  isAutosave    Boolean   @default(false)
+  messages      Message[]
+  stats         Json?
+  startedAt     DateTime  @default(now())
+  endedAt       DateTime?
+  duration      Int?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Create a compound index for userId and isAutosave
+  @@index([userId, isAutosave])
+}
+
+model Message {
+  id                String              @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId         String              @db.ObjectId
+  session           ConversationSession @relation(fields: [sessionId], references: [id])
+  role              String
+  content           String
+  translation       String?
+  audioUrl          String?
+  timestamp         DateTime            @default(now())
+  mood              String?
+  correctedContent  String?
+  grammarNotes      String[]
+  createdAt         DateTime            @default(now())
+}
+
+
+model Todo {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String?
+  status      TodoStatus @default(PENDING)
+  priority    Priority   @default(MEDIUM)
+  dueDate     DateTime?
+  tags        String[]
+  userId      String    @db.ObjectId
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  attachments String[]
+  subtasks    Subtask[]
+  category    String?
+}
+
+model Subtask {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  completed Boolean  @default(false)
+  todoId    String   @db.ObjectId
+  todo      Todo     @relation(fields: [todoId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum TodoStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+
+model SavedSuggestion {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String    @db.ObjectId
+  user          User      @relation(fields: [userId], references: [id])
+  text          String
+  translation   String
+  category      String    // 'response', 'question', 'clarification'
+  context       String?   // Original message that prompted this suggestion
+  isFavorite    Boolean   @default(false)
+  useCount      Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model SuggestionHistory {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String    @db.ObjectId
+  user          User      @relation(fields: [userId], references: [id])
+  prompt        String    // The message that triggered the suggestion
+  suggestions   Json      // Array of generated suggestions
+  selectedId    String?   // ID of the suggestion that was selected
+  createdAt     DateTime  @default(now())
+}

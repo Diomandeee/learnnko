@@ -3,22 +3,22 @@ import { ConversationTab } from "@/components/translate/conversation-tab"
 import { PageContainer } from "@/components/layout/page-container"
 
 export const metadata: Metadata = {
-  title: "Translate | BUF BARISTA CRM",
-  description: "Translate and save words to your word bank",
+  title: "Conversation",
+  description: "Conversation page",
 }
 
-export default function TranslatePage() {
+export default function ConversatioPage() {
   return (
     <PageContainer>
       <div className="space-y-6 p-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Translate</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Conversation</h1>
           <p className="text-muted-foreground">
-            Translate text, save words, and build your vocabulary
+            Translate your conversation
           </p>
         </div>
 
-        {/* <ConversationTab /> */}
+        <ConversationTab />
       </div>
     </PageContainer>
   )

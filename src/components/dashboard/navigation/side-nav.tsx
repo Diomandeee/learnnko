@@ -34,53 +34,34 @@ import { useEffect, useState } from "react";
 
 const routes = [
   {
-    label: "Dashboard",
-    icon: Home,
-    href: "/dashboard",
+    label: "Conversation",
+    icon: Contact,
+    href: "/dashboard/conversation",
     color: "text-sky-500"
   },
   {
-    label: "People",
-    icon: Contact,
-    href: "/dashboard/people",
+    label: "History",
+    icon: Calendar,
+    href: "/dashboard/history",
     color: "text-violet-500"
   },
-  // {
-  //   label: "Reports",
-  //   icon: BarChart2,
-  //   href: "/dashboard/sales",
-  //   color: "text-red-500"
-  // },
   {
-    label: "Route",
-    icon: RouteIcon,
-    href: "/dashboard/routes",
+    label: "Situations",
+    icon: Users,
+    href: "/dashboard/situations",
     color: "text-teal-500"
   },
-  // {
-  //   label: "Visit",
-  //   icon: Eye,
-  //   href: "/dashboard/visits",
-  //   color: "text-cyan-500"
-  // },
   {
-    label: "Pipeline",
-    icon: GitBranch,
-    href: "/dashboard/pipeline",
+    label: "Translate",
+    icon: Eye,
+    href: "/dashboard/translate",
     color: "text-purple-500"
   },
   {
-    label: 'Priority',
+    label: "Saved",
     icon: Star,
-    href: '/dashboard/priority',
-    color: 'text-yellow-500'
-  }
-    ,
-  {
-    label: "Shops",
-    icon: Coffee,
-    href: "/dashboard/coffee-shops",
-    color: "text-indigo-500"
+    href: "/dashboard/saved",
+    color: "text-purple-500"
   },
 ];
 
