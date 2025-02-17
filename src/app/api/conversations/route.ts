@@ -25,7 +25,6 @@ export async function POST(req: Request) {
 
     const { topic, messages, stats } = await req.json()
 
-    // Create new conversation session
     const conversationSession = await prisma.conversationSession.create({
       data: {
         userId: user.id,
@@ -84,10 +83,15 @@ export async function GET() {
 
     const conversations = await prisma.conversationSession.findMany({
       where: {
-        userId: user.id
+        userId: user.id,
+        isAutosave: false
       },
       include: {
-        messages: true
+        messages: {
+          orderBy: {
+            timestamp: 'asc'
+          }
+        }
       },
       orderBy: {
         createdAt: 'desc'
