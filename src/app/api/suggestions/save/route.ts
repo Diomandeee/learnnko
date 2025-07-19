@@ -1,52 +1,18 @@
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/db/prisma"
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession()
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    })
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      )
-    }
-
-    const suggestion = await req.json()
-
-    const existingSuggestion = await prisma.savedSuggestion.findFirst({
-      where: {
-        userId: user.id,
-        text: suggestion.text
-      }
-    })
-
-    if (existingSuggestion) {
-      return NextResponse.json(
-        { error: "Suggestion already saved" },
-        { status: 400 }
-      )
-    }
+    const { french, english, context, category } = await req.json()
 
     const savedSuggestion = await prisma.savedSuggestion.create({
       data: {
-        userId: user.id,
-        text: suggestion.text,
-        translation: suggestion.translation,
-        category: suggestion.category,
-        context: suggestion.context
-      }
+        // Remove userId requirement - make suggestions global
+        french,
+        english,
+        context: context || null,
+        category: category || "general"
+      },
     })
 
     return NextResponse.json(savedSuggestion)

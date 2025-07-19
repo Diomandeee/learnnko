@@ -1,65 +1,47 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Home, Users, Settings, Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { cn } from "@/lib/utils";
-import { useState } from "react";
+import * as React from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { Menu } from "lucide-react"
 
-const routes = [
-  {
-    label: "Dashboard",
-    icon: Home,
-    href: "/dashboard",
-    color: "text-sky-500",
-  },
-  {
-    label: "Contacts",
-    icon: Users,
-    href: "/dashboard/contacts",
-    color: "text-violet-500",
-  },
-  {
-    label: "Settings",
-    icon: Settings,
-    href: "/dashboard/settings",
-    color: "text-pink-500",
-  },
-];
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { SideNav } from "./side-nav"
 
 export function MobileNav() {
-  const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = React.useState(false)
+  const pathname = usePathname()
+
+  // Close mobile nav when route changes
+  React.useEffect(() => {
+    setOpen(false)
+  }, [pathname])
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="md:hidden">
+        <Button
+          variant="ghost"
+          className="mr-2 px-0 text-base hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 md:hidden"
+        >
           <Menu className="h-5 w-5" />
+          <span className="sr-only">Toggle Menu</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="top" className="w-full pt-10">
-        <nav className="flex flex-col gap-4">
-          {routes.map((route) => (
-            <Link
-              key={route.href}
-              href={route.href}
-              onClick={() => setOpen(false)}
-              className={cn(
-                "flex items-center gap-2 text-sm font-medium transition-colors",
-                pathname === route.href
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-primary"
-              )}
-            >
-              <route.icon className={cn("h-5 w-5", route.color)} />
-              {route.label}
-            </Link>
-          ))}
-        </nav>
+      <SheetContent side="left" className="pr-0">
+        <Link
+          href="/nko"
+          className="flex items-center"
+          onClick={() => setOpen(false)}
+        >
+          <span className="font-bold">N'Ko Learning Hub</span>
+        </Link>
+        <div className="my-4 h-[calc(100vh-8rem)] overflow-y-auto">
+          <SideNav />
+        </div>
       </SheetContent>
     </Sheet>
-  );
+  )
 }

@@ -1,0 +1,7 @@
+/* Import Noto Sans N'Ko font */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+NKo&display=swap');
+
+/* Apply N'Ko font to elements with .font-nko class */
+.font-nko {
+  font-family: 'Noto Sans NKo', sans-serif;
+}

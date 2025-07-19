@@ -1,673 +1,15 @@
 generator client {
- provider = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
- provider = "mongodb"
- url      = env("DATABASE_URL")
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
-enum Stage {
-  PROSPECTING
-  QUALIFICATION
-  MEETING
-  PROPOSAL
-  NEGOTIATION
-  PAUSED
-  WON
-  LOST
-}
-
-model User {
-  id            String       @id @default(auto()) @map("_id") @db.ObjectId
-  email         String      @unique
-  name          String?
-  password      String
-  role          Role        @default(USER)
-  contacts      Contact[]
-  bio           String?
-  phoneNumber   String?
-  preferences   Json?
-  notifications Json?
-  activities    Activity[]
-  orders        Order[]
-  quickNotes    QuickNote[]
-  menuItems     MenuItem[]
-  visits        Visit[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  qrCodes       QRCode[]
-  folders       Folder[]
-  coffeeShops   CoffeeShop[] // Add this line to complete the relation
-  people        Person[]    // Add relation to Person model
-  filterHistory   FilterHistory[]
-  savedFilters    SavedFilter[]
-  followUps        FollowUp[]
-  WordBank        WordBank[]
-  translations    Translation[]
-  generatedSentences GeneratedSentence[]
-  translationHistory TranslationHistory[]
-  conversations   ConversationSession[]
-  todos           Todo[]
-  savedSuggestions   SavedSuggestion[]
-  suggestionHistory  SuggestionHistory[]
-
-}
-
-
-model SavedFilter {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  name        String
-  filters     Json
-  userId      String   @db.ObjectId
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  isDefault   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model FilterHistory {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  filters     Json
-  results     Int
-  userId      String    @db.ObjectId
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime  @default(now())
-}
-
-model Activity {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String   @db.ObjectId
-  user        User     @relation(fields: [userId], references: [id])
-  contactId   String   @db.ObjectId
-  type        String
-  description String
-  metadata    Json?
-  createdAt   DateTime @default(now())
-  contact     Contact  @relation(fields: [contactId], references: [id])
-}
-
-model Contact {
-  id          String     @id @default(auto()) @map("_id") @db.ObjectId
-  firstName   String
-  lastName    String
-  email       String
-  phone       String?
-  company     String?
-  notes       String?
-  status      Status     @default(NEW)
-  userId      String     @db.ObjectId
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  activities  Activity[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  shop        Shop?      @relation(fields: [shopId], references: [id])
-  shopId      String?    @db.ObjectId
-}
-
-model Person {
-  id                String     @id @default(auto()) @map("_id") @db.ObjectId
-  firstName         String?
-  lastName          String?
-  email             String
-  phone             String?
-  emailType         String?    // "professional" or "generic"
-  verificationStatus String?   // "VALID", "INVALID", etc.
-  lastVerifiedAt    DateTime?
-  notes             String?
-  userId            String     @db.ObjectId
-  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  coffeeShop        CoffeeShop @relation(fields: [coffeeShopId], references: [id])
-  coffeeShopId      String     @db.ObjectId
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
-  company     String?
-
-}
-
-
-model MenuItem {
-  id          String      @id @default(auto()) @map("_id") @db.ObjectId
-  name        String
-  price       Float
-  category    String
-  popular     Boolean     @default(false)
-  active      Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  userId      String      @db.ObjectId
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orderItems  OrderItem[]
-}
-
-model Order {
-  id              String      @id @default(auto()) @map("_id") @db.ObjectId
-  orderNumber     Int
-  customerName    String
-  status          OrderStatus @default(PENDING)
-  timestamp       DateTime    @default(now())
-  total          Float
-  isComplimentary Boolean     @default(false)
-  queueTime      Float
-  preparationTime Float?
-  startTime      DateTime?
-  customerEmail  String?
-  customerPhone  String?
-  leadInterest   Boolean?
-  notes          String?
-  items          OrderItem[]
-  userId         String      @db.ObjectId
-  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-}
-
-model OrderItem {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  menuItem    MenuItem  @relation(fields: [menuItemId], references: [id])
-  menuItemId  String    @db.ObjectId
-  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  orderId     String    @db.ObjectId
-  quantity    Int
-  price       Float
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-
-model QuickNote {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  content   String
-  userId    String   @db.ObjectId
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Folder {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  name      String
-  color     String?  @default("#94a3b8")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  qrCodes   QRCode[]
-  userId    String   @db.ObjectId
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model QRCode {
-  id            String         @id @default(auto()) @map("_id") @db.ObjectId
-  name          String
-  defaultUrl    String
-  shortCode     String         @unique
-  isActive      Boolean        @default(true)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  userId        String         @db.ObjectId
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  folderId      String?        @db.ObjectId
-  folder        Folder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  deviceRules   DeviceRule[]
-  scheduleRules ScheduleRule[]
-  design        QRDesign?
-  scans         Scan[]
-}
-
-model QRDesign {
-  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
-  size                  Int      @default(300)
-  backgroundColor       String   @default("#FFFFFF")
-  foregroundColor       String   @default("#000000")
-  logoImage            String?
-  logoWidth            Int?
-  logoHeight           Int?
-  dotStyle             String    @default("squares")
-  margin               Int       @default(20)
-  errorCorrectionLevel String    @default("M")
-  style                Json
-  logoStyle            Json?
-  imageRendering       String    @default("auto")
-  qrCodeId             String    @unique @db.ObjectId
-  qrCode               QRCode    @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-}
-
-model Scan {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  qrCodeId    String   @db.ObjectId
-  qrCode      QRCode   @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
-  userAgent   String?
-  ipAddress   String?
-  location    String?
-  device      String?
-  browser     String?
-  os          String?
-  timestamp   DateTime @default(now())
-}
-
-model DeviceRule {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  qrCodeId   String   @db.ObjectId
-  qrCode     QRCode   @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
-  deviceType String
-  browsers   String[]
-  os         String[]
-  targetUrl  String
-  priority   Int
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-}
-
-model ScheduleRule {
-  id         String    @id @default(auto()) @map("_id") @db.ObjectId
-  qrCodeId   String    @db.ObjectId
-  qrCode     QRCode    @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
-  startDate  DateTime
-  endDate    DateTime?
-  timeZone   String
-  daysOfWeek Int[]
-  startTime  String?
-  endTime    String?
-  targetUrl  String
-  priority   Int
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-}
-
-model Staff {
-  id                String            @id @default(auto()) @map("_id") @db.ObjectId
-  email             String            @unique
-  name              String
-  role              StaffRole         @default(BARISTA)
-  certifications    String[]
-  maxHoursPerWeek   Int               @default(40)
-  hourlyRate        Float
-  shifts           ShiftAssignment[]
-  availability     Availability[]
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  shiftPreferences Json?
-  maxShiftsPerWeek Int               @default(5)
-  preferredShiftLength Int           @default(8)
-  preferredDays    Int[]
-  blackoutDates    DateTime[]
-  timeOff          TimeOff[]
-  emergencyContact String?
-  address          String?
-  preferredShifts  String[]
-  maxHoursPerDay   Int               @default(8)
-  notes            String?
-}
-
-model Shift {
-  id            String            @id @default(auto()) @map("_id") @db.ObjectId
-  type          ShiftType
-  startTime     DateTime
-  endTime       DateTime
-  status        ShiftStatus       @default(DRAFT)
-  notes         String?
-  requiredRoles Json
-  assignedStaff ShiftAssignment[]
-  breaks        Break[]
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-}
-
-model ShiftAssignment {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  shiftId   String   @db.ObjectId
-  staffId   String   @db.ObjectId
-  status    String   @default("SCHEDULED")
-  shift     Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
-  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Break {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  shiftId   String   @db.ObjectId
-  staffId   String   @db.ObjectId
-  startTime DateTime
-  duration  Int
-  shift     Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Availability {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  staffId   String   @db.ObjectId
-  dayOfWeek Int
-  startTime String
-  endTime   String
-  recurring Boolean  @default(true)
-  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model SchedulingRule {
-  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
-  name                 String
-  description          String?
-  isActive             Boolean  @default(true)
-  ruleType             RuleType @default(BASIC)
-  minStaffPerShift     Int?
-  maxStaffPerShift     Int?
-  requireCertification Boolean  @default(false)
-  requiredCertifications String[]
-  minHoursBetweenShifts Int?
-  maxWeeklyHours       Int?
-  preferredDays        Int[]
-  preferredHours       String[]
-  roleRequirements     Json?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-}
-
-model TimeOff {
-  id          String       @id @default(auto()) @map("_id") @db.ObjectId
-  staffId     String       @db.ObjectId
-  staff       Staff        @relation(fields: [staffId], references: [id])
-  startDate   DateTime
-  endDate     DateTime
-  type        TimeOffType
-  status      TimeOffStatus @default(PENDING)
-  notes       String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-}
-
-
-model FollowUp {
-  id              String       @id @default(auto()) @map("_id") @db.ObjectId
-  coffeeShopId    String       @db.ObjectId
-  coffeeShop      CoffeeShop   @relation(fields: [coffeeShopId], references: [id])
-  type            FollowUpType
-  status          FollowUpStatus @default(PENDING)
-  priority        Int          @default(3) // 1-5 scale
-  dueDate         DateTime
-  completedDate   DateTime?
-  notes           String?
-  contactMethod   String?      // email, text, visit, call
-  contactDetails  String?      // phone number, email address
-  assignedTo      String       @db.ObjectId
-  user            User         @relation(fields: [assignedTo], references: [id])
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-}
-
-enum FollowUpType {
-  INITIAL_CONTACT
-  SAMPLE_DELIVERY
-  PROPOSAL_FOLLOW
-  TEAM_MEETING
-  CHECK_IN
-  GENERAL
-}
-
-enum FollowUpStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-  RESCHEDULED
-}
-
-model DeliveryHistory {
-  id              String      @id @default(auto()) @map("_id") @db.ObjectId
-  coffeeShopId    String      @db.ObjectId
-  coffeeShop      CoffeeShop  @relation(fields: [coffeeShopId], references: [id])
-  weekNumber      Int
-  year            Int
-  volume          Float
-  revenue         Float
-  isCurrentWeek   Boolean     @default(false)
-  delivered       Boolean     @default(false)
-  deliveryDate    DateTime?
-  notes           String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-
-  @@unique([coffeeShopId, weekNumber, year], name: "delivery_period")
-}
-
-model WeeklyVolumeSnapshot {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  weekNumber    Int
-  year          Int
-  totalVolume   Float
-  partnerCount  Int
-  averageVolume Float
-  metadata      Json?
-  createdAt     DateTime  @default(now())
-}
-
-
-
-model DeliverySchedule {
-  id              String      @id @default(auto()) @map("_id") @db.ObjectId
-  coffeeShopId    String      @db.ObjectId
-  coffeeShop      CoffeeShop  @relation(fields: [coffeeShopId], references: [id])
-  startDate       DateTime
-  frequency       String      // WEEKLY, BIWEEKLY, etc.
-  volume          Float
-  isActive        Boolean     @default(true)
-  lastUpdated     DateTime    @updatedAt
-  createdAt       DateTime    @default(now())
-}
-
-model CoffeeShop {
-  id                    String    @id @default(auto()) @map("_id") @db.ObjectId
-  title                 String
-  address               String
-  website               String?
-  manager_present       String?
-  contact_name          String?
-  contact_email         String?
-  phone                 String?
-  visited               Boolean   @default(false)
-  instagram            String?
-  followers            Int?
-  store_doors          String?
-  volume               String?
-  first_visit          DateTime?
-  second_visit         DateTime?
-  third_visit          DateTime?
-  rating               Float?
-  reviews              Int?
-  price_type           String?
-  type                 String?
-  types                String[]
-  service_options      Json?
-  hours                String?
-  operating_hours      Json?
-  gps_coordinates      Json?
-  latitude             Float
-  longitude            Float
-  area                 String?
-  is_source            Boolean   @default(false)
-  quality_score        Float?
-  parlor_coffee_leads  Boolean   @default(false)
-  visits               Visit[]
-  userId               String?   @db.ObjectId
-  user                 User?     @relation(fields: [userId], references: [id])
-  owners               Owner[]
-  notes                String?
-  priority             Int       @default(0)
-  isPartner            Boolean   @default(false)
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  priorityLastUpdated  DateTime?
-  // Add these fields
-  emails               Json?     // Stores array of discovered emails
-  company_data         Json?     // Stores company enrichment data
-  people               Person[]  // Relation to people discovered from emails
-  stage     Stage     @default(PROSPECTING)
-  delivery_frequency String? // Values: "WEEKLY", "BIWEEKLY", "THREE_WEEKS", "FOUR_WEEKS", "FIVE_WEEKS", "SIX_WEEKS"
-  first_delivery_week Int?
-  followUps         FollowUp[]
-  lastFollowUp      DateTime?
-  nextFollowUpDate  DateTime?
-  followUpCount     Int         @default(0)
-  relationshipStage String?     // INITIAL, SAMPLES_DELIVERED, PROPOSAL_SENT, etc.
-  potential         Int?        // 1-5 scale
-  interest          Int?        // 1-5 scale
-  decisionMaker     String?     // Name of the decision maker
-  decisionMakerRole String?     // Role of the decision maker
-  communicationPreference String? // email, phone, in-person
-  bestTimeToVisit   String?
-  competitors       String[]    // Other coffee suppliers they work with
-  budget           Float?      // Estimated monthly budget
-  closingNotes     String?     // Notes about closing strategy
-  deliveryHistory    DeliveryHistory[]
-deliverySchedule   DeliverySchedule[]
-  currentVolume      Float?
-  averageVolume      Float?
-  revenueYTD         Float?
-  growthRate         Float?
-  lastDelivery       DateTime?
-  nextDelivery       DateTime?
-  weeklyVolumes     Json?          // Stores current week's volume data
-  historicalVolumes Json?          // Stores previous weeks' volume data
-  volumeLastUpdated DateTime?      // Tracks when volume was last modified
-  weekNumber        Int?           // Current week number
-  yearNumber        Int?           // Current year
-  volumeStats       Json?          // Aggregated volume statistics
- delivery_day String? @default("TUESDAY")
-
-}
-
-
-
-model Owner {
- id            String      @id @default(auto()) @map("_id") @db.ObjectId
- name          String
- email         String
- coffeeShopId  String      @db.ObjectId
- coffeeShop    CoffeeShop  @relation(fields: [coffeeShopId], references: [id], onDelete: Cascade)
- createdAt     DateTime    @default(now())
- updatedAt     DateTime    @updatedAt
-}
-
-model Visit {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  coffeeShopId    String      @db.ObjectId
-  shopId        String    @db.ObjectId
-  userId        String    @db.ObjectId
-  visitNumber   Int
-  date          DateTime
-  managerPresent Boolean  @default(false)
-  managerName   String?
-  managerContact String?
-  samplesDropped Boolean  @default(false)
-  sampleDetails String?
-  notes         String?
-  nextVisitDate DateTime?
-  photos        Photo[]   
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  shop          Shop      @relation(fields: [shopId], references: [id])
-  user          User      @relation(fields: [userId], references: [id])
-  coffeeShop    CoffeeShop  @relation(fields: [coffeeShopId], references: [id])
-
-}
-
-model Photo {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  visitId   String   @db.ObjectId
-  url       String
-  caption   String?
-  createdAt DateTime @default(now())
-  visit     Visit    @relation(fields: [visitId], references: [id])
-}
-
-model Shop {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  title       String
-  address     String
-  latitude    Float
-  longitude   Float
-  rating      Float?
-  reviews     Int?
-  website     String?
-  phone       String?
-  visited     Boolean   @default(false)
-  visits      Visit[]
-  contacts    Contact[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-
-enum Role {
-  USER
-  ADMIN
-}
-
-enum Status {
-  NEW
-  CONTACTED
-  QUALIFIED
-  CONVERTED
-  LOST
-}
-
-enum OrderStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-
-enum StaffRole {
-  BARISTA
-  SOMMELIER
-  MANAGER
-  EXECUTIVE
-}
-
-enum ShiftType {
-  COFFEE
-  WINE
-}
-
-enum ShiftStatus {
-  DRAFT
-  PUBLISHED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-
-enum RuleType {
-  BASIC
-  ADVANCED
-  CERTIFICATION
-  TIME_CONSTRAINT
-  ROLE_BASED
-}
-
-enum TimeOffType {
-  VACATION
-  SICK
-  PERSONAL
-  OTHER
-}
-
-enum TimeOffStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-
-
-
+// Core translation and conversation models
 model WordBank {
   id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String    @db.ObjectId
-  user        User      @relation(fields: [userId], references: [id])
   word        String
   translation String
   definition  String
@@ -679,42 +21,14 @@ model WordBank {
 
 model Translation {
   id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String    @db.ObjectId
-  user        User      @relation(fields: [userId], references: [id])
   sourceText  String
   translation String
   similar     String[]  @default([])
   createdAt   DateTime  @default(now())
 }
 
-
-
-model GeneratedSentence {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String   @db.ObjectId
-  user        User     @relation(fields: [userId], references: [id])
-  original    String
-  generated   String[]
-  translations String[]
-  createdAt   DateTime @default(now())
-}
-
-model TranslationHistory {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String   @db.ObjectId
-  user        User     @relation(fields: [userId], references: [id])
-  sourceText  String
-  translation String
-  audioUrl    String?
-  createdAt   DateTime @default(now())
-}
-
-
-
 model ConversationSession {
   id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId        String    @db.ObjectId
-  user          User      @relation(fields: [userId], references: [id])
   topic         String
   isAutosave    Boolean   @default(false)
   messages      Message[]
@@ -724,15 +38,12 @@ model ConversationSession {
   duration      Int?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-
-  // Create a compound index for userId and isAutosave
-  @@index([userId, isAutosave])
 }
 
 model Message {
   id                String              @id @default(auto()) @map("_id") @db.ObjectId
   sessionId         String              @db.ObjectId
-  session           ConversationSession @relation(fields: [sessionId], references: [id])
+  session           ConversationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   role              String
   content           String
   translation       String?
@@ -744,69 +55,131 @@ model Message {
   createdAt         DateTime            @default(now())
 }
 
-
-model Todo {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  title       String
-  description String?
-  status      TodoStatus @default(PENDING)
-  priority    Priority   @default(MEDIUM)
-  dueDate     DateTime?
-  tags        String[]
-  userId      String    @db.ObjectId
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  attachments String[]
-  subtasks    Subtask[]
-  category    String?
-}
-
-model Subtask {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  title     String
-  completed Boolean  @default(false)
-  todoId    String   @db.ObjectId
-  todo      Todo     @relation(fields: [todoId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-enum TodoStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  ARCHIVED
-}
-
-enum Priority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
-}
-
-
+// Suggestion models
 model SavedSuggestion {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId        String    @db.ObjectId
-  user          User      @relation(fields: [userId], references: [id])
-  text          String
-  translation   String
-  category      String    // 'response', 'question', 'clarification'
-  context       String?   // Original message that prompted this suggestion
-  isFavorite    Boolean   @default(false)
-  useCount      Int       @default(0)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  french      String
+  english     String
+  context     String?
+  category    String   @default("general")
+  isFavorite  Boolean  @default(false)
+  useCount    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
-model SuggestionHistory {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId        String    @db.ObjectId
-  user          User      @relation(fields: [userId], references: [id])
-  prompt        String    // The message that triggered the suggestion
-  suggestions   Json      // Array of generated suggestions
-  selectedId    String?   // ID of the suggestion that was selected
-  createdAt     DateTime  @default(now())
+// N'Ko language learning models
+model NkoSavedText {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  text        String
+  translation String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model NkoTranslationHistory {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  sourceText  String
+  translation String
+  sourceLang  String
+  targetLang  String
+  createdAt   DateTime @default(now())
+}
+
+model NkoLesson {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  title           String
+  description     String?
+  content         String
+  level           String   // "beginner", "intermediate", "advanced"
+  module          String   // module identifier
+  track           String   // "foundations", "grammar", "vocabulary", etc.
+  order           Int      // order within module
+  prerequisites   String[] // lesson IDs that must be completed first
+  estimatedTime   Int      @default(0) // estimated time in minutes
+  tags            String[]
+  objectives      String[]
+  vocabulary      String[]
+  grammarPoints   String[]
+  culturalNotes   String[]
+  isActive        Boolean  @default(true)
+  difficulty      Int      @default(1) // 1-5 scale
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model NkoUserProgress {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  alphabet      Int      @default(0)
+  vocabulary    Int      @default(0)
+  grammar       Int      @default(0)
+  conversation  Int      @default(0)
+  streak        Int      @default(0)
+  totalTime     Int      @default(0) // in minutes
+  lastStudied   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model NkoUserLessonProgress {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  lessonId          String   @db.ObjectId
+  completed         Boolean  @default(false)
+  progress          Float    @default(0) // 0-100 percentage
+  timeSpent         Int      @default(0) // in minutes
+  sectionsCompleted String[] // array of section IDs
+  quizCompleted     Boolean  @default(false)
+  lastPosition      Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model NkoUserVocabulary {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  word         String
+  translation  String
+  definition   String?
+  example      String?
+  difficulty   String   @default("beginner")
+  mastery      Float    @default(0) // 0-100 percentage
+  timesReviewed Int     @default(0)
+  lastReviewed DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model NkoUserFavorite {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  entryId   String   // ID of favorited dictionary entry or content
+  entryType String   // "dictionary", "lesson", "vocabulary", etc.
+  createdAt DateTime @default(now())
+}
+
+// Dictionary models
+model NkoDictionaryCategory {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  slug        String   @unique
+  description String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model NkoDictionaryEntry {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  nkoText       String
+  pronunciation String?
+  translation   String
+  definition    String?
+  examples      String[]
+  categories    String[] // category slugs
+  difficulty    String   @default("beginner")
+  audioUrl      String?
+  tags          String[]
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

@@ -1,0 +1,65 @@
+/* SVG Element Styles */
+.svg-element {
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.svg-element:hover {
+  opacity: 0.9;
+}
+
+.element-selected {
+  outline: none;
+}
+
+/* Toolbar Styles */
+.toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  padding: 4px;
+  transition: background-color 0.2s;
+}
+
+.toolbar-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.toolbar-button.active {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Bounding Box and Handle Styles */
+.bounding-box {
+  fill: none;
+  stroke: #1e90ff;
+  stroke-width: 1;
+  stroke-dasharray: 3, 3;
+  pointer-events: none;
+}
+
+.resize-handle {
+  fill: white;
+  stroke: #1e90ff;
+  stroke-width: 1;
+  cursor: nwse-resize;
+}
+
+.rotation-handle {
+  fill: white;
+  stroke: #1e90ff;
+  stroke-width: 1;
+  cursor: grab;
+}
+
+.rotation-line {
+  stroke: #1e90ff;
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+/* Make sure SVG container permits overflow for handles */
+.svg-container {
+  overflow: visible !important;
+}
