@@ -6,17 +6,30 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const lessonId = params.id;
+    const lessonSlug = params.id;
 
-    // Get global lesson progress (first available record)
-    const progress = await prisma.nkoUserLessonProgress.findFirst({
-      where: { lessonId }
+    // First find the lesson by slug
+    const lesson = await prisma.nkoLesson.findUnique({
+      where: { slug: lessonSlug }
+    });
+
+    if (!lesson) {
+      return NextResponse.json(
+        { error: "Lesson not found" },
+        { status: 404 }
+      );
+    }
+
+    // Get lesson progress using the actual lesson ID
+    const progress = await prisma.nkoUserLessonProgress.findUnique({
+      where: { lessonId: lesson.id }
     });
 
     if (!progress) {
       // Return default progress if none exists
       return NextResponse.json({
-        lessonId,
+        lessonId: lesson.id,
+        lessonSlug: lesson.slug,
         progress: 0,
         completed: false,
         timeSpent: 0,
@@ -26,7 +39,10 @@ export async function GET(
       });
     }
 
-    return NextResponse.json(progress);
+    return NextResponse.json({
+      ...progress,
+      lessonSlug: lesson.slug
+    });
   } catch (error) {
     console.error("Error fetching lesson progress:", error);
     return NextResponse.json(
@@ -41,7 +57,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const lessonId = params.id;
+    const lessonSlug = params.id;
     const {
       progress,
       completed,
@@ -51,11 +67,22 @@ export async function POST(
       notes
     } = await req.json();
 
-    // Update or create global lesson progress
+    // First find the lesson by slug
+    const lesson = await prisma.nkoLesson.findUnique({
+      where: { slug: lessonSlug }
+    });
+
+    if (!lesson) {
+      return NextResponse.json(
+        { error: "Lesson not found" },
+        { status: 404 }
+      );
+    }
+
+    // Update or create lesson progress using the actual lesson ID
     const lessonProgress = await prisma.nkoUserLessonProgress.upsert({
       where: {
-        // Use lesson ID as unique identifier since we're going global
-        lessonId
+        lessonId: lesson.id
       },
       update: {
         progress: progress ?? undefined,
@@ -68,7 +95,7 @@ export async function POST(
         updatedAt: new Date()
       },
       create: {
-        lessonId,
+        lessonId: lesson.id,
         progress: progress || 0,
         completed: completed || false,
         timeSpent: timeSpent || 0,

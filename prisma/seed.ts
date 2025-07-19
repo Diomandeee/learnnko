@@ -155,6 +155,7 @@ async function main() {
   // Seed N'Ko Lessons
   const lessons = [
     {
+      slug: 'intro-to-nko',
       title: 'Introduction to N\'Ko Script',
       description: 'Learn the basics of N\'Ko writing system and its history',
       level: 'beginner',
@@ -210,6 +211,7 @@ async function main() {
       }
     },
     {
+      slug: 'nko-vowels',
       title: 'N\'Ko Vowels and Pronunciation',
       description: 'Master the seven vowels of N\'Ko and their pronunciation',
       level: 'beginner',
@@ -217,7 +219,7 @@ async function main() {
       moduleOrder: 1,
       track: 'foundations',
       order: 2,
-      prerequisites: ['1'],
+      prerequisites: ['intro-to-nko'],
       topics: ['vowels', 'pronunciation', 'phonetics'],
       estimatedTime: 45,
       duration: '45 minutes',
@@ -266,6 +268,7 @@ async function main() {
       }
     },
     {
+      slug: 'nko-consonants',
       title: 'Basic N\'Ko Consonants',
       description: 'Learn fundamental consonants and character formation',
       level: 'beginner',
@@ -273,7 +276,7 @@ async function main() {
       moduleOrder: 1,
       track: 'foundations',
       order: 3,
-      prerequisites: ['1', '2'],
+      prerequisites: ['intro-to-nko', 'nko-vowels'],
       topics: ['consonants', 'character-formation', 'writing'],
       estimatedTime: 60,
       duration: '60 minutes',
