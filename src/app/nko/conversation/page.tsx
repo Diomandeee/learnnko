@@ -1,10 +1,6 @@
-import { Metadata } from "next"
-import { NkoConversation } from "@/components/nko/conversation/nko-conversation"
+"use client"
 
-export const metadata: Metadata = {
-  title: "N'Ko Conversation | French Connect",
-  description: "Practice N'Ko through AI-powered conversations",
-}
+import { NkoConversation } from "@/components/nko/conversation/nko-conversation"
 
 export default function NkoConversationPage() {
   return (

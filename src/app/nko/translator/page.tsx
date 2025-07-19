@@ -1,10 +1,6 @@
-import { Metadata } from "next"
-import { NkoTranslator } from "@/components/nko/translate/nko-translator"
+"use client"
 
-export const metadata: Metadata = {
-  title: "N'Ko Translator | French Connect",
-  description: "Translate between French/English and N'Ko with history tracking",
-}
+import { NkoTranslator } from "@/components/nko/translate/nko-translator"
 
 export default function NkoTranslatorPage() {
   return (
