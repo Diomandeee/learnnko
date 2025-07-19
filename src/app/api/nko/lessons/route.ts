@@ -10,29 +10,35 @@ export async function GET() {
         { order: 'asc' }
       ],
       include: {
-        userProgress: true
+        progress: true
       }
     })
 
     // Transform lessons to match the UI format
     const transformedLessons = lessons.map(lesson => ({
-      id: lesson.id,
+      id: lesson.slug, // Use slug as ID for frontend compatibility
+      slug: lesson.slug,
       title: lesson.title,
       description: lesson.description || "",
       level: lesson.level,
-      duration: lesson.duration || 0,
+      duration: lesson.duration || "30 minutes",
+      estimatedTime: lesson.estimatedTime,
       topics: lesson.topics || [],
       prerequisites: lesson.prerequisites || [],
-      // For now, using mock progress - will implement user-specific progress later
-      progress: lesson.id === "intro-to-nko" ? 100 : 
-                lesson.id === "alphabet-vowels" ? 75 :
-                lesson.id === "alphabet-consonants-1" ? 40 : 0,
-      isCompleted: lesson.id === "intro-to-nko",
-      isLocked: !lesson.prerequisites.length && 
-                (lesson.id === "intro-to-nko" || lesson.id === "alphabet-vowels" || lesson.id === "alphabet-consonants-1") 
-                ? false : true,
+      // Use actual progress data from database
+      progress: lesson.progress?.progress || 0,
+      isCompleted: lesson.progress?.completed || false,
+      isLocked: lesson.prerequisites.length === 0 ? false : 
+                lesson.prerequisites.some(prereq => 
+                  !lessons.find(l => l.slug === prereq)?.progress?.completed
+                ),
       content: lesson.content,
-      objectives: lesson.objectives || []
+      objectives: lesson.objectives || [],
+      vocabulary: lesson.vocabulary || [],
+      grammarPoints: lesson.grammarPoints || [],
+      culturalNotes: lesson.culturalNotes || [],
+      difficulty: lesson.difficulty,
+      tags: lesson.tags || []
     }))
 
     return NextResponse.json(transformedLessons)

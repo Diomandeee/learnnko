@@ -5,14 +5,15 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 
 interface LessonPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export async function generateMetadata({ params }: LessonPageProps): Promise<Metadata> {
+  const { id } = await params
   return {
-    title: `N'Ko Lesson | French Connect`,
+    title: `N'Ko Lesson: ${id} | Learn N'Ko`,
     description: `Learn N'Ko through interactive lessons`,
   }
 }
@@ -48,10 +49,12 @@ function LessonLoadingSkeleton() {
   )
 }
 
-export default function LessonPage({ params }: LessonPageProps) {
+export default async function LessonPage({ params }: LessonPageProps) {
+  const { id } = await params
+  
   return (
     <Suspense fallback={<LessonLoadingSkeleton />}>
-      <LessonViewer lessonId={params.id} />
+      <LessonViewer lessonId={id} />
     </Suspense>
   )
 } 
