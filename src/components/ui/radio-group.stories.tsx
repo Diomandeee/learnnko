@@ -3,13 +3,15 @@
 import { RadioGroup, RadioGroupItem } from "./radio-group"
 import { Label } from "@/components/ui/label"
 
-export default {
+const meta = {
   title: "Components/RadioGroup",
   component: RadioGroup,
   parameters: {
     layout: "centered",
   },
 }
+
+export default meta
 
 export const Default = () => {
   return (
