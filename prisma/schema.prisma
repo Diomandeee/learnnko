@@ -89,6 +89,7 @@ model NkoTranslationHistory {
 
 model NkoLesson {
   id              Int      @id @default(autoincrement())
+  slug            String   @unique // URL-friendly identifier
   title           String
   description     String?
   content         Json
@@ -97,7 +98,7 @@ model NkoLesson {
   moduleOrder     Int      @default(0)
   track           String   // "foundations", "grammar", "vocabulary", etc.
   order           Int      // order within module
-  prerequisites   String[] // lesson IDs that must be completed first
+  prerequisites   String[] // lesson slugs that must be completed first
   topics          String[]
   estimatedTime   Int      @default(0) // estimated time in minutes
   duration        String   @default("30 minutes")
