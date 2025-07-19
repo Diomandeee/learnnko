@@ -1,12 +1,8 @@
-import { Metadata } from "next"
+"use client"
+
 import { NkoKeyboard } from "@/components/nko/input/nko-keyboard"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Keyboard } from "lucide-react"
-
-export const metadata: Metadata = {
-  title: "N'Ko Keyboard | French Connect",
-  description: "Virtual N'Ko keyboard for script input and practice",
-}
 
 export default function NkoKeyboardPage() {
   return (
