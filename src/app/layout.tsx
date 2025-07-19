@@ -1,33 +1,34 @@
-import type { Metadata } from "next";
-import "./globals.css";
-import { AuthProvider } from "@/components/auth/auth-provider";
-import { Toaster } from "@/components/ui/toaster";
-import Script from "next/script";
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import "./globals.css"
+import { Toaster } from "@/components/ui/toaster"
+import { ThemeProvider } from "@/components/theme-provider"
+
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Milk Man CRM",
-  description: "A CRM solution for managing contacts",
-};
+  title: "N'Ko Learning Hub | French Connect",
+  description: "Comprehensive N'Ko language learning with conversation, translation, and transcription",
+}
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <head>
-        <Script
-          src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`}
-          strategy="beforeInteractive"
-        />
-      </head>
-      <body className="bg-gray-50 text-gray-900">
-        <AuthProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
           {children}
           <Toaster />
-        </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
-  );
-}
+  )
+} 

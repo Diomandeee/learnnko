@@ -1,25 +1,6 @@
-import { Metadata } from "next"
-import { ConversationTab } from "@/components/translate/conversation-tab"
-import { PageContainer } from "@/components/layout/page-container"
+import { redirect } from "next/navigation"
 
-export const metadata: Metadata = {
-  title: "Translate | BUF BARISTA CRM",
-  description: "Translate and save words to your word bank",
-}
-
-export default function TranslatePage() {
-  return (
-    <PageContainer>
-      <div className="space-y-6 p-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Translate</h1>
-          <p className="text-muted-foreground">
-            Translate text, save words, and build your vocabulary
-          </p>
-        </div>
-
-        {/* <ConversationTab /> */}
-      </div>
-    </PageContainer>
-  )
+export default function DashboardPage() {
+  // Redirect to the new N'Ko learning hub
+  redirect("/nko")
 }

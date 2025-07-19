@@ -1,171 +1,95 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { cn } from "@/lib/utils"
 import {
-  Home,
-  Settings,
-  PlusCircle,
-  ChevronRight,
-  ChevronLeft,
-  Coffee,
-  Calendar,
-  MapPin,
-  Users,
-  ShoppingBag,
-  Warehouse,
-  FileText,
-  GitBranch,
-  QrCode,
-  Star,
-  Trash2,
-  Briefcase,
-  Contact,
-  Route as RouteIcon,
-  Eye,
-} from "lucide-react";
+  BookOpen,
+  GraduationCap,
+  HomeIcon,
+  Languages,
+  BookMarked,
+  MessageCircle,
+  Mic,
+  Keyboard
+} from "lucide-react"
 
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useSidebar } from "@/store/use-sidebar";
-import { useEffect, useState } from "react";
-
-const routes = [
+const navigation = [
   {
-    label: "Conversation",
-    icon: Contact,
-    href: "/dashboard/conversation",
-    color: "text-sky-500"
+    name: "N'Ko Learning Hub",
+    href: "/nko",
+    icon: Languages,
+    children: [
+      { name: "Learning Hub", href: "/nko", icon: HomeIcon },
+      { name: "Conversation", href: "/nko/conversation", icon: MessageCircle },
+      { name: "Lessons", href: "/nko/lessons", icon: BookOpen },
+      { name: "Dictionary", href: "/nko/dictionary", icon: BookMarked },
+      { name: "Practice", href: "/nko/practice", icon: GraduationCap },
+      { name: "Translator", href: "/nko/translator", icon: Languages },
+      { name: "Transcribe", href: "/nko/transcribe", icon: Mic },
+      { name: "Keyboard", href: "/nko/keyboard", icon: Keyboard },
+      { name: "History", href: "/nko/history", icon: BookMarked },
+    ],
   },
-  {
-    label: "History",
-    icon: Calendar,
-    href: "/dashboard/history",
-    color: "text-violet-500"
-  },
-  {
-    label: "Situations",
-    icon: Users,
-    href: "/dashboard/situations",
-    color: "text-teal-500"
-  },
-  {
-    label: "Translate",
-    icon: Eye,
-    href: "/dashboard/translate",
-    color: "text-purple-500"
-  },
-  {
-    label: "Saved",
-    icon: Star,
-    href: "/dashboard/saved",
-    color: "text-purple-500"
-  },
-];
+]
 
+interface SideNavProps {
+  className?: string
+}
 
-export function SideNav() {
-  const pathname = usePathname();
-  const [mounted, setMounted] = useState(false);
-  const { isCollapsed, toggleCollapse } = useSidebar();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return null;
-  }
+export function SideNav({ className }: SideNavProps) {
+  const pathname = usePathname()
 
   return (
-    <aside
-      className={cn(
-        "fixed left-0 z-50 flex h-full flex-col bg-background border-r",
-        isCollapsed ? "w-[50px]" : "w-48",
-        "transition-all duration-300 ease-in-out"
-      )}
-    >
-      <TooltipProvider delayDuration={0}>
-        <div className="flex h-14 items-center justify-between px-2 border-b">
-          {!isCollapsed && (
-            <div className="flex items-center gap-2">
-              <Coffee className="h-4 w-4" />
-              <span className="font-bold text-sm">Milk Man</span>
-            </div>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn("", isCollapsed ? "ml-0" : "ml-auto")}
-            onClick={toggleCollapse}
-          >
-            {isCollapsed ? <ChevronRight /> : <ChevronLeft />}
-          </Button>
-        </div>
+    <div className={cn("flex h-full flex-col border-r bg-card", className)}>
+      <div className="flex-1 overflow-y-auto py-4">
+        <nav className="space-y-1 px-2">
+          {navigation.map((item) => {
+            const isActive = item.href === pathname || 
+              (item.children && item.children.some(child => child.href === pathname)) ||
+              (pathname.startsWith(item.href) && item.href !== "/nko")
 
-        <div className="p-2">
-          {isCollapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link href="/dashboard/people/new">
-                  <Button size="icon" className="w-full">
-                    <PlusCircle className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                New Contact
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <Link href="/dashboard/people/new">
-              <Button className="w-full">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                New Contact
-              </Button>
-            </Link>
-          )}
-        </div>
-
-        <ScrollArea className="flex-1 px-2">
-          <div className="space-y-1 py-2">
-            {routes.map((route) => (
-              isCollapsed ? (
-                <Tooltip key={route.href}>
-                  <TooltipTrigger asChild>
-                    <Link
-                      href={route.href}
-                      className={cn(
-                        "flex items-center justify-center rounded-md p-1.5 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        pathname === route.href && "bg-accent text-accent-foreground"
-                      )}
-                    >
-                      <route.icon className={cn("h-4 w-4", route.color)} />
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    {route.label}
-                  </TooltipContent>
-                </Tooltip>
-              ) : (
+            return (
+              <div key={item.name}>
                 <Link
-                  key={route.href}
-                  href={route.href}
+                  href={item.href}
                   className={cn(
-                    "flex items-center rounded-md p-1.5 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                    pathname === route.href && "bg-accent text-accent-foreground"
+                    "group flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                   )}
                 >
-                  <route.icon className={cn("mr-2 h-4 w-4", route.color)} />
-                  {route.label}
+                  <item.icon className="mr-3 h-4 w-4 flex-shrink-0" />
+                  {item.name}
                 </Link>
-              )
-            ))}
-          </div>
-        </ScrollArea>
-      </TooltipProvider>
-    </aside>
-  );
+                {item.children && (
+                  <div className="ml-6 mt-1 space-y-1">
+                    {item.children.map((child) => {
+                      const isChildActive = child.href === pathname
+                      return (
+                        <Link
+                          key={child.name}
+                          href={child.href}
+                          className={cn(
+                            "group flex items-center rounded-md px-3 py-1 text-sm transition-colors",
+                            isChildActive
+                              ? "bg-primary/10 text-primary"
+                              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                          )}
+                        >
+                          <child.icon className="mr-3 h-3 w-3 flex-shrink-0" />
+                          {child.name}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </nav>
+      </div>
+    </div>
+  )
 }

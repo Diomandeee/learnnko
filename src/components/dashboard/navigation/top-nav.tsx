@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { MobileNav } from "./mobile-nav";
-import { UserButton } from "@/components/auth/user-button";
 
 export function TopNav() {
   return (
@@ -10,10 +9,11 @@ export function TopNav() {
       <div className="flex items-center gap-2">
         <MobileNav />
         <Link href="/dashboard" className="flex items-center gap-2">
+          <h1 className="font-semibold">French Connect</h1>
         </Link>
       </div>
       <div className="flex items-center gap-4">
-        <UserButton />
+        {/* User functionality removed - no authentication */}
       </div>
     </div>
   );

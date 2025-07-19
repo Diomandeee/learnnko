@@ -1,120 +1,180 @@
 import Link from "next/link"
-
 import { Button } from "@/components/ui/button"
-import { Coffee } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { 
+  MessageCircle,
+  Languages,
+  Mic,
+  Keyboard,
+  Archive,
+  BookOpen,
+  ArrowRight,
+  Sparkles
+} from "lucide-react"
 
-export default function LandingPage() {
+export default function HomePage() {
   return (
-    <>
-      {/* Top Navigation */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Coffee className="h-6 w-6" />
-            <Link href="/" className="flex items-center">
-              <span className="text-2xl font-bold">Milk Man CRM</span>
-            </Link>
-          </div>
-          {/* <nav className="hidden gap-8 md:flex">
-            <Link href="#features" className="text-sm font-medium transition-colors hover:text-primary">
-              Features
-            </Link>
-            <Link href="#testimonials" className="text-sm font-medium transition-colors hover:text-primary">
-              Testimonials
-            </Link>
-            <Link href="#pricing" className="text-sm font-medium transition-colors hover:text-primary">
-              Pricing
-            </Link>
-          </nav> */}
-          <div className="flex items-center gap-4">
-            <Link href="/auth/login">
-              <Button variant="ghost">Sign In</Button>
-            </Link>
-            {/* <Link href="/auth/register">
-              <Button>Get Started</Button>
-            </Link> */}
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="container mx-auto px-4 py-16">
+        {/* Hero Section */}
+        <div className="text-center mb-16">
+          <Badge variant="secondary" className="mb-4">
+            <Sparkles className="w-3 h-3 mr-1" />
+            N'Ko Language Learning Platform
+          </Badge>
+          <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            N'Ko Learning Hub
+          </h1>
+          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
+            Master the N'Ko language through conversation, translation, transcription, and interactive practice. 
+            A comprehensive learning platform that adapts to your pace.
+          </p>
+          <Link href="/nko">
+            <Button size="lg" className="mb-8">
+              Start Learning N'Ko
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </Link>
         </div>
-      </header>
 
-      <main className="flex-1">
-        {/* <Hero /> */}
+        {/* Features Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageCircle className="w-5 h-5 text-blue-600" />
+                Conversation Practice
+              </CardTitle>
+              <CardDescription>
+                Practice N'Ko through AI-powered conversations with real-time feedback and corrections
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="text-sm space-y-1 text-muted-foreground">
+                <li>• Interactive AI chat in N'Ko</li>
+                <li>• Grammar corrections & tips</li>
+                <li>• Progress tracking</li>
+                <li>• Voice input support</li>
+              </ul>
+            </CardContent>
+          </Card>
 
-        {/* Features Section */}
-        {/* <Features /> */}
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Languages className="w-5 h-5 text-green-600" />
+                Smart Translation
+              </CardTitle>
+              <CardDescription>
+                Bidirectional translation between French/English and N'Ko with history tracking
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="text-sm space-y-1 text-muted-foreground">
+                <li>• French ↔ N'Ko translation</li>
+                <li>• Translation history</li>
+                <li>• One-click saving</li>
+                <li>• Context-aware results</li>
+              </ul>
+            </CardContent>
+          </Card>
 
-        {/* Testimonials Section */}
-        {/* <Testimonials /> */}
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mic className="w-5 h-5 text-red-600" />
+                Audio Transcription
+              </CardTitle>
+              <CardDescription>
+                Convert speech and audio files to N'Ko text with automatic translation
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="text-sm space-y-1 text-muted-foreground">
+                <li>• Audio file upload</li>
+                <li>• YouTube video support</li>
+                <li>• Live voice recording</li>
+                <li>• Auto N'Ko translation</li>
+              </ul>
+            </CardContent>
+          </Card>
 
-        {/* Pricing Section */}
-        {/* <Pricing /> */}
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Keyboard className="w-5 h-5 text-purple-600" />
+                N'Ko Keyboard
+              </CardTitle>
+              <CardDescription>
+                Virtual N'Ko keyboard for learning proper script input and character recognition
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="text-sm space-y-1 text-muted-foreground">
+                <li>• Virtual N'Ko keyboard</li>
+                <li>• Character recognition</li>
+                <li>• Typing practice</li>
+                <li>• Real-time preview</li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Archive className="w-5 h-5 text-orange-600" />
+                Personal Library
+              </CardTitle>
+              <CardDescription>
+                Build your personal collection of N'Ko texts, vocabulary, and learning materials
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="text-sm space-y-1 text-muted-foreground">
+                <li>• Saved N'Ko texts</li>
+                <li>• Vocabulary bank</li>
+                <li>• Favorites system</li>
+                <li>• Progress tracking</li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-indigo-600" />
+                Learning Analytics
+              </CardTitle>
+              <CardDescription>
+                Track your learning journey with detailed statistics and progress insights
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="text-sm space-y-1 text-muted-foreground">
+                <li>• Learning statistics</li>
+                <li>• Message tracking</li>
+                <li>• Vocabulary growth</li>
+                <li>• Time spent learning</li>
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* CTA Section */}
-        {/* <section className="border-t bg-muted/50">
-          <div className="container py-20 text-center">
-            <h2 className="text-3xl font-bold md:text-4xl">Ready to transform your coffee shop?</h2>
-            <p className="mx-auto mt-4 max-w-[600px] text-muted-foreground">
-              Join thousands of coffee shops already using our platform to grow their business.
-            </p>
-            <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:justify-center">
-              <Link href="/auth/register">
-                <Button size="lg">
-                  Start Free Trial
-                </Button>
-              </Link>
-              <Link href="#pricing">
-                <Button variant="outline" size="lg">
-                  View Pricing
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </section> */}
-      </main>
-
-      {/* Footer */}
-      {/* <footer className="border-t py-12">
-        <div className="container grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <Coffee className="h-6 w-6" />
-              <span className="text-lg font-bold">Milk Man</span>
-            </div>
-            <p className="mt-4 text-sm text-muted-foreground">
-              Making coffee shop management easier and more efficient.
-            </p>
-          </div>
-          <div>
-            <h4 className="text-sm font-semibold">Product</h4>
-            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-              <li><Link href="#features" className="hover:text-primary">Features</Link></li>
-              <li><Link href="#pricing" className="hover:text-primary">Pricing</Link></li>
-              <li><Link href="#" className="hover:text-primary">Documentation</Link></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="text-sm font-semibold">Company</h4>
-            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-              <li><Link href="#" className="hover:text-primary">About</Link></li>
-              <li><Link href="#" className="hover:text-primary">Blog</Link></li>
-              <li><Link href="#" className="hover:text-primary">Careers</Link></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="text-sm font-semibold">Legal</h4>
-            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-              <li><Link href="#" className="hover:text-primary">Privacy</Link></li>
-              <li><Link href="#" className="hover:text-primary">Terms</Link></li>
-              <li><Link href="#" className="hover:text-primary">Cookie Policy</Link></li>
-            </ul>
-          </div>
-        </div>
-        <div className="container mt-8 border-t pt-8 text-center">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Milk Man. All rights reserved.
+        <div className="text-center">
+          <h2 className="text-3xl font-bold mb-4">Ready to Master N'Ko?</h2>
+          <p className="text-muted-foreground mb-6">
+            Join thousands learning the N'Ko language through our comprehensive platform
           </p>
+          <Link href="/nko">
+            <Button size="lg" variant="outline">
+              Enter Learning Hub
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </Link>
         </div>
-      </footer> */}
-    </>
+      </div>
+    </div>
   )
 }

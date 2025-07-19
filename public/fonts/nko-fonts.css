@@ -1,0 +1,20 @@
+/* N'Ko Font Integration */
+@font-face {
+  font-family: 'Noto Sans NKo';
+  src: url('/fonts/NotoSansNKo-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans NKo';
+  src: url('/fonts/NotoSansNKo-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+.font-nko {
+  font-family: 'Noto Sans NKo', sans-serif;
+}

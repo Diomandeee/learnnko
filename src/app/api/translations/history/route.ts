@@ -1,80 +1,32 @@
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/db/prisma"
 
 export async function GET() {
   try {
-    const session = await getServerSession()
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
+    const translations = await prisma.translation.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 50, // Limit to recent translations
     })
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      )
-    }
-
-    const history = await prisma.translationHistory.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: 'desc' },
-      take: 50
-    })
-
-    return NextResponse.json(history)
+    return NextResponse.json(translations)
   } catch (error) {
-    console.error("Error fetching history:", error)
+    console.error("[TRANSLATIONS_GET]", error)
     return NextResponse.json(
-      { error: "Failed to fetch history" },
+      { error: "Failed to fetch translations" },
       { status: 500 }
     )
   }
 }
 
-export async function POST(req: Request) {
+export async function DELETE() {
   try {
-    const session = await getServerSession()
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
+    await prisma.translation.deleteMany({})
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    })
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      )
-    }
-
-    const { sourceText, translation } = await req.json()
-
-    const saved = await prisma.translationHistory.create({
-      data: {
-        userId: user.id,
-        sourceText,
-        translation,
-      }
-    })
-
-    return NextResponse.json(saved)
+    return NextResponse.json({ message: "Translation history cleared" })
   } catch (error) {
-    console.error("Error saving translation:", error)
+    console.error("[TRANSLATIONS_DELETE]", error)
     return NextResponse.json(
-      { error: "Failed to save translation" },
+      { error: "Failed to clear translation history" },
       { status: 500 }
     )
   }

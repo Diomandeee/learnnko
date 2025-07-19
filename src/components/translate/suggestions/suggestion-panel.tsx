@@ -19,7 +19,8 @@ import {
   RefreshCcw,
   MessageSquare,
   HelpCircle,
-  Info
+  Info,
+  ChevronDown
 } from "lucide-react"
 
 interface Suggestion {
@@ -143,25 +144,20 @@ export function SuggestionPanel({
         </TooltipProvider>
       </div>
 
-      <ScrollArea className="h-[300px]">
+      <ScrollArea className="h-[180px] overflow-hidden">
         {isLoading ? (
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="p-4 border rounded-lg animate-pulse"
-              >
-                <div className="h-4 w-3/4 bg-muted rounded mb-2" />
-                <div className="h-3 w-1/2 bg-muted rounded" />
-              </div>
-            ))}
+          <div className="p-4 border rounded-lg animate-pulse mb-2">
+            <div className="h-4 w-3/4 bg-muted rounded mb-2" />
+            <div className="h-3 w-1/2 bg-muted rounded" />
           </div>
         ) : suggestions.length > 0 ? (
-          <div className="space-y-3">
-            {suggestions.map((suggestion) => (
+          <div className="space-y-2">
+            {suggestions.map((suggestion, index) => (
               <div
                 key={suggestion.id}
-                className="p-4 border rounded-lg hover:bg-accent transition-colors"
+                className={`p-4 border rounded-lg hover:bg-accent transition-colors ${
+                  index === 0 ? 'mb-2' : ''
+                }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1">
@@ -206,6 +202,15 @@ export function SuggestionPanel({
           </div>
         )}
       </ScrollArea>
+      
+      {suggestions.length > 1 && (
+        <div className="flex justify-center mt-2">
+          <ChevronDown className="h-4 w-4 text-muted-foreground animate-bounce" />
+          <span className="text-xs text-muted-foreground ml-1">
+            Scroll for more suggestions
+          </span>
+        </div>
+      )}
     </Card>
   )
 }
