@@ -3,13 +3,13 @@ generator client {
 }
 
 datasource db {
-  provider = "mongodb"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 // Core translation and conversation models
 model WordBank {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  id          Int       @id @default(autoincrement())
   word        String
   translation String
   definition  String
@@ -20,7 +20,7 @@ model WordBank {
 }
 
 model Translation {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  id          Int       @id @default(autoincrement())
   sourceText  String
   translation String
   similar     String[]  @default([])
@@ -28,7 +28,7 @@ model Translation {
 }
 
 model ConversationSession {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  id            Int       @id @default(autoincrement())
   topic         String
   isAutosave    Boolean   @default(false)
   messages      Message[]
@@ -41,8 +41,8 @@ model ConversationSession {
 }
 
 model Message {
-  id                String              @id @default(auto()) @map("_id") @db.ObjectId
-  sessionId         String              @db.ObjectId
+  id                Int                 @id @default(autoincrement())
+  sessionId         Int
   session           ConversationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   role              String
   content           String
@@ -57,7 +57,7 @@ model Message {
 
 // Suggestion models
 model SavedSuggestion {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          Int      @id @default(autoincrement())
   french      String
   english     String
   context     String?
@@ -70,7 +70,7 @@ model SavedSuggestion {
 
 // N'Ko language learning models
 model NkoSavedText {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          Int      @id @default(autoincrement())
   text        String
   translation String?
   notes       String?
@@ -79,7 +79,7 @@ model NkoSavedText {
 }
 
 model NkoTranslationHistory {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          Int      @id @default(autoincrement())
   sourceText  String
   translation String
   sourceLang  String
@@ -88,16 +88,19 @@ model NkoTranslationHistory {
 }
 
 model NkoLesson {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  id              Int      @id @default(autoincrement())
   title           String
   description     String?
-  content         String
+  content         Json
   level           String   // "beginner", "intermediate", "advanced"
   module          String   // module identifier
+  moduleOrder     Int      @default(0)
   track           String   // "foundations", "grammar", "vocabulary", etc.
   order           Int      // order within module
   prerequisites   String[] // lesson IDs that must be completed first
+  topics          String[]
   estimatedTime   Int      @default(0) // estimated time in minutes
+  duration        String   @default("30 minutes")
   tags            String[]
   objectives      String[]
   vocabulary      String[]
@@ -105,60 +108,69 @@ model NkoLesson {
   culturalNotes   String[]
   isActive        Boolean  @default(true)
   difficulty      Int      @default(1) // 1-5 scale
+  progress        NkoUserLessonProgress?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
 
 model NkoUserProgress {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  alphabet      Int      @default(0)
-  vocabulary    Int      @default(0)
-  grammar       Int      @default(0)
-  conversation  Int      @default(0)
-  streak        Int      @default(0)
-  totalTime     Int      @default(0) // in minutes
+  id            Int       @id @default(autoincrement())
+  alphabet      Int       @default(0)
+  vocabulary    Int       @default(0)
+  grammar       Int       @default(0)
+  conversation  Int       @default(0)
+  streak        Int       @default(0)
+  totalTime     Int       @default(0) // in minutes
   lastStudied   DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model NkoUserLessonProgress {
-  id                String   @id @default(auto()) @map("_id") @db.ObjectId
-  lessonId          String   @db.ObjectId
+  id                Int      @id @default(autoincrement())
+  lessonId          Int
+  lesson            NkoLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   completed         Boolean  @default(false)
   progress          Float    @default(0) // 0-100 percentage
   timeSpent         Int      @default(0) // in minutes
   sectionsCompleted String[] // array of section IDs
   quizCompleted     Boolean  @default(false)
+  quizScores        Json[]   @default([])
+  currentSection    Int      @default(0)
   lastPosition      Int      @default(0)
+  exercisesCompleted String[] @default([])
+  notes             String?
+  lastAccessed      DateTime @default(now())
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
+  @@unique([lessonId])
 }
 
 model NkoUserVocabulary {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  id           Int       @id @default(autoincrement())
   word         String
   translation  String
   definition   String?
   example      String?
-  difficulty   String   @default("beginner")
-  mastery      Float    @default(0) // 0-100 percentage
-  timesReviewed Int     @default(0)
+  difficulty   String    @default("beginner")
+  mastery      Float     @default(0) // 0-100 percentage
+  timesReviewed Int      @default(0)
   lastReviewed DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
 model NkoUserFavorite {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  entryId   String   // ID of favorited dictionary entry or content
+  id        Int      @id @default(autoincrement())
+  entryId   Int      // ID of favorited dictionary entry or content
   entryType String   // "dictionary", "lesson", "vocabulary", etc.
   createdAt DateTime @default(now())
 }
 
 // Dictionary models
 model NkoDictionaryCategory {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          Int      @id @default(autoincrement())
   name        String
   slug        String   @unique
   description String?
@@ -169,7 +181,7 @@ model NkoDictionaryCategory {
 }
 
 model NkoDictionaryEntry {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  id            Int      @id @default(autoincrement())
   nkoText       String
   pronunciation String?
   translation   String
