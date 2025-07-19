@@ -25,10 +25,11 @@ async function checkPrerequisites(prerequisiteSlugs: string[]): Promise<boolean>
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const lessonSlug = params.id
+    const { id } = await params
+    const lessonSlug = id
 
     // Get lesson from database using slug
     const lesson = await prisma.nkoLesson.findUnique({
@@ -106,11 +107,12 @@ export async function GET(
 // Update lesson (simplified)
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const updateData = await req.json();
-    const lessonSlug = params.id;
+    const { id } = await params
+    const lessonSlug = id;
     
     // Check if lesson exists
     const lesson = await prisma.nkoLesson.findUnique({
@@ -146,10 +148,11 @@ export async function PUT(
 // Delete lesson (simplified)
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const lessonSlug = params.id;
+    const { id } = await params
+    const lessonSlug = id;
     
     // Check if lesson exists
     const lesson = await prisma.nkoLesson.findUnique({

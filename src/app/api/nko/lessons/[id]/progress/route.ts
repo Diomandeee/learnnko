@@ -3,10 +3,11 @@ import { prisma } from "@/lib/db/prisma";
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const lessonSlug = params.id;
+    const { id } = await params
+    const lessonSlug = id;
 
     // First find the lesson by slug
     const lesson = await prisma.nkoLesson.findUnique({
@@ -54,10 +55,11 @@ export async function GET(
 
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const lessonSlug = params.id;
+    const { id } = await params
+    const lessonSlug = id;
     const {
       progress,
       completed,
