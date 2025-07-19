@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "load-coffee-shops": "ts-node src/scripts/load-coffee-shops.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "db:seed": "ts-node prisma/seed.ts",
+    "db:reset": "npx prisma db push --force-reset && npm run db:seed"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
