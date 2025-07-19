@@ -1,10 +1,6 @@
-import { Metadata } from "next"
-import { NkoTranscriber } from "@/components/nko/transcriber/nko-transcriber"
+"use client"
 
-export const metadata: Metadata = {
-  title: "N'Ko Transcriber | French Connect",
-  description: "Convert speech and audio files to N'Ko text with automatic translation",
-}
+import { NkoTranscriber } from "@/components/nko/transcriber/nko-transcriber"
 
 export default function NkoTranscribePage() {
   return (
