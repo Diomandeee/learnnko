@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { getServerSession } from "next-auth";
+import { authConfig } from "@/lib/auth/config";
 
 export async function GET(
   req: Request,
@@ -8,6 +10,16 @@ export async function GET(
   try {
     const { id } = await params
     const lessonSlug = id;
+
+    // Get user session
+    const session = await getServerSession(authConfig);
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
 
     // First find the lesson by slug
     const lesson = await prisma.nkoLesson.findUnique({
@@ -21,9 +33,14 @@ export async function GET(
       );
     }
 
-    // Get lesson progress using the actual lesson ID
+    // Get lesson progress using the composite key
     const progress = await prisma.nkoUserLessonProgress.findUnique({
-      where: { lessonId: lesson.id }
+      where: { 
+        userId_lessonId: {
+          userId: session.user.id,
+          lessonId: lesson.id
+        }
+      }
     });
 
     if (!progress) {

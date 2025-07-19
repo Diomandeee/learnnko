@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/db/prisma"
+import { getServerSession } from "next-auth"
+import { authConfig } from "@/lib/auth/config"
 
 // Helper function to check if prerequisites are completed
 async function checkPrerequisites(prerequisiteSlugs: string[]): Promise<boolean> {
@@ -31,6 +33,9 @@ export async function GET(
     const { id } = await params
     const lessonSlug = id
 
+    // Get user session
+    const session = await getServerSession(authConfig)
+
     // Get lesson from database using slug
     const lesson = await prisma.nkoLesson.findUnique({
       where: { slug: lessonSlug }
@@ -43,26 +48,36 @@ export async function GET(
       )
     }
 
-    // Get or create lesson progress
-    let lessonProgress = await prisma.nkoUserLessonProgress.findUnique({
-      where: { lessonId: lesson.id }
-    })
+    let lessonProgress = null
 
-    // Create default progress if none exists
-    if (!lessonProgress) {
-      lessonProgress = await prisma.nkoUserLessonProgress.create({
-        data: {
-          lessonId: lesson.id,
-          progress: 0,
-          completed: false,
-          timeSpent: 0,
-          sectionsCompleted: [],
-          quizCompleted: false,
-          currentSection: 0,
-          lastPosition: 0,
-          exercisesCompleted: []
+    // Get or create lesson progress only if user is authenticated
+    if (session?.user?.id) {
+      lessonProgress = await prisma.nkoUserLessonProgress.findUnique({
+        where: { 
+          userId_lessonId: {
+            userId: session.user.id,
+            lessonId: lesson.id
+          }
         }
       })
+
+      // Create default progress if none exists
+      if (!lessonProgress) {
+        lessonProgress = await prisma.nkoUserLessonProgress.create({
+          data: {
+            userId: session.user.id,
+            lessonId: lesson.id,
+            progress: 0,
+            completed: false,
+            timeSpent: 0,
+            sectionsCompleted: [],
+            quizCompleted: false,
+            currentSection: 0,
+            lastPosition: 0,
+            exercisesCompleted: []
+          }
+        })
+      }
     }
 
     // Transform lesson to include progress info
@@ -83,13 +98,13 @@ export async function GET(
       culturalNotes: lesson.culturalNotes || [],
       difficulty: lesson.difficulty,
       tags: lesson.tags || [],
-      // Real progress from database
-      progress: lessonProgress.progress,
-      isCompleted: lessonProgress.completed,
-      currentSection: lessonProgress.currentSection,
-      sectionsCompleted: lessonProgress.sectionsCompleted,
-      quizCompleted: lessonProgress.quizCompleted,
-      timeSpent: lessonProgress.timeSpent,
+      // Real progress from database (or defaults if user not authenticated)
+      progress: lessonProgress?.progress || 0,
+      isCompleted: lessonProgress?.completed || false,
+      currentSection: lessonProgress?.currentSection || 0,
+      sectionsCompleted: lessonProgress?.sectionsCompleted || [],
+      quizCompleted: lessonProgress?.quizCompleted || false,
+      timeSpent: lessonProgress?.timeSpent || 0,
       // Determine if lesson is locked based on prerequisites
       isLocked: lesson.prerequisites.length === 0 ? false : await checkPrerequisites(lesson.prerequisites)
     }
