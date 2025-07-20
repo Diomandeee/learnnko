@@ -51,6 +51,17 @@ export function NkoConversation({ onStatsUpdate }: NkoConversationProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
 
+  const getResponseTranslation = (userInput: string) => {
+    const responses = [
+      "Let's keep practicing N'Ko together!",
+      "You're doing great with N'Ko!",
+      "N'Ko writing is beautiful!",
+      "That's perfect! Keep going with N'Ko!",
+      "You're becoming a N'Ko expert!"
+    ]
+    return responses[Math.floor(Math.random() * responses.length)]
+  }
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
@@ -95,13 +106,23 @@ export function NkoConversation({ onStatsUpdate }: NkoConversationProps) {
         nkoText = translateData.translation
       }
 
-      // Generate natural AI conversation response
+      // Generate conversational AI response
+      const conversationalResponses = [
+        "ߊߟߎ߫ ߦߋ߫ ߞߊ߬ ߒߞߏ ߝߐߟߌ ߞߊ߬ߟߊ߲!",
+        "ߌ ߓߘߊ߫ ߒߞߏ ߞߊߟߊ߲ ߞߍ߫ ߞߎߘߊ!",
+        "ߒߞߏ ߞߊߟߊ߲ߞߊ ߞߊ߬ ߖߊ߲߬ߓߊ߬!",
+        "ߊ߬ߟߋ ߟߋ߬ ߝߣߊ߫! ߒߞߏ ߞߊߟߊ߲ ߞߊ߬!",
+        "ߌ ߦߋ߫ ߞߊ߬ ߞߍ߫ ߒߞߏ ߞߊߟߊ߲ߞߊ ߟߊ߫!"
+      ]
+      
+      const randomResponse = conversationalResponses[Math.floor(Math.random() * conversationalResponses.length)]
+      
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: nkoText, // Just respond with the N'Ko text directly
+        content: randomResponse,
         nkoText: nkoText,
-        translation: `"${inputText}" in N'Ko`,
+        translation: getResponseTranslation(inputText),
         timestamp: new Date()
       }
 
@@ -329,7 +350,11 @@ export function NkoConversation({ onStatsUpdate }: NkoConversationProps) {
                   handleSendMessage()
                 }
               }}
-              className="min-h-[60px] resize-none"
+              className="min-h-[60px] resize-none font-nko"
+              style={{
+                direction: inputText.match(/[\u07C0-\u07FF]/) ? 'rtl' : 'ltr',
+                textAlign: inputText.match(/[\u07C0-\u07FF]/) ? 'right' : 'left'
+              }}
             />
           </div>
           <div className="flex flex-col gap-2">
