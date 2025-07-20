@@ -156,44 +156,44 @@ export function NkoLearningHub() {
       <Tabs defaultValue="conversation" className="space-y-4 md:space-y-6">
         <Card className="border-0 shadow-lg">
           <CardContent className="p-1 md:p-2">
-            {/* Mobile: Scrollable horizontal tabs */}
-            <div className="md:hidden">
-              <ScrollArea className="w-full whitespace-nowrap">
-                <TabsList className="inline-flex h-12 items-center justify-start rounded-md bg-slate-100/50 p-1 text-muted-foreground">
-                  <TabsTrigger value="conversation" className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium">
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    Chat
-                  </TabsTrigger>
-                  <TabsTrigger value="translate" className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium">
-                    <Languages className="w-4 h-4 mr-2" />
-                    Translate
-                  </TabsTrigger>
-                  <TabsTrigger value="lessons" className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium">
-                    <BookOpen className="w-4 h-4 mr-2" />
-                    Lessons
-                  </TabsTrigger>
-                  <TabsTrigger value="dictionary" className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium">
-                    <BookOpen className="w-4 h-4 mr-2" />
-                    Dictionary
-                  </TabsTrigger>
-                  <TabsTrigger value="practice" className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Practice
-                  </TabsTrigger>
-                  <TabsTrigger value="keyboard" className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium">
-                    <Keyboard className="w-4 h-4 mr-2" />
-                    Keyboard
-                  </TabsTrigger>
-                  <TabsTrigger value="library" className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium">
-                    <Archive className="w-4 h-4 mr-2" />
-                    Library
-                  </TabsTrigger>
-                  <TabsTrigger value="french" className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium">
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    French
-                  </TabsTrigger>
-                </TabsList>
-              </ScrollArea>
+            {/* Mobile: 4-column grid stacked layout */}
+            <div className="md:hidden space-y-2">
+              <TabsList className="grid w-full grid-cols-4 gap-1 bg-slate-100/50 h-auto p-1">
+                <TabsTrigger value="conversation" className="flex flex-col items-center gap-1 py-2 text-xs">
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Chat</span>
+                </TabsTrigger>
+                <TabsTrigger value="translate" className="flex flex-col items-center gap-1 py-2 text-xs">
+                  <Languages className="w-4 h-4" />
+                  <span>Translate</span>
+                </TabsTrigger>
+                <TabsTrigger value="lessons" className="flex flex-col items-center gap-1 py-2 text-xs">
+                  <BookOpen className="w-4 h-4" />
+                  <span>Lessons</span>
+                </TabsTrigger>
+                <TabsTrigger value="dictionary" className="flex flex-col items-center gap-1 py-2 text-xs">
+                  <BookOpen className="w-4 h-4" />
+                  <span>Dictionary</span>
+                </TabsTrigger>
+              </TabsList>
+              <TabsList className="grid w-full grid-cols-4 gap-1 bg-slate-100/50 h-auto p-1">
+                <TabsTrigger value="practice" className="flex flex-col items-center gap-1 py-2 text-xs">
+                  <Upload className="w-4 h-4" />
+                  <span>Practice</span>
+                </TabsTrigger>
+                <TabsTrigger value="keyboard" className="flex flex-col items-center gap-1 py-2 text-xs">
+                  <Keyboard className="w-4 h-4" />
+                  <span>Keyboard</span>
+                </TabsTrigger>
+                <TabsTrigger value="library" className="flex flex-col items-center gap-1 py-2 text-xs">
+                  <Archive className="w-4 h-4" />
+                  <span>Library</span>
+                </TabsTrigger>
+                <TabsTrigger value="french" className="flex flex-col items-center gap-1 py-2 text-xs">
+                  <MessageCircle className="w-4 h-4" />
+                  <span>French</span>
+                </TabsTrigger>
+              </TabsList>
             </div>
 
             {/* Tablet: Grid layout */}
