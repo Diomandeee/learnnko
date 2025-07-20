@@ -1,0 +1,95 @@
+<svg width="400" height="120" viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradient definitions -->
+    <linearGradient id="primaryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#14b8a6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="iconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#34d399;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#2dd4bf;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#22d3ee;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#38bdf8;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f59e0b;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Glow effect -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Drop shadow -->
+    <filter id="dropshadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="2" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- Background circle with subtle pattern -->
+  <circle cx="60" cy="60" r="50" fill="url(#iconGradient)" opacity="0.1"/>
+  
+  <!-- Main logo container -->
+  <g transform="translate(10, 10)">
+    <!-- Outer ring -->
+    <circle cx="50" cy="50" r="45" fill="none" stroke="url(#primaryGradient)" stroke-width="2" opacity="0.6"/>
+    
+    <!-- Inner decorative elements -->
+    <circle cx="50" cy="50" r="35" fill="url(#iconGradient)" filter="url(#dropshadow)"/>
+    
+    <!-- Geometric accent patterns -->
+    <g opacity="0.3">
+      <!-- Corner accent dots -->
+      <circle cx="25" cy="25" r="2" fill="url(#accentGradient)"/>
+      <circle cx="75" cy="25" r="2" fill="url(#accentGradient)"/>
+      <circle cx="25" cy="75" r="2" fill="url(#accentGradient)"/>
+      <circle cx="75" cy="75" r="2" fill="url(#accentGradient)"/>
+      
+      <!-- Subtle stroke guides -->
+      <path d="M 20 50 Q 35 35 50 50 Q 65 65 80 50" stroke="url(#accentGradient)" stroke-width="1" fill="none"/>
+    </g>
+    
+    <!-- Central N'Ko character -->
+    <text x="50" y="65" text-anchor="middle" fill="white" font-size="28" font-weight="bold" font-family="serif" filter="url(#glow)">ߒ</text>
+    
+    <!-- Accent indicator dot -->
+    <circle cx="75" cy="25" r="4" fill="url(#accentGradient)" filter="url(#glow)"/>
+  </g>
+  
+  <!-- Company name -->
+  <g transform="translate(130, 20)">
+    <!-- Main title -->
+    <text x="0" y="35" fill="url(#primaryGradient)" font-size="32" font-weight="bold" font-family="system-ui, -apple-system, sans-serif">N'Ko Hub</text>
+    
+    <!-- Tagline -->
+    <text x="0" y="55" fill="#6b7280" font-size="12" font-weight="500" font-family="system-ui, -apple-system, sans-serif">Learn • Practice • Master</text>
+    
+    <!-- Subtitle -->
+    <text x="0" y="75" fill="#9ca3af" font-size="10" font-family="system-ui, -apple-system, sans-serif">Modern N'Ko Language Learning</text>
+  </g>
+  
+  <!-- Decorative elements -->
+  <g opacity="0.4">
+    <!-- Flowing stroke path -->
+    <path d="M 120 45 Q 125 40 130 45 T 140 45" stroke="url(#primaryGradient)" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    
+    <!-- Small accent dots -->
+    <circle cx="380" cy="30" r="1.5" fill="url(#accentGradient)"/>
+    <circle cx="385" cy="35" r="1" fill="url(#primaryGradient)"/>
+    <circle cx="375" cy="38" r="1" fill="url(#iconGradient)"/>
+  </g>
+  
+  <!-- Right-to-left writing direction indicator (subtle) -->
+  <g transform="translate(320, 80)" opacity="0.3">
+    <path d="M 0 5 L 15 5 M 3 2 L 0 5 L 3 8" stroke="url(#primaryGradient)" stroke-width="1" fill="none" stroke-linecap="round"/>
+    <text x="20" y="9" fill="#6b7280" font-size="8" font-family="system-ui, -apple-system, sans-serif">R-to-L Script</text>
+  </g>
+</svg>

@@ -16,8 +16,10 @@ import {
   Volume2,
   Save,
   Send,
-  MessageCircle
+  MessageCircle,
+  Keyboard
 } from "lucide-react"
+import { NkoKeyboard } from "@/components/nko/input/nko-keyboard"
 
 interface Message {
   id: string
@@ -39,6 +41,7 @@ export function NkoConversation({ onStatsUpdate }: NkoConversationProps) {
   const [inputText, setInputText] = useState("")
   const [isRecording, setIsRecording] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [showKeyboard, setShowKeyboard] = useState(false)
   const [stats, setStats] = useState({
     messagesCount: 0,
     wordsLearned: 0
@@ -92,13 +95,13 @@ export function NkoConversation({ onStatsUpdate }: NkoConversationProps) {
         nkoText = translateData.translation
       }
 
-      // Simulate AI conversation response (you can integrate with actual AI later)
+      // Generate natural AI conversation response
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `Great! You said: "${inputText}". Let me help you practice N'Ko.`,
+        content: nkoText, // Just respond with the N'Ko text directly
         nkoText: nkoText,
-        translation: inputText,
+        translation: `"${inputText}" in N'Ko`,
         timestamp: new Date()
       }
 
@@ -340,6 +343,14 @@ export function NkoConversation({ onStatsUpdate }: NkoConversationProps) {
             <Button
               variant="outline"
               size="icon"
+              onClick={() => setShowKeyboard(!showKeyboard)}
+              className={showKeyboard ? "bg-blue-100 border-blue-300" : ""}
+            >
+              <Keyboard className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
               onClick={isRecording ? stopRecording : startRecording}
               className={isRecording ? "bg-red-100 border-red-300" : ""}
             >
@@ -347,6 +358,25 @@ export function NkoConversation({ onStatsUpdate }: NkoConversationProps) {
             </Button>
           </div>
         </div>
+        
+        {/* N'Ko Virtual Keyboard */}
+        {showKeyboard && (
+          <div className="mt-4 p-4 border rounded-lg bg-slate-50">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium">N'Ko Virtual Keyboard</h3>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowKeyboard(false)}
+              >
+                ×
+              </Button>
+            </div>
+            <NkoKeyboard 
+              onCharacterClick={(char) => setInputText(prev => prev + char)}
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   )

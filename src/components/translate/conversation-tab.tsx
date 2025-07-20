@@ -802,27 +802,41 @@ useEffect(() => {
         {/* Chat Tab */}
         <TabsContent value="chat">
           {/* Topic Selection */}
-          <div className="flex gap-2 mb-4">
-
-            {conversationTopics.map(topic => (
-              <TooltipProvider key={topic.id}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={selectedTopic === topic.id ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSelectedTopic(topic.id)}
-                    >
-                      <topic.icon className="h-4 w-4 mr-2" />
-                      {topic.name}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Start a conversation about {topic.name.toLowerCase()}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ))}
+          <div className="space-y-4 mb-4">
+            {!selectedTopic && (
+              <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
+                <h3 className="font-semibold text-primary mb-2 flex items-center gap-2">
+                  <Info className="h-4 w-4" />
+                  Choose a conversation topic to get started
+                </h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Select a topic below to enable voice and text input for your French conversation practice.
+                </p>
+              </div>
+            )}
+            
+            <div className="flex gap-2 flex-wrap">
+              {conversationTopics.map(topic => (
+                <TooltipProvider key={topic.id}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={selectedTopic === topic.id ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSelectedTopic(topic.id)}
+                        className={`${!selectedTopic ? 'ring-2 ring-primary/50 animate-pulse' : ''}`}
+                      >
+                        <topic.icon className="h-4 w-4 mr-2" />
+                        {topic.name}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Start a conversation about {topic.name.toLowerCase()}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ))}
+            </div>
           </div>
 
           <div className="col-span-1">
@@ -986,27 +1000,37 @@ useEffect(() => {
           {/* Input Controls */}
           <Card>
             <CardContent className="p-4 space-y-4">
-              {/* Input Mode Toggle */}
-              <div className="flex items-center justify-center gap-2">
-                <Button
-                  variant={inputMode === 'voice' ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setInputMode('voice')}
-                  className="gap-2"
-                >
-                  <Mic className="h-4 w-4" />
-                  Voice
-                </Button>
-                <Button
-                  variant={inputMode === 'text' ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setInputMode('text')}
-                  className="gap-2"
-                >
-                  <Type className="h-4 w-4" />
-                  Text
-                </Button>
-              </div>
+              {!selectedTopic && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="font-medium">Voice and text input disabled</p>
+                  <p className="text-sm">Please select a conversation topic above to continue</p>
+                </div>
+              )}
+              
+              {selectedTopic && (
+                <>
+                  {/* Input Mode Toggle */}
+                  <div className="flex items-center justify-center gap-2">
+                    <Button
+                      variant={inputMode === 'voice' ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setInputMode('voice')}
+                      className="gap-2"
+                    >
+                      <Mic className="h-4 w-4" />
+                      Voice
+                    </Button>
+                    <Button
+                      variant={inputMode === 'text' ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setInputMode('text')}
+                      className="gap-2"
+                    >
+                      <Type className="h-4 w-4" />
+                      Text
+                    </Button>
+                  </div>
 
               {/* Voice Input */}
               {inputMode === 'voice' && (
@@ -1080,32 +1104,35 @@ useEffect(() => {
                 </div>
               )}
 
-              {/* Common Controls */}
-              <div className="flex items-center justify-center">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => {
-                    setMessages([messages[0]])
-                    setStats({
-                      totalMessages: 0,
-                      correctSentences: 0,
-                      grammarMistakes: 0,
-                      vocabularyUsed: new Set(),
-                      timeSpent: 0,
-                      accuracy: 0
-                    })
-                    sessionStartRef.current = new Date()
-                    setTextInput("")
-                  }}
-                  disabled={isRecording || isProcessing || messages.length < 2}
-                >
-                  <RefreshCcw className="h-4 w-4" />
-                  Reset Conversation
-                </Button>
-              </div>
-                <div className="flex items-center justify-between px-4 py-2 text-sm">
+                  {/* Common Controls */}
+                  <div className="flex items-center justify-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => {
+                        setMessages([messages[0]])
+                        setStats({
+                          totalMessages: 0,
+                          correctSentences: 0,
+                          grammarMistakes: 0,
+                          vocabularyUsed: new Set(),
+                          timeSpent: 0,
+                          accuracy: 0
+                        })
+                        sessionStartRef.current = new Date()
+                        setTextInput("")
+                      }}
+                      disabled={isRecording || isProcessing || messages.length < 2}
+                    >
+                      <RefreshCcw className="h-4 w-4" />
+                      Reset Conversation
+                    </Button>
+                  </div>
+                </>
+              )}
+              
+              <div className="flex items-center justify-between px-4 py-2 text-sm">
     <div className="flex items-center gap-2">
       {isSaving ? (
         <div className="flex items-center text-muted-foreground">

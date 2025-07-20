@@ -20,8 +20,8 @@ export function TranslatorContainer() {
     toLang: string;
     timestamp: Date;
   }[]>([])
-  const [fromLang, setFromLang] = useState("nko")
-  const [toLang, setToLang] = useState("english")
+  const [fromLang, setFromLang] = useState("english")
+  const [toLang, setToLang] = useState("nko")
   const { toast } = useToast()
 
   // Fetch translation history on load
