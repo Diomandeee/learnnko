@@ -1,20 +1,19 @@
-"use client"
+import { Metadata } from "next"
+import { TranslatorContainer } from "@/components/nko/translator/translator-container"
 
-import { NkoTranslator } from "@/components/nko/translate/nko-translator"
+export const metadata: Metadata = {
+  title: "N'Ko Translator | French Connect",
+  description: "Translate between N'Ko, English, and French languages",
+}
 
-export default function NkoTranslatorPage() {
+export default function TranslatorPage() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">N'Ko Translator</h1>
-          <p className="text-muted-foreground">
-            Bidirectional translation between French/English and N'Ko with history tracking
-          </p>
-        </div>
+    <div className="flex-1 space-y-4 p-8 pt-6">
+      <div className="flex items-center justify-between space-y-2">
+        <h2 className="text-3xl font-bold tracking-tight">N'Ko Translator</h2>
       </div>
-
-      <NkoTranslator onTranslationSave={(text, translation) => console.log('Translation saved:', text, translation)} />
+      
+      <TranslatorContainer />
     </div>
   )
-} 
+}

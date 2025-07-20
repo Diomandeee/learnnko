@@ -8,8 +8,10 @@ export const metadata: Metadata = {
 
 export default function NkoPage() {
   return (
-    <div className="container mx-auto py-6">
-      <NkoLearningHub />
+    <div className="min-h-screen">
+      <div className="container mx-auto py-12">
+        <NkoLearningHub />
+      </div>
     </div>
   )
 } 

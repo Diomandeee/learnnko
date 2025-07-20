@@ -44,10 +44,15 @@ export function SavedWords({ className }: SavedWordsProps) {
           const data = await response.json()
           setSavedWords(data.favorites || [])
           setFilteredWords(data.favorites || [])
+        } else if (response.status === 401) {
+          // User not logged in - just set empty state, no error
+          setSavedWords([])
+          setFilteredWords([])
         } else {
           throw new Error('Failed to load saved words')
         }
       } catch (error) {
+        console.error('SavedWords error:', error)
         toast({
           title: "Error",
           description: "Failed to load saved words",
@@ -248,7 +253,7 @@ export function SavedWords({ className }: SavedWordsProps) {
                   <>
                     <h3 className="text-lg font-medium">No saved words</h3>
                     <p className="text-muted-foreground">
-                      Your saved words will appear here
+                      Sign in to save your favorite N'Ko words and build your personal dictionary
                     </p>
                   </>
                 )}

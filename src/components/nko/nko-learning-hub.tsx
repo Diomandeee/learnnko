@@ -19,6 +19,7 @@ import {
   Star,
   Volume2
 } from "lucide-react"
+import { TranslatorContainer } from "@/components/nko/translator/translator-container"
 
 import { NkoConversation } from "@/components/nko/conversation/nko-conversation"
 import { NkoTranslator } from "@/components/nko/translate/nko-translator" 
@@ -26,7 +27,11 @@ import { NkoTranscriber } from "@/components/nko/transcriber/nko-transcriber"
 import { NkoKeyboard } from "@/components/nko/input/nko-keyboard"
 import { NkoLessonList } from "@/components/nko/lessons/nko-lesson-list"
 import { NkoDictionarySearch } from "@/components/nko/dictionary/nko-dictionary-search"
+import { ExternalSearch } from "@/components/nko/dictionary/external/external-search"
+import { WordCategories } from "@/components/nko/dictionary/word-categories"
+import { SavedWords } from "@/components/nko/dictionary/saved-words"
 import { NkoPracticeHub } from "@/components/nko/practice/nko-practice-hub"
+import { TranslatorQuickAccess } from "@/components/nko/translate/translator-quick-access"
 
 interface SavedText {
   id: string
@@ -107,34 +112,49 @@ export function NkoLearningHub() {
   }, [loadSavedTexts])
 
   return (
-    <div className="space-y-6 bg-background text-foreground min-h-screen">
-      {/* Header */}
-      <div className="flex items-center justify-between p-6 bg-card border-b">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">N'Ko Learning Hub</h1>
-          <p className="text-muted-foreground">
-            Comprehensive N'Ko language learning with conversation, translation, and transcription
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary">
-            <MessageCircle className="w-3 h-3 mr-1" />
-            {stats.messagesCount} messages
-          </Badge>
-          <Badge variant="secondary">
-            <BookOpen className="w-3 h-3 mr-1" />
-            {stats.vocabulary} words
-          </Badge>
-          <Badge variant="secondary">
-            <Archive className="w-3 h-3 mr-1" />
-            {stats.savedTexts} texts
-          </Badge>
-        </div>
-      </div>
+    <div className="space-y-8">
+      {/* Enhanced Header */}
+      <Card className="border-0 shadow-xl bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50">
+        <CardHeader className="pb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
+                <Languages className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-teal-700 bg-clip-text text-transparent">
+                  N'Ko Learning Hub
+                </CardTitle>
+                <p className="text-lg text-slate-600 mt-1">
+                  Comprehensive N'Ko language learning with conversation, translation, and transcription
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-emerald-600">{stats.messagesCount}</div>
+                <div className="text-sm text-slate-600">Messages</div>
+              </div>
+              <div className="w-px h-12 bg-slate-300"></div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-teal-600">{stats.vocabulary}</div>
+                <div className="text-sm text-slate-600">Words Learned</div>
+              </div>
+              <div className="w-px h-12 bg-slate-300"></div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-cyan-600">{stats.savedTexts}</div>
+                <div className="text-sm text-slate-600">Saved Texts</div>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
 
       {/* Main Interface */}
-      <Tabs defaultValue="conversation" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-7 gap-1">
+      <Tabs defaultValue="conversation" className="space-y-6">
+        <Card className="border-0 shadow-lg">
+          <CardContent className="p-2">
+            <TabsList className="grid w-full grid-cols-7 gap-1 bg-slate-100/50">
           <TabsTrigger value="conversation" className="text-xs">
             <MessageCircle className="w-3 h-3 mr-1" />
             Chat
@@ -164,6 +184,8 @@ export function NkoLearningHub() {
             Library
           </TabsTrigger>
         </TabsList>
+          </CardContent>
+        </Card>
 
         {/* Conversation Tab */}
         <TabsContent value="conversation">
@@ -172,23 +194,50 @@ export function NkoLearningHub() {
 
         {/* Translation Tab */}
         <TabsContent value="translate">
-          <NkoTranslator onTranslationSave={handleTranslationSave} />
+          <TranslatorContainer />
         </TabsContent>
 
         {/* Lessons Tab */}
         <TabsContent value="lessons">
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold">N'Ko Lessons</h2>
-            <NkoLessonList level="beginner" completedLessons={[]} />
+            <NkoLessonList />
           </div>
         </TabsContent>
 
         {/* Dictionary Tab */}
         <TabsContent value="dictionary">
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold">N'Ko Dictionary</h2>
-            <NkoDictionarySearch />
-          </div>
+          <Tabs defaultValue="nko">
+            <TabsList>
+              <TabsTrigger value="nko">N'Ko Dictionary</TabsTrigger>
+              <TabsTrigger value="bambara">Bambara Dictionary</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="nko" className="pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-2">
+                  <NkoDictionarySearch />
+                </div>
+                
+                <div className="space-y-6">
+                  <WordCategories />
+                  <SavedWords />
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="bambara" className="pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-2">
+                  <ExternalSearch />
+                </div>
+                
+                <div className="space-y-6">
+                  <WordCategories />
+                  <SavedWords />
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {/* Practice Tab */}
@@ -366,6 +415,11 @@ export function NkoLearningHub() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Quick Access Widgets */}
+      <div className="mt-8">
+        <TranslatorQuickAccess compact={true} />
+      </div>
     </div>
   )
 } 

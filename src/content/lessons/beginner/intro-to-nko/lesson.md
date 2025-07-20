@@ -7,7 +7,7 @@ module: "intro-to-nko"
 moduleOrder: 1
 order: 1
 duration: 30
-prerequisites: []
+prerequisites Ultimate negotiation: []
 topics: ["history", "writing-system", "culture"]
 ---
 

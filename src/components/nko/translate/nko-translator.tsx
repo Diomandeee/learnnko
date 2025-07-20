@@ -17,13 +17,10 @@ import {
   History,
   ArrowRightLeft,
   MessageCircle,
-  Mic,
   Volume2
 } from "lucide-react"
 
 // Import existing translate components
-import { RecordingControls } from "@/components/translate/recording-controls"
-import { AudioPlayer } from "@/components/translate/audio-player"
 import { SuggestionPanelWithSave } from "@/components/translate/suggestions/suggestion-panel-with-save"
 import { ConversationTab } from "@/components/translate/conversation-tab"
 
@@ -45,8 +42,6 @@ export function NkoTranslator({ onTranslationSave }: NkoTranslatorProps) {
   const [isTranslating, setIsTranslating] = useState(false)
   const [translationDirection, setTranslationDirection] = useState<'to-nko' | 'from-nko'>('to-nko')
   const [translationHistory, setTranslationHistory] = useState<TranslationItem[]>([])
-  const [isRecording, setIsRecording] = useState(false)
-  const [recordedAudio, setRecordedAudio] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("translate")
   const { toast } = useToast()
 
@@ -64,31 +59,7 @@ export function NkoTranslator({ onTranslationSave }: NkoTranslatorProps) {
     }
   }
 
-  const handleRecordingComplete = async (audioBlob: Blob) => {
-    setIsRecording(false)
-    // Convert audio to text using STT
-    try {
-      const audioData = await audioBlob.arrayBuffer()
-      const base64Audio = btoa(String.fromCharCode(...new Uint8Array(audioData)))
-      
-      const response = await fetch('/api/stt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audio: base64Audio })
-      })
-      
-      const data = await response.json()
-      if (data.text) {
-        setSourceText(data.text)
-      }
-    } catch (error) {
-      toast({
-        title: "Transcription failed",
-        description: "Could not convert speech to text",
-        variant: "destructive"
-      })
-    }
-  }
+
 
   const handleTranslate = async () => {
     if (!sourceText.trim()) return
@@ -149,7 +120,6 @@ export function NkoTranslator({ onTranslationSave }: NkoTranslatorProps) {
   const clearText = () => {
     setSourceText("")
     setTranslatedText("")
-    setRecordedAudio(null)
   }
 
   const copyToClipboard = async () => {
@@ -221,7 +191,7 @@ export function NkoTranslator({ onTranslationSave }: NkoTranslatorProps) {
 
       {/* Main Translation Interface */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="translate">
             <Languages className="w-4 h-4 mr-2" />
             Translate
@@ -229,10 +199,6 @@ export function NkoTranslator({ onTranslationSave }: NkoTranslatorProps) {
           <TabsTrigger value="conversation">
             <MessageCircle className="w-4 h-4 mr-2" />
             Conversation
-          </TabsTrigger>
-          <TabsTrigger value="voice">
-            <Mic className="w-4 h-4 mr-2" />
-            Voice
           </TabsTrigger>
           <TabsTrigger value="history">
             <History className="w-4 h-4 mr-2" />
@@ -348,43 +314,7 @@ export function NkoTranslator({ onTranslationSave }: NkoTranslatorProps) {
           )}
         </TabsContent>
 
-        {/* Voice Translation Tab */}
-        <TabsContent value="voice" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mic className="w-5 h-5" />
-                Voice Translation
-              </CardTitle>
-              <CardDescription>
-                Speak to translate or upload audio files
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <RecordingControls 
-                onRecordingComplete={handleRecordingComplete}
-                isRecording={isRecording}
-                onRecordingStateChange={setIsRecording}
-              />
-              
-              {recordedAudio && (
-                <AudioPlayer audioSrc={recordedAudio} />
-              )}
-              
-              {sourceText && (
-                <div className="space-y-2">
-                  <h3 className="font-medium">Transcribed Text:</h3>
-                  <div className="p-3 border rounded-md bg-muted/50">
-                    {sourceText}
-                  </div>
-                  <Button onClick={handleTranslate} disabled={isTranslating} className="w-full">
-                    {isTranslating ? "Translating..." : "Translate to N'Ko"}
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+
 
         {/* Conversation Tab */}
         <TabsContent value="conversation" className="space-y-4">

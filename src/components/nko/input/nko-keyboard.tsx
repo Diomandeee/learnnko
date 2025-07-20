@@ -53,12 +53,16 @@ export function NkoKeyboard({ onCharacterClick }: NkoKeyboardProps) {
             </TabsList>
             
             <TabsContent value="consonants" className="mt-0">
-              <div className="grid grid-cols-5 gap-1 sm:grid-cols-7 lg:grid-cols-10">
+              <div className="grid grid-cols-5 gap-1 sm:grid-cols-7 lg:grid-cols-10" style={{ direction: 'ltr' }}>
                 {consonants.map((char, index) => (
                   <Button
                     key={index}
                     variant="outline"
-                    className="h-12 text-lg font-nko"
+                    className="h-12 text-lg"
+                    style={{ 
+                      fontFamily: "'Noto Sans NKo', 'Noto Sans N\\'Ko', system-ui, sans-serif",
+                      direction: 'rtl'
+                    }}
                     onClick={() => onCharacterClick(char)}
                   >
                     {char}
@@ -68,12 +72,16 @@ export function NkoKeyboard({ onCharacterClick }: NkoKeyboardProps) {
             </TabsContent>
             
             <TabsContent value="vowels" className="mt-0">
-              <div className="grid grid-cols-4 gap-1 sm:grid-cols-7">
+              <div className="grid grid-cols-4 gap-1 sm:grid-cols-7" style={{ direction: 'ltr' }}>
                 {vowels.map((char, index) => (
                   <Button
                     key={index}
                     variant="outline"
-                    className="h-12 text-lg font-nko"
+                    className="h-12 text-lg"
+                    style={{ 
+                      fontFamily: "'Noto Sans NKo', 'Noto Sans N\\'Ko', system-ui, sans-serif",
+                      direction: 'rtl'
+                    }}
                     onClick={() => onCharacterClick(char)}
                   >
                     {char}
@@ -83,12 +91,16 @@ export function NkoKeyboard({ onCharacterClick }: NkoKeyboardProps) {
             </TabsContent>
             
             <TabsContent value="special" className="mt-0">
-              <div className="grid grid-cols-5 gap-1 sm:grid-cols-7 lg:grid-cols-8">
+              <div className="grid grid-cols-5 gap-1 sm:grid-cols-7 lg:grid-cols-8" style={{ direction: 'ltr' }}>
                 {specialChars.map((char, index) => (
                   <Button
                     key={index}
                     variant="outline"
-                    className="h-12 text-lg font-nko"
+                    className="h-12 text-lg"
+                    style={{ 
+                      fontFamily: "'Noto Sans NKo', 'Noto Sans N\\'Ko', system-ui, sans-serif",
+                      direction: 'rtl'
+                    }}
                     onClick={() => onCharacterClick(char)}
                   >
                     {char}
@@ -98,12 +110,16 @@ export function NkoKeyboard({ onCharacterClick }: NkoKeyboardProps) {
             </TabsContent>
             
             <TabsContent value="numbers" className="mt-0">
-              <div className="grid grid-cols-5 gap-1 sm:grid-cols-10">
+              <div className="grid grid-cols-5 gap-1 sm:grid-cols-10" style={{ direction: 'ltr' }}>
                 {numbers.map((char, index) => (
                   <Button
                     key={index}
                     variant="outline"
-                    className="h-12 text-lg font-nko"
+                    className="h-12 text-lg"
+                    style={{ 
+                      fontFamily: "'Noto Sans NKo', 'Noto Sans N\\'Ko', system-ui, sans-serif",
+                      direction: 'rtl'
+                    }}
                     onClick={() => onCharacterClick(char)}
                   >
                     {char}
@@ -113,7 +129,7 @@ export function NkoKeyboard({ onCharacterClick }: NkoKeyboardProps) {
             </TabsContent>
             
             <TabsContent value="phrases" className="mt-0">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2" style={{ direction: 'ltr' }}>
                 {[
                   "ߌ ߣߌ߫ ߕߌ߭",
                   "ߊߟߎ ߦߋ߫ ߡߍ߲ ߞߊ߲߬",
@@ -123,7 +139,11 @@ export function NkoKeyboard({ onCharacterClick }: NkoKeyboardProps) {
                   <Button
                     key={index}
                     variant="outline"
-                    className="h-12 text-sm font-nko"
+                    className="h-12 text-sm"
+                    style={{ 
+                      fontFamily: "'Noto Sans NKo', 'Noto Sans N\\'Ko', system-ui, sans-serif",
+                      direction: 'rtl'
+                    }}
                     onClick={() => onCharacterClick(` ${phrase} `)}
                   >
                     {phrase}
