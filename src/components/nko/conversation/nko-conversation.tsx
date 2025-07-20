@@ -151,7 +151,22 @@ export function NkoConversation({ onStatsUpdate }: NkoConversationProps) {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mediaRecorder = new MediaRecorder(stream)
+      
+      // Try to get the best audio format available
+      let options: MediaRecorderOptions = {}
+      
+      // Check what formats are supported and prefer the best ones
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        options.mimeType = 'audio/webm;codecs=opus'
+      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+        options.mimeType = 'audio/webm'
+      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        options.mimeType = 'audio/mp4'
+      } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+        options.mimeType = 'audio/ogg;codecs=opus'
+      }
+      
+      const mediaRecorder = new MediaRecorder(stream, options)
       const audioChunks: BlobPart[] = []
 
       mediaRecorder.ondataavailable = (event) => {
@@ -159,7 +174,10 @@ export function NkoConversation({ onStatsUpdate }: NkoConversationProps) {
       }
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' })
+        // Use the actual MIME type from the MediaRecorder
+        const mimeType = mediaRecorder.mimeType || options.mimeType || 'audio/webm'
+        const audioBlob = new Blob(audioChunks, { type: mimeType })
+        console.log('Recording blob created with type:', mimeType)
         await handleAudioTranscription(audioBlob)
       }
 
@@ -173,6 +191,7 @@ export function NkoConversation({ onStatsUpdate }: NkoConversationProps) {
       })
 
     } catch (error) {
+      console.error('Recording error:', error)
       toast({
         title: "Recording Error",
         description: "Could not access microphone",
@@ -190,8 +209,26 @@ export function NkoConversation({ onStatsUpdate }: NkoConversationProps) {
   }
 
   const handleAudioTranscription = async (audioBlob: Blob) => {
+    // Get the correct file extension based on MIME type
+    let fileExtension = 'wav'
+    const mimeType = audioBlob.type
+    
+    if (mimeType.includes('webm')) {
+      fileExtension = 'webm'
+    } else if (mimeType.includes('ogg')) {
+      fileExtension = 'ogg'
+    } else if (mimeType.includes('mp4') || mimeType.includes('m4a')) {
+      fileExtension = 'm4a'
+    } else if (mimeType.includes('wav')) {
+      fileExtension = 'wav'
+    } else if (mimeType.includes('mp3')) {
+      fileExtension = 'mp3'
+    }
+    
+    console.log(`Sending audio for transcription: ${mimeType} -> .${fileExtension}`)
+    
     const formData = new FormData()
-    formData.append('audio', audioBlob, 'recording.wav')
+    formData.append('audio', audioBlob, `recording.${fileExtension}`)
 
     try {
       const response = await fetch('/api/stt', {
@@ -199,13 +236,28 @@ export function NkoConversation({ onStatsUpdate }: NkoConversationProps) {
         body: formData
       })
 
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
       const data = await response.json()
-      setInputText(data.transcription || "Could not transcribe audio")
+      
+      if (data.error) {
+        throw new Error(data.error)
+      }
+      
+      setInputText(data.text || "Could not transcribe audio")
+      
+      toast({
+        title: "Transcription complete",
+        description: "Audio converted to text successfully"
+      })
       
     } catch (error) {
+      console.error('Transcription error:', error)
       toast({
         title: "Transcription Error",
-        description: "Failed to transcribe audio",
+        description: error instanceof Error ? error.message : "Failed to transcribe audio",
         variant: "destructive"
       })
     }

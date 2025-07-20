@@ -5,51 +5,64 @@ import os from 'os'; // For temporary directory
 
 export async function POST(req: Request) {
   try {
-    // Check content type and handle different request formats
     const contentType = req.headers.get('content-type') || '';
-    let audio: string;
-
-    if (contentType.includes('application/json')) {
-      try {
-        const body = await req.json();
-        audio = body.audio;
-      } catch (jsonError) {
-        console.error('JSON parsing error:', jsonError);
-        return NextResponse.json({ error: "Invalid JSON format" }, { status: 400 });
+    
+    let audioBuffer: Buffer;
+    let fileExtension = 'wav'; // Default extension
+    
+    if (contentType.includes('multipart/form-data')) {
+      // Handle FormData from frontend
+      const formData = await req.formData();
+      const audioFile = formData.get('audio') as File;
+      
+      if (!audioFile) {
+        return NextResponse.json({ error: "No audio file provided" }, { status: 400 });
       }
-    } else if (contentType.includes('multipart/form-data') || contentType.includes('application/octet-stream')) {
-      // Handle direct audio upload
-      const audioBuffer = await req.arrayBuffer();
-      audio = Buffer.from(audioBuffer).toString('base64');
+      
+      // Get the actual file type and set appropriate extension
+      const audioType = audioFile.type;
+      console.log('Received audio type:', audioType);
+      
+      // Map MIME types to file extensions
+      if (audioType.includes('webm')) {
+        fileExtension = 'webm';
+      } else if (audioType.includes('ogg')) {
+        fileExtension = 'ogg';
+      } else if (audioType.includes('mp4') || audioType.includes('m4a')) {
+        fileExtension = 'm4a';
+      } else if (audioType.includes('wav')) {
+        fileExtension = 'wav';
+      } else if (audioType.includes('mp3')) {
+        fileExtension = 'mp3';
+      } else {
+        // Default to webm for unknown types (most common from MediaRecorder)
+        fileExtension = 'webm';
+      }
+      
+      audioBuffer = Buffer.from(await audioFile.arrayBuffer());
+    } else if (contentType.includes('application/json')) {
+      // Handle base64 encoded audio
+      const body = await req.json();
+      if (!body.audio) {
+        return NextResponse.json({ error: "No audio data provided" }, { status: 400 });
+      }
+      audioBuffer = Buffer.from(body.audio, 'base64');
     } else {
-      // Try to read as text and parse
-      try {
-        const text = await req.text();
-        if (text.startsWith('{')) {
-          const body = JSON.parse(text);
-          audio = body.audio;
-        } else {
-          return NextResponse.json({ error: "Unsupported content type. Expected JSON with audio field." }, { status: 400 });
-        }
-      } catch (parseError) {
-        console.error('Text parsing error:', parseError);
-        return NextResponse.json({ error: "Invalid request format" }, { status: 400 });
-      }
+      return NextResponse.json({ error: "Unsupported content type" }, { status: 400 });
     }
 
-    if (!audio) {
-      return NextResponse.json({ error: "No audio data provided" }, { status: 400 });
-    }
-
-    const audioBuffer = Buffer.from(audio, 'base64');
-
-    // More robust temporary file handling using os.tmpdir()
-    const tempFileName = `temp-${Date.now()}.webm`;
-    const tempFilePath = `${os.tmpdir()}/${tempFileName}`; // Use os.tmpdir()
+    // Create temporary file with correct extension
+    const tempFileName = `temp-audio-${Date.now()}.${fileExtension}`;
+    const tempFilePath = `${os.tmpdir()}/${tempFileName}`;
 
     await fsPromises.writeFile(tempFilePath, audioBuffer);
+    console.log(`Created temp file: ${tempFilePath} with extension: ${fileExtension}`);
 
-    const audioFileStream = createReadStream(tempFilePath); // Use createReadStream
+    // Create file stream for OpenAI
+    const audioFileStream = createReadStream(tempFilePath);
+    
+    // Add filename to the stream for OpenAI to properly detect format
+    (audioFileStream as any).path = tempFilePath;
 
     const transcription = await openai.audio.transcriptions.create({
       file: audioFileStream,
@@ -57,7 +70,8 @@ export async function POST(req: Request) {
       response_format: "text",
     });
 
-    await fsPromises.unlink(tempFilePath); // Clean up
+    // Clean up temporary file
+    await fsPromises.unlink(tempFilePath);
 
     return NextResponse.json({ text: transcription });
   } catch (error) {
