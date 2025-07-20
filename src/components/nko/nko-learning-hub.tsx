@@ -20,6 +20,7 @@ import {
   Volume2
 } from "lucide-react"
 import { TranslatorContainer } from "@/components/nko/translator/translator-container"
+import { ConversationTab } from "@/components/translate/conversation-tab"
 
 import { NkoConversation } from "@/components/nko/conversation/nko-conversation"
 import { NkoTranslator } from "@/components/nko/translate/nko-translator" 
@@ -187,6 +188,10 @@ export function NkoLearningHub() {
                     <Archive className="w-4 h-4 mr-2" />
                     Library
                   </TabsTrigger>
+                  <TabsTrigger value="french" className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium">
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    French
+                  </TabsTrigger>
                 </TabsList>
               </ScrollArea>
             </div>
@@ -211,7 +216,7 @@ export function NkoLearningHub() {
                   <span>Dictionary</span>
                 </TabsTrigger>
               </TabsList>
-              <TabsList className="grid w-full grid-cols-3 gap-1 bg-slate-100/50">
+              <TabsList className="grid w-full grid-cols-4 gap-1 bg-slate-100/50">
                 <TabsTrigger value="practice" className="flex items-center gap-2 py-3">
                   <Upload className="w-4 h-4" />
                   <span>Practice</span>
@@ -224,11 +229,15 @@ export function NkoLearningHub() {
                   <Archive className="w-4 h-4" />
                   <span>Library</span>
                 </TabsTrigger>
+                <TabsTrigger value="french" className="flex items-center gap-2 py-3">
+                  <MessageCircle className="w-4 h-4" />
+                  <span>French</span>
+                </TabsTrigger>
               </TabsList>
             </div>
 
             {/* Desktop: Single row with all tabs */}
-            <TabsList className="hidden lg:grid w-full grid-cols-7 gap-1 bg-slate-100/50">
+            <TabsList className="hidden lg:grid w-full grid-cols-8 gap-1 bg-slate-100/50">
               <TabsTrigger value="conversation" className="flex items-center gap-2 py-3">
                 <MessageCircle className="w-4 h-4" />
                 Chat
@@ -256,6 +265,10 @@ export function NkoLearningHub() {
               <TabsTrigger value="library" className="flex items-center gap-2 py-3">
                 <Archive className="w-4 h-4" />
                 Library
+              </TabsTrigger>
+              <TabsTrigger value="french" className="flex items-center gap-2 py-3">
+                <MessageCircle className="w-4 h-4" />
+                French
               </TabsTrigger>
             </TabsList>
           </CardContent>
@@ -488,6 +501,11 @@ export function NkoLearningHub() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* French Conversation Tab */}
+        <TabsContent value="french">
+          <ConversationTab />
         </TabsContent>
       </Tabs>
 
