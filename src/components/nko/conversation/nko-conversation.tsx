@@ -51,15 +51,118 @@ export function NkoConversation({ onStatsUpdate }: NkoConversationProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
 
-  const getResponseTranslation = (userInput: string) => {
-    const responses = [
-      "Let's keep practicing N'Ko together!",
-      "You're doing great with N'Ko!",
-      "N'Ko writing is beautiful!",
-      "That's perfect! Keep going with N'Ko!",
-      "You're becoming a N'Ko expert!"
-    ]
-    return responses[Math.floor(Math.random() * responses.length)]
+  const generateContextualResponse = async (history: Array<{role: string, content: string}>, userInput: string, nkoTranslation: string) => {
+    // Analyze user input for context
+    const input = userInput.toLowerCase()
+    
+    // Check if this is a follow-up to previous conversation
+    const hasIntroduced = history.some(msg => 
+      msg.content.toLowerCase().includes('je m\'appelle') || 
+      msg.content.toLowerCase().includes('my name is') ||
+      msg.content.toLowerCase().includes('amina')
+    )
+    
+    // Handle introductions
+    if (input.includes('je m\'appelle') || input.includes('my name is') || input.includes('i am') || input.includes('je suis')) {
+      const name = extractName(userInput)
+      return {
+        nkoResponse: `ߒ ߓߘߊ߫ ߌ ߟߏ߲ ߞߊ߫! ߌ ߕߐ߮ ߞߏ߫ ${name ? name : 'ߌ'}. ߒ ߕߐ߮ ߞߏ߫ ߊߡߌߣߊ߫ ߒߞߏ ߞߊߟߊ߲ߞߊ ߟߋ߬ ߦߋ߫.`,
+        englishTranslation: `Nice to meet you${name ? `, ${name}` : ''}! I'm Amina, your N'Ko learning assistant.`
+      }
+    }
+    
+    // Handle questions about the assistant
+    if (input.includes('tell me about yourself') || input.includes('who are you') || input.includes('what are you')) {
+      const userName = extractUserName(history)
+      const greeting = userName && hasIntroduced ? `${userName}, ` : ''
+      
+      return {
+        nkoResponse: `${greeting}ߒ ߞߏ߫ ߊߡߌߣߊ߫ ߟߋ߬ ߦߋ߫. ߒߞߏ ߞߊߟߊ߲ߞߊ ߟߋ߬ ߦߋ߫ ߒ ߞߊ߬ߙߊ߲ ߘߌ߫. ߒ ߓߘߊ߫ ߒߞߏ ߞߊߟߊ߲ ߞߊߙߊ߲߫ ߊ߬ ߣߌ߫ ߝߐߟߌ ߞߊߙߊ߲߫! ߌ ߦߋ߫ ߡߍ߲ ߞߊߙߊ߲߫ ߠߊ߫?`,
+        englishTranslation: `${greeting}I'm Amina, your N'Ko learning assistant. I'm here to help you learn N'Ko writing and conversation! What would you like to learn about?`
+      }
+    }
+    
+    // Handle greetings
+    if (input.includes('bonjour') || input.includes('hello') || input.includes('hi') || input.includes('salut')) {
+      return {
+        nkoResponse: "ߌ ߣߌ߫ ߞߋ! ߡߊ߬ߙߐ߬ߓߊ ߌ ߣߊ߬ߒߠ ߞߊ߲߬! ߊ߬ ߞߊ߬ ߒߞߏ ߞߊߟߊ߲ ߞߊ߬ߟߊ߲ ߞߍ߫ ߺߺ",
+        englishTranslation: "Hello there! Welcome to our N'Ko conversation practice! Let's practice N'Ko together."
+      }
+    }
+    
+    // Handle questions
+    if (input.includes('what') || input.includes('how') || input.includes('why') || input.includes('when') || input.includes('comment') || input.includes('pourquoi')) {
+      return {
+        nkoResponse: "ߌ ߞߊ߲߫ ߞߏ߫ ߒ ߓߊ߲߬ ߌ ߘߊߞߘߐ߫! ߌ ߘߌ߫ ߛߋ߫ ߣߌ߫ ߞߵߊ߬ ߝߐ߫ ߒߞߏ ߟߊ߫ ߸ ߒ ߓߊ߯ ߌ ߟߊߞߊ߬ߝߏ߬ ߒߞߏ ߘߐ߫!",
+        englishTranslation: "That's a great question! Feel free to ask in N'Ko, and I'll help you practice the language!"
+      }
+    }
+    
+    // Handle language practice requests
+    if (input.includes('practice') || input.includes('learn') || input.includes('teach') || input.includes('apprendre')) {
+      return {
+        nkoResponse: "ߊ߬ߟߋ ߟߋ߬ ߝߣߊ߫! ߊ߲ ߞߊ߬ ߒߞߏ ߞߊߟߊ߲ ߞߊ߬ߟߊ߲ ߞߍ߫. ߌ ߛߙߊ߬ ߞߊ߲ ߠߊ߫ ߸ ߒ ߓߊ߯ ߌ ߞߊ߬ߟߊ߲!",
+        englishTranslation: "Perfect! Let's practice N'Ko together. Try writing something, and I'll help you learn!"
+      }
+    }
+    
+    // Handle thanks
+    if (input.includes('thank') || input.includes('merci') || input.includes('thanks')) {
+      return {
+        nkoResponse: "ߌ ߣߌ߫ ߕߏ߫! ߒߞߏ ߞߊߟߊ߲ ߞߊ߬ߟߊ߲ ߘߌ߫ ߞߍ߫ ߣߌ߲߬ ߢߐ߲߰ ߠߊ߫!",
+        englishTranslation: "You're welcome! Keep practicing N'Ko - you're doing great!"
+      }
+    }
+    
+    // Handle N'Ko input detection
+    if (/[\u07C0-\u07FF]/.test(userInput)) {
+      const userName = extractUserName(history)
+      const personalGreeting = userName ? `${userName}, ` : ''
+      
+      return {
+        nkoResponse: `${personalGreeting}ߌ ߓߘߊ߫ ߒߞߏ ߛߓߍ߫ ߞߎߘߊ! ߌ ߞߊ߬ߟߊ߲ ߦߋ߫ ߞߍ߫ ߟߊ߫ ߞߎߘߊ ߞߐߞߊ߲߬. ߌ ߦߋ߫ ߡߍ߲ ߝߐ߫ ߟߊ߫?`,
+        englishTranslation: `${personalGreeting}Excellent N'Ko writing! You're learning very well. What would you like to say?`
+      }
+    }
+    
+    // Default contextual response based on conversation flow
+    const userName = extractUserName(history)
+    const recentUserMessage = history.filter(msg => msg.role === 'user').slice(-1)[0]
+    
+    if (!hasIntroduced) {
+      return {
+        nkoResponse: "ߌ ߣߌ߫ ߞߋ! ߌ ߞߊ߬ ߌ ߕߐ߮ ߝߐ߫ ߒ ߞߊ߲߬? ߒ ߕߐ߮ ߞߏ߫ ߊߡߌߣߊ߫.",
+        englishTranslation: "Hello! Could you tell me your name? My name is Amina."
+      }
+    }
+    
+    return {
+      nkoResponse: userName ? 
+        `${userName}, ߌ ߓߘߊ߫ ߞߍ߫ ߞߎߘߊ! ߌ ߘߌ߫ ߛߋ߫ ߒߞߏ ߟߊ߫ ߝߐߟߌ ߞߊ߲߬?` :
+        "ߌ ߓߘߊ߫ ߞߍ߫ ߞߎߘߊ! ߌ ߘߌ߫ ߛߋ߫ ߒߞߏ ߟߊ߫ ߝߐߟߌ ߞߊ߲߬?",
+      englishTranslation: userName ?
+        `${userName}, good job! Would you like to continue our conversation in N'Ko?` :
+        "Good job! Would you like to continue our conversation in N'Ko?"
+    }
+  }
+  
+  const extractName = (text: string): string | null => {
+    // Extract name from "Je m'appelle [Name]" or "My name is [Name]"
+    const frenchMatch = text.match(/je m'appelle\s+(\w+)/i)
+    const englishMatch = text.match(/my name is\s+(\w+)/i) || text.match(/i am\s+(\w+)/i) || text.match(/je suis\s+(\w+)/i)
+    
+    return frenchMatch?.[1] || englishMatch?.[1] || null
+  }
+
+  const extractUserName = (history: Array<{role: string, content: string}>): string | null => {
+    // Look through conversation history for user's name
+    for (const msg of history) {
+      if (msg.role === 'user') {
+        const name = extractName(msg.content)
+        if (name) return name
+      }
+    }
+    return null
   }
 
   const scrollToBottom = () => {
@@ -106,23 +209,26 @@ export function NkoConversation({ onStatsUpdate }: NkoConversationProps) {
         nkoText = translateData.translation
       }
 
-      // Generate conversational AI response
-      const conversationalResponses = [
-        "ߊߟߎ߫ ߦߋ߫ ߞߊ߬ ߒߞߏ ߝߐߟߌ ߞߊ߬ߟߊ߲!",
-        "ߌ ߓߘߊ߫ ߒߞߏ ߞߊߟߊ߲ ߞߍ߫ ߞߎߘߊ!",
-        "ߒߞߏ ߞߊߟߊ߲ߞߊ ߞߊ߬ ߖߊ߲߬ߓߊ߬!",
-        "ߊ߬ߟߋ ߟߋ߬ ߝߣߊ߫! ߒߞߏ ߞߊߟߊ߲ ߞߊ߬!",
-        "ߌ ߦߋ߫ ߞߊ߬ ߞߍ߫ ߒߞߏ ߞߊߟߊ߲ߞߊ ߟߊ߫!"
-      ]
+      // Generate contextual AI response based on conversation history
+      const conversationHistory = messages.slice(-5).map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }))
       
-      const randomResponse = conversationalResponses[Math.floor(Math.random() * conversationalResponses.length)]
+      // Add current user message to context
+      conversationHistory.push({
+        role: 'user',
+        content: inputText
+      })
+
+      const aiResponse = await generateContextualResponse(conversationHistory, inputText, nkoText)
       
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: randomResponse,
-        nkoText: nkoText,
-        translation: getResponseTranslation(inputText),
+        content: aiResponse.nkoResponse,
+        nkoText: aiResponse.nkoResponse,
+        translation: aiResponse.englishTranslation,
         timestamp: new Date()
       }
 
