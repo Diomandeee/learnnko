@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { 
+import {
   MessageCircle,
   Languages,
   Mic,
@@ -17,7 +17,9 @@ import {
   FileText,
   Save,
   Star,
-  Volume2
+  Volume2,
+  Brain,
+  Layers
 } from "lucide-react"
 import { TranslatorContainer } from "@/components/nko/translator/translator-container"
 import { ConversationTab } from "@/components/translate/conversation-tab"
@@ -33,6 +35,8 @@ import { WordCategories } from "@/components/nko/dictionary/word-categories"
 import { SavedWords } from "@/components/nko/dictionary/saved-words"
 import { NkoPracticeHub } from "@/components/nko/practice/nko-practice-hub"
 import { TranslatorQuickAccess } from "@/components/nko/translate/translator-quick-access"
+import { LearningHub } from "@/components/learning/LearningHub"
+import { BatchJobPanel } from "@/components/learning/BatchJobPanel"
 
 interface SavedText {
   id: string
@@ -194,6 +198,16 @@ export function NkoLearningHub() {
                   <span>French</span>
                 </TabsTrigger>
               </TabsList>
+              <TabsList className="grid w-full grid-cols-2 gap-1 bg-gradient-to-r from-purple-100 to-indigo-100 h-auto p-1 mt-2">
+                <TabsTrigger value="learning" className="flex items-center justify-center gap-2 py-2 text-xs bg-gradient-to-r from-purple-500/10 to-indigo-500/10">
+                  <Brain className="w-4 h-4 text-purple-600" />
+                  <span className="text-purple-700 font-medium">AI Learning</span>
+                </TabsTrigger>
+                <TabsTrigger value="batch" className="flex items-center justify-center gap-2 py-2 text-xs bg-gradient-to-r from-green-500/10 to-emerald-500/10">
+                  <Layers className="w-4 h-4 text-green-600" />
+                  <span className="text-green-700 font-medium">Batch (50% off)</span>
+                </TabsTrigger>
+              </TabsList>
             </div>
 
             {/* Tablet: Grid layout */}
@@ -234,43 +248,65 @@ export function NkoLearningHub() {
                   <span>French</span>
                 </TabsTrigger>
               </TabsList>
+              <TabsList className="grid w-full grid-cols-2 gap-1 bg-gradient-to-r from-purple-100 to-indigo-100 mt-2">
+                <TabsTrigger value="learning" className="flex items-center justify-center gap-2 py-3">
+                  <Brain className="w-4 h-4 text-purple-600" />
+                  <span className="text-purple-700 font-medium">AI Learning (Live)</span>
+                </TabsTrigger>
+                <TabsTrigger value="batch" className="flex items-center justify-center gap-2 py-3">
+                  <Layers className="w-4 h-4 text-green-600" />
+                  <span className="text-green-700 font-medium">Batch (50% off)</span>
+                </TabsTrigger>
+              </TabsList>
             </div>
 
-            {/* Desktop: Single row with all tabs */}
-            <TabsList className="hidden lg:grid w-full grid-cols-8 gap-1 bg-slate-100/50">
-              <TabsTrigger value="conversation" className="flex items-center gap-2 py-3">
-                <MessageCircle className="w-4 h-4" />
-                Chat
-              </TabsTrigger>
-              <TabsTrigger value="translate" className="flex items-center gap-2 py-3">
-                <Languages className="w-4 h-4" />
-                Translate
-              </TabsTrigger>
-              <TabsTrigger value="lessons" className="flex items-center gap-2 py-3">
-                <BookOpen className="w-4 h-4" />
-                Lessons
-              </TabsTrigger>
-              <TabsTrigger value="dictionary" className="flex items-center gap-2 py-3">
-                <BookOpen className="w-4 h-4" />
-                Dictionary
-              </TabsTrigger>
-              <TabsTrigger value="practice" className="flex items-center gap-2 py-3">
-                <Upload className="w-4 h-4" />
-                Practice
-              </TabsTrigger>
-              <TabsTrigger value="keyboard" className="flex items-center gap-2 py-3">
-                <Keyboard className="w-4 h-4" />
-                Keyboard
-              </TabsTrigger>
-              <TabsTrigger value="library" className="flex items-center gap-2 py-3">
-                <Archive className="w-4 h-4" />
-                Library
-              </TabsTrigger>
-              <TabsTrigger value="french" className="flex items-center gap-2 py-3">
-                <MessageCircle className="w-4 h-4" />
-                French
-              </TabsTrigger>
-            </TabsList>
+            {/* Desktop: Two rows with standard tabs and featured Learning tab */}
+            <div className="hidden lg:block space-y-2">
+              <TabsList className="grid w-full grid-cols-8 gap-1 bg-slate-100/50">
+                <TabsTrigger value="conversation" className="flex items-center gap-2 py-3">
+                  <MessageCircle className="w-4 h-4" />
+                  Chat
+                </TabsTrigger>
+                <TabsTrigger value="translate" className="flex items-center gap-2 py-3">
+                  <Languages className="w-4 h-4" />
+                  Translate
+                </TabsTrigger>
+                <TabsTrigger value="lessons" className="flex items-center gap-2 py-3">
+                  <BookOpen className="w-4 h-4" />
+                  Lessons
+                </TabsTrigger>
+                <TabsTrigger value="dictionary" className="flex items-center gap-2 py-3">
+                  <BookOpen className="w-4 h-4" />
+                  Dictionary
+                </TabsTrigger>
+                <TabsTrigger value="practice" className="flex items-center gap-2 py-3">
+                  <Upload className="w-4 h-4" />
+                  Practice
+                </TabsTrigger>
+                <TabsTrigger value="keyboard" className="flex items-center gap-2 py-3">
+                  <Keyboard className="w-4 h-4" />
+                  Keyboard
+                </TabsTrigger>
+                <TabsTrigger value="library" className="flex items-center gap-2 py-3">
+                  <Archive className="w-4 h-4" />
+                  Library
+                </TabsTrigger>
+                <TabsTrigger value="french" className="flex items-center gap-2 py-3">
+                  <MessageCircle className="w-4 h-4" />
+                  French
+                </TabsTrigger>
+              </TabsList>
+              <TabsList className="grid w-full grid-cols-2 gap-1 bg-gradient-to-r from-purple-100 to-indigo-100">
+                <TabsTrigger value="learning" className="flex items-center justify-center gap-2 py-3">
+                  <Brain className="w-5 h-5 text-purple-600" />
+                  <span className="text-purple-700 font-medium">AI Learning (Live)</span>
+                </TabsTrigger>
+                <TabsTrigger value="batch" className="flex items-center justify-center gap-2 py-3">
+                  <Layers className="w-5 h-5 text-green-600" />
+                  <span className="text-green-700 font-medium">Batch Processing (50% off)</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
           </CardContent>
         </Card>
 
@@ -506,6 +542,16 @@ export function NkoLearningHub() {
         {/* French Conversation Tab */}
         <TabsContent value="french">
           <ConversationTab />
+        </TabsContent>
+
+        {/* AI Learning Tab - Real-time Learning Visualization */}
+        <TabsContent value="learning">
+          <LearningHub />
+        </TabsContent>
+
+        {/* Batch Processing Tab */}
+        <TabsContent value="batch">
+          <BatchJobPanel />
         </TabsContent>
       </Tabs>
 

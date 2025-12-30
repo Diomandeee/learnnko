@@ -1,0 +1,16 @@
+{
+  "generated_at": "2025-12-30T14:12:41.252400",
+  "statistics": {
+    "total_processed": 5,
+    "nko_detected": 4,
+    "translation_samples": 2,
+    "vocabulary_samples": 10,
+    "ocr_samples": 4,
+    "errors": 1
+  },
+  "output_files": {
+    "translation": "../data/training_data/translation/samples.jsonl",
+    "vocabulary": "../data/training_data/vocabulary/words.jsonl",
+    "ocr": "../data/training_data/ocr/samples.jsonl"
+  }
+}

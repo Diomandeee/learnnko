@@ -1,0 +1,6 @@
+{"id": "sample_1", "source_url": "https://youtube.com/watch?v=test1", "frame_index": 0, "timestamp_ms": 1000, "raw_response": "I can see N'Ko text in this frame. The text reads: ߒ ߞߊ߲ ߓߍ߲ (n ka kan ben) which means 'Hello' in English. Confidence: 0.9", "confidence": 0.9}
+{"id": "sample_2", "source_url": "https://youtube.com/watch?v=test1", "frame_index": 1, "timestamp_ms": 2000, "raw_response": "This frame contains: ߊ߬ ߕߐ߯ ߟ߭ ߡߊ߲߬ߘߋ߲ (a to li manden) meaning 'What is your name' in English. {\"nko_text\": \"ߊ߬ ߕߐ߯ ߟ߭ ߡߊ߲߬ߘߋ߲\", \"english\": \"What is your name\", \"confidence\": 0.85}", "confidence": 0.85}
+{"id": "sample_3", "source_url": "https://youtube.com/watch?v=test2", "frame_index": 0, "timestamp_ms": 500, "raw_response": "Clear N'Ko text visible: ߒ ߧߊ ߞߏ߲ߓߊ ߘߐ߫ (n ya konba do) - 'I am learning'. The script is written right-to-left.", "confidence": 0.88}
+{"id": "sample_4", "source_url": "https://youtube.com/watch?v=test2", "frame_index": 2, "timestamp_ms": 3000, "raw_response": "No N'Ko text visible in this frame. The frame shows a person speaking but no written text.", "confidence": 0.1}
+{"id": "sample_5", "source_url": "https://youtube.com/watch?v=test3", "frame_index": 0, "timestamp_ms": 0, "raw_response": "{\"nko_text\": \"ߡߊ߲߬ߘߋ߲߬ ߞߊ߲\", \"latin\": \"manden kan\", \"english\": \"Mande language\", \"confidence\": 0.95}", "confidence": 0.95}
+
