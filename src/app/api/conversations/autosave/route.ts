@@ -12,52 +12,99 @@ export async function POST(req: Request) {
       )
     }
 
-    // Create or update autosave conversation globally
-    const autosaveConversation = await prisma.conversationSession.upsert({
+    // Find existing autosave conversation or create new one
+    let autosaveConversation = await prisma.conversationSession.findFirst({
       where: {
-        // Find the most recent autosave conversation
-        id: 'autosave-global' // Use a fixed ID for global autosave
-      },
-      update: {
-        topic: topic || 'N\'Ko Practice',
-        updatedAt: new Date(),
-        stats: stats || {},
-        messages: {
-          deleteMany: {}, // Clear existing messages
-          create: messages.map((msg: any, index: number) => ({
-            role: msg.role,
-            content: msg.content,
-            translation: msg.translation,
-            timestamp: new Date(msg.timestamp || Date.now()),
-            mood: msg.mood,
-            correctedContent: msg.correctedContent,
-            grammarNotes: msg.grammarNotes || []
-          }))
-        }
-      },
-      create: {
-        id: 'autosave-global',
-        topic: topic || 'N\'Ko Practice',
-        isAutosave: true,
-        stats: stats || {},
-        messages: {
-          create: messages.map((msg: any, index: number) => ({
-            role: msg.role,
-            content: msg.content,
-            translation: msg.translation,
-            timestamp: new Date(msg.timestamp || Date.now()),
-            mood: msg.mood,
-            correctedContent: msg.correctedContent,
-            grammarNotes: msg.grammarNotes || []
-          }))
-        }
+        isAutosave: true
       },
       include: {
         messages: true
       }
     })
 
-    return NextResponse.json(autosaveConversation)
+    if (autosaveConversation) {
+      // Delete existing messages and update the conversation
+      await prisma.message.deleteMany({
+        where: {
+          sessionId: autosaveConversation.id
+        }
+      })
+
+      // Update the conversation
+      autosaveConversation = await prisma.conversationSession.update({
+        where: {
+          id: autosaveConversation.id
+        },
+        data: {
+          topic: topic || 'N\'Ko Practice',
+          stats: stats || {},
+          updatedAt: new Date()
+        },
+        include: {
+          messages: true
+        }
+      })
+
+      // Create new messages
+      const createdMessages = await Promise.all(
+        messages.map((msg: any, index: number) =>
+          prisma.message.create({
+            data: {
+              sessionId: autosaveConversation!.id,
+              role: msg.role,
+              content: msg.content,
+              translation: msg.translation || null,
+              timestamp: new Date(msg.timestamp || Date.now()),
+              mood: msg.mood || null,
+              correctedContent: msg.correctedContent || null,
+              grammarNotes: msg.grammarNotes || []
+            }
+          })
+        )
+      )
+
+      autosaveConversation.messages = createdMessages
+    } else {
+      // Create new autosave conversation
+      autosaveConversation = await prisma.conversationSession.create({
+        data: {
+          topic: topic || 'N\'Ko Practice',
+          isAutosave: true,
+          stats: stats || {}
+        },
+        include: {
+          messages: true
+        }
+      })
+
+      // Create messages
+      const createdMessages = await Promise.all(
+        messages.map((msg: any, index: number) =>
+          prisma.message.create({
+            data: {
+              sessionId: autosaveConversation!.id,
+              role: msg.role,
+              content: msg.content,
+              translation: msg.translation || null,
+              timestamp: new Date(msg.timestamp || Date.now()),
+              mood: msg.mood || null,
+              correctedContent: msg.correctedContent || null,
+              grammarNotes: msg.grammarNotes || []
+            }
+          })
+        )
+      )
+
+      autosaveConversation.messages = createdMessages
+    }
+
+    return NextResponse.json({
+      id: autosaveConversation.id,
+      topic: autosaveConversation.topic,
+      messages: autosaveConversation.messages,
+      stats: autosaveConversation.stats,
+      timestamp: autosaveConversation.updatedAt
+    })
   } catch (error) {
     console.error("Error autosaving conversation:", error)
     return NextResponse.json(

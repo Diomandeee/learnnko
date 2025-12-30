@@ -44,3 +44,20 @@ next-env.d.ts
 .dir_struc.py# Table component build files
 .DS_Store
 *.log
+
+# ML Training System - generated files
+nko/__pycache__/
+nko/**/__pycache__/
+nko/**/*.pyc
+nko/outputs/*/checkpoint-*/
+nko/outputs/test_run/
+nko/.claude/
+nko/data/.claude/
+*.tar.gz
+translation-*.json
+
+# Old/archived code
+/old/
+
+# Claude session files
+.claude/

@@ -1,8 +1,0 @@
-#!/bin/bash
-
-# Add required dependencies
-npm install ytdl-core@latest @ffmpeg-installer/ffmpeg fluent-ffmpeg fs-extra
-npm install --save-dev @types/fs-extra
-
-# Install alternative YouTube downloaders for better reliability
-npm install ytdl-core-discord youtube-dl-exec
