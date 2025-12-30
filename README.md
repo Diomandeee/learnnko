@@ -1,57 +1,76 @@
-# SVG Editor with Claude AI
+# N'Ko Learning Hub
 
-A powerful SVG editor application that combines traditional vector editing capabilities with AI assistance powered by Anthropic's Claude. Create, modify, and optimize SVGs using both natural language commands and advanced vector editing tools.
+A comprehensive language learning platform for N'Ko script and Bambara language, powered by AI-assisted translation and speech recognition.
 
 ## Features
 
-### AI-Powered SVG Creation
-- Generate SVGs from natural language descriptions
-- Request modifications in plain English
-- Get AI suggestions for improvements
-- Smart element selection and context-aware editing
+### Learning Tools
+- **Interactive Lessons** - Structured curriculum for learning N'Ko script
+- **Conversation Practice** - AI-powered conversational practice with memory
+- **N'Ko Keyboard** - Virtual keyboard for typing in N'Ko script
+- **Translation** - English ↔ Bambara translation with N'Ko script support
+- **Transcription** - Audio-to-text transcription for Bambara
 
-### Advanced Vector Editing
-- Complete vector editing toolset (shapes, paths, text)
-- Layer management with visibility and locking controls
-- Pen tool with bezier curve support
-- Direct selection for point-level manipulation
-- Precise transformation controls
+### Architecture
 
-### Hybrid Workflow
-- Seamlessly switch between AI and manual editing modes
-- Use natural language commands in vector editor mode
-- Apply AI-generated styles to manually created shapes
-- Get suggestions for complex operations
-
-### Practical Tools
-- Export to SVG and PNG formats
-- Copay SVG code directly 
-- History with undo/redo support
-- Selection tools with grouping support
-
-## Architecture
-
-The application is built with:
-- **Next.js** for the frontend framework
-- **React** for UI components
-- **TypeScript** for type safety
-- **Anthropic Claude API** for AI capabilities
-- **Custom Vector Engine** for advanced editing
-
-### Component Structure
-- `EditorCanvas`: Main editor container with modes
-- `ChatPanel`: Interface for AI interaction
-- `VectorEditor`: Advanced editing workspace
-- `VectorCommandPanel`: Natural language commands in vector mode
-
-### Vector Engine Classes
-- `VectorDocument`: Manages the entire document structure
-- `VectorShape`: Represents shapes with properties and methods
-- `VectorPath`: Path manipulation and rendering
-- `VectorPoint`: Point handling with bezier controls
-- `VectorTool`: Tool abstractions for different editing operations
+```
+learnnko/
+├── src/                    # Next.js frontend application
+│   ├── app/
+│   │   ├── nko/           # N'Ko learning routes
+│   │   │   ├── lessons/   # Structured lessons
+│   │   │   ├── conversation/  # Conversational practice
+│   │   │   ├── keyboard/  # N'Ko virtual keyboard
+│   │   │   ├── practice/  # Practice mode
+│   │   │   ├── transcribe/# Audio transcription
+│   │   │   └── translator/# Translation interface
+│   │   └── api/           # Backend API routes
+│   ├── components/        # Reusable React components
+│   └── lib/               # Utility libraries
+│
+└── nko/                   # ML/Training system (separate Python project)
+    ├── src/               # Core ML modules
+    │   ├── models/        # Translation, ASR, TTS models
+    │   ├── data/          # Data processing
+    │   └── evaluation/    # Model evaluation
+    ├── scripts/           # Training scripts
+    └── docs/              # ML documentation
+```
 
 ## Getting Started
 
-1. Clone the repository
-2. Install dependencies:
+### Frontend (Next.js)
+
+```bash
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+
+# Build for production
+npm run build
+```
+
+### ML Training (Python)
+
+See [nko/README.md](nko/README.md) for ML training setup.
+
+## Tech Stack
+
+- **Frontend**: Next.js 15, React 18, TypeScript, Tailwind CSS
+- **UI Components**: Radix UI, Lucide Icons
+- **Database**: Prisma
+- **AI/ML**:
+  - Anthropic Claude API (conversations)
+  - Custom mBART translation models
+  - NVIDIA NeMo ASR integration
+- **State Management**: Zustand
+
+## Environment Variables
+
+See [.env.example](.env.example) for required environment variables.
+
+## License
+
+[Your License Here]

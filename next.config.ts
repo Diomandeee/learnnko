@@ -6,4 +6,8 @@ module.exports = {
     // !! WARN !!
     ignoreBuildErrors: true,
   },
+  env: {
+    // Analyzer backend URL - used in API routes to proxy to Cloud Run
+    ANALYZER_BACKEND_URL: process.env.ANALYZER_BACKEND_URL || 'https://cc-music-pipeline-owq2vk3wya-uc.a.run.app',
+  },
 }
