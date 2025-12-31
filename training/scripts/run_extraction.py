@@ -39,6 +39,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from nko_analyzer import NkoAnalyzer, load_config
 from audio_extractor import AudioExtractor, VideoManifest
 from frame_filter import SceneChangeDetector
+from supabase_reporter import get_reporter, SupabaseReporter
 import scrapetube
 
 # Checkpoint file for resumability
@@ -253,6 +254,15 @@ async def run_extraction(
         "estimated_cost": 0.0,
     }
     
+    # Initialize Supabase reporter for dashboard observability
+    reporter = get_reporter()
+    run_id = reporter.start_run(
+        run_type="extraction",
+        channel_name=channel_name,
+        videos_total=len(videos),
+        metadata={"resume": resume, "extract_audio": extract_audio}
+    )
+    
     # Get config values
     extraction_config = config.get("extraction", {})
     storage_config = config.get("storage", {}).get("local", {})
@@ -306,6 +316,10 @@ async def run_extraction(
             _current_video_id = video_id
             
             print(f"\n[{i}/{len(videos)}] Processing: {title[:50]}...")
+            
+            # Report video start to dashboard
+            reporter.video_start(video_id, title)
+            video_start_time = datetime.now()
             
             # Setup output directory
             video_output_dir = os.path.join(base_dir, video_id)
@@ -403,15 +417,37 @@ async def run_extraction(
                     progress["total_audio_segments"] += audio_segments
                     progress["estimated_cost"] += result.frames_analyzed * 0.002
                     
+                    # Report to dashboard
+                    duration_ms = int((datetime.now() - video_start_time).total_seconds() * 1000)
+                    reporter.video_complete(
+                        video_id=video_id,
+                        frames=result.frames_analyzed,
+                        detections=result.frames_with_nko,
+                        audio_segments=audio_segments,
+                        duration_ms=duration_ms
+                    )
+                    
+                    # Log individual detections for live feed
+                    for frame in (result.frames or []):
+                        if frame.has_nko and frame.nko_text:
+                            reporter.detection_found(
+                                video_id=video_id,
+                                nko_text=frame.nko_text,
+                                latin_text=frame.latin_transliteration,
+                                confidence=frame.confidence or 0.0
+                            )
+                    
                     print(f"  ✓ {result.frames_analyzed} frames, {result.frames_with_nko} detections, {audio_segments} audio segments")
                 else:
                     checkpoint["failed_videos"].append({"id": video_id, "error": result.error})
                     progress["failed"] += 1
+                    reporter.video_failed(video_id, result.error or "Unknown error")
                     print(f"  ✗ Failed: {result.error}")
                 
             except Exception as e:
                 checkpoint["failed_videos"].append({"id": video_id, "error": str(e)})
                 progress["failed"] += 1
+                reporter.video_failed(video_id, str(e))
                 print(f"  ✗ Exception: {e}")
             
             # Save checkpoint after each video
@@ -423,6 +459,12 @@ async def run_extraction(
     
     progress["end_time"] = datetime.now().isoformat()
     save_progress(progress)
+    
+    # Complete or stop the pipeline run in Supabase
+    if _shutdown_requested:
+        reporter.stop_run("Graceful shutdown requested by user")
+    else:
+        reporter.complete_run()
     
     print(f"\n{'='*60}")
     print(f"PASS 1 COMPLETE")

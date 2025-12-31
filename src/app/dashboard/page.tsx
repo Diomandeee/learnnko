@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { VocabularyExpansionStats } from '@/components/learning/VocabularyExpansionStats';
 import { TrajectoryVisualization } from '@/components/learning/TrajectoryVisualization';
+import { LiveActivityFeed } from '@/components/learning/LiveActivityFeed';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -37,12 +38,20 @@ interface VocabWord {
 
 interface PipelineStatus {
   isRunning: boolean;
+  runId: string | null;
+  runType: string | null;
   currentChannel: string | null;
   videosProcessed: number;
+  videosFailed: number;
   videosTotal: number;
   framesExtracted: number;
   detectionsFound: number;
+  audioSegments: number;
+  costEstimate: number;
+  startedAt: string | null;
   lastUpdated: string;
+  estimatedCompletion: string | null;
+  progressPercent: number;
 }
 
 interface ChannelStats {
@@ -150,7 +159,58 @@ export default function DashboardPage() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
-            <VocabularyExpansionStats refreshInterval={60000} />
+            {/* Two-column layout: Stats + Live Feed */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <VocabularyExpansionStats refreshInterval={60000} />
+              <LiveActivityFeed maxEvents={15} />
+            </div>
+
+            {/* Pipeline Progress Summary */}
+            {pipelineStatus?.isRunning && (
+              <Card className="border-cyan-500/20 bg-cyan-500/5">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <PlayCircle className="h-5 w-5 text-cyan-400 animate-pulse" />
+                      Pipeline Running
+                    </CardTitle>
+                    <Badge className="bg-white/10 text-white/70">
+                      {pipelineStatus.progressPercent}%
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Progress 
+                    value={pipelineStatus.progressPercent} 
+                    className="h-2 mb-3"
+                  />
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="text-white/40">Videos</span>
+                      <div className="font-mono">
+                        {pipelineStatus.videosProcessed}/{pipelineStatus.videosTotal}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-white/40">Detections</span>
+                      <div className="font-mono">{pipelineStatus.detectionsFound}</div>
+                    </div>
+                    <div>
+                      <span className="text-white/40">Cost</span>
+                      <div className="font-mono">${pipelineStatus.costEstimate?.toFixed(2) || '0.00'}</div>
+                    </div>
+                    {pipelineStatus.estimatedCompletion && (
+                      <div>
+                        <span className="text-white/40">ETA</span>
+                        <div className="font-mono text-xs">
+                          {new Date(pipelineStatus.estimatedCompletion).toLocaleTimeString()}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Quick Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -164,7 +224,7 @@ export default function DashboardPage() {
                   </CardHeader>
                   <CardContent>
                     <Progress 
-                      value={(channel.videosProcessed / channel.videosTotal) * 100} 
+                      value={channel.videosTotal > 0 ? (channel.videosProcessed / channel.videosTotal) * 100 : 0} 
                       className="h-2 mb-2"
                     />
                     <div className="flex justify-between text-sm text-white/50">
