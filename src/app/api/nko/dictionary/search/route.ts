@@ -244,6 +244,35 @@ export async function GET(req: Request) {
       return (sourcePriority[a.source] || 3) - (sourcePriority[b.source] || 3);
     });
 
+    // Queue for expansion if no results or poor quality results
+    // This enables continuous learning from user queries
+    const hasGoodResults = sortedResults.length > 0 && sortedResults.some(r => 
+      r.source === 'local' || r.source === 'ankataa-cache'
+    );
+    
+    if (!hasGoodResults && supabase && query.length >= 2) {
+      // Queue this word for future enrichment (non-blocking)
+      try {
+        const { error: queueError } = await supabase.rpc('queue_word_for_enrichment', {
+          p_word: query,
+          p_source_type: 'user_query',
+          p_priority: 2, // High priority - user is looking for this
+          p_context: {
+            normalized: normalizeForSearch(query),
+            external_results_count: externalFormatted.length,
+            search_timestamp: Date.now(),
+          }
+        });
+        
+        if (!queueError) {
+          console.log(`Queued "${query}" for vocabulary expansion`);
+        }
+      } catch (queueErr) {
+        // Non-critical - don't fail the search for queue errors
+        console.debug("Queue hook failed (non-critical):", queueErr);
+      }
+    }
+
     // Build response with cache headers
     const response = NextResponse.json({
       query,
@@ -260,6 +289,7 @@ export async function GET(req: Request) {
         hasExactMatch: sortedResults.some(r => 
           r.nkoText?.toLowerCase() === query.toLowerCase()
         ),
+        queued: !hasGoodResults && query.length >= 2,
       }
     });
 

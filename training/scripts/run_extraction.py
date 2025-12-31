@@ -211,6 +211,7 @@ async def run_extraction(
     resume: bool = False,
     dry_run: bool = False,
     extract_audio: bool = True,
+    channel_name: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Run Pass 1: Extraction + OCR + Audio Segmentation on all videos.
@@ -221,6 +222,7 @@ async def run_extraction(
         resume: Resume from checkpoint
         dry_run: List videos without processing
         extract_audio: Whether to extract and segment audio
+        channel_name: Optional channel name for tracking
     
     Returns:
         Progress statistics
@@ -457,6 +459,7 @@ Examples:
     parser.add_argument("--status", action="store_true", help="Show current progress and exit")
     parser.add_argument("--config", type=str, help="Path to config file")
     parser.add_argument("--channel", type=str, help="Channel name to process (e.g., 'babamamadidiane', 'ankataa')")
+    parser.add_argument("--all-channels", action="store_true", help="Process all configured channels in priority order")
     parser.add_argument("--list-channels", action="store_true", help="List available channels from config")
     args = parser.parse_args()
     
@@ -552,6 +555,68 @@ Examples:
         else:
             channel_url = config.get("channel", {}).get("url", "https://www.youtube.com/@babamamadidiane")
             channel_name = config.get("channel", {}).get("name", "default")
+    
+    # Handle all-channels mode
+    if args.all_channels:
+        channels = config.get("channels", [])
+        if not channels:
+            channels = config.get("sources", {}).get("channels", [])
+        
+        if not channels:
+            print("No channels found in config!")
+            sys.exit(1)
+        
+        # Sort by priority
+        channels_sorted = sorted(channels, key=lambda x: x.get("priority", 999))
+        
+        print(f"\n=== Processing {len(channels_sorted)} Channels ===\n")
+        
+        total_progress = {
+            "total_videos": 0,
+            "completed": 0,
+            "failed": 0,
+            "total_frames": 0,
+            "total_detections": 0,
+        }
+        
+        for ch in channels_sorted:
+            ch_name = ch.get("name")
+            ch_url = ch.get("url")
+            ch_limit = ch.get("max_videos") if args.limit is None else args.limit
+            
+            print(f"\n--- Channel: {ch_name} ({ch_url}) ---\n")
+            
+            videos = get_channel_videos(ch_url, limit=ch_limit)
+            if not videos:
+                print(f"No videos found for {ch_name}, skipping...")
+                continue
+            
+            try:
+                progress = asyncio.run(run_extraction(
+                    videos=videos,
+                    config=config,
+                    resume=args.resume,
+                    dry_run=args.dry_run,
+                    extract_audio=not args.no_audio,
+                    channel_name=ch_name,  # Track channel in checkpoint
+                ))
+                
+                # Aggregate progress
+                for key in total_progress:
+                    total_progress[key] += progress.get(key, 0)
+                    
+            except KeyboardInterrupt:
+                print(f"\n⚠ Interrupted during {ch_name}!")
+                break
+        
+        print(f"\n=== All Channels Complete ===")
+        print(f"Total: {total_progress['completed']}/{total_progress['total_videos']} videos")
+        print(f"Frames: {total_progress['total_frames']}")
+        print(f"Detections: {total_progress['total_detections']}")
+        print(f"Failed: {total_progress['failed']}")
+        
+        _cleanup_lock()
+        return
     
     print(f"Channel: {channel_name} ({channel_url})")
     
