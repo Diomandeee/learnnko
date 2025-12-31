@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const backendUrl = process.env.ANALYZER_BACKEND_URL || 'http://localhost:8080';
+    const backendUrl = process.env.ANALYZER_BACKEND_URL || 'https://cc-music-pipeline-owq2vk3wya-uc.a.run.app';
     const backendStartUrl = `${backendUrl}/api/analyze/start`;
 
     const requestBody: Record<string, unknown> = {
