@@ -134,6 +134,16 @@ const config: Config = {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
+        float: {
+          "0%, 100%": { transform: "translateY(0px) rotate(0deg)" },
+          "25%": { transform: "translateY(-10px) rotate(2deg)" },
+          "50%": { transform: "translateY(-5px) rotate(-1deg)" },
+          "75%": { transform: "translateY(-15px) rotate(1deg)" },
+        },
+        "fade-in-up": {
+          "0%": { opacity: "0", transform: "translateY(20px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "collapse-down": "collapse-down 0.2s ease-out",
@@ -141,8 +151,10 @@ const config: Config = {
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
         "spin-slow": "spin 8s linear infinite",
         "fade-in": "fade-in 0.5s ease-out",
+        "fade-in-up": "fade-in-up 0.6s ease-out",
         orbit: "orbit 10s linear infinite",
         shimmer: "shimmer 2s linear infinite",
+        float: "float 6s ease-in-out infinite",
       },
       boxShadow: {
         cyber: "0 0 20px rgba(0, 240, 255, 0.3)",

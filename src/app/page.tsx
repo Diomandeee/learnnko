@@ -105,51 +105,50 @@ function InteractiveNKoKeyboard() {
   }
 
   return (
-    <div className="relative bg-gradient-to-br from-slate-800/50 to-emerald-900/30 rounded-2xl p-6 backdrop-blur-sm border border-emerald-500/20 max-w-2xl">
+    <div className="relative bg-gradient-to-br from-space-800/80 to-space-900/80 rounded-2xl p-6 backdrop-blur-xl border border-amber-500/20 max-w-2xl shadow-amber">
       <div className="text-center mb-6">
-        <h3 className="text-xl font-semibold text-emerald-300 mb-2">Interactive N'Ko Keyboard</h3>
-        <p className="text-slate-300 text-sm font-medium">Click keys to type • Experience right-to-left writing</p>
+        <h3 className="text-xl font-semibold text-amber-300 mb-2">Interactive N'Ko Keyboard</h3>
+        <p className="text-gray-300 text-sm font-medium">Click keys to type • Experience right-to-left writing</p>
       </div>
       
       {/* Display Area */}
-      <div className="mb-6 p-4 bg-slate-900/70 rounded-lg border border-emerald-500/30 min-h-[80px] relative">
+      <div className="mb-6 p-4 bg-space-900/70 rounded-lg border border-amber-500/30 min-h-[80px] relative">
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2 text-emerald-300 text-sm">
+          <div className="flex items-center gap-2 text-amber-300 text-sm">
             <ArrowLeft className="w-4 h-4" />
             <span>Right to Left</span>
           </div>
-          <div className="text-slate-400 text-xs font-medium">
+          <div className="text-gray-400 text-xs font-medium">
             {displayText.length} characters
           </div>
         </div>
         
         <div 
-          className="text-2xl text-emerald-100 font-bold min-h-[2rem] text-right leading-relaxed"
+          className="text-2xl text-amber-100 font-bold min-h-[2rem] text-right leading-relaxed font-nko"
           style={{ 
             direction: 'rtl',
-            fontFamily: 'system-ui, sans-serif',
             wordBreak: 'break-all'
           }}
         >
           {displayText || (
-            <span className="text-emerald-400/50 italic text-lg">
+            <span className="text-amber-400/50 italic text-lg">
               ߒߞߏ ߞߊ߬ߙߊ߲ (N'Ko Script)
             </span>
           )}
           {displayText && (
-            <span className={`inline-block w-0.5 h-8 bg-emerald-400 ml-1 ${isTyping ? 'animate-pulse' : 'animate-blink'}`}></span>
+            <span className={`inline-block w-0.5 h-8 bg-amber-400 ml-1 ${isTyping ? 'animate-pulse' : 'animate-blink'}`}></span>
           )}
         </div>
       </div>
 
       {/* Demo Buttons */}
       <div className="mb-4 flex flex-wrap gap-2">
-        <span className="text-emerald-300 text-sm mr-2">Try:</span>
+        <span className="text-amber-300 text-sm mr-2">Try:</span>
         {demoTexts.map((text, index) => (
           <button
             key={index}
             onClick={() => handleDemo(text)}
-            className="px-3 py-1 text-xs bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-lg border border-emerald-500/30 transition-colors"
+            className="px-3 py-1 text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg border border-amber-500/30 transition-colors"
           >
             Demo {index + 1}
           </button>
@@ -164,7 +163,7 @@ function InteractiveNKoKeyboard() {
               <button
                 key={`${rowIndex}-${charIndex}`}
                 onClick={() => handleKeyPress(char)}
-                className="w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-800 hover:from-emerald-600 hover:to-emerald-700 text-white text-lg font-bold rounded-lg border border-slate-600 hover:border-emerald-400 transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg"
+                className="w-10 h-10 bg-gradient-to-br from-space-700 to-space-800 hover:from-amber-600 hover:to-amber-700 text-white text-lg font-bold rounded-lg border border-space-600 hover:border-amber-400 transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg font-nko"
               >
                 {char}
               </button>
@@ -182,13 +181,13 @@ function InteractiveNKoKeyboard() {
           </button>
           <button
             onClick={handleClear}
-            className="px-4 py-2 bg-slate-500/20 hover:bg-slate-500/30 text-slate-300 text-sm rounded-lg border border-slate-500/30 transition-colors"
+            className="px-4 py-2 bg-space-500/20 hover:bg-space-500/30 text-gray-300 text-sm rounded-lg border border-space-500/30 transition-colors"
           >
             Clear All
           </button>
           <button
             onClick={() => handleKeyPress(" ")}
-            className="px-6 py-2 bg-slate-600/50 hover:bg-slate-600/70 text-slate-300 text-sm rounded-lg border border-slate-500/30 transition-colors"
+            className="px-6 py-2 bg-space-600/50 hover:bg-space-600/70 text-gray-300 text-sm rounded-lg border border-space-500/30 transition-colors"
           >
             Space
           </button>
@@ -220,62 +219,65 @@ export default function HomePage() {
   }, [])
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(16,185,129,0.1),transparent_50%)]"></div>
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-emerald-400/20 to-teal-400/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute top-1/2 -left-20 w-64 h-64 bg-gradient-to-br from-teal-400/20 to-cyan-400/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute bottom-0 right-1/3 w-96 h-96 bg-gradient-to-br from-emerald-400/10 to-teal-400/10 rounded-full blur-3xl animate-pulse delay-2000"></div>
+    <div className="min-h-screen relative overflow-hidden bg-space-950">
+      {/* Cosmic Background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-b from-space-950 via-space-900 to-space-950" />
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,rgba(245,158,11,0.08),transparent_40%)]"></div>
+        <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_80%,rgba(139,92,246,0.06),transparent_40%)]"></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-amber-400/15 to-orange-400/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-1/2 -left-20 w-64 h-64 bg-gradient-to-br from-violet-400/10 to-purple-400/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute bottom-0 right-1/3 w-96 h-96 bg-gradient-to-br from-amber-400/8 to-yellow-400/5 rounded-full blur-3xl animate-pulse delay-2000"></div>
         
         {/* N'Ko script floating elements */}
-        <div className="absolute top-20 left-1/4 text-emerald-400/20 text-4xl animate-bounce delay-500">ߒ</div>
-        <div className="absolute top-1/3 right-1/4 text-teal-400/20 text-3xl animate-bounce delay-1000">ߓ</div>
-        <div className="absolute bottom-1/3 left-1/3 text-cyan-400/20 text-5xl animate-bounce delay-1500">ߕ</div>
+        <div className="absolute top-20 left-1/4 text-amber-400/20 text-4xl animate-float font-nko" style={{ animationDelay: '0.5s' }}>ߒ</div>
+        <div className="absolute top-1/3 right-1/4 text-violet-400/15 text-3xl animate-float font-nko" style={{ animationDelay: '1s' }}>ߓ</div>
+        <div className="absolute bottom-1/3 left-1/3 text-amber-300/15 text-5xl animate-float font-nko" style={{ animationDelay: '1.5s' }}>ߕ</div>
+        <div className="absolute bottom-1/4 right-1/5 text-cyan-400/10 text-4xl animate-float font-nko" style={{ animationDelay: '2s' }}>ߞ</div>
       </div>
 
-      {/* Enhanced Navigation Bar */}
+      {/* Navigation Bar */}
       <nav className={`relative z-50 transition-all duration-300 sticky top-0 ${
         scrollY > 50 
-          ? 'backdrop-blur-xl bg-slate-900/95 border-b border-emerald-500/20 shadow-lg shadow-emerald-500/10' 
-          : 'backdrop-blur-sm bg-slate-900/80 border-b border-emerald-500/10'
+          ? 'backdrop-blur-xl bg-space-950/95 border-b border-amber-500/20 shadow-lg shadow-amber-500/10' 
+          : 'backdrop-blur-sm bg-space-950/80 border-b border-amber-500/10'
       }`}>
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             {/* Enhanced Logo */}
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 via-teal-400 to-cyan-400 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/25 transform hover:scale-110 transition-all duration-300">
+                <div className="w-12 h-12 bg-gradient-to-br from-amber-400 via-orange-400 to-yellow-400 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/25 transform hover:scale-110 transition-all duration-300">
                   <img 
                     src="/nko_logo.svg" 
                     alt="N'Ko Logo" 
                     className="w-8 h-8 drop-shadow-lg"
                   />
                 </div>
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-yellow-400 to-amber-400 rounded-full animate-pulse"></div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-cyan-400 to-violet-400 rounded-full animate-pulse"></div>
               </div>
               <div className="hidden sm:block">
-                <span className="text-2xl font-bold bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">
+                <span className="text-2xl font-bold bg-gradient-to-r from-amber-400 via-orange-300 to-yellow-400 bg-clip-text text-transparent">
                   N'Ko Hub
                 </span>
-                <div className="text-xs text-emerald-300/70 -mt-1 font-medium">Learn • Practice • Master</div>
+                <div className="text-xs text-amber-300/70 -mt-1 font-medium">Learn • Practice • Master</div>
               </div>
             </div>
 
          
 
-            {/* Enhanced Auth Buttons */}
+            {/* Auth Buttons */}
             <div className="flex items-center gap-3">
               {session ? (
                 <div className="flex items-center gap-3">
                   <Link href="/nko">
-                    <Button size="sm" className="shadow-lg bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 border-0 transform hover:scale-105 transition-all duration-300">
+                    <Button size="sm" className="shadow-lg bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 hover:from-amber-600 hover:via-orange-600 hover:to-yellow-600 border-0 transform hover:scale-105 transition-all duration-300 text-space-950 font-semibold">
                       <Play className="w-4 h-4 mr-2" />
                       Continue Learning
                     </Button>
                   </Link>
                   <Link href="/profile">
-                    <Button variant="ghost" size="sm" className="flex items-center gap-2 text-emerald-100 hover:text-emerald-300 hover:bg-emerald-500/10">
+                    <Button variant="ghost" size="sm" className="flex items-center gap-2 text-gray-100 hover:text-amber-300 hover:bg-amber-500/10">
                       <User className="w-4 h-4" />
                       <span className="hidden sm:inline">Profile</span>
                     </Button>
@@ -284,13 +286,13 @@ export default function HomePage() {
               ) : (
                 <div className="flex items-center gap-2">
                   <Link href="/auth/login">
-                    <Button variant="ghost" size="sm" className="flex items-center gap-2 text-emerald-100 hover:text-emerald-300 hover:bg-emerald-500/10 transition-all duration-300">
+                    <Button variant="ghost" size="sm" className="flex items-center gap-2 text-gray-100 hover:text-amber-300 hover:bg-amber-500/10 transition-all duration-300">
                       <LogIn className="w-4 h-4" />
                       <span className="hidden sm:inline">Sign In</span>
                     </Button>
                   </Link>
                   <Link href="/auth/register">
-                    <Button size="sm" className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 shadow-lg transform hover:scale-105 transition-all duration-300">
+                    <Button size="sm" className="bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 hover:from-amber-600 hover:via-orange-600 hover:to-yellow-600 shadow-lg transform hover:scale-105 transition-all duration-300 text-space-950 font-semibold">
                       <UserPlus className="w-4 h-4 mr-2" />
                       <span className="hidden sm:inline">Sign Up</span>
                     </Button>
@@ -302,7 +304,7 @@ export default function HomePage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="md:hidden text-emerald-100 hover:text-emerald-300 hover:bg-emerald-500/10"
+                className="md:hidden text-gray-100 hover:text-amber-300 hover:bg-amber-500/10"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               >
                 {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -310,9 +312,9 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Enhanced Mobile Menu */}
+          {/* Mobile Menu */}
           {mobileMenuOpen && (
-            <div className="md:hidden mt-4 pb-4 border-t border-emerald-500/20 backdrop-blur-xl bg-slate-900/95 rounded-lg">
+            <div className="md:hidden mt-4 pb-4 border-t border-amber-500/20 backdrop-blur-xl bg-space-950/95 rounded-lg">
               <div className="flex flex-col gap-3 pt-4">
                 {[
                   { href: "/nko/lessons", label: "Lessons" },
@@ -323,22 +325,22 @@ export default function HomePage() {
                   <Link 
                     key={item.href}
                     href={item.href} 
-                    className="text-sm font-medium text-slate-300 hover:text-emerald-300 transition-colors py-2"
+                    className="text-sm font-medium text-gray-300 hover:text-amber-300 transition-colors py-2"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     {item.label}
                   </Link>
                 ))}
                 {!session && (
-                  <div className="flex flex-col gap-2 pt-2 border-t border-emerald-500/20">
+                  <div className="flex flex-col gap-2 pt-2 border-t border-amber-500/20">
                     <Link href="/auth/login">
-                      <Button variant="ghost" size="sm" className="w-full justify-start text-emerald-100 hover:text-emerald-300 hover:bg-emerald-500/10">
+                      <Button variant="ghost" size="sm" className="w-full justify-start text-gray-100 hover:text-amber-300 hover:bg-amber-500/10">
                         <LogIn className="w-4 h-4 mr-2" />
                         Sign In
                       </Button>
                     </Link>
                     <Link href="/auth/register">
-                      <Button size="sm" className="w-full justify-start bg-gradient-to-r from-emerald-500 to-teal-500">
+                      <Button size="sm" className="w-full justify-start bg-gradient-to-r from-amber-500 to-orange-500 text-space-950 font-semibold">
                         <UserPlus className="w-4 h-4 mr-2" />
                         Sign Up
                       </Button>
@@ -352,24 +354,24 @@ export default function HomePage() {
       </nav>
 
       <div className="container mx-auto px-4">
-        {/* Enhanced Hero Section */}
+        {/* Hero Section */}
         <section className="py-24 text-center relative">
           <div className="relative z-10">
-            <Badge variant="secondary" className="mb-8 px-6 py-3 text-sm font-medium shadow-lg animate-fade-in bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-cyan-500/20 border border-emerald-400/30 text-emerald-100 backdrop-blur-sm">
-              <Calendar className="w-4 h-4 mr-2 text-yellow-400" />
+            <Badge variant="secondary" className="mb-8 px-6 py-3 text-sm font-medium shadow-lg animate-fade-in bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-yellow-500/20 border border-amber-400/30 text-amber-100 backdrop-blur-sm">
+              <Calendar className="w-4 h-4 mr-2 text-amber-400" />
               First Modern Digital N'Ko Learning Platform
-              <Star className="w-4 h-4 ml-2 text-yellow-400" />
+              <Star className="w-4 h-4 ml-2 text-amber-400" />
             </Badge>
             
             <h1 className="text-6xl md:text-8xl font-bold mb-10 leading-tight animate-fade-in-up">
-              <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent drop-shadow-2xl">
+              <span className="bg-gradient-to-r from-amber-400 via-orange-300 to-yellow-400 bg-clip-text text-transparent drop-shadow-2xl">
                 The Future of
               </span>
               <br />
-              <span className="text-slate-800 drop-shadow-lg">N'Ko Learning</span>
+              <span className="text-white drop-shadow-lg">N'Ko Learning</span>
             </h1>
             
-            <p className="text-xl md:text-2xl text-slate-700 mb-14 max-w-4xl mx-auto leading-relaxed animate-fade-in-up delay-200 font-medium">
+            <p className="text-xl md:text-2xl text-gray-300 mb-14 max-w-4xl mx-auto leading-relaxed animate-fade-in-up delay-200 font-medium">
               Experience the ancient N'Ko script through modern technology. Watch letters come alive, 
               master the right-to-left writing system, and connect with centuries of West African heritage.
             </p>
@@ -379,7 +381,7 @@ export default function HomePage() {
               <div className="flex flex-col sm:flex-row gap-6 animate-fade-in-up delay-300">
                 {session ? (
                   <Link href="/nko">
-                    <Button size="lg" className="px-10 py-5 text-lg font-semibold shadow-2xl hover:shadow-emerald-500/25 transition-all duration-300 transform hover:scale-105 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 border-0">
+                    <Button size="lg" className="px-10 py-5 text-lg font-semibold shadow-2xl hover:shadow-amber-500/25 transition-all duration-300 transform hover:scale-105 bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 hover:from-amber-600 hover:via-orange-600 hover:to-yellow-600 border-0 text-space-950">
                       <Play className="w-6 h-6 mr-3" />
                       Continue Learning
                       <ArrowRight className="w-6 h-6 ml-3" />
@@ -387,7 +389,7 @@ export default function HomePage() {
                   </Link>
                 ) : (
                   <Link href="/auth/register">
-                    <Button size="lg" className="px-10 py-5 text-lg font-semibold shadow-2xl hover:shadow-emerald-500/25 transition-all duration-300 transform hover:scale-105 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 border-0">
+                    <Button size="lg" className="px-10 py-5 text-lg font-semibold shadow-2xl hover:shadow-amber-500/25 transition-all duration-300 transform hover:scale-105 bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 hover:from-amber-600 hover:via-orange-600 hover:to-yellow-600 border-0 text-space-950">
                       <UserPlus className="w-6 h-6 mr-3" />
                       Start Learning Now
                       <ArrowRight className="w-6 h-6 ml-3" />
@@ -395,7 +397,7 @@ export default function HomePage() {
                   </Link>
                 )}
                 <Link href="/nko/lessons">
-                  <Button size="lg" variant="outline" className="px-10 py-5 text-lg font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-emerald-400/50 text-emerald-100 hover:bg-emerald-500/10 hover:border-emerald-400 backdrop-blur-sm">
+                  <Button size="lg" variant="outline" className="px-10 py-5 text-lg font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-amber-400/50 text-amber-100 hover:bg-amber-500/10 hover:border-amber-400 backdrop-blur-sm">
                     <BookOpen className="w-6 h-6 mr-3" />
                     Explore Lessons
                   </Button>
@@ -410,38 +412,38 @@ export default function HomePage() {
 
             {/* Historical Context */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16 animate-fade-in-up delay-600">
-              <div className="text-center p-6 bg-gradient-to-br from-slate-800/50 to-emerald-900/30 rounded-2xl backdrop-blur-sm border border-emerald-500/20">
-                <Calendar className="w-8 h-8 text-emerald-400 mx-auto mb-3" />
-                <div className="text-2xl font-bold text-emerald-300 mb-2">1949</div>
-                <div className="text-slate-300 text-sm font-medium">N'Ko Script Created by Solomana Kante</div>
+              <div className="text-center p-6 bg-gradient-to-br from-space-800/80 to-amber-900/30 rounded-2xl backdrop-blur-sm border border-amber-500/20 shadow-amber">
+                <Calendar className="w-8 h-8 text-amber-400 mx-auto mb-3" />
+                <div className="text-2xl font-bold text-amber-300 mb-2">1949</div>
+                <div className="text-gray-300 text-sm font-medium">N'Ko Script Created by Solomana Kante</div>
               </div>
-              <div className="text-center p-6 bg-gradient-to-br from-slate-800/50 to-teal-900/30 rounded-2xl backdrop-blur-sm border border-teal-500/20">
-                <Map className="w-8 h-8 text-teal-400 mx-auto mb-3" />
-                <div className="text-2xl font-bold text-teal-300 mb-2">8 Countries</div>
-                <div className="text-slate-300 text-sm font-medium">West African Nations Using N'Ko</div>
+              <div className="text-center p-6 bg-gradient-to-br from-space-800/80 to-violet-900/30 rounded-2xl backdrop-blur-sm border border-violet-500/20 shadow-violet">
+                <Map className="w-8 h-8 text-violet-400 mx-auto mb-3" />
+                <div className="text-2xl font-bold text-violet-300 mb-2">8 Countries</div>
+                <div className="text-gray-300 text-sm font-medium">West African Nations Using N'Ko</div>
               </div>
-              <div className="text-center p-6 bg-gradient-to-br from-slate-800/50 to-cyan-900/30 rounded-2xl backdrop-blur-sm border border-cyan-500/20">
+              <div className="text-center p-6 bg-gradient-to-br from-space-800/80 to-cyan-900/30 rounded-2xl backdrop-blur-sm border border-cyan-500/20 shadow-cyber">
                 <Globe className="w-8 h-8 text-cyan-400 mx-auto mb-3" />
                 <div className="text-2xl font-bold text-cyan-300 mb-2">40M+</div>
-                <div className="text-slate-300 text-sm font-medium">Mande Language Speakers Worldwide</div>
+                <div className="text-gray-300 text-sm font-medium">Mande Language Speakers Worldwide</div>
               </div>
             </div>
 
             {/* N'Ko Facts Section */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-20 animate-fade-in-up delay-400">
               {[
-                { number: "59", label: "N'Ko Characters", icon: BookOpen, color: "emerald", description: "Complete alphabet with unique diacritics" },
-                { number: "270°", label: "Reading Direction", icon: ArrowLeft, color: "teal", description: "Right-to-left script like Arabic & Hebrew" },
+                { number: "59", label: "N'Ko Characters", icon: BookOpen, color: "amber", description: "Complete alphabet with unique diacritics" },
+                { number: "270°", label: "Reading Direction", icon: ArrowLeft, color: "violet", description: "Right-to-left script like Arabic & Hebrew" },
                 { number: "1949", label: "Year Created", icon: Calendar, color: "cyan", description: "Invented by scholar Solomana Kante" }
               ].map((fact, index) => (
                 <div key={index} className="relative group">
-                  <div className="text-center p-8 bg-gradient-to-br from-slate-800/80 via-emerald-900/50 to-teal-900/50 rounded-3xl backdrop-blur-sm shadow-xl border border-emerald-500/20 hover:border-emerald-400/50 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl hover:shadow-emerald-500/10">
+                  <div className="text-center p-8 bg-gradient-to-br from-space-800/80 to-space-900/80 rounded-3xl backdrop-blur-xl shadow-xl border border-amber-500/20 hover:border-amber-400/50 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl hover:shadow-amber-500/10">
                     <fact.icon className={`w-8 h-8 mx-auto mb-4 text-${fact.color}-400`} />
                     <div className={`text-4xl font-bold text-${fact.color}-400 mb-2`}>{fact.number}</div>
-                    <div className="text-slate-200 font-medium mb-2">{fact.label}</div>
-                    <div className="text-xs text-slate-400 font-medium">{fact.description}</div>
+                    <div className="text-gray-200 font-medium mb-2">{fact.label}</div>
+                    <div className="text-xs text-gray-400 font-medium">{fact.description}</div>
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10"></div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-violet-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10"></div>
                 </div>
               ))}
             </div>
@@ -449,8 +451,8 @@ export default function HomePage() {
             {/* Revolutionary Features */}
             <div className="flex flex-wrap justify-center items-center gap-8 mb-16 opacity-80">
               {["Digital First", "Stroke Animation", "Right-to-Left Mastery", "Cultural Heritage"].map((badge, index) => (
-                <div key={index} className="flex items-center gap-2 text-emerald-200">
-                  <CheckCircle className="w-4 h-4 text-emerald-400" />
+                <div key={index} className="flex items-center gap-2 text-amber-200">
+                  <CheckCircle className="w-4 h-4 text-amber-400" />
                   <span className="text-sm font-medium">{badge}</span>
                 </div>
               ))}
@@ -458,17 +460,17 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Enhanced Features Grid */}
+        {/* Features Grid */}
         <section className="pb-32">
           <div className="text-center mb-20">
-            <Badge className="mb-6 px-4 py-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/30 text-emerald-300">
+            <Badge className="mb-6 px-4 py-2 bg-gradient-to-r from-amber-500/20 to-violet-500/20 border border-amber-400/30 text-amber-300">
               <Zap className="w-4 h-4 mr-2" />
               Revolutionary Learning Methods
             </Badge>
             <h2 className="text-5xl md:text-6xl font-bold mb-8 text-white">
               Modern Tools for Ancient Script
             </h2>
-            <p className="text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed font-medium">
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed font-medium">
               Experience N'Ko through innovative technology that respects tradition while embracing modern learning science
             </p>
           </div>
@@ -480,7 +482,7 @@ export default function HomePage() {
                 title: "Stroke-by-Stroke Animation",
                 description: "Watch every N'Ko character form naturally with authentic stroke order and direction guidance",
                 features: ["Live character animation", "Traditional stroke patterns", "Right-to-left flow mastery", "Authentic calligraphy style"],
-                color: "emerald",
+                color: "amber",
                 delay: "0"
               },
               {
@@ -488,7 +490,7 @@ export default function HomePage() {
                 title: "Interactive Conversations", 
                 description: "Practice real N'Ko conversations with intelligent tutoring and cultural context",
                 features: ["Natural conversation flow", "Cultural context tips", "Grammar pattern recognition", "Progress-based difficulty"],
-                color: "teal",
+                color: "violet",
                 delay: "100"
               },
               {
@@ -504,7 +506,7 @@ export default function HomePage() {
                 title: "Pronunciation Mastery",
                 description: "Advanced speech recognition trained specifically for N'Ko phonetics and tonal patterns",
                 features: ["Tonal pattern recognition", "Regional accent support", "Pronunciation feedback", "Audio-visual learning"],
-                color: "emerald",
+                color: "amber",
                 delay: "300"
               },
               {
@@ -512,7 +514,7 @@ export default function HomePage() {
                 title: "Authentic N'Ko Keyboard",
                 description: "Custom input system respecting N'Ko's right-to-left script and unique character relationships",
                 features: ["Full N'Ko character set", "Right-to-left input flow", "Smart character completion", "Traditional layout options"],
-                color: "teal",
+                color: "violet",
                 delay: "400"
               },
               {
@@ -524,7 +526,7 @@ export default function HomePage() {
                 delay: "500"
               }
             ].map((feature, index) => (
-              <Card key={index} className={`group hover:shadow-2xl hover:shadow-${feature.color}-500/20 transition-all duration-500 transform hover:-translate-y-3 border-0 shadow-xl bg-gradient-to-br from-slate-800/90 via-slate-800/70 to-slate-900/90 backdrop-blur-sm animate-fade-in-up delay-${feature.delay}`}>
+              <Card key={index} className={`group hover:shadow-2xl hover:shadow-${feature.color}-500/20 transition-all duration-500 transform hover:-translate-y-3 border border-${feature.color}-500/10 shadow-xl bg-gradient-to-br from-space-800/90 to-space-900/90 backdrop-blur-xl animate-fade-in-up delay-${feature.delay}`}>
                 <CardHeader className="pb-4">
                   <div className={`w-14 h-14 bg-gradient-to-br from-${feature.color}-400 via-${feature.color}-500 to-${feature.color}-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-${feature.color}-500/25`}>
                     <feature.icon className="w-7 h-7 text-white" />
@@ -532,14 +534,14 @@ export default function HomePage() {
                   <CardTitle className={`text-xl text-white group-hover:text-${feature.color}-300 transition-colors mb-3`}>
                     {feature.title}
                   </CardTitle>
-                  <CardDescription className="text-base text-slate-300 leading-relaxed font-medium">
+                  <CardDescription className="text-base text-gray-300 leading-relaxed font-medium">
                     {feature.description}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-3">
                     {feature.features.map((item, idx) => (
-                      <li key={idx} className="flex items-center gap-3 text-slate-200">
+                      <li key={idx} className="flex items-center gap-3 text-gray-200">
                         <div className={`w-2 h-2 bg-${feature.color}-400 rounded-full shadow-sm`}></div>
                         <span className="text-sm font-medium">{item}</span>
                       </li>
@@ -556,13 +558,13 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Enhanced CTA Section */}
+        {/* CTA Section */}
         <section className="pb-32">
           <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/20 via-teal-600/20 to-cyan-600/20 rounded-3xl blur-3xl"></div>
-            <div className="relative bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-3xl p-16 text-white shadow-2xl border border-emerald-400/30 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-amber-600/20 via-orange-600/20 to-yellow-600/20 rounded-3xl blur-3xl"></div>
+            <div className="relative bg-gradient-to-r from-amber-600 via-orange-600 to-yellow-600 rounded-3xl p-16 text-space-950 shadow-2xl border border-amber-400/30 overflow-hidden">
               {/* Background N'Ko Characters */}
-              <div className="absolute inset-0 opacity-10">
+              <div className="absolute inset-0 opacity-10 font-nko">
                 <div className="absolute top-10 left-10 text-6xl font-bold">ߒ</div>
                 <div className="absolute top-20 right-20 text-4xl font-bold">ߓ</div>
                 <div className="absolute bottom-20 left-1/3 text-7xl font-bold">ߕ</div>
@@ -570,7 +572,7 @@ export default function HomePage() {
               </div>
               
               <div className="relative z-10 text-center">
-                <Badge className="mb-8 px-4 py-2 bg-white/20 backdrop-blur-sm border border-white/30 text-white">
+                <Badge className="mb-8 px-4 py-2 bg-space-950/20 backdrop-blur-sm border border-space-950/30 text-space-950">
                   <Heart className="w-4 h-4 mr-2" />
                   Join the N'Ko Renaissance
                 </Badge>
@@ -584,21 +586,21 @@ export default function HomePage() {
                 <div className="flex flex-col sm:flex-row gap-6 justify-center">
                   {session ? (
                     <Link href="/nko">
-                      <Button size="lg" className="px-10 py-5 text-lg font-semibold bg-white text-emerald-600 hover:bg-emerald-50 shadow-xl transform hover:scale-105 transition-all duration-300">
+                      <Button size="lg" className="px-10 py-5 text-lg font-semibold bg-space-950 text-amber-400 hover:bg-space-900 shadow-xl transform hover:scale-105 transition-all duration-300">
                         <Play className="w-6 h-6 mr-3" />
                         Continue Your Journey
                       </Button>
                     </Link>
                   ) : (
                     <Link href="/auth/register">
-                      <Button size="lg" className="px-10 py-5 text-lg font-semibold bg-white text-emerald-600 hover:bg-emerald-50 shadow-xl transform hover:scale-105 transition-all duration-300">
+                      <Button size="lg" className="px-10 py-5 text-lg font-semibold bg-space-950 text-amber-400 hover:bg-space-900 shadow-xl transform hover:scale-105 transition-all duration-300">
                         <UserPlus className="w-6 h-6 mr-3" />
                         Start Your Journey
                       </Button>
                     </Link>
                   )}
                   <Link href="/nko/lessons">
-                    <Button size="lg" variant="outline" className="px-10 py-5 text-lg font-semibold border-2 border-white text-white hover:bg-white hover:text-emerald-600 shadow-lg transition-all duration-300">
+                    <Button size="lg" variant="outline" className="px-10 py-5 text-lg font-semibold border-2 border-space-950 text-space-950 hover:bg-space-950 hover:text-amber-400 shadow-lg transition-all duration-300">
                       <BookOpen className="w-6 h-6 mr-3" />
                       Explore Lessons
                     </Button>
@@ -610,29 +612,29 @@ export default function HomePage() {
         </section>
       </div>
 
-      {/* Enhanced Footer */}
-      <footer className="bg-slate-900/95 backdrop-blur-sm text-white py-16 border-t border-emerald-500/20">
+      {/* Footer */}
+      <footer className="bg-space-950/95 backdrop-blur-sm text-white py-16 border-t border-amber-500/20">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
             <div>
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 via-teal-400 to-cyan-400 rounded-xl flex items-center justify-center shadow-lg">
+                <div className="w-10 h-10 bg-gradient-to-br from-amber-400 via-orange-400 to-yellow-400 rounded-xl flex items-center justify-center shadow-lg">
                   <img 
                     src="/nko_logo.svg" 
                     alt="N'Ko Logo" 
                     className="w-6 h-6"
                   />
                 </div>
-                <span className="text-xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">N'Ko Hub</span>
+                <span className="text-xl font-bold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">N'Ko Hub</span>
               </div>
-              <p className="text-slate-300 leading-relaxed mb-6 font-medium">
+              <p className="text-gray-300 leading-relaxed mb-6 font-medium">
                 Pioneering the digital future of N'Ko education. Honoring tradition through innovation, 
                 connecting learners with the rich heritage of West African script and culture.
               </p>
               <div className="flex gap-3">
                 {[Globe, Shield, Award].map((Icon, index) => (
-                  <div key={index} className="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center hover:bg-emerald-500/30 transition-colors cursor-pointer">
-                    <Icon className="w-4 h-4 text-emerald-400" />
+                  <div key={index} className="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center hover:bg-amber-500/30 transition-colors cursor-pointer">
+                    <Icon className="w-4 h-4 text-amber-400" />
                   </div>
                 ))}
               </div>
@@ -672,11 +674,11 @@ export default function HomePage() {
               }
             ].map((section, index) => (
               <div key={index}>
-                <h3 className="font-semibold mb-6 text-emerald-300">{section.title}</h3>
+                <h3 className="font-semibold mb-6 text-amber-300">{section.title}</h3>
                 <ul className="space-y-3">
                   {section.links.map((link, linkIndex) => (
                     <li key={linkIndex}>
-                      <Link href={link.href} className="text-slate-400 hover:text-emerald-300 transition-colors text-sm font-medium">
+                      <Link href={link.href} className="text-gray-400 hover:text-amber-300 transition-colors text-sm font-medium">
                         {link.label}
                       </Link>
                     </li>
@@ -686,8 +688,8 @@ export default function HomePage() {
             ))}
           </div>
           
-          <div className="border-t border-emerald-500/20 pt-8 text-center">
-            <p className="text-slate-400 text-sm font-medium">
+          <div className="border-t border-amber-500/20 pt-8 text-center">
+            <p className="text-gray-400 text-sm font-medium">
               &copy; 2024 N'Ko Hub. Preserving heritage through innovation. Made with ❤️ for the N'Ko community.
             </p>
           </div>
