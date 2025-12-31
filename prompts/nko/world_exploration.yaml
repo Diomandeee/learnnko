@@ -1,0 +1,206 @@
+# N'Ko World Exploration Prompts
+# Text-only prompts for generating diverse N'Ko content variants
+# These are ~10x cheaper than multimodal prompts
+
+schema_version: "1.0.0"
+category: world_exploration
+cost_tier: text_only
+
+prompts:
+  world_everyday:
+    id: world_everyday
+    name: "Everyday Conversation"
+    description: "Generate casual, everyday usage variants"
+    template: |
+      You are generating N'Ko language learning content for everyday conversation.
+
+      Given the following N'Ko text and translation:
+      N'Ko: {nko_text}
+      Latin: {latin_text}
+      English: {translation}
+
+      Generate a natural everyday conversation that uses this text. Show how a Manding speaker would use it casually with family or friends.
+
+      Respond in JSON format:
+      {
+        "world": "everyday",
+        "variants": [
+          {
+            "nko_text": "N'Ko script text",
+            "latin_text": "romanized version",
+            "english": "English translation",
+            "context": "when/where this would be used",
+            "register": "informal|casual|friendly"
+          }
+        ],
+        "colloquial_forms": ["alternative casual forms"],
+        "common_responses": ["typical replies one might give"],
+        "cultural_note": "any cultural context for usage"
+      }
+
+      Generate 2-3 variants showing different casual usages.
+
+  world_formal:
+    id: world_formal
+    name: "Formal Writing"
+    description: "Generate formal/official usage variants"
+    template: |
+      You are generating N'Ko language learning content for formal contexts.
+
+      Given the following N'Ko text and translation:
+      N'Ko: {nko_text}
+      Latin: {latin_text}
+      English: {translation}
+
+      Generate formal versions of this text as it would appear in official documents, letters, or speeches.
+
+      Respond in JSON format:
+      {
+        "world": "formal",
+        "variants": [
+          {
+            "nko_text": "N'Ko script text",
+            "latin_text": "romanized version",
+            "english": "English translation",
+            "context": "official letter|document|speech|announcement",
+            "register": "formal|respectful|official"
+          }
+        ],
+        "honorific_forms": ["respectful/honorific alternatives"],
+        "written_conventions": ["formal writing conventions used"],
+        "grammar_notes": ["formal grammar structures applied"]
+      }
+
+      Generate 2-3 variants showing different formal usages.
+
+  world_storytelling:
+    id: world_storytelling
+    name: "Storytelling (Griot)"
+    description: "Generate storytelling/griot tradition variants"
+    template: |
+      You are a griot (jeli), a traditional West African storyteller, generating N'Ko language learning content.
+
+      Given the following N'Ko text and translation:
+      N'Ko: {nko_text}
+      Latin: {latin_text}
+      English: {translation}
+
+      Weave this text into a traditional Mande storytelling context. Show how a griot might use these words in a tale, song, or historical narrative.
+
+      Respond in JSON format:
+      {
+        "world": "storytelling",
+        "story_context": {
+          "setting": "when/where the story takes place",
+          "characters": ["traditional figures that might appear"],
+          "narrative_style": "epic|moral_tale|historical|mythological"
+        },
+        "variants": [
+          {
+            "nko_text": "N'Ko script as spoken by griot",
+            "latin_text": "romanized version",
+            "english": "English translation",
+            "delivery": "sung|spoken|chanted",
+            "audience_response": "call-and-response element if any"
+          }
+        ],
+        "traditional_phrases": ["formulaic expressions a griot would use"],
+        "musical_elements": ["rhythmic or melodic considerations"],
+        "cultural_significance": "importance of this in oral tradition"
+      }
+
+      Generate 2-3 variants showing different storytelling contexts.
+
+  world_proverbs:
+    id: world_proverbs
+    name: "Proverbs & Wisdom"
+    description: "Connect to Mande proverb traditions"
+    template: |
+      You are generating N'Ko language learning content connecting to Mande wisdom traditions.
+
+      Given the following N'Ko text and translation:
+      N'Ko: {nko_text}
+      Latin: {latin_text}
+      English: {translation}
+
+      Connect this text to the rich tradition of Mande proverbs (kuma kɔrɔ) and wisdom sayings.
+
+      Respond in JSON format:
+      {
+        "world": "proverbs",
+        "related_proverbs": [
+          {
+            "nko_text": "N'Ko proverb",
+            "latin_text": "romanized version",
+            "literal_meaning": "word-for-word translation",
+            "deeper_meaning": "philosophical interpretation",
+            "when_used": "situations where this applies"
+          }
+        ],
+        "wisdom_connections": {
+          "theme": "universal theme this connects to",
+          "elder_advice": "how an elder might use this to teach",
+          "life_lesson": "practical wisdom it conveys"
+        },
+        "cultural_context": {
+          "origin": "ethnic group or region if known",
+          "related_concepts": ["connected philosophical ideas"],
+          "similar_proverbs": ["equivalents in other cultures"]
+        }
+      }
+
+      Generate 2-3 related proverbs that connect thematically.
+
+  world_educational:
+    id: world_educational
+    name: "Educational"
+    description: "Generate teaching/lesson content"
+    template: |
+      You are a N'Ko language teacher generating educational content.
+
+      Given the following N'Ko text and translation:
+      N'Ko: {nko_text}
+      Latin: {latin_text}
+      English: {translation}
+
+      Create teaching materials that would help a learner understand and use this text.
+
+      Respond in JSON format:
+      {
+        "world": "educational",
+        "lesson_content": {
+          "topic": "what grammatical/vocabulary topic this teaches",
+          "level": "beginner|intermediate|advanced",
+          "objectives": ["what learner will achieve"]
+        },
+        "breakdown": {
+          "morphemes": [
+            {
+              "nko": "word/particle",
+              "meaning": "meaning",
+              "type": "noun|verb|particle|prefix|suffix"
+            }
+          ],
+          "grammar_points": ["key grammar concepts"],
+          "pronunciation_tips": ["specific sounds to practice"]
+        },
+        "exercises": [
+          {
+            "type": "fill_blank|translate|conjugate|match",
+            "prompt": "exercise instruction",
+            "answer": "correct answer"
+          }
+        ],
+        "example_sentences": [
+          {
+            "nko_text": "example in N'Ko",
+            "english": "translation",
+            "note": "what it demonstrates"
+          }
+        ],
+        "common_mistakes": ["errors learners often make"],
+        "mnemonic": "memory aid for remembering this"
+      }
+
+      Generate comprehensive teaching content suitable for self-study.
+
