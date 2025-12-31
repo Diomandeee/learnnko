@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const backendUrl = process.env.ANALYZER_BACKEND_URL || 'http://localhost:8080';
+  const backendUrl = process.env.ANALYZER_BACKEND_URL || 'https://cc-music-pipeline-owq2vk3wya-uc.a.run.app';
   const backendStreamUrl = `${backendUrl}/api/analyze/stream/${sessionId}`;
 
   try {

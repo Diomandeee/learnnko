@@ -38,12 +38,13 @@ interface CostEstimate {
 }
 
 interface BatchProgress {
+  job_id?: string;
   videos_processed: number;
   total_videos: number;
   frames_analyzed: number;
   explorations_generated: number;
   current_cost_usd: number;
-  status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
+  status: 'idle' | 'running' | 'paused' | 'completed' | 'error' | 'pending' | 'processing';
   current_video?: string;
   error?: string;
 }
@@ -174,11 +175,23 @@ export function ExplorationPanel({ className }: ExplorationPanelProps) {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to start processing');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || 'Failed to start processing');
       }
       
-      // Start polling for progress
-      pollProgress();
+      const data = await response.json();
+      const jobId = data.job_id;
+      
+      // Update progress with job_id
+      setProgress(prev => ({ 
+        ...prev, 
+        job_id: jobId,
+        status: 'running', 
+        total_videos: urls.length 
+      }));
+      
+      // Start polling for progress with job_id
+      pollProgress(jobId);
     } catch (error) {
       console.error('Start failed:', error);
       setProgress(prev => ({ ...prev, status: 'error', error: String(error) }));
@@ -186,15 +199,19 @@ export function ExplorationPanel({ className }: ExplorationPanelProps) {
   }, [videoUrls, maxBudget, concurrency, enableStage2, worlds, injectKnowledge]);
   
   // Poll for progress
-  const pollProgress = useCallback(async () => {
+  const pollProgress = useCallback(async (jobId?: string) => {
     try {
-      const response = await fetch('/api/exploration/progress');
+      const url = jobId 
+        ? `/api/exploration/progress?job_id=${encodeURIComponent(jobId)}`
+        : '/api/exploration/progress';
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         setProgress(data);
         
-        if (data.status === 'running') {
-          setTimeout(pollProgress, 2000);
+        // Continue polling if still running or processing
+        if (data.status === 'running' || data.status === 'processing' || data.status === 'pending') {
+          setTimeout(() => pollProgress(jobId || data.job_id), 2000);
         }
       }
     } catch (error) {
@@ -205,12 +222,16 @@ export function ExplorationPanel({ className }: ExplorationPanelProps) {
   // Stop processing
   const handleStop = useCallback(async () => {
     try {
-      await fetch('/api/exploration/stop', { method: 'POST' });
-      setProgress(prev => ({ ...prev, status: 'idle' }));
+      await fetch('/api/exploration/stop', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_id: progress.job_id }),
+      });
+      setProgress(prev => ({ ...prev, status: 'idle', job_id: undefined }));
     } catch (error) {
       console.error('Stop failed:', error);
     }
-  }, []);
+  }, [progress.job_id]);
   
   // Toggle world
   const toggleWorld = useCallback((worldId: string) => {
@@ -440,17 +461,25 @@ export function ExplorationPanel({ className }: ExplorationPanelProps) {
             <TabsContent value="progress" className="space-y-4">
               {/* Status Badge */}
               <div className="flex items-center justify-between">
-                <Badge 
-                  variant={
-                    progress.status === 'running' ? 'default' :
-                    progress.status === 'completed' ? 'secondary' :
-                    progress.status === 'error' ? 'destructive' : 'outline'
-                  }
-                  className="text-sm"
-                >
-                  {progress.status.toUpperCase()}
-                </Badge>
-                {progress.status === 'running' && (
+                <div className="flex items-center gap-2">
+                  <Badge 
+                    variant={
+                      progress.status === 'running' || progress.status === 'processing' ? 'default' :
+                      progress.status === 'pending' ? 'secondary' :
+                      progress.status === 'completed' ? 'secondary' :
+                      progress.status === 'error' ? 'destructive' : 'outline'
+                    }
+                    className="text-sm"
+                  >
+                    {progress.status.toUpperCase()}
+                  </Badge>
+                  {progress.job_id && (
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {progress.job_id.slice(0, 8)}...
+                    </span>
+                  )}
+                </div>
+                {(progress.status === 'running' || progress.status === 'processing' || progress.status === 'pending') && (
                   <Button variant="destructive" size="sm" onClick={handleStop}>
                     <Square className="h-4 w-4 mr-2" />
                     Stop
