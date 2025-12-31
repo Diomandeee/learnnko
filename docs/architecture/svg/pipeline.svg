@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600">
+  <style>
+    text { font-family: monospace; fill: #00d4ff; }
+    rect { fill: #1a1a2e; stroke: #00d4ff; }
+  </style>
+  <rect width="100%" height="100%" fill="#0a0a0f"/>
+  <text x="50%" y="30" text-anchor="middle" font-size="20" fill="#a855f7">
+    pipeline
+  </text>
+  <text x="20" y="60" font-size="12" fill="#a0a0b0">
+    <!-- Mermaid source: pipeline.mmd -->
+    <!-- Install @mermaid-js/mermaid-cli for full SVG generation -->
+  </text>
+  <foreignObject x="20" y="80" width="760" height="500">
+    <pre xmlns="http://www.w3.org/1999/xhtml" style="color:#fff;font-size:10px;white-space:pre-wrap;">%%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#00d4ff'}}}%%
+
+flowchart LR
+    subgraph P1[" Pass 1: Extraction "]
+        direction TB
+        D1[Download]
+        D2[Frames]
+        D3[OCR]
+        D4[Audio]
+        D1 --> D2 --> D3
+        D1 --> D4
+    end
+
+    subgraph P2[" Pass 2: Consolidation "]
+        direction TB
+        C1[Query Detections]
+        C2[Normalize Text]
+        C3[Deduplicate]
+        C4[Build Vocab]
+        C1 --> C2 --> C3 --> C4
+    end
+
+    subgraph...</pre>
+  </foreignObject>
+</svg>

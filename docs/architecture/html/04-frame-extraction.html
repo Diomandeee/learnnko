@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frame Extraction - LearnN'Ko Architecture</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">
+            <span class="logo-icon">ߒ</span>
+            <span>LearnN'Ko</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="01-data-flow.html" class="">Data Flow</a></li>
+<li><a href="02-database-schema.html" class="">Database Schema</a></li>
+<li><a href="03-pipeline-passes.html" class="">Pipeline Passes</a></li>
+<li><a href="04-frame-extraction.html" class="active">Frame Extraction</a></li>
+<li><a href="05-world-generation.html" class="">World Generation</a></li>
+<li><a href="06-audio-segments.html" class="">Audio Segments</a></li>
+<li><a href="07-resume-mechanism.html" class="">Resume Mechanism</a></li>
+<li><a href="README-BUILD.html" class="">Readme Build</a></li>
+<li><a href="README.html" class="">Readme</a></li>
+        </ul>
+        <div class="build-info">
+            <small>Built: 2025-12-31 09:27</small>
+        </div>
+    </nav>
+    <main class="content">
+        <article>
+            <h1>Frame Extraction</h1>
+<p>This document describes the intelligent frame extraction system that optimizes video processing.</p>
+<h2>Overview</h2>
+<p>N'Ko educational videos are primarily slide-based presentations. Naive frame extraction (1 fps) would produce:
+<ul>
+<li>60 minute video × 60 fps = 3,600 frames</li>
+<li>Most frames are duplicates of the same slide</li>
+<li>Significant API costs for redundant analysis</li>
+</ul>
+The <code>SmartFrameExtractor</code> reduces this to ~50-100 unique frames per video.</p>
+<h2>Architecture</h2>
+<pre><code class="language-">Video Input
+     │
+     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   SmartFrameExtractor                           │
+│                                                                  │
+│  ┌────────────────┐    ┌────────────────┐    ┌───────────────┐  │
+│  │ Scene Detection │───▶│ Content Filter │───▶│  Deduplication│  │
+│  └────────────────┘    └────────────────┘    └───────────────┘  │
+│         │                      │                     │          │
+│         ▼                      ▼                     ▼          │
+│    Scene changes          Skip intros/         Perceptual       │
+│    detected              credits              hashing           │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+     │
+     ▼
+Unique Frames (50-100)</code></pre>
+<h2>Components</h2>
+<h3>1. Scene Detection</h3>
+<p>Detects visual transitions between slides.</p>
+<pre><code class="language-python">class SceneChangeDetector:
+    def __init__(
+        self,
+        threshold: float = 0.3,          # Scene change sensitivity
+        min_scene_duration: float = 2.0,  # Minimum scene length (seconds)
+    ):
+        self.threshold = threshold
+        self.min_scene_duration = min_scene_duration
+    
+    def detect_scenes(self, video_path: str) -> List[float]:
+        """Returns timestamps of scene changes."""
+        # Uses FFmpeg's scene detection filter
+        # ffmpeg -i video.mp4 -vf "select='gt(scene,0.3)'" ...
+        pass</code></pre>
+<strong>How it works:</strong>
+1. FFmpeg analyzes frame-to-frame differences
+2. When pixel difference exceeds threshold → scene change
+3. Groups frames by scene
+4. Takes 1 representative frame per scene
+<strong>Tuning:</strong>
+<ul>
+<li><code>threshold=0.3</code>: Good for slide transitions</li>
+<li><code>threshold=0.5</code>: More conservative, fewer scenes</li>
+<li><code>min_scene_duration=2.0</code>: Prevents rapid transitions</li>
+</ul>
+<h3>2. Content Filtering</h3>
+<p>Skips non-educational content.</p>
+<pre><code class="language-python">class ContentFilter:
+    def __init__(
+        self,
+        skip_intro_seconds: float = 10.0,    # Skip video intro
+        skip_credits_seconds: float = 30.0,  # Skip end credits
+    ):
+        pass
+    
+    def filter(self, frames: List[FrameInfo]) -> List[FrameInfo]:
+        """Removes intro/credits frames."""
+        return [f for f in frames if self._is_content(f)]</code></pre>
+<strong>Skipped content:</strong>
+<ul>
+<li>First 10 seconds (intros, logos)</li>
+<li>Last 30 seconds (credits, outros)</li>
+<li>Frames with detected non-N'Ko text only</li>
+</ul>
+<h3>3. Perceptual Hashing</h3>
+<p>Removes near-duplicate frames.</p>
+<pre><code class="language-python">class PerceptualHashDeduplicator:
+    def __init__(
+        self,
+        hash_size: int = 16,           # Hash resolution
+        similarity_threshold: float = 0.95,  # Duplicate threshold
+    ):
+        pass
+    
+    def deduplicate(self, frames: List[FrameInfo]) -> List[FrameInfo]:
+        """Removes visually similar frames."""
+        unique = []
+        hashes = set()
+        
+        for frame in frames:
+            phash = compute_phash(frame.path)
+            
+            if not any(similar(phash, h) for h in hashes):
+                unique.append(frame)
+                hashes.add(phash)
+        
+        return unique</code></pre>
+<strong>How it works:</strong>
+1. Resize frame to 16×16 grayscale
+2. Compute DCT (frequency transform)
+3. Generate 64-bit hash
+4. Compare Hamming distance between hashes
+5. If distance < threshold → duplicate
+<h2>Configuration</h2>
+<pre><code class="language-yaml"><h1>config/production.yaml</h1>
+extraction:
+  target_frames: 100            # Max frames per video
+  use_scene_detection: true     # Enable scene detection
+  scene_threshold: 0.3          # Scene change sensitivity
+  min_scene_duration: 2.0       # Min scene length (seconds)
+  skip_intro_seconds: 10        # Skip intro
+  skip_credits_seconds: 30      # Skip credits
+  dedup_threshold: 0.95         # Duplicate similarity threshold
+  fallback_to_even: true        # Use even sampling if scene detection fails</code></pre>
+<h2>Extraction Strategies</h2>
+<h3>Strategy 1: Scene-Based (Default)</h3>
+<p>Best for slide presentations.</p>
+<pre><code class="language-">Video: 60 minutes
+     │
+Scene Detection: 45 scenes detected
+     │
+Content Filter: 40 scenes (skip intro/credits)
+     │
+Deduplication: 38 unique frames
+     │
+Output: 38 frames</code></pre>
+<h3>Strategy 2: Even Sampling (Fallback)</h3>
+<p>For videos without clear transitions.</p>
+<pre><code class="language-">Video: 60 minutes (3600 seconds)
+     │
+Target: 100 frames
+Interval: 3600 / 100 = 36 seconds
+     │
+Deduplication: 85 unique frames
+     │
+Output: 85 frames</code></pre>
+<h3>Strategy 3: Hybrid</h3>
+<p>Combines both approaches.</p>
+<pre><code class="language-">Video: 60 minutes
+     │
+Scene Detection: 30 scenes
+Even Fill: Add 20 more at 2-minute intervals
+     │
+Total candidates: 50 frames
+Deduplication: 48 unique frames
+     │
+Output: 48 frames</code></pre>
+<h2>Frame Info Structure</h2>
+<pre><code class="language-python">@dataclass
+class FrameInfo:
+    """Metadata for an extracted frame."""
+    path: str              # Local file path
+    index: int             # Frame number
+    timestamp_ms: int      # Position in video
+    scene_index: int       # Which scene it belongs to
+    phash: str             # Perceptual hash
+    method: str            # 'scene', 'even', or 'hybrid'</code></pre>
+<h2>Statistics</h2>
+<pre><code class="language-python">@dataclass
+class FilterStats:
+    """Statistics from frame extraction."""
+    total_candidates: int      # Initial frame count
+    after_scene_detection: int # After scene grouping
+    after_content_filter: int  # After skipping intro/credits
+    after_deduplication: int   # After removing duplicates
+    final_count: int           # Output frames
+    reduction_percent: float   # Overall reduction
+    method_used: str           # Extraction method</code></pre>
+<h2>Example Output</h2>
+<pre><code class="language-">Processing video: xsUrdpKD5wM (58:42)
+  Scene detection: 67 scenes found
+  Content filtering: 62 scenes (skipped 5)
+  Deduplication: 55 unique frames
+  
+Filter Statistics:
+  Candidates: 3522 (1 fps)
+  After scene: 67 (98% reduction)
+  After filter: 62 (7% reduction)
+  After dedup: 55 (11% reduction)
+  Final: 55 frames (98.4% total reduction)
+  Method: scene-based</code></pre>
+<h2>Cost Impact</h2>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Frames/Video</th>
+<th>Cost/Video</th>
+<th>Total (522 videos)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Naive (1 fps)</td>
+<td>3,600</td>
+<td>$7.20</td>
+<td>$3,758</td>
+</tr>
+<tr>
+<td>Even (0.2 fps)</td>
+<td>720</td>
+<td>$1.44</td>
+<td>$752</td>
+</tr>
+<tr>
+<td>Smart (scene)</td>
+<td>55</td>
+<td>$0.11</td>
+<td>$57</td>
+</tr>
+</tbody>
+</table>
+<strong>Savings: 98.4% reduction in API costs</strong>
+<h2>Troubleshooting</h2>
+<h3>Scene detection finds too many scenes</h3>
+<p>Increase threshold:
+<pre><code class="language-yaml">scene_threshold: 0.5  # More conservative</code></pre></p>
+<h3>Scene detection finds too few scenes</h3>
+<p>Use hybrid mode:
+<pre><code class="language-yaml">fallback_to_even: true
+target_frames: 100</code></pre></p>
+<h3>Frames look similar</h3>
+<p>Lower dedup threshold:
+<pre><code class="language-yaml">dedup_threshold: 0.90  # Stricter deduplication</code></pre></p>
+
+        </article>
+    </main>
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#00d4ff',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#00d4ff',
+                lineColor: '#a855f7',
+                secondaryColor: '#1e1e2e',
+                tertiaryColor: '#2d2d44'
+            }
+        });
+    </script>
+</body>
+</html>

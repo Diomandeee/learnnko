@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Schema - LearnN'Ko Architecture</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">
+            <span class="logo-icon">ߒ</span>
+            <span>LearnN'Ko</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="01-data-flow.html" class="">Data Flow</a></li>
+<li><a href="02-database-schema.html" class="active">Database Schema</a></li>
+<li><a href="03-pipeline-passes.html" class="">Pipeline Passes</a></li>
+<li><a href="04-frame-extraction.html" class="">Frame Extraction</a></li>
+<li><a href="05-world-generation.html" class="">World Generation</a></li>
+<li><a href="06-audio-segments.html" class="">Audio Segments</a></li>
+<li><a href="07-resume-mechanism.html" class="">Resume Mechanism</a></li>
+<li><a href="README-BUILD.html" class="">Readme Build</a></li>
+<li><a href="README.html" class="">Readme</a></li>
+        </ul>
+        <div class="build-info">
+            <small>Built: 2025-12-31 09:27</small>
+        </div>
+    </nav>
+    <main class="content">
+        <article>
+            <h1>Database Schema</h1>
+<p>This document describes the Supabase PostgreSQL schema for LearnN'Ko.</p>
+<h2>Entity Relationship Diagram</h2>
+<div class="mermaid">
+erDiagram
+    nko_sources ||--o{ nko_frames : contains
+    nko_sources ||--o{ nko_audio_segments : contains
+    nko_frames ||--o{ nko_detections : contains
+    nko_detections ||--o{ nko_trajectories : generates
+    nko_trajectories ||--o{ nko_trajectory_nodes : contains
+    nko_vocabulary ||--o{ nko_trajectory_nodes : references
+    nko_sessions ||--o{ nko_learning_events : contains
+    nko_sessions ||--o{ nko_trajectories : tracks
+    users ||--o{ nko_sessions : owns
+    nko_prompts ||--o{ nko_detections : uses
+<p>nko_sources {
+        uuid id PK
+        text source_type
+        text url
+        text external_id
+        text title
+        text channel_name
+        bigint duration_ms
+        text status
+        int frame_count
+        int nko_frame_count
+        timestamptz created_at
+    }</p>
+<p>nko_frames {
+        uuid id PK
+        uuid source_id FK
+        int frame_index
+        int timestamp_ms
+        bool has_nko
+        int detection_count
+        float confidence
+        text storage_path
+        timestamptz created_at
+    }</p>
+<p>nko_detections {
+        uuid id PK
+        uuid frame_id FK
+        text nko_text
+        text nko_text_normalized
+        text latin_text
+        text english_text
+        int char_count
+        float confidence
+        text gemini_model
+        jsonb raw_response
+        timestamptz created_at
+    }</p>
+<p>nko_audio_segments {
+        uuid id PK
+        uuid source_id FK
+        uuid frame_id FK
+        int segment_index
+        int start_ms
+        int end_ms
+        text audio_path
+        text transcription
+        float transcription_confidence
+        timestamptz created_at
+    }</p>
+<p>nko_trajectories {
+        uuid id PK
+        uuid session_id FK
+        uuid user_id FK
+        text name
+        text trajectory_type
+        int max_depth
+        int total_nodes
+        text dominant_phase
+        bool is_complete
+        timestamptz created_at
+    }</p>
+<p>nko_trajectory_nodes {
+        uuid id PK
+        uuid trajectory_id FK
+        int node_index
+        uuid detection_id FK
+        uuid vocabulary_id FK
+        int trajectory_depth
+        text trajectory_phase
+        float salience_score
+        text content_preview
+        timestamptz created_at
+    }</p>
+<p>nko_vocabulary {
+        uuid id PK
+        text nko_text UK
+        text latin_text
+        text english_text
+        text category
+        int difficulty
+        int frequency
+        bool is_verified
+        timestamptz created_at
+    }</p>
+<p>nko_sessions {
+        uuid id PK
+        uuid user_id FK
+        text session_type
+        text status
+        int total_events
+        timestamptz started_at
+        timestamptz ended_at
+    }</p>
+<p>nko_learning_events {
+        uuid id PK
+        uuid session_id FK
+        uuid user_id FK
+        text event_type
+        text phase
+        jsonb content
+        int response_time_ms
+        timestamptz created_at
+    }</p>
+<p>nko_prompts {
+        uuid id PK
+        text prompt_id UK
+        text category
+        text name
+        text template
+        jsonb variables
+        bool is_active
+        timestamptz created_at
+    }
+</div></p>
+<h2>Table Descriptions</h2>
+<h3>Core Content Tables</h3>
+<p>#### <code>nko_sources</code>
+Video source metadata from YouTube.</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>UUID</td>
+<td>Primary key</td>
+</tr>
+<tr>
+<td>source_type</td>
+<td>TEXT</td>
+<td>'youtube', 'file', 'upload'</td>
+</tr>
+<tr>
+<td>url</td>
+<td>TEXT</td>
+<td>Full video URL</td>
+</tr>
+<tr>
+<td>external_id</td>
+<td>TEXT</td>
+<td>YouTube video ID</td>
+</tr>
+<tr>
+<td>title</td>
+<td>TEXT</td>
+<td>Video title</td>
+</tr>
+<tr>
+<td>channel_name</td>
+<td>TEXT</td>
+<td>YouTube channel</td>
+</tr>
+<tr>
+<td>duration_ms</td>
+<td>BIGINT</td>
+<td>Video duration</td>
+</tr>
+<tr>
+<td>status</td>
+<td>TEXT</td>
+<td>'pending', 'processing', 'completed', 'failed'</td>
+</tr>
+<tr>
+<td>frame_count</td>
+<td>INT</td>
+<td>Total extracted frames</td>
+</tr>
+<tr>
+<td>nko_frame_count</td>
+<td>INT</td>
+<td>Frames with N'Ko text</td>
+</tr>
+</tbody>
+</table>
+#### <code>nko_frames</code>
+Individual video frames.
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>UUID</td>
+<td>Primary key</td>
+</tr>
+<tr>
+<td>source_id</td>
+<td>UUID</td>
+<td>FK to nko_sources</td>
+</tr>
+<tr>
+<td>frame_index</td>
+<td>INT</td>
+<td>Position in video</td>
+</tr>
+<tr>
+<td>timestamp_ms</td>
+<td>INT</td>
+<td>Timestamp in video</td>
+</tr>
+<tr>
+<td>has_nko</td>
+<td>BOOL</td>
+<td>Contains N'Ko text</td>
+</tr>
+<tr>
+<td>detection_count</td>
+<td>INT</td>
+<td>Number of detections</td>
+</tr>
+<tr>
+<td>confidence</td>
+<td>FLOAT</td>
+<td>Average confidence</td>
+</tr>
+<tr>
+<td>storage_path</td>
+<td>TEXT</td>
+<td>Path to frame image</td>
+</tr>
+</tbody>
+</table>
+#### <code>nko_detections</code>
+OCR results for N'Ko text.
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>UUID</td>
+<td>Primary key</td>
+</tr>
+<tr>
+<td>frame_id</td>
+<td>UUID</td>
+<td>FK to nko_frames</td>
+</tr>
+<tr>
+<td>nko_text</td>
+<td>TEXT</td>
+<td>Raw N'Ko text</td>
+</tr>
+<tr>
+<td>nko_text_normalized</td>
+<td>TEXT</td>
+<td>Normalized for matching</td>
+</tr>
+<tr>
+<td>latin_text</td>
+<td>TEXT</td>
+<td>Latin transliteration</td>
+</tr>
+<tr>
+<td>english_text</td>
+<td>TEXT</td>
+<td>English translation</td>
+</tr>
+<tr>
+<td>char_count</td>
+<td>INT</td>
+<td>Character count</td>
+</tr>
+<tr>
+<td>confidence</td>
+<td>FLOAT</td>
+<td>OCR confidence</td>
+</tr>
+<tr>
+<td>gemini_model</td>
+<td>TEXT</td>
+<td>Model used</td>
+</tr>
+<tr>
+<td>raw_response</td>
+<td>JSONB</td>
+<td>Full API response</td>
+</tr>
+</tbody>
+</table>
+#### <code>nko_audio_segments</code>
+Scene-aligned audio for future ASR.
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>UUID</td>
+<td>Primary key</td>
+</tr>
+<tr>
+<td>source_id</td>
+<td>UUID</td>
+<td>FK to nko_sources</td>
+</tr>
+<tr>
+<td>frame_id</td>
+<td>UUID</td>
+<td>FK to nko_frames (optional)</td>
+</tr>
+<tr>
+<td>segment_index</td>
+<td>INT</td>
+<td>Position in video</td>
+</tr>
+<tr>
+<td>start_ms</td>
+<td>INT</td>
+<td>Start timestamp</td>
+</tr>
+<tr>
+<td>end_ms</td>
+<td>INT</td>
+<td>End timestamp</td>
+</tr>
+<tr>
+<td>audio_path</td>
+<td>TEXT</td>
+<td>Path to audio file</td>
+</tr>
+<tr>
+<td>transcription</td>
+<td>TEXT</td>
+<td>ASR result (future)</td>
+</tr>
+<tr>
+<td>transcription_confidence</td>
+<td>FLOAT</td>
+<td>ASR confidence</td>
+</tr>
+</tbody>
+</table>
+<h3>Learning Tables</h3>
+<p>#### <code>nko_trajectories</code>
+Learning paths through content.</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>UUID</td>
+<td>Primary key</td>
+</tr>
+<tr>
+<td>session_id</td>
+<td>UUID</td>
+<td>FK to nko_sessions</td>
+</tr>
+<tr>
+<td>user_id</td>
+<td>UUID</td>
+<td>FK to users</td>
+</tr>
+<tr>
+<td>name</td>
+<td>TEXT</td>
+<td>Trajectory name</td>
+</tr>
+<tr>
+<td>trajectory_type</td>
+<td>TEXT</td>
+<td>'content_flow', 'exploration'</td>
+</tr>
+<tr>
+<td>total_nodes</td>
+<td>INT</td>
+<td>Number of nodes</td>
+</tr>
+<tr>
+<td>dominant_phase</td>
+<td>TEXT</td>
+<td>Primary learning phase</td>
+</tr>
+<tr>
+<td>is_complete</td>
+<td>BOOL</td>
+<td>Fully traversed</td>
+</tr>
+</tbody>
+</table>
+#### <code>nko_trajectory_nodes</code>
+Individual steps in a trajectory.
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>UUID</td>
+<td>Primary key</td>
+</tr>
+<tr>
+<td>trajectory_id</td>
+<td>UUID</td>
+<td>FK to nko_trajectories</td>
+</tr>
+<tr>
+<td>node_index</td>
+<td>INT</td>
+<td>Position in trajectory</td>
+</tr>
+<tr>
+<td>detection_id</td>
+<td>UUID</td>
+<td>FK to nko_detections</td>
+</tr>
+<tr>
+<td>vocabulary_id</td>
+<td>UUID</td>
+<td>FK to nko_vocabulary</td>
+</tr>
+<tr>
+<td>trajectory_depth</td>
+<td>INT</td>
+<td>Nesting depth</td>
+</tr>
+<tr>
+<td>trajectory_phase</td>
+<td>TEXT</td>
+<td>'exploration', 'consolidation', etc.</td>
+</tr>
+<tr>
+<td>salience_score</td>
+<td>FLOAT</td>
+<td>Importance score</td>
+</tr>
+<tr>
+<td>content_preview</td>
+<td>TEXT</td>
+<td>Preview text</td>
+</tr>
+</tbody>
+</table>
+#### <code>nko_vocabulary</code>
+Curated vocabulary entries.
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>UUID</td>
+<td>Primary key</td>
+</tr>
+<tr>
+<td>nko_text</td>
+<td>TEXT</td>
+<td>N'Ko text (unique)</td>
+</tr>
+<tr>
+<td>latin_text</td>
+<td>TEXT</td>
+<td>Transliteration</td>
+</tr>
+<tr>
+<td>english_text</td>
+<td>TEXT</td>
+<td>Translation</td>
+</tr>
+<tr>
+<td>category</td>
+<td>TEXT</td>
+<td>Word category</td>
+</tr>
+<tr>
+<td>difficulty</td>
+<td>INT</td>
+<td>1-5 difficulty</td>
+</tr>
+<tr>
+<td>frequency</td>
+<td>INT</td>
+<td>Usage frequency</td>
+</tr>
+<tr>
+<td>is_verified</td>
+<td>BOOL</td>
+<td>Human verified</td>
+</tr>
+</tbody>
+</table>
+<h3>Session Tables</h3>
+<p>#### <code>nko_sessions</code>
+User learning sessions.</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>UUID</td>
+<td>Primary key</td>
+</tr>
+<tr>
+<td>user_id</td>
+<td>UUID</td>
+<td>FK to users</td>
+</tr>
+<tr>
+<td>session_type</td>
+<td>TEXT</td>
+<td>'learning', 'exploration'</td>
+</tr>
+<tr>
+<td>status</td>
+<td>TEXT</td>
+<td>'active', 'completed'</td>
+</tr>
+<tr>
+<td>total_events</td>
+<td>INT</td>
+<td>Event count</td>
+</tr>
+<tr>
+<td>started_at</td>
+<td>TIMESTAMPTZ</td>
+<td>Start time</td>
+</tr>
+<tr>
+<td>ended_at</td>
+<td>TIMESTAMPTZ</td>
+<td>End time</td>
+</tr>
+</tbody>
+</table>
+#### <code>nko_learning_events</code>
+Individual learning interactions.
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>UUID</td>
+<td>Primary key</td>
+</tr>
+<tr>
+<td>session_id</td>
+<td>UUID</td>
+<td>FK to nko_sessions</td>
+</tr>
+<tr>
+<td>user_id</td>
+<td>UUID</td>
+<td>FK to users</td>
+</tr>
+<tr>
+<td>event_type</td>
+<td>TEXT</td>
+<td>'view', 'response', 'correction'</td>
+</tr>
+<tr>
+<td>phase</td>
+<td>TEXT</td>
+<td>Learning phase</td>
+</tr>
+<tr>
+<td>content</td>
+<td>JSONB</td>
+<td>Event details</td>
+</tr>
+<tr>
+<td>response_time_ms</td>
+<td>INT</td>
+<td>User response time</td>
+</tr>
+</tbody>
+</table>
+<h3>Configuration Tables</h3>
+<p>#### <code>nko_prompts</code>
+Dynamic prompt templates.</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>UUID</td>
+<td>Primary key</td>
+</tr>
+<tr>
+<td>prompt_id</td>
+<td>TEXT</td>
+<td>Unique identifier</td>
+</tr>
+<tr>
+<td>category</td>
+<td>TEXT</td>
+<td>'ocr', 'world', 'live'</td>
+</tr>
+<tr>
+<td>name</td>
+<td>TEXT</td>
+<td>Human-readable name</td>
+</tr>
+<tr>
+<td>template</td>
+<td>TEXT</td>
+<td>Prompt template</td>
+</tr>
+<tr>
+<td>variables</td>
+<td>JSONB</td>
+<td>Expected variables</td>
+</tr>
+<tr>
+<td>is_active</td>
+<td>BOOL</td>
+<td>Currently active</td>
+</tr>
+</tbody>
+</table>
+<h2>Row Level Security</h2>
+<p>All tables use RLS with policies:</p>
+<pre><code class="language-sql">-- Public read access
+CREATE POLICY "Public read" ON table_name
+FOR SELECT TO public USING (true);
+<p>-- Service role write access
+CREATE POLICY "Pipeline insert" ON table_name
+FOR INSERT TO service_role WITH CHECK (true);</p>
+<p>-- User-owned data
+CREATE POLICY "Users own their data" ON user_table
+FOR ALL TO authenticated
+USING (auth.uid() = user_id);</code></pre></p>
+<h2>Indexes</h2>
+<p>Key indexes for performance:</p>
+<pre><code class="language-sql">-- Source lookups
+CREATE INDEX idx_sources_external_id ON nko_sources(external_id);
+CREATE INDEX idx_sources_status ON nko_sources(status);
+<p>-- Frame queries
+CREATE INDEX idx_frames_source ON nko_frames(source_id);
+CREATE INDEX idx_frames_has_nko ON nko_frames(has_nko) WHERE has_nko = true;</p>
+<p>-- Detection searches
+CREATE INDEX idx_detections_frame ON nko_detections(frame_id);
+CREATE INDEX idx_detections_nko_text ON nko_detections USING gin(to_tsvector('simple', nko_text));</p>
+<p>-- Vocabulary lookups
+CREATE UNIQUE INDEX idx_vocabulary_nko_text ON nko_vocabulary(nko_text);</code></pre></p>
+<h2>Migration Files</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>001-005</td>
+<td>Core tables (sources, frames, detections)</td>
+</tr>
+<tr>
+<td>006-007</td>
+<td>Learning tables (sessions, events, trajectories)</td>
+</tr>
+<tr>
+<td>008-009</td>
+<td>Vocabulary and statistics</td>
+</tr>
+<tr>
+<td>010</td>
+<td>Prompt registry</td>
+</tr>
+<tr>
+<td>011</td>
+<td>Pipeline insert policies</td>
+</tr>
+<tr>
+<td>012</td>
+<td>Audio segments</td>
+</tr>
+</tbody>
+</table>
+        </article>
+    </main>
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#00d4ff',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#00d4ff',
+                lineColor: '#a855f7',
+                secondaryColor: '#1e1e2e',
+                tertiaryColor: '#2d2d44'
+            }
+        });
+    </script>
+</body>
+</html>

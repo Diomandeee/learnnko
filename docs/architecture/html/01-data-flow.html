@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Flow Architecture - LearnN'Ko Architecture</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">
+            <span class="logo-icon">ߒ</span>
+            <span>LearnN'Ko</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="01-data-flow.html" class="active">Data Flow</a></li>
+<li><a href="02-database-schema.html" class="">Database Schema</a></li>
+<li><a href="03-pipeline-passes.html" class="">Pipeline Passes</a></li>
+<li><a href="04-frame-extraction.html" class="">Frame Extraction</a></li>
+<li><a href="05-world-generation.html" class="">World Generation</a></li>
+<li><a href="06-audio-segments.html" class="">Audio Segments</a></li>
+<li><a href="07-resume-mechanism.html" class="">Resume Mechanism</a></li>
+<li><a href="README-BUILD.html" class="">Readme Build</a></li>
+<li><a href="README.html" class="">Readme</a></li>
+        </ul>
+        <div class="build-info">
+            <small>Built: 2025-12-31 09:27</small>
+        </div>
+    </nav>
+    <main class="content">
+        <article>
+            <h1>Data Flow Architecture</h1>
+<p>This document describes the end-to-end data flow from YouTube videos to the learning interface.</p>
+<h2>High-Level Flow</h2>
+<div class="mermaid">
+flowchart TB
+    subgraph Sources[Data Sources]
+        YT[YouTube Channel]
+        YT2[babamamadidiane]
+    end
+<p>subgraph Pipeline[Training Pipeline]
+        DL[Download Video]
+        FE[Frame Extraction]
+        OCR[Gemini OCR]
+        AE[Audio Extraction]
+        WG[World Generation]
+    end</p>
+<p>subgraph Storage[Storage Layer]
+        SB[(Supabase)]
+        LS[Local Files]
+    end</p>
+<p>subgraph Frontend[User Interface]
+        NX[Next.js App]
+        LP[Learning Panel]
+        EP[Exploration Panel]
+    end</p>
+<p>YT --> DL
+    DL --> FE
+    DL --> AE
+    FE --> OCR
+    OCR --> SB
+    OCR --> WG
+    WG --> SB
+    AE --> LS
+    SB --> NX
+    LS --> NX
+    NX --> LP
+    NX --> EP
+</div></p>
+<h2>Detailed Data Flow</h2>
+<h3>Stage 1: Video Acquisition</h3>
+<pre><code class="language-">YouTube URL
+     │
+     ▼
+┌─────────────┐
+│   yt-dlp    │ ─────▶ Video file (.mp4)
+└─────────────┘        Max 720p, ~100-200MB</code></pre>
+<strong>Input:</strong> YouTube video URL
+<strong>Output:</strong> Local video file
+<strong>Tools:</strong> yt-dlp with multiple fallback strategies
+<h3>Stage 2: Frame Extraction</h3>
+<pre><code class="language-">Video File
+     │
+     ▼
+┌───────────────────────────────────────┐
+│         SmartFrameExtractor           │
+│  ┌─────────────┐  ┌────────────────┐  │
+│  │   Scene     │  │   Perceptual   │  │
+│  │  Detection  │  │    Hashing     │  │
+│  └─────────────┘  └────────────────┘  │
+│  ┌─────────────┐  ┌────────────────┐  │
+│  │   Content   │  │     Even       │  │
+│  │  Classifier │  │   Sampling     │  │
+│  └─────────────┘  └────────────────┘  │
+└───────────────────────────────────────┘
+     │
+     ▼
+JPEG frames (50-100 per video)</code></pre>
+<strong>Input:</strong> Video file
+<strong>Output:</strong> Unique, representative frames
+<strong>Reduction:</strong> ~50-70% fewer frames than naive extraction
+<h3>Stage 3: OCR Analysis</h3>
+<pre><code class="language-">Frame Image
+     │
+     ▼
+┌─────────────────────────────────────────┐
+│            Gemini API                    │
+│  Model: gemini-2.0-flash                 │
+│                                          │
+│  Input:  Image + N'Ko detection prompt   │
+│  Output: JSON with:                      │
+│    - has_nko_text: boolean               │
+│    - nko_text: string                    │
+│    - latin_transliteration: string       │
+│    - english_translation: string         │
+│    - confidence: float                   │
+└─────────────────────────────────────────┘
+     │
+     ▼
+Detection Record in Supabase</code></pre>
+<strong>Input:</strong> JPEG frame
+<strong>Output:</strong> Structured detection data
+<strong>Cost:</strong> ~$0.002 per frame
+<h3>Stage 4: Audio Extraction</h3>
+<pre><code class="language-">Video File + Scene Timestamps
+     │
+     ▼
+┌─────────────────────────────────────────┐
+│            FFmpeg                        │
+│                                          │
+│  1. Extract full audio (m4a)             │
+│  2. Segment by scene timestamps          │
+│  3. Create manifest.json                 │
+└─────────────────────────────────────────┘
+     │
+     ▼
+Audio segments + Manifest</code></pre>
+<strong>Input:</strong> Video file, scene timestamps
+<strong>Output:</strong> Scene-aligned audio segments
+<strong>Format:</strong> M4A, 128kbps, 16kHz (speech-optimized)
+<h3>Stage 5: World Generation</h3>
+<pre><code class="language-">N'Ko Detection
+     │
+     ▼
+┌─────────────────────────────────────────┐
+│         WorldGenerator                   │
+│                                          │
+│  For each detected phrase:               │
+│    → Everyday context                    │
+│    → Formal context                      │
+│    → Storytelling context                │
+│    → Proverbs context                    │
+│    → Educational context                 │
+└─────────────────────────────────────────┘
+     │
+     ▼
+5 World Variants per phrase</code></pre>
+<strong>Input:</strong> N'Ko text + translations
+<strong>Output:</strong> 5 contextual variants
+<strong>Cost:</strong> ~$0.0001 per world
+<h3>Stage 6: Database Storage</h3>
+<pre><code class="language-">All Analysis Results
+     │
+     ▼
+┌─────────────────────────────────────────┐
+│            Supabase                      │
+│                                          │
+│  nko_sources      ← Video metadata       │
+│  nko_frames       ← Frame records        │
+│  nko_detections   ← OCR results          │
+│  nko_trajectories ← World variants       │
+│  nko_audio_segments ← Audio metadata     │
+└─────────────────────────────────────────┘</code></pre>
+<h3>Stage 7: Frontend Delivery</h3>
+<pre><code class="language-">Supabase Data
+     │
+     ▼
+┌─────────────────────────────────────────┐
+│         Next.js API Routes               │
+│                                          │
+│  /api/learning/stream  ← SSE streaming   │
+│  /api/exploration/<em>    ← Exploration     │
+│  /api/vocabulary/</em>     ← Vocabulary      │
+└─────────────────────────────────────────┘
+     │
+     ▼
+React Components → User Browser</code></pre>
+<h2>Data Relationships</h2>
+<pre><code class="language-">Source (Video)
+    │
+    ├── Frame 1
+    │      └── Detection A
+    │             └── Trajectory (5 worlds)
+    │                    ├── Node: Everyday
+    │                    ├── Node: Formal
+    │                    ├── Node: Storytelling
+    │                    ├── Node: Proverbs
+    │                    └── Node: Educational
+    │
+    ├── Frame 2
+    │      └── Detection B
+    │             └── Trajectory (5 worlds)
+    │
+    └── Audio Segment 1
+           └── (Future: Transcription)</code></pre>
+<h2>Cost Flow</h2>
+<pre><code class="language-">522 Videos × ~55 frames × $0.002/frame = $57 (OCR)
+           ↓
+~3000 unique phrases × 5 × $0.0001 = $2 (Worlds)
+           ↓
+522 × 60 min × $0.006/min = $188 (Optional ASR)
+           ↓
+Total: $60 (without ASR) or $247 (with ASR)</code></pre>
+
+        </article>
+    </main>
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#00d4ff',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#00d4ff',
+                lineColor: '#a855f7',
+                secondaryColor: '#1e1e2e',
+                tertiaryColor: '#2d2d44'
+            }
+        });
+    </script>
+</body>
+</html>

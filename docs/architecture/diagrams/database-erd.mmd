@@ -1,0 +1,89 @@
+%%{init: {'theme': 'dark'}}%%
+
+erDiagram
+    nko_sources ||--o{ nko_frames : contains
+    nko_sources ||--o{ nko_audio_segments : contains
+    nko_frames ||--o{ nko_detections : contains
+    nko_detections ||--o{ nko_trajectories : generates
+    nko_trajectories ||--o{ nko_trajectory_nodes : contains
+    nko_vocabulary ||--o{ nko_trajectory_nodes : references
+    nko_sessions ||--o{ nko_learning_events : contains
+    nko_sessions ||--o{ nko_trajectories : tracks
+    users ||--o{ nko_sessions : owns
+
+    nko_sources {
+        uuid id PK
+        text source_type
+        text url
+        text external_id
+        text title
+        bigint duration_ms
+        text status
+        int frame_count
+    }
+
+    nko_frames {
+        uuid id PK
+        uuid source_id FK
+        int frame_index
+        int timestamp_ms
+        bool has_nko
+        float confidence
+    }
+
+    nko_detections {
+        uuid id PK
+        uuid frame_id FK
+        text nko_text
+        text latin_text
+        text english_text
+        float confidence
+    }
+
+    nko_audio_segments {
+        uuid id PK
+        uuid source_id FK
+        uuid frame_id FK
+        int start_ms
+        int end_ms
+        text transcription
+    }
+
+    nko_trajectories {
+        uuid id PK
+        uuid session_id FK
+        text name
+        text trajectory_type
+        int total_nodes
+    }
+
+    nko_trajectory_nodes {
+        uuid id PK
+        uuid trajectory_id FK
+        uuid vocabulary_id FK
+        int node_index
+        text content_preview
+    }
+
+    nko_vocabulary {
+        uuid id PK
+        text nko_text UK
+        text latin_text
+        text english_text
+        int difficulty
+    }
+
+    nko_sessions {
+        uuid id PK
+        uuid user_id FK
+        text status
+        int total_events
+    }
+
+    nko_learning_events {
+        uuid id PK
+        uuid session_id FK
+        text event_type
+        jsonb content
+    }
+

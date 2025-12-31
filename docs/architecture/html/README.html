@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LearnN'Ko Architecture - LearnN'Ko Architecture</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">
+            <span class="logo-icon">ߒ</span>
+            <span>LearnN'Ko</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="01-data-flow.html" class="">Data Flow</a></li>
+<li><a href="02-database-schema.html" class="">Database Schema</a></li>
+<li><a href="03-pipeline-passes.html" class="">Pipeline Passes</a></li>
+<li><a href="04-frame-extraction.html" class="">Frame Extraction</a></li>
+<li><a href="05-world-generation.html" class="">World Generation</a></li>
+<li><a href="06-audio-segments.html" class="">Audio Segments</a></li>
+<li><a href="07-resume-mechanism.html" class="">Resume Mechanism</a></li>
+<li><a href="README-BUILD.html" class="">Readme Build</a></li>
+<li><a href="README.html" class="active">Readme</a></li>
+        </ul>
+        <div class="build-info">
+            <small>Built: 2025-12-31 09:27</small>
+        </div>
+    </nav>
+    <main class="content">
+        <article>
+            <h1>LearnN'Ko Architecture</h1>
+<p>This document provides a comprehensive overview of the LearnN'Ko system architecture, from data ingestion to the learning interface.</p>
+<h2>System Overview</h2>
+<p>LearnN'Ko is an AI-powered N'Ko language learning platform that:</p>
+<p>1. <strong>Extracts</strong> N'Ko text from educational YouTube videos
+2. <strong>Generates</strong> diverse learning contexts (5 "worlds")
+3. <strong>Stores</strong> structured training data in Supabase
+4. <strong>Delivers</strong> adaptive learning experiences via the web frontend</p>
+<pre><code class="language-">┌─────────────────────────────────────────────────────────────────────┐
+│                         LearnN'Ko Architecture                       │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐           │
+│  │   YouTube    │───▶│   Training   │───▶│   Supabase   │           │
+│  │   Channel    │    │   Pipeline   │    │   Database   │           │
+│  └──────────────┘    └──────────────┘    └──────────────┘           │
+│                             │                    │                   │
+│                             ▼                    ▼                   │
+│                      ┌──────────────┐    ┌──────────────┐           │
+│                      │    Local     │    │   Next.js    │           │
+│                      │   Storage    │    │   Frontend   │           │
+│                      └──────────────┘    └──────────────┘           │
+│                                                  │                   │
+│                                                  ▼                   │
+│                                          ┌──────────────┐           │
+│                                          │    User      │           │
+│                                          │   Browser    │           │
+│                                          └──────────────┘           │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘</code></pre>
+<h2>Core Components</h2>
+<h3>1. Training Pipeline (<code>/training</code>)</h3>
+<p>Python-based video processing pipeline:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NkoAnalyzer</code></td>
+<td>Video download, frame extraction, Gemini OCR</td>
+</tr>
+<tr>
+<td><code>SmartFrameExtractor</code></td>
+<td>Scene detection, deduplication</td>
+</tr>
+<tr>
+<td><code>WorldGenerator</code></td>
+<td>5-world variant generation</td>
+</tr>
+<tr>
+<td><code>AudioExtractor</code></td>
+<td>Scene-based audio segmentation</td>
+</tr>
+<tr>
+<td><code>SupabaseClient</code></td>
+<td>Database operations</td>
+</tr>
+</tbody>
+</table>
+<h3>2. Database Layer (<code>/supabase</code>)</h3>
+<p>PostgreSQL via Supabase with:</p>
+<ul>
+<li><strong>12 core tables</strong> for N'Ko learning data</li>
+<li><strong>Row Level Security</strong> for access control</li>
+<li><strong>pgvector</strong> for semantic search</li>
+<li><strong>Real-time subscriptions</strong> for live updates</li>
+</ul>
+<h3>3. Frontend (<code>/src</code>)</h3>
+<p>Next.js 14 application with:</p>
+<ul>
+<li><strong>App Router</strong> for navigation</li>
+<li><strong>shadcn/ui</strong> components</li>
+<li><strong>Tailwind CSS</strong> styling</li>
+<li><strong>SSE streaming</strong> for real-time learning</li>
+</ul>
+<h3>4. Prompt System (<code>/prompts</code>)</h3>
+<p>YAML-based prompt definitions:</p>
+<ul>
+<li>World exploration prompts</li>
+<li>OCR extraction prompts</li>
+<li>Live API pronunciation prompts</li>
+</ul>
+<h2>Architecture Documents</h2>
+<table>
+<thead>
+<tr>
+<th>Document</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="01-data-flow.md">01-data-flow.md</a></td>
+<td>End-to-end data flow</td>
+</tr>
+<tr>
+<td><a href="02-database-schema.md">02-database-schema.md</a></td>
+<td>Supabase schema & relationships</td>
+</tr>
+<tr>
+<td><a href="03-pipeline-passes.md">03-pipeline-passes.md</a></td>
+<td>4-pass pipeline details</td>
+</tr>
+<tr>
+<td><a href="04-frame-extraction.md">04-frame-extraction.md</a></td>
+<td>Smart frame filtering</td>
+</tr>
+<tr>
+<td><a href="05-world-generation.md">05-world-generation.md</a></td>
+<td>5-world variant system</td>
+</tr>
+<tr>
+<td><a href="06-audio-segments.md">06-audio-segments.md</a></td>
+<td>Audio for future ASR</td>
+</tr>
+<tr>
+<td><a href="07-resume-mechanism.md">07-resume-mechanism.md</a></td>
+<td>Checkpoint/resume system</td>
+</tr>
+</tbody>
+</table>
+<h2>Technology Stack</h2>
+<h3>Backend/Pipeline</h3>
+<table>
+<thead>
+<tr>
+<th>Technology</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python 3.9+</td>
+<td>Pipeline orchestration</td>
+</tr>
+<tr>
+<td>yt-dlp</td>
+<td>YouTube video download</td>
+</tr>
+<tr>
+<td>FFmpeg</td>
+<td>Frame/audio extraction</td>
+</tr>
+<tr>
+<td>Gemini API</td>
+<td>Multimodal OCR, text generation</td>
+</tr>
+<tr>
+<td>aiohttp</td>
+<td>Async HTTP requests</td>
+</tr>
+</tbody>
+</table>
+<h3>Database</h3>
+<table>
+<thead>
+<tr>
+<th>Technology</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Supabase</td>
+<td>Managed PostgreSQL</td>
+</tr>
+<tr>
+<td>pgvector</td>
+<td>Vector embeddings</td>
+</tr>
+<tr>
+<td>PostgREST</td>
+<td>REST API</td>
+</tr>
+</tbody>
+</table>
+<h3>Frontend</h3>
+<table>
+<thead>
+<tr>
+<th>Technology</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Next.js 14</td>
+<td>React framework</td>
+</tr>
+<tr>
+<td>TypeScript</td>
+<td>Type safety</td>
+</tr>
+<tr>
+<td>Tailwind CSS</td>
+<td>Styling</td>
+</tr>
+<tr>
+<td>shadcn/ui</td>
+<td>UI components</td>
+</tr>
+<tr>
+<td>Vercel</td>
+<td>Hosting</td>
+</tr>
+</tbody>
+</table>
+<h2>Data Flow Summary</h2>
+<pre><code class="language-">YouTube Videos
+      │
+      ▼
+┌─────────────────────────────────────────────┐
+│           Pass 1: Extraction                 │
+│  • Download video                            │
+│  • Extract frames (scene detection)          │
+│  • OCR with Gemini                           │
+│  • Extract audio segments                    │
+└─────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────┐
+│          Pass 2: Consolidation               │
+│  • Query all detections                      │
+│  • Deduplicate N'Ko phrases                  │
+│  • Build vocabulary                          │
+└─────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────┐
+│         Pass 3: World Generation             │
+│  • Load vocabulary                           │
+│  • Generate 5 worlds per phrase              │
+│  • Store trajectories                        │
+└─────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────┐
+│        Pass 4: Transcription (Optional)      │
+│  • Load audio segments                       │
+│  • Whisper ASR                               │
+│  • Link to slides                            │
+└─────────────────────────────────────────────┘
+      │
+      ▼
+   Supabase
+      │
+      ▼
+   Frontend</code></pre>
+<h2>Quick Links</h2>
+<ul>
+<li><a href="/training/README.md">Training Pipeline README</a></li>
+<li><a href="/supabase/migrations/">Database Migrations</a></li>
+<li><a href="/src/components/">Frontend Components</a></li>
+<li><a href="/prompts/">Prompt Definitions</a></li>
+</ul>
+        </article>
+    </main>
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#00d4ff',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#00d4ff',
+                lineColor: '#a855f7',
+                secondaryColor: '#1e1e2e',
+                tertiaryColor: '#2d2d44'
+            }
+        });
+    </script>
+</body>
+</html>

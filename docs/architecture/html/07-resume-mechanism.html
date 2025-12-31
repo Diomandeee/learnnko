@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Mechanism - LearnN'Ko Architecture</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">
+            <span class="logo-icon">ߒ</span>
+            <span>LearnN'Ko</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="01-data-flow.html" class="">Data Flow</a></li>
+<li><a href="02-database-schema.html" class="">Database Schema</a></li>
+<li><a href="03-pipeline-passes.html" class="">Pipeline Passes</a></li>
+<li><a href="04-frame-extraction.html" class="">Frame Extraction</a></li>
+<li><a href="05-world-generation.html" class="">World Generation</a></li>
+<li><a href="06-audio-segments.html" class="">Audio Segments</a></li>
+<li><a href="07-resume-mechanism.html" class="active">Resume Mechanism</a></li>
+<li><a href="README-BUILD.html" class="">Readme Build</a></li>
+<li><a href="README.html" class="">Readme</a></li>
+        </ul>
+        <div class="build-info">
+            <small>Built: 2025-12-31 09:27</small>
+        </div>
+    </nav>
+    <main class="content">
+        <article>
+            <h1>Resume Mechanism</h1>
+<p>This document describes the checkpoint and resume system for long-running pipeline operations.</p>
+<h2>Problem</h2>
+<p>Processing 522 videos takes 8-12 hours. Without checkpointing:
+<ul>
+<li>Power outages lose all progress</li>
+<li>Network issues require full restart</li>
+<li>Can't pause and resume work</li>
+<li>No visibility into progress</li>
+</ul>
+<h2>Solution</h2></p>
+<p>A multi-layer resume mechanism:</p>
+<pre><code class="language-">┌─────────────────────────────────────────────────────────────────┐
+│                    Resume Mechanism                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌────────────────┐    ┌────────────────┐    ┌───────────────┐  │
+│  │ Lock File      │    │ Checkpoint     │    │ Progress      │  │
+│  │ (Concurrency)  │    │ (State)        │    │ (Visibility)  │  │
+│  └────────────────┘    └────────────────┘    └───────────────┘  │
+│         │                      │                     │          │
+│         ▼                      ▼                     ▼          │
+│  Prevent multi-run      Track completed       Show metrics      │
+│                         and failed                              │
+│                                                                  │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │                 Graceful Shutdown                           │ │
+│  │  Ctrl+C → Complete current → Save state → Exit cleanly     │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘</code></pre>
+<h2>Components</h2>
+<h3>1. Lock File</h3>
+<p>Prevents concurrent pipeline runs.</p>
+<pre><code class="language-python">LOCK_FILE = Path("data/pipeline.lock")
+<p>def create_lock_file() -> int:
+    """Create lock file, return file descriptor."""
+    LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(LOCK_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    os.write(fd, str(os.getpid()).encode())
+    return fd</p>
+<p>def release_lock_file(fd: int):
+    """Release lock file."""
+    fcntl.flock(fd, fcntl.LOCK_UN)
+    os.close(fd)
+    LOCK_FILE.unlink(missing_ok=True)</code></pre></p>
+<strong>Usage:</strong>
+<pre><code class="language-bash"><h1>First instance succeeds</h1>
+python run_extraction.py
+<h1>Second instance fails</h1>
+python run_extraction.py
+<h1>Error: Another instance is already running. Use --force to override.</h1>
+<h1>Force override</h1>
+python run_extraction.py --force</code></pre>
+<h3>2. Checkpoint File</h3>
+<p>Tracks completed and failed videos.</p>
+<pre><code class="language-python">CHECKPOINT_FILE = Path("data/checkpoints/extraction_checkpoint.json")
+<p>@dataclass
+class Checkpoint:
+    """Pipeline checkpoint state."""
+    completed_videos: List[str]    # Successfully processed video IDs
+    failed_videos: List[Dict]      # Failed videos with errors
+    current_video: Optional[str]   # Currently processing
+    started_at: str                # Pipeline start time
+    last_updated: str              # Last checkpoint time
+    
+def load_checkpoint() -> Checkpoint:
+    """Load checkpoint from disk."""
+    if CHECKPOINT_FILE.exists():
+        with open(CHECKPOINT_FILE) as f:
+            return Checkpoint(<strong>json.load(f))
+    return Checkpoint(
+        completed_videos=[],
+        failed_videos=[],
+        current_video=None,
+        started_at=datetime.now().isoformat(),
+        last_updated=datetime.now().isoformat(),
+    )</p>
+<p>def save_checkpoint(checkpoint: Checkpoint):
+    """Save checkpoint to disk."""
+    checkpoint.last_updated = datetime.now().isoformat()
+    with open(CHECKPOINT_FILE, "w") as f:
+        json.dump(asdict(checkpoint), f, indent=2)</code></pre></p>
+</strong>Checkpoint file example:<strong>
+<pre><code class="language-json">{
+  "completed_videos": [
+    "xsUrdpKD5wM",
+    "arSJHqQGpds",
+    "toUJQVnRSbU"
+  ],
+  "failed_videos": [
+    {
+      "id": "ylJcGYu9FYM",
+      "error": "Download failed: SABR streaming restriction",
+      "timestamp": "2024-12-31T10:15:00.000Z"
+    }
+  ],
+  "current_video": "nh8HtWQVKDM",
+  "started_at": "2024-12-31T08:45:00.000Z",
+  "last_updated": "2024-12-31T11:30:00.000Z"
+}</code></pre>
+<h3>3. Progress File</h3>
+<p>Tracks aggregate statistics.</p>
+<pre><code class="language-python">PROGRESS_FILE = Path("data/checkpoints/extraction_progress.json")
+<p>@dataclass
+class Progress:
+    """Pipeline progress metrics."""
+    total_videos: int
+    processed_videos: int
+    total_frames: int
+    total_detections: int
+    total_audio_segments: int
+    total_nko_frames: int
+    elapsed_seconds: float
+    
+def save_progress(progress: Progress):
+    """Save progress to disk."""
+    with open(PROGRESS_FILE, "w") as f:
+        json.dump(asdict(progress), f, indent=2)</code></pre></p>
+<h3>4. Graceful Shutdown</h3>
+<p>Handle Ctrl+C cleanly.</p>
+<pre><code class="language-python">import signal
+<p>def setup_signal_handlers(checkpoint: Checkpoint):
+    """Set up graceful shutdown handlers."""
+    
+    def handle_shutdown(signum, frame):
+        print("\n⚠️  Received shutdown signal")
+        print("   Completing current video...")
+        
+        # Mark current video as incomplete
+        if checkpoint.current_video:
+            checkpoint.failed_videos.append({
+                "id": checkpoint.current_video,
+                "error": "Interrupted by user",
+                "timestamp": datetime.now().isoformat(),
+            })
+        
+        # Save checkpoint
+        save_checkpoint(checkpoint)
+        print("   ✓ Checkpoint saved")
+        print("   Resume with: python run_extraction.py --resume")
+        
+        sys.exit(0)
+    
+    signal.signal(signal.SIGINT, handle_shutdown)
+    signal.signal(signal.SIGTERM, handle_shutdown)</code></pre></p>
+<h2>Resume Logic</h2>
+<pre><code class="language-python">async def run_extraction(
+    videos: List[Dict],
+    resume: bool = False,
+    retry_failed: bool = False,
+):
+    """Run extraction with resume support."""
+    
+    checkpoint = load_checkpoint()
+    
+    if resume:
+        # Skip already completed videos
+        videos = [v for v in videos 
+                  if v["video_id"] not in checkpoint.completed_videos]
+        print(f"Resuming: {len(videos)} videos remaining")
+    
+    if retry_failed:
+        # Only process previously failed videos
+        failed_ids = [f["id"] for f in checkpoint.failed_videos]
+        videos = [v for v in videos if v["video_id"] in failed_ids]
+        # Clear failed list for retry
+        checkpoint.failed_videos = []
+        print(f"Retrying: {len(videos)} failed videos")
+    
+    for video in videos:
+        checkpoint.current_video = video["video_id"]
+        save_checkpoint(checkpoint)
+        
+        try:
+            await process_video(video)
+            checkpoint.completed_videos.append(video["video_id"])
+            
+        except Exception as e:
+            checkpoint.failed_videos.append({
+                "id": video["video_id"],
+                "error": str(e),
+                "timestamp": datetime.now().isoformat(),
+            })
+        
+        checkpoint.current_video = None
+        save_checkpoint(checkpoint)</code></pre>
+<h2>Command Line Options</h2>
+<pre><code class="language-bash"><h1>Normal run (starts fresh)</h1>
+python run_extraction.py
+<h1>Resume from checkpoint</h1>
+python run_extraction.py --resume
+<h1>Retry only failed videos</h1>
+python run_extraction.py --retry-failed
+<h1>Force run (override lock)</h1>
+python run_extraction.py --force
+<h1>Show status without running</h1>
+python run_extraction.py --status
+<h1>Dry run (list videos without processing)</h1>
+python run_extraction.py --dry-run</code></pre>
+<h2>Status Display</h2>
+<pre><code class="language-bash">$ python run_extraction.py --status
+<p>╔═══════════════════════════════════════════════════════════════╗
+║                    Pipeline Status                             ║
+╠═══════════════════════════════════════════════════════════════╣
+║                                                                ║
+║  Videos:     47 / 522 (9.0%)  ████░░░░░░░░░░░░░░░░░░░░░░░░░░░ ║
+║  Frames:     2,585 extracted                                   ║
+║  N'Ko:       1,847 detections (71%)                            ║
+║  Audio:      2,891 segments                                    ║
+║  Failed:     2 videos                                          ║
+║                                                                ║
+║  Elapsed:    2h 15m                                            ║
+║  ETA:        ~8h remaining                                     ║
+║  Rate:       21 videos/hour                                    ║
+║                                                                ║
+║  Currently:  Processing nh8HtWQVKDM                            ║
+║                                                                ║
+╚═══════════════════════════════════════════════════════════════╝</p>
+<p>Failed Videos:
+  1. ylJcGYu9FYM - Download failed: SABR streaming restriction
+  2. abc123xyz  - API timeout after 3 retries</code></pre></p>
+<h2>Recovery Scenarios</h2>
+<h3>Scenario 1: Power Outage</h3>
+<pre><code class="language-">Before: Video 47 of 522 processing
+        Checkpoint has 46 completed
+<p>After power restored:
+$ python run_extraction.py --resume
+  → Skips 46 completed
+  → Retries video 47
+  → Continues from 47</code></pre></p>
+<h3>Scenario 2: API Rate Limit</h3>
+<pre><code class="language-">During: Video fails with rate limit error
+        Checkpoint marks video 47 as failed
+<p>Later:
+$ python run_extraction.py --resume
+  → Skips 46 completed
+  → Skips failed 47
+  → Continues from 48</p>
+<p>Then:
+$ python run_extraction.py --retry-failed
+  → Only processes failed videos</code></pre></p>
+<h3>Scenario 3: User Interruption</h3>
+<pre><code class="language-">User presses Ctrl+C during video 47:
+  → Current video marked as interrupted
+  → Checkpoint saved
+  → Clean exit
+<p>Later:
+$ python run_extraction.py --resume
+  → Retries interrupted video
+  → Continues normally</code></pre></p>
+<h2>Best Practices</h2>
+<p>1. </strong>Always use --resume<strong> for long runs
+2. </strong>Check --status<strong> before starting
+3. </strong>Use --retry-failed<strong> after fixing issues
+4. </strong>Don't delete checkpoint files<strong> during a run
+5. </strong>Keep logs** for debugging failed videos</p>
+
+        </article>
+    </main>
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#00d4ff',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#00d4ff',
+                lineColor: '#a855f7',
+                secondaryColor: '#1e1e2e',
+                tertiaryColor: '#2d2d44'
+            }
+        });
+    </script>
+</body>
+</html>

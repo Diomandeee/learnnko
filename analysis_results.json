@@ -1,0 +1,40 @@
+{
+  "run_time": "2025-12-31T00:30:30.815857",
+  "config": {
+    "frame_rate": 0.2,
+    "max_frames": 5
+  },
+  "summary": {
+    "videos_processed": 1,
+    "total_frames": 4,
+    "frames_with_nko": 2
+  },
+  "results": [
+    {
+      "video_id": "xsUrdpKD5wM",
+      "title": "Test Video",
+      "youtube_url": "https://www.youtube.com/watch?v=xsUrdpKD5wM",
+      "status": "completed",
+      "frames_analyzed": 4,
+      "error": null,
+      "detections": [
+        {
+          "frame_index": 2,
+          "timestamp": 10.0,
+          "nko_text": "ߒߞߏ ߘߐ߫ ߞߊ߬ߙߊ߲ ߞߊ߲ߘߊ ߟߎ߬ ߦߋ߫ ߞߊ߲ ߡߊ߬؟",
+          "latin_transliteration": "N'Ko doŋ kaaraŋ kaannda lu ye kaŋ ma?",
+          "english_translation": "In N'Ko, are the grammar rules clear?",
+          "confidence": 0.95
+        },
+        {
+          "frame_index": 4,
+          "timestamp": 20.0,
+          "nko_text": "ߒߞߏ ߛߓߍߘߋ߲ ߛߋߞߏߦߊ.pdf",
+          "latin_transliteration": "N'Ko sebɛdɛn sekoya.pdf",
+          "english_translation": "N'Ko writing lesson Sekoya.pdf",
+          "confidence": 0.95
+        }
+      ]
+    }
+  ]
+}

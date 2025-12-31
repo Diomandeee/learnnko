@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Generation - LearnN'Ko Architecture</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">
+            <span class="logo-icon">ߒ</span>
+            <span>LearnN'Ko</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="01-data-flow.html" class="">Data Flow</a></li>
+<li><a href="02-database-schema.html" class="">Database Schema</a></li>
+<li><a href="03-pipeline-passes.html" class="">Pipeline Passes</a></li>
+<li><a href="04-frame-extraction.html" class="">Frame Extraction</a></li>
+<li><a href="05-world-generation.html" class="active">World Generation</a></li>
+<li><a href="06-audio-segments.html" class="">Audio Segments</a></li>
+<li><a href="07-resume-mechanism.html" class="">Resume Mechanism</a></li>
+<li><a href="README-BUILD.html" class="">Readme Build</a></li>
+<li><a href="README.html" class="">Readme</a></li>
+        </ul>
+        <div class="build-info">
+            <small>Built: 2025-12-31 09:27</small>
+        </div>
+    </nav>
+    <main class="content">
+        <article>
+            <h1>World Generation</h1>
+<p>This document describes the 5-world variant system for creating diverse learning contexts.</p>
+<h2>Concept</h2>
+<p>Each detected N'Ko phrase is expanded into 5 contextual "worlds" - different usage scenarios that demonstrate how the phrase appears in real language:</p>
+<pre><code class="language-">Detected: ߒ ߡߊ߬ ߘߌ߫ (I will give)
+     │
+     ├── Everyday: "ߒ ߡߊ߬ ߘߌ߫ ߌ ߡߊ߬ ߡߊ߲߫ ߘߏ߫"
+     │              (I will give you some mangoes)
+     │
+     ├── Formal: "ߒ ߡߊ߬ ߘߌ߫ ߊ߬ ߟߊ߫ ߘߌ߬ߢߍ ߡߊ߬"
+     │           (I will give it with your permission)
+     │
+     ├── Storytelling: "ߊ߬ ߕߘߍ߬ ߞߊ߬ ߒ ߡߊ߬ ߘߌ߫..."
+     │                  (It was then that I will give...)
+     │
+     ├── Proverbs: "ߣߌ߫ ߌ ߡߊ߬ ߘߌ߫, ߌ ߡߊ߬ ߛߐ߬ߘߐ߲߫"
+     │              (If you give, you will receive)
+     │
+     └── Educational: "ߒ ߡߊ߬ ߘߌ߫ ߦߋ߫ ߟߊ߫..."
+                       (The meaning of 'I will give' is...)</code></pre>
+<h2>The 5 Worlds</h2>
+<h3>1. Everyday (ߢߍ߫ ߓߍ߯ ߕߎ߲߬)</h3>
+<p>Common, casual usage in daily life.</p>
+<strong>Characteristics:</strong>
+<ul>
+<li>Simple sentence structure</li>
+<li>Familiar vocabulary</li>
+<li>Practical situations (market, home, greetings)</li>
+</ul>
+<strong>Prompt:</strong>
+<pre><code class="language-">Create a natural, everyday sentence using "{nko_text}" ({english_text}).
+The sentence should reflect common daily usage in N'Ko-speaking communities.
+Use familiar settings like the market, home, or casual conversations.</code></pre>
+<h3>2. Formal (ߘߐ߬ ߛߓߍ)</h3>
+<p>Official, polite, or professional usage.</p>
+<strong>Characteristics:</strong>
+<ul>
+<li>Respectful language</li>
+<li>Longer, more complex sentences</li>
+<li>Official contexts (meetings, ceremonies, letters)</li>
+</ul>
+<strong>Prompt:</strong>
+<pre><code class="language-">Create a formal, respectful sentence using "{nko_text}" ({english_text}).
+The sentence should be appropriate for official communication,
+such as addressing elders, in ceremonies, or formal letters.</code></pre>
+<h3>3. Storytelling (ߡߊ߬ ߓߊ ߣߌ)</h3>
+<p>Narrative and oral tradition contexts.</p>
+<strong>Characteristics:</strong>
+<ul>
+<li>Story-like structure</li>
+<li>Traditional narrative patterns</li>
+<li>Past tense, descriptive language</li>
+</ul>
+<strong>Prompt:</strong>
+<pre><code class="language-">Create a sentence using "{nko_text}" ({english_text}) as if telling a story.
+Use traditional N'Ko storytelling patterns and narrative style.
+Begin with "ߊ߬ ߕߘߍ߬..." (It was then...) or similar.</code></pre>
+<h3>4. Proverbs (ߓߌ߬ ߡߊ߲)</h3>
+<p>Traditional wisdom and cultural sayings.</p>
+<strong>Characteristics:</strong>
+<ul>
+<li>Metaphorical language</li>
+<li>Parallel structures</li>
+<li>Timeless wisdom</li>
+</ul>
+<strong>Prompt:</strong>
+<pre><code class="language-">Create a proverb or wise saying incorporating "{nko_text}" ({english_text}).
+The proverb should reflect traditional N'Ko/Manding wisdom.
+Use balanced, memorable phrasing.</code></pre>
+<h3>5. Educational (ߞߊ߬ ߞߊ߬ ߟߌ)</h3>
+<p>Learning and explanation contexts.</p>
+<strong>Characteristics:</strong>
+<ul>
+<li>Definitional language</li>
+<li>Grammatical context</li>
+<li>Meta-linguistic awareness</li>
+</ul>
+<strong>Prompt:</strong>
+<pre><code class="language-">Create an educational sentence that teaches about "{nko_text}" ({english_text}).
+Explain its meaning, usage, or grammatical role.
+Use phrases like "ߛߓߍ ߣߌ߲߬ ߦߋ߫..." (This word means...).</code></pre>
+<h2>Architecture</h2>
+<pre><code class="language-python">class WorldGenerator:
+    """Generates 5-world variants for N'Ko phrases."""
+    
+    WORLDS = [
+        "world_everyday",
+        "world_formal", 
+        "world_storytelling",
+        "world_proverbs",
+        "world_educational",
+    ]
+    
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "gemini-2.0-flash",
+    ):
+        self.client = genai.GenerativeModel(model)
+    
+    async def generate(
+        self,
+        nko_text: str,
+        latin_text: str,
+        english_text: str,
+        worlds: List[str] = None,
+    ) -> List[WorldVariant]:
+        """Generate world variants for a phrase."""
+        
+        worlds = worlds or self.WORLDS
+        variants = []
+        
+        for world in worlds:
+            prompt = self._build_prompt(world, nko_text, latin_text, english_text)
+            response = await self.client.generate_content_async(prompt)
+            
+            variant = WorldVariant(
+                world_name=world,
+                nko_sentence=self._extract_nko(response),
+                latin_sentence=self._extract_latin(response),
+                english_sentence=self._extract_english(response),
+            )
+            variants.append(variant)
+        
+        return variants</code></pre>
+<h2>Data Model</h2>
+<pre><code class="language-python">@dataclass
+class WorldVariant:
+    """A single world variant."""
+    world_name: str        # e.g., "world_everyday"
+    nko_sentence: str      # Generated N'Ko sentence
+    latin_sentence: str    # Latin transliteration
+    english_sentence: str  # English translation
+    confidence: float      # Generation confidence</code></pre>
+<h2>Database Storage</h2>
+<pre><code class="language-sql">-- Trajectory groups worlds together
+INSERT INTO nko_trajectories (name, trajectory_type)
+VALUES ('worlds_ߒ_ߡߊ߬_ߘߌ߫', 'world_exploration');
+<p>-- Each world becomes a node
+INSERT INTO nko_trajectory_nodes (
+    trajectory_id,
+    vocabulary_id,
+    node_index,
+    trajectory_phase,
+    content_preview
+) VALUES
+    (..., ..., 0, 'everyday', 'ߒ ߡߊ߬ ߘߌ߫ ߌ ߡߊ߬...'),
+    (..., ..., 1, 'formal', 'ߒ ߡߊ߬ ߘߌ߫ ߊ߬ ߟߊ߫...'),
+    (..., ..., 2, 'storytelling', 'ߊ߬ ߕߘߍ߬ ߞߊ߬ ߒ...'),
+    (..., ..., 3, 'proverbs', 'ߣߌ߫ ߌ ߡߊ߬ ߘߌ߫...'),
+    (..., ..., 4, 'educational', 'ߒ ߡߊ߬ ߘߌ߫ ߦߋ߫...');</code></pre></p>
+<h2>Configuration</h2>
+<pre><code class="language-yaml"><h1>config/production.yaml</h1>
+worlds:
+  enabled: true
+  model: gemini-2.0-flash
+  temperature: 0.8            # Creativity level
+  max_tokens: 200             # Per-world response
+  selected:                   # Active worlds
+    - world_everyday
+    - world_formal
+    - world_storytelling
+    - world_proverbs
+    - world_educational
+  retry_on_failure: true
+  max_retries: 3</code></pre>
+<h2>Prompt Templates</h2>
+<p>Prompts are stored in <code>/prompts/nko/worlds.yaml</code>:</p>
+<pre><code class="language-yaml">world_everyday:
+  name: "Everyday Context"
+  template: |
+    You are generating N'Ko learning content.
+    
+    Given the N'Ko phrase: {nko_text}
+    Latin transliteration: {latin_text}
+    English meaning: {english_text}
+    
+    Create a natural, everyday sentence using this phrase.
+    The sentence should:
+    - Be grammatically correct in N'Ko
+    - Reflect common daily usage
+    - Use familiar settings (market, home, casual conversation)
+    
+    Respond with:
+    N'Ko: [sentence in N'Ko script]
+    Latin: [transliteration]
+    English: [translation]
+<p>world_formal:
+  name: "Formal Context"
+  template: |
+    # Similar structure for formal usage...</code></pre></p>
+<h2>Quality Controls</h2>
+<h3>1. N'Ko Validation</h3>
+<pre><code class="language-python">def validate_nko(text: str) -> bool:
+    """Ensure text contains valid N'Ko characters."""
+    nko_range = range(0x07C0, 0x07FF + 1)
+    return any(ord(c) in nko_range for c in text)</code></pre>
+<h3>2. Phrase Inclusion</h3>
+<pre><code class="language-python">def validate_includes_phrase(generated: str, original: str) -> bool:
+    """Ensure generated sentence includes the original phrase."""
+    return normalize_nko(original) in normalize_nko(generated)</code></pre>
+<h3>3. Length Limits</h3>
+<pre><code class="language-python">def validate_length(text: str, min_chars: int = 10, max_chars: int = 200) -> bool:
+    """Ensure reasonable sentence length."""
+    return min_chars <= len(text) <= max_chars</code></pre>
+<h2>Learning Integration</h2>
+<p>The 5 worlds are presented to learners as:</p>
+<pre><code class="language-">┌─────────────────────────────────────────────────────────────────┐
+│  ߒ ߡߊ߬ ߘߌ߫ (I will give)                                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  🏠 Everyday                                                     │
+│  "ߒ ߡߊ߬ ߘߌ߫ ߌ ߡߊ߬ ߡߊ߲߫ ߘߏ߫"                                         │
+│  I will give you some mangoes                                   │
+│                                                                  │
+│  🎩 Formal                                                       │
+│  "ߒ ߡߊ߬ ߘߌ߫ ߊ߬ ߟߊ߫ ߘߌ߬ߢߍ ߡߊ߬"                                       │
+│  I will give it with your permission                            │
+│                                                                  │
+│  📖 Story                                                        │
+│  "ߊ߬ ߕߘߍ߬ ߞߊ߬ ߒ ߡߊ߬ ߘߌ߫..."                                        │
+│  It was then that I would give...                               │
+│                                                                  │
+│  💎 Proverb                                                      │
+│  "ߣߌ߫ ߌ ߡߊ߬ ߘߌ߫, ߌ ߡߊ߬ ߛߐ߬ߘߐ߲߫"                                     │
+│  If you give, you will receive                                  │
+│                                                                  │
+│  📚 Learn                                                        │
+│  "ߒ ߡߊ߬ ߘߌ߫ ߦߋ߫ ߟߊ߫..."                                            │
+│  The phrase 'I will give' is used when...                       │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘</code></pre>
+<h2>Cost Efficiency</h2>
+<p>By generating worlds only for unique vocabulary entries (Pass 3):</p>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Requests</th>
+<th>Cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Per-detection</td>
+<td>28,000 × 5</td>
+<td>$14.00</td>
+</tr>
+<tr>
+<td>Per-unique</td>
+<td>3,000 × 5</td>
+<td>$1.50</td>
+</tr>
+</tbody>
+</table>
+<strong>Savings: ~89% by deduplicating first</strong>
+
+        </article>
+    </main>
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#00d4ff',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#00d4ff',
+                lineColor: '#a855f7',
+                secondaryColor: '#1e1e2e',
+                tertiaryColor: '#2d2d44'
+            }
+        });
+    </script>
+</body>
+</html>

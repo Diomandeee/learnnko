@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture Documentation Build System - LearnN'Ko Architecture</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">
+            <span class="logo-icon">ߒ</span>
+            <span>LearnN'Ko</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="01-data-flow.html" class="">Data Flow</a></li>
+<li><a href="02-database-schema.html" class="">Database Schema</a></li>
+<li><a href="03-pipeline-passes.html" class="">Pipeline Passes</a></li>
+<li><a href="04-frame-extraction.html" class="">Frame Extraction</a></li>
+<li><a href="05-world-generation.html" class="">World Generation</a></li>
+<li><a href="06-audio-segments.html" class="">Audio Segments</a></li>
+<li><a href="07-resume-mechanism.html" class="">Resume Mechanism</a></li>
+<li><a href="README-BUILD.html" class="active">Readme Build</a></li>
+<li><a href="README.html" class="">Readme</a></li>
+        </ul>
+        <div class="build-info">
+            <small>Built: 2025-12-31 09:27</small>
+        </div>
+    </nav>
+    <main class="content">
+        <article>
+            <h1>Architecture Documentation Build System</h1>
+<p>This directory contains an interconnected documentation system where <strong>Mermaid diagrams</strong>, <strong>Markdown docs</strong>, <strong>HTML</strong>, and <strong>SVG</strong> all stay in sync.</p>
+<h2>Source of Truth</h2>
+<pre><code class="language-">┌─────────────────────────────────────────────────────────────────┐
+│                    Documentation Flow                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   diagrams/<em>.mmd ─────────────────────────────▶ svg/</em>.svg       │
+│        │                                            │           │
+│        │                                            │           │
+│        ▼                                            ▼           │
+│   <em>.md ─────────────────────────────────────▶ html/</em>.html       │
+│        │                                            │           │
+│        │     (embeds mermaid in <div>)              │           │
+│        └────────────────────────────────────────────┘           │
+│                                                                  │
+│   Edit .mmd or .md → Run build.py → HTML & SVG update           │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘</code></pre>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Generated</th>
+<th>Relationship</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code><em>.md</code></td>
+<td><code>html/</em>.html</code></td>
+<td>Markdown converted to styled HTML</td>
+</tr>
+<tr>
+<td><code>diagrams/<em>.mmd</code></td>
+<td><code>svg/</em>.svg</code></td>
+<td>Mermaid converted to SVG</td>
+</tr>
+<tr>
+<td><code>diagrams/<em>.mmd</code></td>
+<td>Embedded in HTML</td>
+<td>Mermaid rendered in browser via JS</td>
+</tr>
+</tbody>
+</table>
+<h2>Quick Start</h2>
+<pre><code class="language-bash"><h1>Build everything</h1>
+make build
+<h1>Or use Python directly</h1>
+python3 build.py --force
+<h1>Watch for changes (auto-rebuild)</h1>
+make watch</code></pre>
+<h2>Full SVG Generation</h2>
+<p>For high-quality standalone SVGs, install mermaid-cli:</p>
+<pre><code class="language-bash"><h1>Install</h1>
+npm install -g @mermaid-js/mermaid-cli
+<h1>Or via make</h1>
+make install-deps
+<h1>Then build SVGs</h1>
+make svg</code></pre>
+<h2>File Structure</h2>
+<pre><code class="language-">docs/architecture/
+├── </em>.md                    # Source Markdown docs
+├── diagrams/
+│   ├── data-flow.mmd       # Source Mermaid diagrams
+│   ├── database-erd.mmd
+│   └── pipeline.mmd
+├── html/                   # Generated HTML
+│   ├── styles.css
+│   ├── README.html
+│   ├── 01-data-flow.html
+│   └── ...
+├── svg/                    # Generated SVG
+│   ├── data-flow.svg
+│   ├── database-erd.svg
+│   └── pipeline.svg
+├── build.py                # Build script
+├── Makefile                # Make targets
+└── .build_cache.json       # Cache for incremental builds</code></pre>
+<h2>How Syncing Works</h2>
+<p>1. <strong>Cache-based incremental builds</strong>: <code>build.py</code> tracks file hashes in <code>.build_cache.json</code>
+2. <strong>Change detection</strong>: Only modified files are rebuilt
+3. <strong>Watch mode</strong>: <code>--watch</code> flag polls for changes every 2 seconds
+4. <strong>Force rebuild</strong>: <code>--force</code> flag rebuilds everything regardless of cache</p>
+<h2>Editing Workflow</h2>
+<h3>To add a new diagram:</h3>
+<p>1. Create <code>diagrams/my-diagram.mmd</code>
+2. Run <code>make build</code>
+3. SVG appears in <code>svg/my-diagram.svg</code>
+4. Reference in Markdown with Mermaid block (auto-renders in HTML)</p>
+<h3>To add a new document:</h3>
+<p>1. Create <code>08-new-topic.md</code>
+2. Run <code>make build</code>
+3. HTML appears in <code>html/08-new-topic.html</code>
+4. Navigation auto-updates in all HTML files</p>
+<h3>To update existing:</h3>
+<p>1. Edit the source file (<code>.md</code> or <code>.mmd</code>)
+2. Run <code>make build</code> (or use <code>make watch</code>)
+3. All outputs regenerate</p>
+<h2>HTML Features</h2>
+<p>The generated HTML includes:</p>
+<ul>
+<li>🌙 Dark theme (matches Comp-Core aesthetic)</li>
+<li>📱 Responsive sidebar navigation</li>
+<li>🎨 Mermaid diagrams render in-browser</li>
+<li>🔗 Auto-generated navigation links</li>
+<li>⏰ Build timestamp in footer</li>
+</ul>
+<h2>Commands Reference</h2>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>python3 build.py</code></td>
+<td>Build all (incremental)</td>
+</tr>
+<tr>
+<td><code>python3 build.py --force</code></td>
+<td>Force rebuild all</td>
+</tr>
+<tr>
+<td><code>python3 build.py --watch</code></td>
+<td>Watch and auto-rebuild</td>
+</tr>
+<tr>
+<td><code>python3 build.py --clean</code></td>
+<td>Remove generated files</td>
+</tr>
+<tr>
+<td><code>make build</code></td>
+<td>Same as <code>python3 build.py --force</code></td>
+</tr>
+<tr>
+<td><code>make html</code></td>
+<td>Build only HTML</td>
+</tr>
+<tr>
+<td><code>make svg</code></td>
+<td>Build only SVG</td>
+</tr>
+<tr>
+<td><code>make watch</code></td>
+<td>Watch mode</td>
+</tr>
+<tr>
+<td><code>make clean</code></td>
+<td>Clean generated files</td>
+</tr>
+</tbody>
+</table>
+        </article>
+    </main>
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#00d4ff',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#00d4ff',
+                lineColor: '#a855f7',
+                secondaryColor: '#1e1e2e',
+                tertiaryColor: '#2d2d44'
+            }
+        });
+    </script>
+</body>
+</html>

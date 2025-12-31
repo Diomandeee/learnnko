@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipeline Passes - LearnN'Ko Architecture</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">
+            <span class="logo-icon">ߒ</span>
+            <span>LearnN'Ko</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="01-data-flow.html" class="">Data Flow</a></li>
+<li><a href="02-database-schema.html" class="">Database Schema</a></li>
+<li><a href="03-pipeline-passes.html" class="active">Pipeline Passes</a></li>
+<li><a href="04-frame-extraction.html" class="">Frame Extraction</a></li>
+<li><a href="05-world-generation.html" class="">World Generation</a></li>
+<li><a href="06-audio-segments.html" class="">Audio Segments</a></li>
+<li><a href="07-resume-mechanism.html" class="">Resume Mechanism</a></li>
+<li><a href="README-BUILD.html" class="">Readme Build</a></li>
+<li><a href="README.html" class="">Readme</a></li>
+        </ul>
+        <div class="build-info">
+            <small>Built: 2025-12-31 09:27</small>
+        </div>
+    </nav>
+    <main class="content">
+        <article>
+            <h1>Pipeline Passes</h1>
+<p>The N'Ko training pipeline uses a multi-pass architecture to optimize cost and quality.</p>
+<h2>Overview</h2>
+<pre><code class="language-">┌─────────────────────────────────────────────────────────────────────┐
+│                        4-Pass Pipeline                               │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Pass 1         Pass 2          Pass 3           Pass 4             │
+│  ┌────────┐    ┌────────┐      ┌────────┐       ┌────────┐          │
+│  │Extract │───▶│Consolidate│──▶│Generate│──────▶│Transcribe│        │
+│  │$57     │    │ FREE    │    │ $2     │       │ $188     │        │
+│  └────────┘    └────────┘      └────────┘       └────────┘          │
+│     │              │               │                │               │
+│   OCR +          Dedup +         5 Worlds        ASR +              │
+│   Audio          Vocab           per phrase      Align              │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘</code></pre>
+<h2>Pass 1: Extraction</h2>
+<strong>Script:</strong> <code>training/scripts/run_extraction.py</code>
+<h3>Purpose</h3>
+Download videos, extract frames, run OCR, and segment audio.
+<h3>Process</h3>
+<pre><code class="language-python">for video in channel_videos:
+    # 1. Download
+    video_path = yt_dlp.download(video.url)
+    
+    # 2. Extract frames
+    frames = SmartFrameExtractor.extract(
+        video_path,
+        target_frames=100,
+        use_scene_detection=True
+    )
+    
+    # 3. OCR each frame
+    for frame in frames:
+        detection = gemini.analyze(frame)
+        supabase.insert_detection(detection)
+    
+    # 4. Extract audio
+    scenes = detect_scenes(video_path)
+    audio_segments = slice_audio(video_path, scenes)
+    
+    # 5. Save manifest
+    manifest = VideoManifest(frames, audio_segments)
+    manifest.save()</code></pre>
+<h3>Inputs</h3>
+<ul>
+<li>YouTube channel URL</li>
+<li>Configuration file</li>
+</ul>
+<h3>Outputs</h3>
+<ul>
+<li><code>nko_sources</code> records</li>
+<li><code>nko_frames</code> records</li>
+<li><code>nko_detections</code> records</li>
+<li>Local frame images</li>
+<li>Local audio segments</li>
+<li>Video manifests</li>
+</ul>
+<h3>Cost Breakdown</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Calculation</th>
+<th>Cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Gemini OCR</td>
+<td>522 × 55 frames × $0.002</td>
+<td>$57.42</td>
+</tr>
+<tr>
+<td>yt-dlp</td>
+<td>Free</td>
+<td>$0</td>
+</tr>
+<tr>
+<td>FFmpeg</td>
+<td>Free</td>
+<td>$0</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>~$57</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>Commands</h3>
+<pre><code class="language-bash"><h1>Full run</h1>
+python run_extraction.py
+<h1>Resume from checkpoint</h1>
+python run_extraction.py --resume
+<h1>Process 10 videos</h1>
+python run_extraction.py --limit 10
+<h1>Skip audio</h1>
+python run_extraction.py --no-audio
+<h1>Retry failures</h1>
+python run_extraction.py --retry-failed</code></pre>
+<p>---</p>
+<h2>Pass 2: Consolidation</h2>
+<strong>Script:</strong> <code>training/scripts/run_consolidation.py</code>
+<h3>Purpose</h3>
+Deduplicate detected N'Ko phrases and build vocabulary.
+<h3>Process</h3>
+<pre><code class="language-python"><h1>1. Query all detections</h1>
+detections = supabase.query("""
+    SELECT nko_text, latin_text, english_text, 
+           COUNT(<em>) as frequency
+    FROM nko_detections
+    WHERE confidence > 0.8
+    GROUP BY nko_text_normalized
+    ORDER BY frequency DESC
+""")
+<h1>2. Normalize text</h1>
+for detection in detections:
+    normalized = normalize_nko(detection.nko_text)
+    
+<h1>3. Deduplicate</h1>
+unique_phrases = deduplicate(detections)
+<h1>4. Build vocabulary</h1>
+for phrase in unique_phrases:
+    supabase.upsert_vocabulary(phrase)</code></pre>
+<h3>Inputs</h3>
+<ul>
+<li><code>nko_detections</code> table</li>
+</ul>
+<h3>Outputs</h3>
+<ul>
+<li><code>nko_vocabulary</code> table entries</li>
+<li>Deduplication statistics</li>
+</ul>
+<h3>Cost Breakdown</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Calculation</th>
+<th>Cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Supabase queries</td>
+<td>Database operations</td>
+<td>$0</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>FREE</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>Commands</h3>
+<pre><code class="language-bash"><h1>Run consolidation</h1>
+python run_consolidation.py
+<h1>Export vocabulary</h1>
+python run_consolidation.py --export vocab.json
+<h1>Minimum frequency threshold</h1>
+python run_consolidation.py --min-frequency 2</code></pre>
+<p>---</p>
+<h2>Pass 3: World Generation</h2>
+<strong>Script:</strong> <code>training/scripts/run_worlds.py</code>
+<h3>Purpose</h3>
+Generate 5 contextual variants for each vocabulary entry.
+<h3>Process</h3>
+<pre><code class="language-python"><h1>1. Load vocabulary</h1>
+vocabulary = supabase.query("SELECT </em> FROM nko_vocabulary")
+<h1>2. Generate worlds for each phrase</h1>
+for word in vocabulary:
+    worlds = WorldGenerator.generate(
+        nko_text=word.nko_text,
+        latin_text=word.latin_text,
+        english_text=word.english_text,
+        worlds=['everyday', 'formal', 'storytelling', 'proverbs', 'educational']
+    )
+    
+    # 3. Create trajectory
+    trajectory = supabase.insert_trajectory(
+        name=f"worlds_{word.nko_text}",
+        trajectory_type="world_exploration"
+    )
+    
+    # 4. Create nodes for each world
+    for i, world in enumerate(worlds):
+        supabase.insert_trajectory_node(
+            trajectory_id=trajectory.id,
+            vocabulary_id=word.id,
+            node_index=i,
+            content_preview=world.sentence
+        )</code></pre>
+<h3>Inputs</h3>
+<ul>
+<li><code>nko_vocabulary</code> table</li>
+</ul>
+<h3>Outputs</h3>
+<ul>
+<li><code>nko_trajectories</code> records</li>
+<li><code>nko_trajectory_nodes</code> records</li>
+</ul>
+<h3>The 5 Worlds</h3>
+<table>
+<thead>
+<tr>
+<th>World</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Everyday</strong></td>
+<td>Common usage</td>
+<td>"ߒ ߦߋ߫ ߕߊ߬ߡߌ߲߬" (I am going to the market)</td>
+</tr>
+<tr>
+<td><strong>Formal</strong></td>
+<td>Official/polite</td>
+<td>"ߊ߬ ߦߋ߫ ߞߍ߫ ߟߊ߫ ߘߌ߬ߢߍ ߡߊ߬" (It is done with permission)</td>
+</tr>
+<tr>
+<td><strong>Storytelling</strong></td>
+<td>Narrative</td>
+<td>"ߊ߬ ߕߘߍ߬ ߞߊ߬ ߛߌ߬ ߕߎ߬ ߕߏ߫" (Long ago, there was...)</td>
+</tr>
+<tr>
+<td><strong>Proverbs</strong></td>
+<td>Traditional wisdom</td>
+<td>"ߓߊ߯ߙߊ ߦߋ߫ ߟߊ߬ߓߊ߮ ߘߌ߫" (Work makes the man)</td>
+</tr>
+<tr>
+<td><strong>Educational</strong></td>
+<td>Learning context</td>
+<td>"ߛߓߍ ߣߌ߲߬ ߦߋ߫ ..." (This word means...)</td>
+</tr>
+</tbody>
+</table>
+<h3>Cost Breakdown</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Calculation</th>
+<th>Cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Gemini text</td>
+<td>3000 × 5 × $0.0001</td>
+<td>$1.50</td>
+</tr>
+<tr>
+<td>Buffer</td>
+<td>Retries, etc.</td>
+<td>$0.50</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>~$2</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>Commands</h3>
+<pre><code class="language-bash"><h1>Generate worlds</h1>
+python run_worlds.py
+<h1>Limit to new vocabulary</h1>
+python run_worlds.py --new-only
+<h1>Specific worlds</h1>
+python run_worlds.py --worlds everyday,formal</code></pre>
+<p>---</p>
+<h2>Pass 4: Transcription (Optional)</h2>
+<strong>Script:</strong> <code>training/scripts/run_transcription.py</code>
+<h3>Purpose</h3>
+Add speech transcriptions to align with visual slides.
+<h3>Process</h3>
+<pre><code class="language-python"><h1>1. Load manifests</h1>
+for video_dir in data/videos/*/: 
+    manifest = load_manifest(video_dir / "manifest.json")
+    
+    # 2. Transcribe each audio segment
+    for segment in manifest.scenes:
+        audio_path = video_dir / segment.audio_path
+        
+        transcription = whisper.transcribe(audio_path)
+        
+        # 3. Store in database
+        supabase.update_audio_segment(
+            segment_id=segment.id,
+            transcription=transcription.text,
+            confidence=transcription.confidence
+        )
+        
+        # 4. Link to frame/slide
+        align_transcription_to_frame(
+            transcription=transcription,
+            frame_id=segment.frame_id
+        )</code></pre>
+<h3>Inputs</h3>
+<ul>
+<li>Audio segments (local files)</li>
+<li>Video manifests</li>
+</ul>
+<h3>Outputs</h3>
+<ul>
+<li><code>nko_audio_segments.transcription</code> populated</li>
+<li>Frame-transcription alignments</li>
+</ul>
+<h3>Cost Breakdown</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Calculation</th>
+<th>Cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Whisper API</td>
+<td>522 × 60 min × $0.006/min</td>
+<td>$187.92</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>~$188</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>Commands</h3>
+<pre><code class="language-bash"><h1>Transcribe all</h1>
+python run_transcription.py
+<h1>Single video</h1>
+python run_transcription.py --video-id xsUrdpKD5wM
+<h1>Dry run (show what would be transcribed)</h1>
+python run_transcription.py --dry-run</code></pre>
+<p>---</p>
+<h2>Cost Summary</h2>
+<table>
+<thead>
+<tr>
+<th>Pass</th>
+<th>Description</th>
+<th>Cost</th>
+<th>Required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Extraction</td>
+<td>$57</td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Consolidation</td>
+<td>$0</td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Worlds</td>
+<td>$2</td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Transcription</td>
+<td>$188</td>
+<td>❌ Optional</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>$60-$247</strong></td>
+</tr>
+</tbody>
+</table>
+<h2>Execution Order</h2>
+<pre><code class="language-bash"><h1>Pass 1: Extract (runs for ~8-12 hours)</h1>
+nohup python run_extraction.py --resume > ../data/logs/pass1.log 2>&1 &
+<h1>Wait for Pass 1 to complete, then:</h1>
+<h1>Pass 2: Consolidate (~5 minutes)</h1>
+python run_consolidation.py
+<h1>Pass 3: Generate worlds (~30 minutes)</h1>
+python run_worlds.py
+<h1>Pass 4: Transcribe (optional, ~4-6 hours)</h1>
+python run_transcription.py</code></pre>
+<h2>Pipeline Status</h2>
+<p>Check progress with:</p>
+<pre><code class="language-bash">python run_extraction.py --status</code></pre>
+<p>Output:
+<pre><code class="language-">Pipeline Status
+===============
+Videos: 47/522 (9%)
+Frames: 2,585
+Detections: 1,847 (71% with N'Ko)
+Audio segments: 2,891
+Failed: 2
+Time elapsed: 2h 15m
+ETA: ~8h remaining</code></pre></p>
+
+        </article>
+    </main>
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#00d4ff',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#00d4ff',
+                lineColor: '#a855f7',
+                secondaryColor: '#1e1e2e',
+                tertiaryColor: '#2d2d44'
+            }
+        });
+    </script>
+</body>
+</html>

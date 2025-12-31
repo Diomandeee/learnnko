@@ -1,0 +1,52 @@
+%%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#00d4ff'}}}%%
+
+flowchart LR
+    subgraph P1[" Pass 1: Extraction "]
+        direction TB
+        D1[Download]
+        D2[Frames]
+        D3[OCR]
+        D4[Audio]
+        D1 --> D2 --> D3
+        D1 --> D4
+    end
+
+    subgraph P2[" Pass 2: Consolidation "]
+        direction TB
+        C1[Query Detections]
+        C2[Normalize Text]
+        C3[Deduplicate]
+        C4[Build Vocab]
+        C1 --> C2 --> C3 --> C4
+    end
+
+    subgraph P3[" Pass 3: Worlds "]
+        direction TB
+        W1[Load Vocab]
+        W2[Everyday]
+        W3[Formal]
+        W4[Story]
+        W5[Proverbs]
+        W6[Educational]
+        W1 --> W2 & W3 & W4 & W5 & W6
+    end
+
+    subgraph P4[" Pass 4: ASR "]
+        direction TB
+        A1[Load Audio]
+        A2[Whisper]
+        A3[Align]
+        A1 --> A2 --> A3
+    end
+
+    P1 -->|"$57"| P2
+    P2 -->|"FREE"| P3
+    P3 -->|"$2"| P4
+    P4 -->|"$188"| E[Complete]
+
+    style P1 fill:#1a1a2e,stroke:#f59e0b,stroke-width:2px
+    style P2 fill:#1a1a2e,stroke:#10b981,stroke-width:2px
+    style P3 fill:#1a1a2e,stroke:#a855f7,stroke-width:2px
+    style P4 fill:#1a1a2e,stroke:#ec4899,stroke-width:2px
+    style E fill:#00d4ff,stroke:#00d4ff,stroke-width:2px
+
