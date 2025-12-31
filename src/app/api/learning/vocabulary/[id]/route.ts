@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-);
+function getSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  
+  if (!url || !key) {
+    throw new Error('Supabase credentials not configured');
+  }
+  
+  return createClient(url, key);
+}
 
 export async function GET(
   request: NextRequest,
@@ -20,6 +26,8 @@ export async function GET(
   }
 
   try {
+    const supabase = getSupabaseClient();
+    
     // Fetch vocabulary entry
     // Note: nko_vocabulary uses: word, latin, meaning_primary (not nko_text, latin_text, english_text)
     const { data: vocabulary, error: vocabError } = await supabase
