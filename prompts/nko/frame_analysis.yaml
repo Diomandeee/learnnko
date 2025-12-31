@@ -1,0 +1,175 @@
+# N'Ko Frame Analysis Prompts
+# These prompts are loaded at runtime from database or files.
+# No prompts are hardcoded in application code.
+
+schema_version: "1.0.0"
+category: frame_analysis
+cost_tier: multimodal
+
+prompts:
+  nko_frame:
+    id: nko_frame
+    name: "N'Ko Frame Analysis"
+    description: "Analyze video frames for N'Ko educational content"
+    template: |
+      Analyze this frame from an N'Ko educational video. Provide a structured analysis in JSON format:
+
+      {
+        "frame_type": "lesson|title|diagram|handwriting|speaker|other",
+        "nko_text": {
+          "visible": true/false,
+          "content": "transcribed N'Ko text if visible",
+          "script_quality": "clear|partial|unclear"
+        },
+        "topic": {
+          "category": "alphabet|grammar|vocabulary|reading|writing|culture",
+          "specific_topic": "description of what is being taught"
+        },
+        "visual_elements": {
+          "teaching_aids": ["list of visual aids: charts, diagrams, boards"],
+          "speaker_visible": true/false,
+          "gestures": "description of any teaching gestures"
+        },
+        "educational_value": 1-10,
+        "summary": "brief description of the frame content"
+      }
+
+      Focus on extracting N'Ko script text accurately and identifying the educational content being presented.
+
+  nko_audio:
+    id: nko_audio
+    name: "N'Ko Audio Analysis"
+    description: "Analyze audio segments for N'Ko speech"
+    template: |
+      Analyze this audio segment from an N'Ko educational video. Provide a structured analysis in JSON format:
+
+      {
+        "speech": {
+          "detected": true/false,
+          "language": "nko|french|bambara|other",
+          "transcription": "transcribed speech if audible",
+          "confidence": 0.0-1.0
+        },
+        "pronunciation": {
+          "teaching_pronunciation": true/false,
+          "phonemes_taught": ["list of N'Ko sounds being taught"],
+          "repetition_count": "number of times key words are repeated"
+        },
+        "audio_quality": {
+          "clarity": 1-10,
+          "background_noise": "none|low|medium|high",
+          "music_present": true/false
+        },
+        "educational_content": {
+          "type": "lecture|drill|conversation|song|other",
+          "key_vocabulary": ["important words or phrases"]
+        },
+        "summary": "brief description of the audio content"
+      }
+
+      Focus on accurately transcribing N'Ko speech and identifying pronunciation patterns being taught.
+
+  general_frame:
+    id: general_frame
+    name: "General Frame Description"
+    description: "Describe video frames in detail"
+    template: |
+      Describe this video frame in detail. Provide analysis in JSON format:
+
+      {
+        "description": "comprehensive description of the frame",
+        "scene_type": "indoor|outdoor|studio|animation|other",
+        "people": {
+          "count": 0,
+          "activities": ["what people are doing"]
+        },
+        "text_visible": {
+          "present": true/false,
+          "content": ["list of visible text"]
+        },
+        "objects": ["notable objects in the frame"],
+        "mood": "description of visual mood/atmosphere",
+        "key_elements": ["most important visual elements"]
+      }
+
+  text_extraction:
+    id: text_extraction
+    name: "Text Extraction (OCR)"
+    description: "Extract all visible text from images"
+    template: |
+      Extract all visible text from this image. Provide results in JSON format:
+
+      {
+        "text_regions": [
+          {
+            "content": "extracted text",
+            "type": "title|body|caption|label|handwritten|printed",
+            "language": "detected language",
+            "confidence": 0.0-1.0,
+            "position": "top|center|bottom|left|right"
+          }
+        ],
+        "total_text_found": true/false,
+        "primary_language": "most common language",
+        "formatting": {
+          "has_headers": true/false,
+          "has_lists": true/false,
+          "has_tables": true/false
+        }
+      }
+
+      Be thorough in extracting ALL visible text, including small labels and captions.
+
+  object_detection:
+    id: object_detection
+    name: "Object Detection"
+    description: "Identify all objects in an image"
+    template: |
+      Identify all objects in this image. Provide results in JSON format:
+
+      {
+        "objects": [
+          {
+            "name": "object name",
+            "category": "person|animal|vehicle|furniture|electronics|food|other",
+            "count": 1,
+            "confidence": 0.0-1.0,
+            "prominent": true/false
+          }
+        ],
+        "scene_context": "description of scene context",
+        "dominant_objects": ["list of most prominent objects"],
+        "object_count": "total number of distinct objects"
+      }
+
+  scene_understanding:
+    id: scene_understanding
+    name: "Scene Understanding"
+    description: "Comprehensive scene analysis"
+    template: |
+      Provide comprehensive scene understanding for this image in JSON format:
+
+      {
+        "scene": {
+          "type": "category of scene",
+          "location": "indoor|outdoor|unknown",
+          "setting": "specific setting description"
+        },
+        "composition": {
+          "layout": "description of visual layout",
+          "focus_point": "main area of visual interest",
+          "depth": "foreground|midground|background elements"
+        },
+        "lighting": {
+          "type": "natural|artificial|mixed",
+          "quality": "bright|dim|balanced",
+          "direction": "front|back|side|ambient"
+        },
+        "activity": {
+          "happening": "what is happening in the scene",
+          "motion": "static|dynamic|transitional"
+        },
+        "narrative": "what story does this frame tell",
+        "context_clues": ["details that provide context"]
+      }
+

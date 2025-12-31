@@ -1,0 +1,14 @@
+# N'Ko Training Pipeline Dependencies
+
+# HTTP client for async API calls
+httpx>=0.24.0
+
+# YAML parsing for config files
+pyyaml>=6.0
+
+# YouTube video list fetching
+yt-dlp>=2024.1.0
+
+# Supabase integration (optional, for metrics export)
+supabase>=2.0.0
+

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const ANALYZER_BACKEND_URL = process.env.ANALYZER_BACKEND_URL || 'http://localhost:8080';
+const ANALYZER_BACKEND_URL = process.env.ANALYZER_BACKEND_URL || 'https://cc-music-pipeline-owq2vk3wya-uc.a.run.app';
 
 interface EstimateRequest {
   video_count: number;
