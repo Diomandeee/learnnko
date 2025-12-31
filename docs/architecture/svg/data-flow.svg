@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600">
+  <style>
+    text { font-family: monospace; fill: #00d4ff; }
+    rect { fill: #1a1a2e; stroke: #00d4ff; }
+  </style>
+  <rect width="100%" height="100%" fill="#0a0a0f"/>
+  <text x="50%" y="30" text-anchor="middle" font-size="20" fill="#a855f7">
+    data-flow
+  </text>
+  <text x="20" y="60" font-size="12" fill="#a0a0b0">
+    <!-- Mermaid source: data-flow.mmd -->
+    <!-- Install @mermaid-js/mermaid-cli for full SVG generation -->
+  </text>
+  <foreignObject x="20" y="80" width="760" height="500">
+    <pre xmlns="http://www.w3.org/1999/xhtml" style="color:#fff;font-size:10px;white-space:pre-wrap;">%%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#00d4ff', 'primaryTextColor': '#fff', 'primaryBorderColor': '#00d4ff', 'lineColor': '#a855f7', 'secondaryColor': '#1e1e2e', 'tertiaryColor': '#2d2d44'}}}%%
+
+flowchart TB
+    subgraph Sources[" 📺 Data Sources"]
+        YT[YouTube Channel]
+        YT2[babamamadidiane]
+    end
+
+    subgraph Pass1[" 🎬 Pass 1: Extraction"]
+        DL[Download Video]
+        FE[Frame Extraction]
+        OCR[Gemini OCR]
+        AE[Audio Extraction]
+    end...</pre>
+  </foreignObject>
+</svg>

@@ -1,0 +1,73 @@
+%%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#00d4ff', 'primaryTextColor': '#fff', 'primaryBorderColor': '#00d4ff', 'lineColor': '#a855f7', 'secondaryColor': '#1e1e2e', 'tertiaryColor': '#2d2d44'}}}%%
+
+flowchart TB
+    subgraph Sources[" 📺 Data Sources"]
+        YT[YouTube Channel]
+        YT2[babamamadidiane]
+    end
+
+    subgraph Pass1[" 🎬 Pass 1: Extraction"]
+        DL[Download Video]
+        FE[Frame Extraction]
+        OCR[Gemini OCR]
+        AE[Audio Extraction]
+    end
+
+    subgraph Pass2[" 🔄 Pass 2: Consolidation"]
+        DD[Deduplicate Phrases]
+        BV[Build Vocabulary]
+    end
+
+    subgraph Pass3[" 🌍 Pass 3: World Generation"]
+        WG[Generate 5 Worlds]
+        TR[Create Trajectories]
+    end
+
+    subgraph Pass4[" 🎤 Pass 4: Transcription"]
+        ASR[Whisper ASR]
+        AL[Align to Slides]
+    end
+
+    subgraph Storage[" 💾 Storage Layer"]
+        SB[(Supabase)]
+        LS[Local Files]
+    end
+
+    subgraph Frontend[" 🌐 User Interface"]
+        NX[Next.js App]
+        LP[Learning Panel]
+        EP[Exploration Panel]
+    end
+
+    YT --> DL
+    DL --> FE
+    DL --> AE
+    FE --> OCR
+    OCR --> SB
+    AE --> LS
+    
+    SB --> DD
+    DD --> BV
+    BV --> SB
+    
+    SB --> WG
+    WG --> TR
+    TR --> SB
+    
+    LS --> ASR
+    ASR --> AL
+    AL --> SB
+    
+    SB --> NX
+    LS --> NX
+    NX --> LP
+    NX --> EP
+
+    style Sources fill:#1a1a2e,stroke:#00d4ff,stroke-width:2px
+    style Pass1 fill:#1a1a2e,stroke:#f59e0b,stroke-width:2px
+    style Pass2 fill:#1a1a2e,stroke:#10b981,stroke-width:2px
+    style Pass3 fill:#1a1a2e,stroke:#a855f7,stroke-width:2px
+    style Pass4 fill:#1a1a2e,stroke:#ec4899,stroke-width:2px
+    style Storage fill:#1a1a2e,stroke:#3b82f6,stroke-width:2px
+    style Frontend fill:#1a1a2e,stroke:#00d4ff,stroke-width:2px
+

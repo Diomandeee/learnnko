@@ -1,0 +1,17 @@
+{
+  "files": {
+    "/Users/mohameddiomande/Desktop/learnnko/docs/architecture/05-world-generation.md": "cacc923934b2102f850f8bd6d186e15e",
+    "/Users/mohameddiomande/Desktop/learnnko/docs/architecture/04-frame-extraction.md": "505eb235477c7450d7a627d9fd807b85",
+    "/Users/mohameddiomande/Desktop/learnnko/docs/architecture/06-audio-segments.md": "36ac12201595837d13d2432b57e9bf61",
+    "/Users/mohameddiomande/Desktop/learnnko/docs/architecture/01-data-flow.md": "f86522a442a4a160cdb117623b12d441",
+    "/Users/mohameddiomande/Desktop/learnnko/docs/architecture/README.md": "1667766d34642348d9d690d324d8cf44",
+    "/Users/mohameddiomande/Desktop/learnnko/docs/architecture/03-pipeline-passes.md": "e27e2d411c0c4d75501ce6f7f932e732",
+    "/Users/mohameddiomande/Desktop/learnnko/docs/architecture/07-resume-mechanism.md": "57b560dd1c12aea7cee7f6e88cf86242",
+    "/Users/mohameddiomande/Desktop/learnnko/docs/architecture/02-database-schema.md": "350af31027891674d87157729c4ec417",
+    "/Users/mohameddiomande/Desktop/learnnko/docs/architecture/diagrams/database-erd.mmd": "7cad62da85b8e918e5033026f4705501",
+    "/Users/mohameddiomande/Desktop/learnnko/docs/architecture/diagrams/data-flow.mmd": "0d6f5909280bfc9b405cffd86100e886",
+    "/Users/mohameddiomande/Desktop/learnnko/docs/architecture/diagrams/pipeline.mmd": "5dd895bbb8683bd2548340f62d626f9b",
+    "/Users/mohameddiomande/Desktop/learnnko/docs/architecture/README-BUILD.md": "8fbfc71b9fa22fd560465453022c193c"
+  },
+  "last_build": "2025-12-31T09:27:25.816296"
+}

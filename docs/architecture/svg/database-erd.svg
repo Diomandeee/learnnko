@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600">
+  <style>
+    text { font-family: monospace; fill: #00d4ff; }
+    rect { fill: #1a1a2e; stroke: #00d4ff; }
+  </style>
+  <rect width="100%" height="100%" fill="#0a0a0f"/>
+  <text x="50%" y="30" text-anchor="middle" font-size="20" fill="#a855f7">
+    database-erd
+  </text>
+  <text x="20" y="60" font-size="12" fill="#a0a0b0">
+    <!-- Mermaid source: database-erd.mmd -->
+    <!-- Install @mermaid-js/mermaid-cli for full SVG generation -->
+  </text>
+  <foreignObject x="20" y="80" width="760" height="500">
+    <pre xmlns="http://www.w3.org/1999/xhtml" style="color:#fff;font-size:10px;white-space:pre-wrap;">%%{init: {'theme': 'dark'}}%%
+
+erDiagram
+    nko_sources ||--o{ nko_frames : contains
+    nko_sources ||--o{ nko_audio_segments : contains
+    nko_frames ||--o{ nko_detections : contains
+    nko_detections ||--o{ nko_trajectories : generates
+    nko_trajectories ||--o{ nko_trajectory_nodes : contains
+    nko_vocabulary ||--o{ nko_trajectory_nodes : references
+    nko_sessions ||--o{ nko_learning_events : contains
+    nko_sessions ||--o{ nko_trajectories : tracks
+    users ||--o{ nko_sessions : o...</pre>
+  </foreignObject>
+</svg>
