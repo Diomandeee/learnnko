@@ -16,10 +16,17 @@ import {
   Clock,
 } from 'lucide-react';
 
-// Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Initialize Supabase client lazily to avoid build-time errors
+function getSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  
+  if (!url || !key) {
+    return null;
+  }
+  
+  return createClient(url, key);
+}
 
 interface PipelineEvent {
   id: number;
@@ -98,6 +105,12 @@ export function LiveActivityFeed({
     fetchInitialEvents();
 
     // Set up Supabase Realtime subscription
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      console.warn('Supabase not configured - realtime disabled');
+      return;
+    }
+    
     const channel = supabase
       .channel('pipeline-events')
       .on(
@@ -133,7 +146,9 @@ export function LiveActivityFeed({
       });
 
     return () => {
-      supabase.removeChannel(channel);
+      if (supabase) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [maxEvents, showDetectionsOnly]);
 
