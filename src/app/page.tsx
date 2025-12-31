@@ -2,215 +2,23 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { 
-  MessageCircle,
-  Languages,
-  Mic,
-  Keyboard,
-  Archive,
-  BookOpen,
   ArrowRight,
   Sparkles,
-  TrendingUp,
-  Users,
-  Clock,
-  Star,
   Play,
-  ChevronRight,
-  Menu,
-  X,
-  User,
-  LogIn,
-  UserPlus,
-  Award,
-  Globe,
+  Activity,
+  BookOpen,
+  Brain,
   Zap,
-  Shield,
-  Heart,
-  CheckCircle,
-  ArrowUpRight,
-  Feather,
-  Calendar,
-  Map,
+  Globe,
   ArrowLeft
 } from "lucide-react"
 import { useState, useEffect } from "react"
-import { useSession } from "next-auth/react"
-
-// Interactive N'Ko Keyboard Component
-function InteractiveNKoKeyboard() {
-  const [displayText, setDisplayText] = useState("")
-  const [cursorPosition, setCursorPosition] = useState(0)
-  const [isTyping, setIsTyping] = useState(false)
-
-  // N'Ko character layout (simplified keyboard layout)
-  const nkoKeyboard = [
-    // Row 1 - Numbers
-    ["߁", "߂", "߃", "߄", "߅", "߆", "߇", "߈", "߉", "߀"],
-    // Row 2 - Main letters
-    ["ߒ", "ߓ", "ߔ", "ߕ", "ߖ", "ߗ", "ߘ", "ߙ", "ߚ", "ߛ"],
-    // Row 3 - More letters  
-    ["ߜ", "ߝ", "ߞ", "ߟ", "ߠ", "ߡ", "ߢ", "ߣ", "ߤ", "ߥ"],
-    // Row 4 - Additional letters
-    ["ߦ", "ߧ", "ߨ", "ߩ", "ߪ", "߫", "߬", "߭", "߮", "߯"]
-  ]
-
-  const handleKeyPress = (char: string) => {
-    setIsTyping(true)
-    
-    // Insert character at current cursor position (right-to-left)
-    const newText = displayText.slice(0, cursorPosition) + char + displayText.slice(cursorPosition)
-    setDisplayText(newText)
-    setCursorPosition(cursorPosition + 1)
-    
-    // Reset typing animation
-    setTimeout(() => setIsTyping(false), 200)
-  }
-
-  const handleBackspace = () => {
-    if (cursorPosition > 0) {
-      const newText = displayText.slice(0, cursorPosition - 1) + displayText.slice(cursorPosition)
-      setDisplayText(newText)
-      setCursorPosition(cursorPosition - 1)
-    }
-  }
-
-  const handleClear = () => {
-    setDisplayText("")
-    setCursorPosition(0)
-  }
-
-  const demoTexts = [
-    "ߊߟߎ߬ ߞߊ߬ ߝߘߊ߬ߝߌ߲߬ߠߊ߫ ߞߎߘߊ",
-    "ߒߞߏ ߞߊ߬ߙߊ߲ ߞߊ߬ߙߊ߲߬ߕߊ",
-    "ߊߝߙߌߞߌ߬ ߖߐ߮ ߞߊ߬ߙߊ߲"
-  ]
-
-  const handleDemo = (text: string) => {
-    let i = 0
-    setDisplayText("")
-    setCursorPosition(0)
-    
-    const typeChar = () => {
-      if (i < text.length) {
-        setDisplayText(text.slice(0, i + 1))
-        setCursorPosition(i + 1)
-        i++
-        setTimeout(typeChar, 150)
-      }
-    }
-    typeChar()
-  }
-
-  return (
-    <div className="relative bg-gradient-to-br from-space-800/80 to-space-900/80 rounded-2xl p-6 backdrop-blur-xl border border-amber-500/20 max-w-2xl shadow-amber">
-      <div className="text-center mb-6">
-        <h3 className="text-xl font-semibold text-amber-300 mb-2">Interactive N'Ko Keyboard</h3>
-        <p className="text-gray-300 text-sm font-medium">Click keys to type • Experience right-to-left writing</p>
-      </div>
-      
-      {/* Display Area */}
-      <div className="mb-6 p-4 bg-space-900/70 rounded-lg border border-amber-500/30 min-h-[80px] relative">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2 text-amber-300 text-sm">
-            <ArrowLeft className="w-4 h-4" />
-            <span>Right to Left</span>
-          </div>
-          <div className="text-gray-400 text-xs font-medium">
-            {displayText.length} characters
-          </div>
-        </div>
-        
-        <div 
-          className="text-2xl text-amber-100 font-bold min-h-[2rem] text-right leading-relaxed font-nko"
-          style={{ 
-            direction: 'rtl',
-            wordBreak: 'break-all'
-          }}
-        >
-          {displayText || (
-            <span className="text-amber-400/50 italic text-lg">
-              ߒߞߏ ߞߊ߬ߙߊ߲ (N'Ko Script)
-            </span>
-          )}
-          {displayText && (
-            <span className={`inline-block w-0.5 h-8 bg-amber-400 ml-1 ${isTyping ? 'animate-pulse' : 'animate-blink'}`}></span>
-          )}
-        </div>
-      </div>
-
-      {/* Demo Buttons */}
-      <div className="mb-4 flex flex-wrap gap-2">
-        <span className="text-amber-300 text-sm mr-2">Try:</span>
-        {demoTexts.map((text, index) => (
-          <button
-            key={index}
-            onClick={() => handleDemo(text)}
-            className="px-3 py-1 text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg border border-amber-500/30 transition-colors"
-          >
-            Demo {index + 1}
-          </button>
-        ))}
-      </div>
-      
-      {/* Virtual Keyboard */}
-      <div className="space-y-2">
-        {nkoKeyboard.map((row, rowIndex) => (
-          <div key={rowIndex} className="flex gap-1 justify-center">
-            {row.map((char, charIndex) => (
-              <button
-                key={`${rowIndex}-${charIndex}`}
-                onClick={() => handleKeyPress(char)}
-                className="w-10 h-10 bg-gradient-to-br from-space-700 to-space-800 hover:from-amber-600 hover:to-amber-700 text-white text-lg font-bold rounded-lg border border-space-600 hover:border-amber-400 transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg font-nko"
-              >
-                {char}
-              </button>
-            ))}
-          </div>
-        ))}
-        
-        {/* Control buttons */}
-        <div className="flex gap-2 justify-center mt-4">
-          <button
-            onClick={handleBackspace}
-            className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-sm rounded-lg border border-red-500/30 transition-colors"
-          >
-            ⌫ Backspace
-          </button>
-          <button
-            onClick={handleClear}
-            className="px-4 py-2 bg-space-500/20 hover:bg-space-500/30 text-gray-300 text-sm rounded-lg border border-space-500/30 transition-colors"
-          >
-            Clear All
-          </button>
-          <button
-            onClick={() => handleKeyPress(" ")}
-            className="px-6 py-2 bg-space-600/50 hover:bg-space-600/70 text-gray-300 text-sm rounded-lg border border-space-500/30 transition-colors"
-          >
-            Space
-          </button>
-        </div>
-      </div>
-
-      <style jsx>{`
-        @keyframes blink {
-          0%, 50% { opacity: 1; }
-          51%, 100% { opacity: 0; }
-        }
-        .animate-blink {
-          animation: blink 1s infinite;
-        }
-      `}</style>
-    </div>
-  )
-}
 
 export default function HomePage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [scrollY, setScrollY] = useState(0)
-  const { data: session } = useSession()
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY)
@@ -219,137 +27,54 @@ export default function HomePage() {
   }, [])
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-space-950">
+    <div className="min-h-screen relative overflow-hidden bg-[#0a0a0f]">
       {/* Cosmic Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-b from-space-950 via-space-900 to-space-950" />
-        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,rgba(245,158,11,0.08),transparent_40%)]"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0f] via-[#0d1117] to-[#0a0a0f]" />
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,rgba(6,182,212,0.08),transparent_40%)]"></div>
         <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_80%,rgba(139,92,246,0.06),transparent_40%)]"></div>
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-amber-400/15 to-orange-400/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute top-1/2 -left-20 w-64 h-64 bg-gradient-to-br from-violet-400/10 to-purple-400/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute bottom-0 right-1/3 w-96 h-96 bg-gradient-to-br from-amber-400/8 to-yellow-400/5 rounded-full blur-3xl animate-pulse delay-2000"></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-cyan-400/15 to-violet-400/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-1/2 -left-20 w-64 h-64 bg-gradient-to-br from-violet-400/10 to-purple-400/10 rounded-full blur-3xl animate-pulse"></div>
         
         {/* N'Ko script floating elements */}
-        <div className="absolute top-20 left-1/4 text-amber-400/20 text-4xl animate-float font-nko" style={{ animationDelay: '0.5s' }}>ߒ</div>
-        <div className="absolute top-1/3 right-1/4 text-violet-400/15 text-3xl animate-float font-nko" style={{ animationDelay: '1s' }}>ߓ</div>
-        <div className="absolute bottom-1/3 left-1/3 text-amber-300/15 text-5xl animate-float font-nko" style={{ animationDelay: '1.5s' }}>ߕ</div>
-        <div className="absolute bottom-1/4 right-1/5 text-cyan-400/10 text-4xl animate-float font-nko" style={{ animationDelay: '2s' }}>ߞ</div>
+        <div className="absolute top-20 left-1/4 text-cyan-400/20 text-4xl animate-pulse font-nko" style={{ animationDelay: '0.5s' }}>ߒ</div>
+        <div className="absolute top-1/3 right-1/4 text-violet-400/15 text-3xl animate-pulse font-nko" style={{ animationDelay: '1s' }}>ߓ</div>
+        <div className="absolute bottom-1/3 left-1/3 text-cyan-300/15 text-5xl animate-pulse font-nko" style={{ animationDelay: '1.5s' }}>ߕ</div>
+        <div className="absolute bottom-1/4 right-1/5 text-emerald-400/10 text-4xl animate-pulse font-nko" style={{ animationDelay: '2s' }}>ߞ</div>
       </div>
 
       {/* Navigation Bar */}
       <nav className={`relative z-50 transition-all duration-300 sticky top-0 ${
         scrollY > 50 
-          ? 'backdrop-blur-xl bg-space-950/95 border-b border-amber-500/20 shadow-lg shadow-amber-500/10' 
-          : 'backdrop-blur-sm bg-space-950/80 border-b border-amber-500/10'
+          ? 'backdrop-blur-xl bg-[#0a0a0f]/95 border-b border-white/5' 
+          : 'backdrop-blur-sm bg-[#0a0a0f]/80'
       }`}>
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            {/* Enhanced Logo */}
+            {/* Logo */}
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="w-12 h-12 bg-gradient-to-br from-amber-400 via-orange-400 to-yellow-400 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/25 transform hover:scale-110 transition-all duration-300">
-                  <img 
-                    src="/nko_logo.svg" 
-                    alt="N'Ko Logo" 
-                    className="w-8 h-8 drop-shadow-lg"
-                  />
+                <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 via-cyan-500 to-violet-500 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/25">
+                  <span className="text-white font-bold text-lg nko-text">ߒ</span>
                 </div>
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-cyan-400 to-violet-400 rounded-full animate-pulse"></div>
               </div>
-              <div className="hidden sm:block">
-                <span className="text-2xl font-bold bg-gradient-to-r from-amber-400 via-orange-300 to-yellow-400 bg-clip-text text-transparent">
-                  N'Ko Hub
+              <div>
+                <span className="text-xl font-bold text-white">
+                  Learn<span className="text-cyan-400">N'Ko</span>
                 </span>
-                <div className="text-xs text-amber-300/70 -mt-1 font-medium">Learn • Practice • Master</div>
+                <div className="text-[10px] text-white/40 -mt-1">AI-Powered Learning</div>
               </div>
             </div>
 
-         
-
-            {/* Auth Buttons */}
-            <div className="flex items-center gap-3">
-              {session ? (
-                <div className="flex items-center gap-3">
-                  <Link href="/nko">
-                    <Button size="sm" className="shadow-lg bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 hover:from-amber-600 hover:via-orange-600 hover:to-yellow-600 border-0 transform hover:scale-105 transition-all duration-300 text-space-950 font-semibold">
-                      <Play className="w-4 h-4 mr-2" />
-                      Continue Learning
-                    </Button>
-                  </Link>
-                  <Link href="/profile">
-                    <Button variant="ghost" size="sm" className="flex items-center gap-2 text-gray-100 hover:text-amber-300 hover:bg-amber-500/10">
-                      <User className="w-4 h-4" />
-                      <span className="hidden sm:inline">Profile</span>
-                    </Button>
-                  </Link>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Link href="/auth/login">
-                    <Button variant="ghost" size="sm" className="flex items-center gap-2 text-gray-100 hover:text-amber-300 hover:bg-amber-500/10 transition-all duration-300">
-                      <LogIn className="w-4 h-4" />
-                      <span className="hidden sm:inline">Sign In</span>
-                    </Button>
-                  </Link>
-                  <Link href="/auth/register">
-                    <Button size="sm" className="bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 hover:from-amber-600 hover:via-orange-600 hover:to-yellow-600 shadow-lg transform hover:scale-105 transition-all duration-300 text-space-950 font-semibold">
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      <span className="hidden sm:inline">Sign Up</span>
-                    </Button>
-                  </Link>
-                </div>
-              )}
-
-              {/* Mobile Menu Button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="md:hidden text-gray-100 hover:text-amber-300 hover:bg-amber-500/10"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              >
-                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {/* Launch Button */}
+            <Link href="/dashboard">
+              <Button className="bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-600 hover:to-violet-600 text-white font-semibold shadow-lg shadow-cyan-500/20 transition-all duration-300 transform hover:scale-105">
+                <Activity className="w-4 h-4 mr-2" />
+                Launch Dashboard
+                <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
-            </div>
+            </Link>
           </div>
-
-          {/* Mobile Menu */}
-          {mobileMenuOpen && (
-            <div className="md:hidden mt-4 pb-4 border-t border-amber-500/20 backdrop-blur-xl bg-space-950/95 rounded-lg">
-              <div className="flex flex-col gap-3 pt-4">
-                {[
-                  { href: "/nko/lessons", label: "Lessons" },
-                  { href: "/nko/conversation", label: "Practice" },
-                  { href: "/nko/translate", label: "Translate" },
-                  { href: "/nko/dictionary", label: "Dictionary" }
-                ].map((item) => (
-                  <Link 
-                    key={item.href}
-                    href={item.href} 
-                    className="text-sm font-medium text-gray-300 hover:text-amber-300 transition-colors py-2"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-                {!session && (
-                  <div className="flex flex-col gap-2 pt-2 border-t border-amber-500/20">
-                    <Link href="/auth/login">
-                      <Button variant="ghost" size="sm" className="w-full justify-start text-gray-100 hover:text-amber-300 hover:bg-amber-500/10">
-                        <LogIn className="w-4 h-4 mr-2" />
-                        Sign In
-                      </Button>
-                    </Link>
-                    <Link href="/auth/register">
-                      <Button size="sm" className="w-full justify-start bg-gradient-to-r from-amber-500 to-orange-500 text-space-950 font-semibold">
-                        <UserPlus className="w-4 h-4 mr-2" />
-                        Sign Up
-                      </Button>
-                    </Link>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </nav>
 
@@ -357,255 +82,104 @@ export default function HomePage() {
         {/* Hero Section */}
         <section className="py-24 text-center relative">
           <div className="relative z-10">
-            <Badge variant="secondary" className="mb-8 px-6 py-3 text-sm font-medium shadow-lg animate-fade-in bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-yellow-500/20 border border-amber-400/30 text-amber-100 backdrop-blur-sm">
-              <Calendar className="w-4 h-4 mr-2 text-amber-400" />
-              First Modern Digital N'Ko Learning Platform
-              <Star className="w-4 h-4 ml-2 text-amber-400" />
+            <Badge className="mb-8 px-4 py-2 text-sm font-medium bg-white/5 border border-cyan-500/30 text-cyan-300 backdrop-blur-sm">
+              <Sparkles className="w-4 h-4 mr-2 text-cyan-400" />
+              Real-Time N'Ko Learning Pipeline
             </Badge>
             
-            <h1 className="text-6xl md:text-8xl font-bold mb-10 leading-tight animate-fade-in-up">
-              <span className="bg-gradient-to-r from-amber-400 via-orange-300 to-yellow-400 bg-clip-text text-transparent drop-shadow-2xl">
-                The Future of
+            <h1 className="text-5xl md:text-7xl font-bold mb-8 leading-tight">
+              <span className="nko-text text-cyan-400 text-6xl md:text-8xl block mb-4">
+                ߒߞߏ
               </span>
-              <br />
-              <span className="text-white drop-shadow-lg">N'Ko Learning</span>
+              <span className="text-white">
+                Learning Intelligence
+              </span>
             </h1>
             
-            <p className="text-xl md:text-2xl text-gray-300 mb-14 max-w-4xl mx-auto leading-relaxed animate-fade-in-up delay-200 font-medium">
-              Experience the ancient N'Ko script through modern technology. Watch letters come alive, 
-              master the right-to-left writing system, and connect with centuries of West African heritage.
+            <p className="text-lg md:text-xl text-white/60 mb-12 max-w-2xl mx-auto leading-relaxed">
+              Watch AI learn N'Ko in real-time. See detections flow in, explore vocabulary trajectories, 
+              and witness the continuous learning pipeline building knowledge.
             </p>
             
-            <div className="flex flex-col lg:flex-row gap-12 items-center justify-center mb-20">
-              {/* CTA Buttons */}
-              <div className="flex flex-col sm:flex-row gap-6 animate-fade-in-up delay-300">
-                {session ? (
-                  <Link href="/nko">
-                    <Button size="lg" className="px-10 py-5 text-lg font-semibold shadow-2xl hover:shadow-amber-500/25 transition-all duration-300 transform hover:scale-105 bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 hover:from-amber-600 hover:via-orange-600 hover:to-yellow-600 border-0 text-space-950">
-                      <Play className="w-6 h-6 mr-3" />
-                      Continue Learning
-                      <ArrowRight className="w-6 h-6 ml-3" />
-                    </Button>
-                  </Link>
-                ) : (
-                  <Link href="/auth/register">
-                    <Button size="lg" className="px-10 py-5 text-lg font-semibold shadow-2xl hover:shadow-amber-500/25 transition-all duration-300 transform hover:scale-105 bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 hover:from-amber-600 hover:via-orange-600 hover:to-yellow-600 border-0 text-space-950">
-                      <UserPlus className="w-6 h-6 mr-3" />
-                      Start Learning Now
-                      <ArrowRight className="w-6 h-6 ml-3" />
-                    </Button>
-                  </Link>
-                )}
-                <Link href="/nko/lessons">
-                  <Button size="lg" variant="outline" className="px-10 py-5 text-lg font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-amber-400/50 text-amber-100 hover:bg-amber-500/10 hover:border-amber-400 backdrop-blur-sm">
-                    <BookOpen className="w-6 h-6 mr-3" />
-                    Explore Lessons
-                  </Button>
-                </Link>
-              </div>
-
-              {/* Interactive N'Ko Keyboard */}
-              <div className="animate-fade-in-up delay-500">
-                <InteractiveNKoKeyboard />
-              </div>
+            {/* Main CTA */}
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-center mb-16">
+              <Link href="/dashboard">
+                <Button size="lg" className="px-10 py-6 text-lg font-semibold bg-gradient-to-r from-cyan-500 via-cyan-600 to-violet-500 hover:from-cyan-600 hover:via-cyan-700 hover:to-violet-600 shadow-2xl shadow-cyan-500/25 transition-all duration-300 transform hover:scale-105 text-white">
+                  <Play className="w-6 h-6 mr-3" />
+                  Launch Dashboard
+                  <ArrowRight className="w-6 h-6 ml-3" />
+                </Button>
+              </Link>
             </div>
 
-            {/* Historical Context */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16 animate-fade-in-up delay-600">
-              <div className="text-center p-6 bg-gradient-to-br from-space-800/80 to-amber-900/30 rounded-2xl backdrop-blur-sm border border-amber-500/20 shadow-amber">
-                <Calendar className="w-8 h-8 text-amber-400 mx-auto mb-3" />
-                <div className="text-2xl font-bold text-amber-300 mb-2">1949</div>
-                <div className="text-gray-300 text-sm font-medium">N'Ko Script Created by Solomana Kante</div>
-              </div>
-              <div className="text-center p-6 bg-gradient-to-br from-space-800/80 to-violet-900/30 rounded-2xl backdrop-blur-sm border border-violet-500/20 shadow-violet">
-                <Map className="w-8 h-8 text-violet-400 mx-auto mb-3" />
-                <div className="text-2xl font-bold text-violet-300 mb-2">8 Countries</div>
-                <div className="text-gray-300 text-sm font-medium">West African Nations Using N'Ko</div>
-              </div>
-              <div className="text-center p-6 bg-gradient-to-br from-space-800/80 to-cyan-900/30 rounded-2xl backdrop-blur-sm border border-cyan-500/20 shadow-cyber">
-                <Globe className="w-8 h-8 text-cyan-400 mx-auto mb-3" />
-                <div className="text-2xl font-bold text-cyan-300 mb-2">40M+</div>
-                <div className="text-gray-300 text-sm font-medium">Mande Language Speakers Worldwide</div>
-              </div>
-            </div>
-
-            {/* N'Ko Facts Section */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-20 animate-fade-in-up delay-400">
+            {/* Live Stats Preview */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto mb-16">
               {[
-                { number: "59", label: "N'Ko Characters", icon: BookOpen, color: "amber", description: "Complete alphabet with unique diacritics" },
-                { number: "270°", label: "Reading Direction", icon: ArrowLeft, color: "violet", description: "Right-to-left script like Arabic & Hebrew" },
-                { number: "1949", label: "Year Created", icon: Calendar, color: "cyan", description: "Invented by scholar Solomana Kante" }
-              ].map((fact, index) => (
-                <div key={index} className="relative group">
-                  <div className="text-center p-8 bg-gradient-to-br from-space-800/80 to-space-900/80 rounded-3xl backdrop-blur-xl shadow-xl border border-amber-500/20 hover:border-amber-400/50 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl hover:shadow-amber-500/10">
-                    <fact.icon className={`w-8 h-8 mx-auto mb-4 text-${fact.color}-400`} />
-                    <div className={`text-4xl font-bold text-${fact.color}-400 mb-2`}>{fact.number}</div>
-                    <div className="text-gray-200 font-medium mb-2">{fact.label}</div>
-                    <div className="text-xs text-gray-400 font-medium">{fact.description}</div>
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-violet-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10"></div>
-                </div>
+                { label: "Videos Processing", value: "532", icon: Play, color: "cyan" },
+                { label: "N'Ko Detections", value: "Live", icon: BookOpen, color: "emerald" },
+                { label: "World Trajectories", value: "5", icon: Brain, color: "violet" },
+                { label: "Learning Rate", value: "Active", icon: Zap, color: "amber" },
+              ].map((stat, index) => (
+                <Card key={index} className="bg-white/[0.02] border-white/5 backdrop-blur-sm">
+                  <CardContent className="p-4 text-center">
+                    <stat.icon className={`w-6 h-6 mx-auto mb-2 text-${stat.color}-400`} />
+                    <div className={`text-2xl font-bold text-${stat.color}-400`}>{stat.value}</div>
+                    <div className="text-xs text-white/40">{stat.label}</div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
 
-            {/* Revolutionary Features */}
-            <div className="flex flex-wrap justify-center items-center gap-8 mb-16 opacity-80">
-              {["Digital First", "Stroke Animation", "Right-to-Left Mastery", "Cultural Heritage"].map((badge, index) => (
-                <div key={index} className="flex items-center gap-2 text-amber-200">
-                  <CheckCircle className="w-4 h-4 text-amber-400" />
-                  <span className="text-sm font-medium">{badge}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Features Grid */}
-        <section className="pb-32">
-          <div className="text-center mb-20">
-            <Badge className="mb-6 px-4 py-2 bg-gradient-to-r from-amber-500/20 to-violet-500/20 border border-amber-400/30 text-amber-300">
-              <Zap className="w-4 h-4 mr-2" />
-              Revolutionary Learning Methods
-            </Badge>
-            <h2 className="text-5xl md:text-6xl font-bold mb-8 text-white">
-              Modern Tools for Ancient Script
-            </h2>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed font-medium">
-              Experience N'Ko through innovative technology that respects tradition while embracing modern learning science
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
-            {[
-              {
-                icon: Feather,
-                title: "Stroke-by-Stroke Animation",
-                description: "Watch every N'Ko character form naturally with authentic stroke order and direction guidance",
-                features: ["Live character animation", "Traditional stroke patterns", "Right-to-left flow mastery", "Authentic calligraphy style"],
-                color: "amber",
-                delay: "0"
-              },
-              {
-                icon: MessageCircle,
-                title: "Interactive Conversations", 
-                description: "Practice real N'Ko conversations with intelligent tutoring and cultural context",
-                features: ["Natural conversation flow", "Cultural context tips", "Grammar pattern recognition", "Progress-based difficulty"],
-                color: "violet",
-                delay: "100"
-              },
-              {
-                icon: Languages,
-                title: "Smart Translation Engine",
-                description: "Bidirectional translation preserving N'Ko's unique grammatical structure and meaning",
-                features: ["Mande ↔ French/English", "Cultural meaning preservation", "Context-aware translation", "Historical usage examples"],
-                color: "cyan",
-                delay: "200"
-              },
-              {
-                icon: Mic,
-                title: "Pronunciation Mastery",
-                description: "Advanced speech recognition trained specifically for N'Ko phonetics and tonal patterns",
-                features: ["Tonal pattern recognition", "Regional accent support", "Pronunciation feedback", "Audio-visual learning"],
-                color: "amber",
-                delay: "300"
-              },
-              {
-                icon: Keyboard,
-                title: "Authentic N'Ko Keyboard",
-                description: "Custom input system respecting N'Ko's right-to-left script and unique character relationships",
-                features: ["Full N'Ko character set", "Right-to-left input flow", "Smart character completion", "Traditional layout options"],
-                color: "violet",
-                delay: "400"
-              },
-              {
-                icon: Archive,
-                title: "Cultural Dictionary",
-                description: "Comprehensive N'Ko dictionary with historical context, proverbs, and cultural significance",
-                features: ["20,000+ N'Ko entries", "Historical etymology", "Cultural proverbs & sayings", "Regional variations"],
-                color: "cyan",
-                delay: "500"
-              }
-            ].map((feature, index) => (
-              <Card key={index} className={`group hover:shadow-2xl hover:shadow-${feature.color}-500/20 transition-all duration-500 transform hover:-translate-y-3 border border-${feature.color}-500/10 shadow-xl bg-gradient-to-br from-space-800/90 to-space-900/90 backdrop-blur-xl animate-fade-in-up delay-${feature.delay}`}>
-                <CardHeader className="pb-4">
-                  <div className={`w-14 h-14 bg-gradient-to-br from-${feature.color}-400 via-${feature.color}-500 to-${feature.color}-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-${feature.color}-500/25`}>
-                    <feature.icon className="w-7 h-7 text-white" />
+            {/* Features Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+              <Card className="bg-white/[0.02] border-white/5 backdrop-blur-sm hover:border-cyan-500/30 transition-all duration-300">
+                <CardContent className="p-6">
+                  <div className="w-12 h-12 bg-cyan-500/10 rounded-xl flex items-center justify-center mb-4 mx-auto">
+                    <Activity className="w-6 h-6 text-cyan-400" />
                   </div>
-                  <CardTitle className={`text-xl text-white group-hover:text-${feature.color}-300 transition-colors mb-3`}>
-                    {feature.title}
-                  </CardTitle>
-                  <CardDescription className="text-base text-gray-300 leading-relaxed font-medium">
-                    {feature.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3">
-                    {feature.features.map((item, idx) => (
-                      <li key={idx} className="flex items-center gap-3 text-gray-200">
-                        <div className={`w-2 h-2 bg-${feature.color}-400 rounded-full shadow-sm`}></div>
-                        <span className="text-sm font-medium">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-6">
-                    <Button variant="ghost" size="sm" className={`text-${feature.color}-400 hover:text-${feature.color}-300 hover:bg-${feature.color}-500/10 p-0 h-auto font-medium`}>
-                      Try it now <ArrowUpRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  </div>
+                  <h3 className="text-lg font-semibold text-white mb-2">Live Activity Feed</h3>
+                  <p className="text-sm text-white/50">
+                    Watch N'Ko detections stream in real-time as videos are processed
+                  </p>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        </section>
 
-        {/* CTA Section */}
-        <section className="pb-32">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-amber-600/20 via-orange-600/20 to-yellow-600/20 rounded-3xl blur-3xl"></div>
-            <div className="relative bg-gradient-to-r from-amber-600 via-orange-600 to-yellow-600 rounded-3xl p-16 text-space-950 shadow-2xl border border-amber-400/30 overflow-hidden">
-              {/* Background N'Ko Characters */}
-              <div className="absolute inset-0 opacity-10 font-nko">
-                <div className="absolute top-10 left-10 text-6xl font-bold">ߒ</div>
-                <div className="absolute top-20 right-20 text-4xl font-bold">ߓ</div>
-                <div className="absolute bottom-20 left-1/3 text-7xl font-bold">ߕ</div>
-                <div className="absolute bottom-10 right-10 text-5xl font-bold">ߘ</div>
+              <Card className="bg-white/[0.02] border-white/5 backdrop-blur-sm hover:border-violet-500/30 transition-all duration-300">
+                <CardContent className="p-6">
+                  <div className="w-12 h-12 bg-violet-500/10 rounded-xl flex items-center justify-center mb-4 mx-auto">
+                    <Brain className="w-6 h-6 text-violet-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white mb-2">Trajectory Explorer</h3>
+                  <p className="text-sm text-white/50">
+                    See how words evolve across different contexts and cultural worlds
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/[0.02] border-white/5 backdrop-blur-sm hover:border-emerald-500/30 transition-all duration-300">
+                <CardContent className="p-6">
+                  <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center mb-4 mx-auto">
+                    <Globe className="w-6 h-6 text-emerald-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white mb-2">N'Ko Script Display</h3>
+                  <p className="text-sm text-white/50">
+                    Full RTL support with authentic N'Ko character rendering
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* N'Ko Script Demo */}
+            <div className="mt-16 p-8 bg-white/[0.02] border border-white/5 rounded-2xl max-w-2xl mx-auto backdrop-blur-sm">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <ArrowLeft className="w-4 h-4 text-white/40" />
+                <span className="text-sm text-white/40">Right to Left Script</span>
               </div>
-              
-              <div className="relative z-10 text-center">
-                <Badge className="mb-8 px-4 py-2 bg-space-950/20 backdrop-blur-sm border border-space-950/30 text-space-950">
-                  <Heart className="w-4 h-4 mr-2" />
-                  Join the N'Ko Renaissance
-                </Badge>
-                <h2 className="text-4xl md:text-6xl font-bold mb-8 leading-tight">
-                  Ready to Make History?
-                </h2>
-                <p className="text-xl mb-10 opacity-90 max-w-2xl mx-auto leading-relaxed">
-                  Be part of the first generation to learn N'Ko through modern digital methods. 
-                  Connect with your heritage through revolutionary technology.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-6 justify-center">
-                  {session ? (
-                    <Link href="/nko">
-                      <Button size="lg" className="px-10 py-5 text-lg font-semibold bg-space-950 text-amber-400 hover:bg-space-900 shadow-xl transform hover:scale-105 transition-all duration-300">
-                        <Play className="w-6 h-6 mr-3" />
-                        Continue Your Journey
-                      </Button>
-                    </Link>
-                  ) : (
-                    <Link href="/auth/register">
-                      <Button size="lg" className="px-10 py-5 text-lg font-semibold bg-space-950 text-amber-400 hover:bg-space-900 shadow-xl transform hover:scale-105 transition-all duration-300">
-                        <UserPlus className="w-6 h-6 mr-3" />
-                        Start Your Journey
-                      </Button>
-                    </Link>
-                  )}
-                  <Link href="/nko/lessons">
-                    <Button size="lg" variant="outline" className="px-10 py-5 text-lg font-semibold border-2 border-space-950 text-space-950 hover:bg-space-950 hover:text-amber-400 shadow-lg transition-all duration-300">
-                      <BookOpen className="w-6 h-6 mr-3" />
-                      Explore Lessons
-                    </Button>
-                  </Link>
-                </div>
+              <div className="nko-text text-4xl md:text-5xl text-cyan-400 text-center leading-relaxed" dir="rtl">
+                ߒߞߏ ߞߊ߬ߙߊ߲ ߞߊ߬ߙߊ߲߬ߕߊ
+              </div>
+              <div className="text-sm text-white/40 mt-4 text-center">
+                "N'Ko Learning Platform"
               </div>
             </div>
           </div>
@@ -613,86 +187,11 @@ export default function HomePage() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-space-950/95 backdrop-blur-sm text-white py-16 border-t border-amber-500/20">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-            <div>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-gradient-to-br from-amber-400 via-orange-400 to-yellow-400 rounded-xl flex items-center justify-center shadow-lg">
-                  <img 
-                    src="/nko_logo.svg" 
-                    alt="N'Ko Logo" 
-                    className="w-6 h-6"
-                  />
-                </div>
-                <span className="text-xl font-bold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">N'Ko Hub</span>
-              </div>
-              <p className="text-gray-300 leading-relaxed mb-6 font-medium">
-                Pioneering the digital future of N'Ko education. Honoring tradition through innovation, 
-                connecting learners with the rich heritage of West African script and culture.
-              </p>
-              <div className="flex gap-3">
-                {[Globe, Shield, Award].map((Icon, index) => (
-                  <div key={index} className="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center hover:bg-amber-500/30 transition-colors cursor-pointer">
-                    <Icon className="w-4 h-4 text-amber-400" />
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            {[
-              {
-                title: "Learning",
-                links: [
-                  { href: "/nko/lessons", label: "Interactive Lessons" },
-                  { href: "/nko/conversation", label: "Practice Conversations" },
-                  { href: "/nko/translate", label: "Smart Translation" },
-                  { href: "/nko/dictionary", label: "Cultural Dictionary" }
-                ]
-              },
-              {
-                title: "Heritage", 
-                links: [
-                  { href: "/nko/history", label: "N'Ko History" },
-                  { href: "/nko/culture", label: "Cultural Context" },
-                  { href: "/nko/community", label: "Learning Community" },
-                  { href: "/nko/stories", label: "Traditional Stories" }
-                ]
-              },
-              {
-                title: "Account",
-                links: session ? [
-                  { href: "/profile", label: "Your Profile" },
-                  { href: "/progress", label: "Learning Progress" },
-                  { href: "/settings", label: "Preferences" },
-                  { href: "/auth/logout", label: "Sign Out" }
-                ] : [
-                  { href: "/auth/login", label: "Sign In" },
-                  { href: "/auth/register", label: "Create Account" },
-                  { href: "/demo", label: "Try Demo" }
-                ]
-              }
-            ].map((section, index) => (
-              <div key={index}>
-                <h3 className="font-semibold mb-6 text-amber-300">{section.title}</h3>
-                <ul className="space-y-3">
-                  {section.links.map((link, linkIndex) => (
-                    <li key={linkIndex}>
-                      <Link href={link.href} className="text-gray-400 hover:text-amber-300 transition-colors text-sm font-medium">
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-          
-          <div className="border-t border-amber-500/20 pt-8 text-center">
-            <p className="text-gray-400 text-sm font-medium">
-              &copy; 2024 N'Ko Hub. Preserving heritage through innovation. Made with ❤️ for the N'Ko community.
-            </p>
-          </div>
+      <footer className="bg-[#0a0a0f]/95 text-white py-8 border-t border-white/5">
+        <div className="container mx-auto px-4 text-center">
+          <p className="text-white/40 text-sm">
+            LearnN'Ko • AI-Powered N'Ko Language Learning Pipeline
+          </p>
         </div>
       </footer>
     </div>
