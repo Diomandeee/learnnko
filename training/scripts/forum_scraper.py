@@ -1,26 +1,20 @@
 #!/usr/bin/env python3
 """
-Ankataa Forum Knowledge Scraper
+Ankataa Forum Scraper
 
-Extracts knowledge from the An ka taa Discourse forum:
-https://ankataa.discourse.group
+Extracts linguistic knowledge from the Ankataa Discourse forum:
+- Word questions and clarifications
+- New vocabulary discussions
+- Expert answers and corrections
+- Usage examples
 
-Categories:
-- Word Questions (linguistic clarifications)
-- Word Not in Dictionary (new vocabulary)
-- Media and References (learning resources)
-- User Guide (usage tips)
-
-Extracts:
-- Topic title and content
-- Discussion threads with expert answers
-- Example sentences and corrections
-- Tags and related words
+Forum: https://ankataa.discourse.group
 
 Usage:
-    python forum_scraper.py                  # Scrape all categories
-    python forum_scraper.py --category word-questions
-    python forum_scraper.py --dry-run        # Preview without saving
+    python forum_scraper.py --categories word-questions word-not-in-dictionary
+    python forum_scraper.py --save-json forum_knowledge.json
+    python forum_scraper.py --save-supabase
+    python forum_scraper.py --dry-run --limit 10
 """
 
 import asyncio
@@ -36,49 +30,28 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 from bs4 import BeautifulSoup
 
-# Add parent to path for imports
-sys.path.insert(0, str(Path(__file__).parent))
+# Add parent lib to path
+sys.path.insert(0, str(Path(__file__).parent.parent / "lib"))
 
 try:
     from supabase_client import SupabaseClient
+    HAS_SUPABASE = True
 except ImportError:
-    SupabaseClient = None
+    HAS_SUPABASE = False
 
-# Forum URLs
+# Forum configuration
 FORUM_BASE_URL = "https://ankataa.discourse.group"
-FORUM_API_URL = f"{FORUM_BASE_URL}"
 
-# Categories to scrape
-CATEGORIES = {
-    "word-questions": {
-        "id": 5,
-        "name": "Word Questions",
-        "description": "Questions about word meanings and usage",
-    },
-    "word-not-in-dictionary": {
-        "id": 6,
-        "name": "Word Not in Dictionary",
-        "description": "New vocabulary not yet in the dictionary",
-    },
-    "media-references": {
-        "id": 7,
-        "name": "Media and References",
-        "description": "Learning resources and media",
-    },
-    "user-guide": {
-        "id": 8,
-        "name": "User Guide",
-        "description": "How to use the dictionary and forum",
-    },
-    "introductions": {
-        "id": 4,
-        "name": "Introductions",
-        "description": "User introductions (may contain learning context)",
-    },
-}
+# Categories to scrape (slug names)
+DEFAULT_CATEGORIES = [
+    "word-questions",
+    "word-not-in-dictionary", 
+    "media-and-references",
+    "user-guide",
+]
 
 # Rate limiting
-REQUEST_DELAY = 1.5  # seconds between requests
+REQUEST_DELAY = 1.0  # seconds between requests
 
 
 @dataclass
@@ -86,14 +59,14 @@ class ForumAnswer:
     """An answer/reply in a forum topic."""
     author: str
     content: str
-    created_at: Optional[str] = None
-    is_accepted: bool = False
+    is_solution: bool = False
     likes: int = 0
+    created_at: Optional[str] = None
 
 
 @dataclass
 class ForumTopic:
-    """A forum topic with all its content."""
+    """A forum topic with its content and answers."""
     topic_id: str
     category: str
     title: str
@@ -104,384 +77,373 @@ class ForumTopic:
     tags: List[str] = field(default_factory=list)
     url: str = ""
     views: int = 0
-    replies: int = 0
-    forum_created_at: Optional[str] = None
+    reply_count: int = 0
+    created_at: Optional[str] = None
+    last_posted_at: Optional[str] = None
+
+
+class ForumScraper:
+    """
+    Scrapes the Ankataa Discourse forum for linguistic knowledge.
     
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for Supabase."""
+    Uses the Discourse API where available, falls back to HTML scraping.
+    """
+    
+    def __init__(
+        self,
+        base_url: str = FORUM_BASE_URL,
+        categories: Optional[List[str]] = None,
+        request_delay: float = REQUEST_DELAY,
+    ):
+        self.base_url = base_url.rstrip("/")
+        self.categories = categories or DEFAULT_CATEGORIES
+        self.request_delay = request_delay
+        self._session: Optional[aiohttp.ClientSession] = None
+    
+    async def __aenter__(self):
+        self._session = aiohttp.ClientSession(
+            headers={"User-Agent": "LearnNKo Forum Scraper/1.0"}
+        )
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self._session:
+            await self._session.close()
+    
+    async def _get(self, url: str) -> Optional[str]:
+        """Make a GET request with rate limiting."""
+        if not self._session:
+            raise RuntimeError("Use async context manager")
+        
+        await asyncio.sleep(self.request_delay)
+        
+        try:
+            async with self._session.get(url) as response:
+                if response.status == 200:
+                    return await response.text()
+                else:
+                    print(f"Error {response.status} for {url}")
+                    return None
+        except Exception as e:
+            print(f"Request failed: {e}")
+            return None
+    
+    async def _get_json(self, url: str) -> Optional[Dict]:
+        """Make a GET request and parse JSON."""
+        if not self._session:
+            raise RuntimeError("Use async context manager")
+        
+        await asyncio.sleep(self.request_delay)
+        
+        try:
+            async with self._session.get(url) as response:
+                if response.status == 200:
+                    return await response.json()
+                else:
+                    print(f"Error {response.status} for {url}")
+                    return None
+        except Exception as e:
+            print(f"Request failed: {e}")
+            return None
+    
+    async def get_category_topics(
+        self,
+        category_slug: str,
+        limit: Optional[int] = None,
+    ) -> List[Dict]:
+        """
+        Get all topics in a category using the Discourse API.
+        
+        Args:
+            category_slug: Category slug (e.g., "word-questions")
+            limit: Max topics to fetch
+            
+        Returns:
+            List of topic metadata dicts
+        """
+        topics = []
+        page = 0
+        
+        while True:
+            url = f"{self.base_url}/c/{category_slug}.json?page={page}"
+            data = await self._get_json(url)
+            
+            if not data:
+                break
+            
+            topic_list = data.get("topic_list", {}).get("topics", [])
+            if not topic_list:
+                break
+            
+            for topic in topic_list:
+                topics.append({
+                    "id": str(topic.get("id")),
+                    "title": topic.get("title", ""),
+                    "slug": topic.get("slug", ""),
+                    "views": topic.get("views", 0),
+                    "reply_count": topic.get("reply_count", 0),
+                    "created_at": topic.get("created_at"),
+                    "last_posted_at": topic.get("last_posted_at"),
+                    "tags": topic.get("tags", []),
+                })
+                
+                if limit and len(topics) >= limit:
+                    return topics[:limit]
+            
+            # Check for more pages
+            if len(topic_list) < 30:  # Default page size
+                break
+            page += 1
+        
+        return topics
+    
+    async def get_topic_details(
+        self,
+        topic_id: str,
+        category: str,
+    ) -> Optional[ForumTopic]:
+        """
+        Get full topic details including posts/answers.
+        
+        Args:
+            topic_id: Topic ID
+            category: Category slug
+            
+        Returns:
+            ForumTopic with all data
+        """
+        url = f"{self.base_url}/t/{topic_id}.json"
+        data = await self._get_json(url)
+        
+        if not data:
+            return None
+        
+        # Parse posts
+        posts = data.get("post_stream", {}).get("posts", [])
+        
+        # First post is the topic content
+        first_post = posts[0] if posts else {}
+        content = first_post.get("cooked", "")  # HTML content
+        
+        # Clean HTML to plain text
+        if content:
+            soup = BeautifulSoup(content, "html.parser")
+            content = soup.get_text(separator="\n").strip()
+        
+        # Extract related words (N'Ko or Bambara words mentioned)
+        related_words = self._extract_words(content)
+        
+        # Parse answers (remaining posts)
+        answers = []
+        for post in posts[1:]:
+            post_content = post.get("cooked", "")
+            if post_content:
+                soup = BeautifulSoup(post_content, "html.parser")
+                post_content = soup.get_text(separator="\n").strip()
+            
+            answers.append(ForumAnswer(
+                author=post.get("username", "unknown"),
+                content=post_content,
+                is_solution=post.get("accepted_answer", False),
+                likes=post.get("like_count", 0),
+                created_at=post.get("created_at"),
+            ))
+        
+        return ForumTopic(
+            topic_id=topic_id,
+            category=category,
+            title=data.get("title", ""),
+            content=content,
+            author=first_post.get("username", "unknown"),
+            answers=answers,
+            related_words=related_words,
+            tags=data.get("tags", []),
+            url=f"{self.base_url}/t/{topic_id}",
+            views=data.get("views", 0),
+            reply_count=data.get("reply_count", 0),
+            created_at=data.get("created_at"),
+            last_posted_at=data.get("last_posted_at"),
+        )
+    
+    def _extract_words(self, text: str) -> List[str]:
+        """
+        Extract potential Bambara/N'Ko words from text.
+        
+        Looks for:
+        - Words with special Manding characters (ɛ, ɔ, ɲ, ŋ)
+        - Words in quotes that look like vocabulary
+        - N'Ko script (U+07C0-U+07FF)
+        """
+        words = set()
+        
+        # N'Ko script
+        nko_pattern = r'[\u07C0-\u07FF]+'
+        for match in re.finditer(nko_pattern, text):
+            words.add(match.group())
+        
+        # Bambara words with special characters
+        bambara_pattern = r'\b[a-zA-ZɛɔɲŋÈÉÊËèéêëÒÓÔÕòóôõ]{2,}\b'
+        for match in re.finditer(bambara_pattern, text):
+            word = match.group().lower()
+            # Filter to words with special chars or likely vocabulary
+            if any(c in word for c in 'ɛɔɲŋ'):
+                words.add(word)
+        
+        # Words in quotes (often vocabulary being discussed)
+        quoted_pattern = r'["\']([a-zA-ZɛɔɲŋÈÉÊËèéêëÒÓÔÕòóôõ\s]{2,})["\']'
+        for match in re.finditer(quoted_pattern, text):
+            word = match.group(1).strip().lower()
+            if len(word) <= 30:  # Reasonable word length
+                words.add(word)
+        
+        return list(words)
+    
+    async def scrape_all(
+        self,
+        categories: Optional[List[str]] = None,
+        limit_per_category: Optional[int] = None,
+    ) -> List[ForumTopic]:
+        """
+        Scrape all topics from specified categories.
+        
+        Args:
+            categories: Categories to scrape (defaults to self.categories)
+            limit_per_category: Max topics per category
+            
+        Returns:
+            List of ForumTopic objects
+        """
+        categories = categories or self.categories
+        all_topics = []
+        
+        for category in categories:
+            print(f"\n--- Category: {category} ---")
+            
+            topic_list = await self.get_category_topics(category, limit_per_category)
+            print(f"Found {len(topic_list)} topics")
+            
+            for i, topic_meta in enumerate(topic_list):
+                topic_id = topic_meta["id"]
+                print(f"  [{i+1}/{len(topic_list)}] {topic_meta['title'][:50]}...")
+                
+                topic = await self.get_topic_details(topic_id, category)
+                if topic:
+                    all_topics.append(topic)
+                    print(f"    Answers: {len(topic.answers)}, Words: {len(topic.related_words)}")
+        
+        return all_topics
+    
+    def to_supabase_format(self, topic: ForumTopic) -> Dict[str, Any]:
+        """Convert ForumTopic to Supabase forum_knowledge table format."""
         return {
-            "topic_id": self.topic_id,
-            "category": self.category,
-            "title": self.title,
-            "content": self.content,
-            "author": self.author,
-            "answers": [asdict(a) for a in self.answers],
-            "related_words": self.related_words,
-            "tags": self.tags,
-            "url": self.url,
-            "views": self.views,
-            "replies": self.replies,
-            "forum_created_at": self.forum_created_at,
+            "topic_id": topic.topic_id,
+            "category": topic.category,
+            "title": topic.title,
+            "content": topic.content,
+            "answers": [asdict(a) for a in topic.answers],
+            "related_words": topic.related_words,
+            "tags": topic.tags,
+            "url": topic.url,
         }
 
 
-def extract_manding_words(text: str) -> List[str]:
-    """
-    Extract potential Manding/Bambara words from text.
-    
-    Looks for words with special Manding characters or
-    patterns that suggest they're Bambara/Dioula.
-    """
-    # Special Manding characters
-    manding_chars = set('ɛɔɲŋ')
-    
-    words = []
-    
-    # Find words with Manding characters
-    for match in re.finditer(r'\b[a-zɛɔɲŋàáâãèéêìíîòóôùúû]+\b', text.lower()):
-        word = match.group()
-        if any(c in manding_chars for c in word) and len(word) > 1:
-            words.append(word)
-    
-    # Find quoted words (often vocabulary)
-    for match in re.finditer(r'["\']([a-zɛɔɲŋàáâãèéêìíîòóôùúû]+)["\']', text.lower()):
-        word = match.group(1)
-        if len(word) > 1:
-            words.append(word)
-    
-    # Find italicized words (often examples)
-    for match in re.finditer(r'_([a-zɛɔɲŋàáâãèéêìíîòóôùúû\s]+)_', text.lower()):
-        words.extend(match.group(1).split())
-    
-    return list(set(words))
-
-
-async def fetch_json(session: aiohttp.ClientSession, url: str) -> Optional[Dict]:
-    """Fetch JSON from URL with rate limiting."""
-    await asyncio.sleep(REQUEST_DELAY)
-    
-    headers = {
-        "Accept": "application/json",
-        "User-Agent": "LearnNko/1.0 (Educational Research)",
-    }
-    
-    try:
-        async with session.get(url, headers=headers) as resp:
-            if resp.status == 200:
-                return await resp.json()
-            else:
-                print(f"    HTTP {resp.status} for {url}")
-                return None
-    except Exception as e:
-        print(f"    Error fetching {url}: {e}")
-        return None
-
-
-async def fetch_html(session: aiohttp.ClientSession, url: str) -> Optional[str]:
-    """Fetch HTML from URL with rate limiting."""
-    await asyncio.sleep(REQUEST_DELAY)
-    
-    headers = {
-        "User-Agent": "LearnNko/1.0 (Educational Research)",
-    }
-    
-    try:
-        async with session.get(url, headers=headers) as resp:
-            if resp.status == 200:
-                return await resp.text()
-            else:
-                print(f"    HTTP {resp.status} for {url}")
-                return None
-    except Exception as e:
-        print(f"    Error fetching {url}: {e}")
-        return None
-
-
-async def get_category_topics(
-    session: aiohttp.ClientSession,
-    category_slug: str,
-    category_id: int,
-) -> List[Dict]:
-    """Get all topics in a category using Discourse API."""
-    topics = []
-    page = 0
-    
-    while True:
-        url = f"{FORUM_API_URL}/c/{category_slug}/{category_id}.json?page={page}"
-        data = await fetch_json(session, url)
-        
-        if not data or "topic_list" not in data:
-            break
-        
-        topic_list = data["topic_list"].get("topics", [])
-        if not topic_list:
-            break
-        
-        topics.extend(topic_list)
-        
-        # Check if there are more pages
-        if len(topic_list) < 30:  # Discourse default page size
-            break
-        
-        page += 1
-    
-    return topics
-
-
-async def get_topic_details(
-    session: aiohttp.ClientSession,
-    topic_id: int,
-) -> Optional[Dict]:
-    """Get full topic details including all posts."""
-    url = f"{FORUM_API_URL}/t/{topic_id}.json"
-    return await fetch_json(session, url)
-
-
-def parse_topic(topic_data: Dict, category_name: str) -> Optional[ForumTopic]:
-    """Parse topic data into a ForumTopic object."""
-    if not topic_data:
-        return None
-    
-    topic_id = str(topic_data.get("id", ""))
-    title = topic_data.get("title", "")
-    
-    if not topic_id or not title:
-        return None
-    
-    # Get posts
-    posts = topic_data.get("post_stream", {}).get("posts", [])
-    if not posts:
-        return None
-    
-    # First post is the topic content
-    first_post = posts[0]
-    content = first_post.get("cooked", "")  # HTML content
-    
-    # Strip HTML tags for plain text
-    soup = BeautifulSoup(content, 'html.parser')
-    plain_content = soup.get_text('\n', strip=True)
-    
-    # Parse answers (subsequent posts)
-    answers = []
-    for post in posts[1:]:
-        answer_html = post.get("cooked", "")
-        answer_soup = BeautifulSoup(answer_html, 'html.parser')
-        answer_text = answer_soup.get_text('\n', strip=True)
-        
-        if answer_text:
-            answers.append(ForumAnswer(
-                author=post.get("username", "anonymous"),
-                content=answer_text,
-                created_at=post.get("created_at"),
-                is_accepted=post.get("accepted_answer", False),
-                likes=post.get("like_count", 0),
-            ))
-    
-    # Extract Manding words from all content
-    all_text = plain_content + " " + " ".join(a.content for a in answers)
-    related_words = extract_manding_words(all_text)
-    
-    # Get tags
-    tags = topic_data.get("tags", [])
-    
-    return ForumTopic(
-        topic_id=topic_id,
-        category=category_name,
-        title=title,
-        content=plain_content,
-        author=first_post.get("username", "anonymous"),
-        answers=answers,
-        related_words=related_words,
-        tags=tags,
-        url=f"{FORUM_BASE_URL}/t/{topic_data.get('slug', '')}/{topic_id}",
-        views=topic_data.get("views", 0),
-        replies=topic_data.get("posts_count", 1) - 1,
-        forum_created_at=topic_data.get("created_at"),
+async def main():
+    parser = argparse.ArgumentParser(
+        description="Scrape Ankataa Forum for linguistic knowledge",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-
-
-async def scrape_category(
-    session: aiohttp.ClientSession,
-    category_slug: str,
-    category_info: Dict,
-) -> List[ForumTopic]:
-    """Scrape all topics from a category."""
-    category_name = category_info["name"]
-    category_id = category_info["id"]
     
-    print(f"  Scraping category: {category_name}")
+    parser.add_argument("--categories", nargs="+", default=DEFAULT_CATEGORIES,
+                        help="Categories to scrape")
+    parser.add_argument("--limit", type=int, help="Limit topics per category")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="List topics without full scraping")
+    parser.add_argument("--save-json", type=str, metavar="FILE",
+                        help="Save to JSON file")
+    parser.add_argument("--save-supabase", action="store_true",
+                        help="Save to Supabase forum_knowledge table")
     
-    # Get topic list
-    topics_data = await get_category_topics(session, category_slug, category_id)
-    print(f"    Found {len(topics_data)} topics")
-    
-    topics = []
-    for i, topic_summary in enumerate(topics_data):
-        topic_id = topic_summary.get("id")
-        if not topic_id:
-            continue
-        
-        # Get full topic details
-        topic_data = await get_topic_details(session, topic_id)
-        if topic_data:
-            topic = parse_topic(topic_data, category_name)
-            if topic:
-                topics.append(topic)
-                print(f"    [{i+1}/{len(topics_data)}] {topic.title[:50]}...")
-    
-    return topics
-
-
-async def scrape_all_categories(
-    categories: Optional[List[str]] = None,
-) -> List[ForumTopic]:
-    """Scrape all specified categories."""
-    all_topics = []
+    args = parser.parse_args()
     
     print("=" * 60)
     print("Ankataa Forum Scraper")
     print("=" * 60)
-    print()
+    print(f"Categories: {', '.join(args.categories)}")
+    print(f"Limit per category: {args.limit or 'unlimited'}")
     
-    # Filter categories if specified
-    if categories:
-        cats_to_scrape = {k: v for k, v in CATEGORIES.items() if k in categories}
-    else:
-        cats_to_scrape = CATEGORIES
-    
-    print(f"Scraping {len(cats_to_scrape)} categories...")
-    print()
-    
-    async with aiohttp.ClientSession() as session:
-        for slug, info in cats_to_scrape.items():
-            try:
-                topics = await scrape_category(session, slug, info)
-                all_topics.extend(topics)
-                print(f"    Total: {len(topics)} topics from {info['name']}")
-                print()
-            except Exception as e:
-                print(f"    Error scraping {slug}: {e}")
-    
-    print(f"Total topics scraped: {len(all_topics)}")
-    
-    return all_topics
-
-
-async def save_to_supabase(topics: List[ForumTopic]) -> int:
-    """Save topics to Supabase."""
-    if not SupabaseClient:
-        print("Supabase client not available. Saving to JSON instead.")
-        return save_to_json(topics)
-    
-    try:
-        client = SupabaseClient()
-    except Exception as e:
-        print(f"Could not connect to Supabase: {e}")
-        return save_to_json(topics)
-    
-    print(f"Saving {len(topics)} topics to Supabase...")
-    
-    saved = 0
-    
-    for topic in topics:
-        data = topic.to_dict()
+    async with ForumScraper(categories=args.categories) as scraper:
+        if args.dry_run:
+            # Just list topics
+            for category in args.categories:
+                print(f"\n--- {category} ---")
+                topics = await scraper.get_category_topics(category, args.limit)
+                for t in topics:
+                    print(f"  [{t['id']}] {t['title'][:60]}")
+                    print(f"       Views: {t['views']}, Replies: {t['reply_count']}")
+            return
         
-        try:
-            await client._request(
-                "POST",
-                "forum_knowledge",
-                data,
-                headers={"Prefer": "resolution=merge-duplicates"}
-            )
-            saved += 1
-        except Exception as e:
-            print(f"  Error saving topic {topic.topic_id}: {e}")
-    
-    print(f"Saved {saved}/{len(topics)} topics")
-    return saved
-
-
-def save_to_json(topics: List[ForumTopic]) -> int:
-    """Save topics to JSON file as fallback."""
-    output_dir = Path(__file__).parent.parent / "data" / "forum"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    output_file = output_dir / f"ankataa_forum_{datetime.now().strftime('%Y%m%d')}.json"
-    
-    data = [t.to_dict() for t in topics]
-    
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    
-    print(f"Saved {len(topics)} topics to {output_file}")
-    return len(topics)
-
-
-def print_summary(topics: List[ForumTopic]):
-    """Print summary of scraped topics."""
-    print()
-    print("=" * 60)
-    print("Summary")
-    print("=" * 60)
-    
-    # By category
-    by_category = {}
-    for topic in topics:
-        by_category.setdefault(topic.category, []).append(topic)
-    
-    for cat, cat_topics in by_category.items():
-        print(f"\n{cat}: {len(cat_topics)} topics")
+        # Full scrape
+        topics = await scraper.scrape_all(
+            categories=args.categories,
+            limit_per_category=args.limit,
+        )
         
-        # Count total answers
-        total_answers = sum(len(t.answers) for t in cat_topics)
-        print(f"  Total answers: {total_answers}")
+        print(f"\n\n=== Scrape Complete ===")
+        print(f"Total topics: {len(topics)}")
+        print(f"Total answers: {sum(len(t.answers) for t in topics)}")
+        print(f"Unique words found: {len(set(w for t in topics for w in t.related_words))}")
         
-        # Count unique words
-        all_words = set()
-        for t in cat_topics:
-            all_words.update(t.related_words)
-        print(f"  Unique Manding words: {len(all_words)}")
-    
-    # Overall stats
-    print(f"\n{'=' * 40}")
-    print(f"Total topics: {len(topics)}")
-    print(f"Total answers: {sum(len(t.answers) for t in topics)}")
-    
-    all_words = set()
-    for t in topics:
-        all_words.update(t.related_words)
-    print(f"Unique Manding words found: {len(all_words)}")
-
-
-async def main():
-    parser = argparse.ArgumentParser(description="Scrape Ankataa Forum")
-    parser.add_argument("--category", type=str, help="Scrape a single category (slug)")
-    parser.add_argument("--dry-run", action="store_true", help="Preview without saving")
-    parser.add_argument("--json", action="store_true", help="Save to JSON instead of Supabase")
-    parser.add_argument("--list-categories", action="store_true", help="List available categories")
-    args = parser.parse_args()
-    
-    if args.list_categories:
-        print("Available categories:")
-        for slug, info in CATEGORIES.items():
-            print(f"  {slug}: {info['name']} - {info['description']}")
-        return
-    
-    categories = [args.category] if args.category else None
-    topics = await scrape_all_categories(categories)
-    
-    print_summary(topics)
-    
-    if args.dry_run:
-        print("\nDry run - not saving.")
-        return
-    
-    if args.json:
-        save_to_json(topics)
-    else:
-        await save_to_supabase(topics)
+        # Save to JSON
+        if args.save_json:
+            output = [asdict(t) for t in topics]
+            with open(args.save_json, "w", encoding="utf-8") as f:
+                json.dump(output, f, indent=2, ensure_ascii=False)
+            print(f"\nSaved to: {args.save_json}")
+        
+        # Save to Supabase
+        if args.save_supabase:
+            if not HAS_SUPABASE:
+                print("Error: Supabase client not available")
+                return
+            
+            print("\nUploading to Supabase...")
+            
+            supabase_url = os.getenv("SUPABASE_URL")
+            supabase_key = os.getenv("SUPABASE_SERVICE_KEY")
+            
+            if not supabase_url or not supabase_key:
+                print("Error: SUPABASE_URL and SUPABASE_SERVICE_KEY required")
+                return
+            
+            async with aiohttp.ClientSession() as session:
+                headers = {
+                    "apikey": supabase_key,
+                    "Authorization": f"Bearer {supabase_key}",
+                    "Content-Type": "application/json",
+                    "Prefer": "resolution=merge-duplicates",
+                }
+                
+                url = f"{supabase_url}/rest/v1/forum_knowledge"
+                
+                success = 0
+                for topic in topics:
+                    data = scraper.to_supabase_format(topic)
+                    
+                    try:
+                        async with session.post(url, headers=headers, json=data) as resp:
+                            if resp.status in (200, 201):
+                                success += 1
+                            elif resp.status == 409:
+                                # Already exists, that's fine
+                                success += 1
+                            else:
+                                text = await resp.text()
+                                print(f"Error {resp.status}: {text[:100]}")
+                    except Exception as e:
+                        print(f"Upload failed: {e}")
+                
+                print(f"Uploaded: {success}/{len(topics)} topics")
 
 
 if __name__ == "__main__":
     asyncio.run(main())
-

@@ -65,6 +65,14 @@ except ImportError:
     HAS_DICTIONARY = False
     DictionaryClient = None
 
+# Optional: Expansion engine for continuous learning
+try:
+    from expansion_engine import ExpansionEngine
+    HAS_EXPANSION_ENGINE = True
+except ImportError:
+    HAS_EXPANSION_ENGINE = False
+    ExpansionEngine = None
+
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -268,7 +276,9 @@ class NkoAnalyzer:
         self.world_generator: Optional[WorldGenerator] = None
         self.supabase: Optional[SupabaseClient] = None
         self.dictionary: Optional[DictionaryClient] = None
+        self.expansion_engine: Optional[ExpansionEngine] = None
         self.enable_enrichment = self.config.get("enrichment", {}).get("enabled", HAS_DICTIONARY)
+        self.enable_queue = self.config.get("queue", {}).get("enabled", HAS_EXPANSION_ENGINE)
         
         if self.generate_worlds:
             self.world_generator = WorldGenerator(api_key=self.api_key)
@@ -279,6 +289,18 @@ class NkoAnalyzer:
             except ValueError as e:
                 logger.warning(f"Supabase not configured: {e}")
                 self.store_supabase = False
+        
+        # Initialize expansion engine for continuous learning queue
+        if self.enable_queue and HAS_EXPANSION_ENGINE:
+            try:
+                self.expansion_engine = ExpansionEngine(
+                    enable_ai_enrichment=False,  # Don't double-enrich during video processing
+                    enable_queue_expansion=True,
+                )
+                logger.info("Expansion engine initialized for continuous learning")
+            except Exception as e:
+                logger.warning(f"Expansion engine unavailable: {e}")
+                self.enable_queue = False
     
     async def __aenter__(self) -> 'NkoAnalyzer':
         """Enter async context - create shared session."""
@@ -458,6 +480,10 @@ Focus on clear, visible text. Ignore blurry or partial text."""
         if analysis.has_nko and analysis.latin_transliteration and self.enable_enrichment:
             analysis = await self._enrich_with_dictionary(analysis)
         
+        # Queue detected word for continuous learning (async, non-blocking)
+        if analysis.has_nko and analysis.latin_transliteration and self.enable_queue:
+            await self._queue_for_expansion(analysis)
+        
         return analysis
     
     async def _enrich_with_dictionary(self, analysis: FrameAnalysis) -> FrameAnalysis:
@@ -490,9 +516,56 @@ Focus on clear, visible text. Ignore blurry or partial text."""
                     f"{result.word} ({result.word_class}), score={result.match_score:.2f}"
                 )
         except Exception as e:
-            logger.warning(f"Dictionary lookup failed for '{analysis.latin_transliteration}': {e}")
+                logger.warning(f"Dictionary lookup failed for '{analysis.latin_transliteration}': {e}")
         
         return analysis
+    
+    async def _queue_for_expansion(self, analysis: FrameAnalysis) -> None:
+        """
+        Queue detected N'Ko text for continuous vocabulary expansion.
+        
+        This enables organic vocabulary growth by:
+        1. Adding detected words to the expansion queue
+        2. Queueing dictionary variants for future exploration
+        3. Tracking word sources for curriculum building
+        """
+        if not self.expansion_engine or not analysis.latin_transliteration:
+            return
+        
+        try:
+            # Queue the detected word
+            await self.expansion_engine.queue_word(
+                word=analysis.latin_transliteration,
+                source_type="video_detection",
+                priority=2,  # High priority - from actual content
+                context={
+                    "nko_text": analysis.nko_text,
+                    "english_translation": analysis.english_translation,
+                    "confidence": analysis.confidence,
+                    "frame_index": analysis.frame_index,
+                    "timestamp": analysis.timestamp,
+                    "is_dictionary_verified": analysis.is_dictionary_verified,
+                },
+            )
+            
+            logger.debug(f"Queued '{analysis.latin_transliteration}' for expansion")
+            
+            # Queue variants from dictionary lookup
+            if analysis.variants:
+                for variant in analysis.variants[:3]:  # Limit to avoid queue explosion
+                    await self.expansion_engine.queue_word(
+                        word=variant,
+                        source_type="dictionary_variant",
+                        priority=4,
+                        context={
+                            "parent_word": analysis.latin_transliteration,
+                            "source": "video_detection",
+                        },
+                    )
+                    
+        except Exception as e:
+            # Non-critical - don't fail frame analysis for queue errors
+            logger.debug(f"Queue error (non-critical): {e}")
     
     async def generate_worlds_for_frame(
         self,
