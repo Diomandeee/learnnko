@@ -60,3 +60,45 @@ translation-*.json
 
 # Claude session files
 .claude/
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Cookies and secrets
+cookies.txt
+*.cookies
+**/cookies.txt
+
+# =============================================
+# Large data directories (do NOT track in git)
+# =============================================
+
+# Training data (videos, frames, audio - generated locally)
+training/data/
+training/scripts/data/
+
+# Downloaded videos
+nko_videos/
+temp/
+
+# Temp files with N'Ko characters
+*.mp4
+*.m4a
+*.wav
+*.mp3
+
+# Frame images
+*.jpg
+*.jpeg
+*.png
+!src/**/*.png
+!public/**/*.png
+
+# Large JSON data files
+training/data/**/*.json
+training/data/**/*.jsonl
+
+# Video pipeline temp
+nko/cloud/video_pipeline/temp/
