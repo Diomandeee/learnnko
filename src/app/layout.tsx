@@ -1,11 +1,21 @@
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Space_Grotesk, JetBrains_Mono } from "next/font/google"
 import "./globals.css"
 import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth/auth-provider"
 
-const inter = Inter({ subsets: ["latin"] })
+const spaceGrotesk = Space_Grotesk({ 
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: 'swap',
+})
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: "N'Ko Learning Hub | French Connect",
@@ -66,12 +76,12 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen`}>
+    <html lang="en" suppressHydrationWarning className="dark">
+      <body className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} font-display min-h-screen antialiased`}>
         <AuthProvider>
           <ThemeProvider
             attribute="class"
-            defaultTheme="light"
+            defaultTheme="dark"
             enableSystem
             disableTransitionOnChange
           >
@@ -82,4 +92,4 @@ export default function RootLayout({
       </body>
     </html>
   )
-} 
+}
