@@ -153,7 +153,7 @@ function ExpandableSection({
 // SECTION NAVIGATION
 // =====================================================
 
-type Section = 'overview' | 'dell' | 'kernel' | 'inscription' | 'claims' | 'basin' | 'api';
+type Section = 'overview' | 'dell' | 'kernel' | 'inscription' | 'claims' | 'basin' | 'api' | 'glossary';
 
 const SECTIONS: { id: Section; label: string; icon: React.ElementType }[] = [
   { id: 'overview', label: 'Overview', icon: Layers },
@@ -163,6 +163,7 @@ const SECTIONS: { id: Section; label: string; icon: React.ElementType }[] = [
   { id: 'claims', label: 'Claims IR', icon: FileCode },
   { id: 'basin', label: 'Basin Lifecycle', icon: GitBranch },
   { id: 'api', label: 'API Reference', icon: Terminal },
+  { id: 'glossary', label: 'Glossary', icon: BookOpen },
 ];
 
 // =====================================================
@@ -3115,6 +3116,733 @@ CREATE INDEX idx_inscriptions_created_at ON nko_inscriptions(created_at DESC);`}
 }
 
 // =====================================================
+// SECTION 8: GLOSSARY
+// =====================================================
+
+interface GlossaryTerm {
+  term: string;
+  definition: string;
+  category: 'core' | 'mathematical' | 'nko' | 'system' | 'claim' | 'architecture';
+  aliases?: string[];
+  relatedTerms?: string[];
+  formula?: string;
+  nkoRepresentation?: string;
+  codeReference?: string;
+  boundTo?: string[];
+}
+
+const GLOSSARY_TERMS: GlossaryTerm[] = [
+  // ===== CORE CONCEPTS =====
+  {
+    term: 'DELL',
+    definition: 'Dual-Equilibrium Latent Learning. A neural architecture that processes motion data through two parallel equilibrium networks operating at different timescales (fast ~60Hz, slow ~2.5Hz), coordinated by a gating network that produces z-trajectory embeddings.',
+    category: 'core',
+    aliases: ['Dual-Equilibrium', 'DELL Architecture'],
+    relatedTerms: ['Fast Equilibrium', 'Slow Equilibrium', 'Coordinator', 'z-trajectory'],
+    boundTo: ['Motion Input', 'z-trajectory', 'Claim Detection'],
+  },
+  {
+    term: 'Basin',
+    definition: 'A stable attractor state in z-space representing a recurring pattern of embodied behavior. Basins are discovered through repeated visits and assigned unique N\'Ko tokens. They form the vocabulary of the inscription lexicon.',
+    category: 'core',
+    aliases: ['Attractor Basin', 'z-Basin'],
+    relatedTerms: ['ProtoBasin', 'Lexicon', 'z-space', 'Basin Lifecycle'],
+    nkoRepresentation: 'Unique N\'Ko token (e.g., ߊ, ߋ, ߌ)',
+    boundTo: ['Lexicon', 'ProtoBasin', 'Visit Count', 'Semantic Label'],
+  },
+  {
+    term: 'Claim',
+    definition: 'A typed assertion about embodied dynamics detected by one of 10 specialized detectors. Each claim has a canonical N\'Ko form and is backed by cryptographic provenance linking it to source sensor data.',
+    category: 'core',
+    aliases: ['Inscription Claim', 'ClaimIR'],
+    relatedTerms: ['ClaimDetector', 'Inscription', 'Provenance', 'Sigil'],
+    boundTo: ['ClaimType (0-9)', 'N\'Ko Sigil', 'TimeWindow', 'Confidence'],
+  },
+  {
+    term: 'Inscription',
+    definition: 'A complete N\'Ko text statement generated from a detected claim. Inscriptions are the primary output of the system, combining sigil, time window, claim-specific data, and confidence into a canonical RTL Unicode string.',
+    category: 'core',
+    aliases: ['N\'Ko Inscription', 'InscriptionRecord'],
+    relatedTerms: ['Claim', 'Sigil', 'Provenance', 'nkoText'],
+    nkoRepresentation: 'e.g., ߛ ⟦100.0–200.0⟧ : z(σ) ↓ ; home ; c=0.85',
+    boundTo: ['ClaimType', 'TimeWindow', 'Confidence', 'Place', 'Provenance'],
+  },
+  {
+    term: 'z-trajectory',
+    definition: 'The 16-dimensional latent embedding produced by the DELL coordinator network. It represents the current semantic state of embodied movement, integrating both fast (reactive) and slow (deliberative) processing.',
+    category: 'core',
+    aliases: ['z_t', 'Latent Trajectory', 'Coordinator Output'],
+    relatedTerms: ['DELL', 'Coordinator', 'Claim Detection'],
+    formula: 'z_t = σ(W_F h^F_t + W_S h^S_t + W_c c_t + b)',
+    boundTo: ['Fast Hidden State (h^F)', 'Slow Hidden State (h^S)', 'Anticipation Scalars (c)'],
+  },
+  {
+    term: 'Lexicon',
+    definition: 'The versioned vocabulary of all known basins, mapping basin IDs to N\'Ko tokens. The lexicon grows as new basins are discovered and is stored with full version history for reproducibility.',
+    category: 'core',
+    aliases: ['Basin Lexicon', 'N\'Ko Vocabulary'],
+    relatedTerms: ['Basin', 'ProtoBasin', 'Semantic Label'],
+    codeReference: 'lexicons/v1.0.json',
+    boundTo: ['Basin ID', 'N\'Ko Token', 'Visit Count', 'Discovery Timestamp'],
+  },
+  {
+    term: 'ProtoBasin',
+    definition: 'A candidate basin that has been detected but not yet graduated to full basin status. ProtoBasins require multiple visits (typically 3+) before promotion to ensure stability.',
+    category: 'core',
+    relatedTerms: ['Basin', 'Graduation', 'Visit Threshold'],
+    boundTo: ['Centroid', 'Visit Count', 'First Seen', 'Radius Estimate'],
+  },
+
+  // ===== MATHEMATICAL CONCEPTS =====
+  {
+    term: 'Fast Equilibrium',
+    definition: 'The high-frequency equilibrium network in DELL (h^F_t), processing motion at 60Hz with ~100-200ms latency. Handles reflexive motor control and immediate responses.',
+    category: 'mathematical',
+    aliases: ['h^F_t', 'Fast Process', 'Cerebellar Loop'],
+    formula: 'h^F_{t+1} = (1 - α_F) h^F_t + α_F · f_F(x_t, z_t; θ_F)',
+    relatedTerms: ['DELL', 'Slow Equilibrium', 'α_F'],
+    boundTo: ['α_F = Δt / τ_F ≈ 1.0', 'Motion Input (x_t)', 'Coordinator (z_t)'],
+  },
+  {
+    term: 'Slow Equilibrium',
+    definition: 'The low-frequency equilibrium network in DELL (h^S_t), processing temporally-averaged motion at 2.5Hz with ~500ms-2s latency. Handles planning, creativity, and style.',
+    category: 'mathematical',
+    aliases: ['h^S_t', 'Slow Process', 'Prefrontal Loop'],
+    formula: 'h^S_{t+1} = (1 - α_S) h^S_t + α_S · f_S(x̄_t, z_t; θ_S)',
+    relatedTerms: ['DELL', 'Fast Equilibrium', 'α_S', 'Temporal Average'],
+    boundTo: ['α_S ≈ 0.042', 'Temporal Average (x̄_t, 400ms window)', 'Coordinator (z_t)'],
+  },
+  {
+    term: 'Coordinator',
+    definition: 'The gating network in DELL that combines fast and slow equilibrium states with anticipation scalars to produce the z-trajectory embedding.',
+    category: 'mathematical',
+    aliases: ['Gating Network', 'z-Generator'],
+    formula: 'z_t = σ(W_F h^F_t + W_S h^S_t + W_c c_t + b)',
+    relatedTerms: ['z-trajectory', 'Anticipation Scalars', 'DELL'],
+    boundTo: ['Fast State (h^F)', 'Slow State (h^S)', 'Scalars (c)', 'Weights (W_F, W_S, W_c)'],
+  },
+  {
+    term: 'Anticipation Scalars',
+    definition: 'Scalar values (c_t) fed into the coordinator representing meta-cognitive signals: commitment level, uncertainty, confidence bounds. These bias the z-trajectory without learning.',
+    category: 'mathematical',
+    aliases: ['c_t', 'Meta-Scalars', 'Commitment Signals'],
+    relatedTerms: ['Coordinator', 'z-trajectory'],
+    boundTo: ['Commitment (0-1)', 'Uncertainty (0-1)', 'Confidence Bounds'],
+  },
+  {
+    term: 'TimeWindow',
+    definition: 'A pair of timestamps (t0, t1) in milliseconds defining the interval over which a claim was detected. Instant claims (novel, placeShift) have null windows.',
+    category: 'mathematical',
+    aliases: ['[t0, t1]', 'Detection Window'],
+    formula: 't0 ≤ t ≤ t1 (in ms relative to session start)',
+    relatedTerms: ['Claim', 'Inscription'],
+    boundTo: ['t0 (start)', 't1 (end)', 'Duration = t1 - t0'],
+  },
+  {
+    term: 'Variance (σ)',
+    definition: 'The statistical variance of the z-trajectory over a time window. Used to detect stabilize/disperse claims by measuring whether embodied dynamics are converging or expanding.',
+    category: 'mathematical',
+    aliases: ['z(σ)', 'z-variance', 'Trajectory Variance'],
+    formula: 'σ = Var(z_{t-k:t}) over window',
+    relatedTerms: ['Stabilize', 'Disperse', 'z-trajectory'],
+    boundTo: ['Delta (Δσ)', 'Threshold (θ_σ)', 'Window Size (k)'],
+  },
+  {
+    term: 'Delta (Δ)',
+    definition: 'The signed change in variance between consecutive detection windows. Negative delta indicates stabilization; positive indicates dispersion.',
+    category: 'mathematical',
+    aliases: ['Δσ', 'Variance Delta'],
+    formula: 'Δ = σ(t) - σ(t-k)',
+    relatedTerms: ['Variance', 'Stabilize', 'Disperse'],
+    boundTo: ['Threshold for claim detection'],
+  },
+
+  // ===== N'KO SPECIFIC =====
+  {
+    term: 'Sigil',
+    definition: 'The N\'Ko Unicode character that begins each inscription, identifying the claim type. There are 10 sigils corresponding to the 10 claim types.',
+    category: 'nko',
+    aliases: ['Claim Sigil', 'N\'Ko Prefix'],
+    relatedTerms: ['ClaimType', 'Inscription'],
+    nkoRepresentation: 'ߛ (stabilize), ߜ (disperse), ߕ (transition), ߙ (return), ߡ (dwell), ߚ (oscillate), ߞ (recover), ߣ (novel), ߠ (placeShift), ߥ (echo)',
+    boundTo: ['ClaimType Index (0-9)', 'Unicode Codepoint'],
+  },
+  {
+    term: 'RTL',
+    definition: 'Right-to-Left. N\'Ko script is written and read from right to left, like Arabic and Hebrew. All inscriptions are rendered in RTL Unicode.',
+    category: 'nko',
+    aliases: ['Right-to-Left', 'dir="rtl"'],
+    relatedTerms: ['Inscription', 'Unicode'],
+    boundTo: ['HTML dir attribute', 'Unicode BiDi algorithm'],
+  },
+  {
+    term: 'Canonical Form',
+    definition: 'The standardized format for rendering each claim type as an N\'Ko inscription. Each claim type has a specific canonical form that determines field order and formatting.',
+    category: 'nko',
+    aliases: ['Inscription Format', 'nkoText Format'],
+    relatedTerms: ['Inscription', 'ClaimType', 'Sigil'],
+    nkoRepresentation: 'e.g., ⟦sigil⟧ ⟦window⟧ : ⟦claim-data⟧ ; ⟦place⟧ ; c=⟦conf⟧',
+    boundTo: ['Sigil', 'TimeWindow', 'Claim Fields', 'Place', 'Confidence'],
+  },
+  {
+    term: 'Unicode Range',
+    definition: 'N\'Ko characters occupy Unicode range U+07C0 to U+07FF. The sigils use specific codepoints within this range.',
+    category: 'nko',
+    aliases: ['N\'Ko Unicode Block'],
+    relatedTerms: ['Sigil', 'RTL'],
+    boundTo: ['U+07C0-07FF', 'Font Support (Geeza Pro, Al Nile)'],
+  },
+
+  // ===== CLAIM TYPES =====
+  {
+    term: 'Stabilize',
+    definition: 'Claim type 0. Detected when z-trajectory variance decreases below threshold, indicating embodied dynamics are settling into a stable pattern.',
+    category: 'claim',
+    aliases: ['stabilize', 'Variance Decrease'],
+    formula: 'Δσ < -θ_stabilize',
+    nkoRepresentation: 'ߛ ⟦t0–t1⟧ : z(σ) ↓ Δ=⟦δ⟧ ; ⟦P⟧ ; c=⟦conf⟧',
+    relatedTerms: ['Disperse', 'Variance', 'Dwell'],
+    boundTo: ['Index: 0', 'Sigil: ߛ (U+07DB)', 'IR: StabilizeClaim'],
+  },
+  {
+    term: 'Disperse',
+    definition: 'Claim type 1. Detected when z-trajectory variance increases above threshold, indicating embodied dynamics are expanding into exploration.',
+    category: 'claim',
+    aliases: ['disperse', 'Variance Increase'],
+    formula: 'Δσ > +θ_disperse',
+    nkoRepresentation: 'ߜ ⟦t0–t1⟧ : z(σ) ↑ Δ=⟦δ⟧ ; ⟦P⟧ ; c=⟦conf⟧',
+    relatedTerms: ['Stabilize', 'Variance', 'Oscillate'],
+    boundTo: ['Index: 1', 'Sigil: ߜ (U+07DC)', 'IR: DisperseClaim'],
+  },
+  {
+    term: 'Transition',
+    definition: 'Claim type 2. Detected when semantic place changes, indicating movement between distinct activity contexts.',
+    category: 'claim',
+    aliases: ['transition', 'Place Change'],
+    formula: 'place(t) ≠ place(t-1)',
+    nkoRepresentation: 'ߕ ⟦t*⟧ : ⟦P_from⟧ → ⟦P_to⟧ ; c=⟦conf⟧',
+    relatedTerms: ['Place', 'PlaceShift', 'Return'],
+    boundTo: ['Index: 2', 'Sigil: ߕ (U+07D5)', 'IR: TransitionClaim'],
+  },
+  {
+    term: 'Return',
+    definition: 'Claim type 3. Detected when z-trajectory returns to a previously visited basin, indicating revisitation of a known stable state.',
+    category: 'claim',
+    aliases: ['return', 'Basin Revisit'],
+    formula: 'd(z_t, centroid_B) < radius_B for known basin B',
+    nkoRepresentation: 'ߙ ⟦t*⟧ : ↩ ⟦B#⟧ ; visits=⟦n⟧ ; c=⟦conf⟧',
+    relatedTerms: ['Basin', 'Novel', 'Dwell'],
+    boundTo: ['Index: 3', 'Sigil: ߙ (U+07D9)', 'IR: ReturnClaim'],
+  },
+  {
+    term: 'Dwell',
+    definition: 'Claim type 4. Detected when z-trajectory variance remains low for an extended period, indicating sustained stability.',
+    category: 'claim',
+    aliases: ['dwell', 'Extended Stability'],
+    formula: 'σ(z_{t-k:t}) < θ_dwell for duration > τ_dwell',
+    nkoRepresentation: 'ߡ ⟦t0–t1⟧ : ∂σ/∂t ≈ 0 ; dur=⟦Δt⟧ms ; ⟦P⟧ ; c=⟦conf⟧',
+    relatedTerms: ['Stabilize', 'Basin', 'Variance'],
+    boundTo: ['Index: 4', 'Sigil: ߡ (U+07E1)', 'IR: DwellClaim'],
+  },
+  {
+    term: 'Oscillate',
+    definition: 'Claim type 5. Detected when z-trajectory variance shows periodic changes, indicating rhythmic or cyclical patterns in movement.',
+    category: 'claim',
+    aliases: ['oscillate', 'Rhythmic Pattern'],
+    formula: 'FFT(σ(z)) shows dominant frequency f > f_min',
+    nkoRepresentation: 'ߚ ⟦t0–t1⟧ : ~⟦f⟧Hz ; amp=⟦a⟧ ; cycles=⟦n⟧ ; c=⟦conf⟧',
+    relatedTerms: ['Variance', 'Disperse', 'Echo'],
+    boundTo: ['Index: 5', 'Sigil: ߚ (U+07DA)', 'IR: OscillateClaim'],
+  },
+  {
+    term: 'Recover',
+    definition: 'Claim type 6. Detected when z-trajectory variance decreases after a spike, indicating return to equilibrium after perturbation.',
+    category: 'claim',
+    aliases: ['recover', 'Spike Recovery'],
+    formula: 'σ(t) < σ(t-k) after σ(t-k) > θ_spike',
+    nkoRepresentation: 'ߞ ⟦t0–t1⟧ : σ ↓↓ from=⟦peak⟧ ; Δt=⟦recovery_time⟧ ; c=⟦conf⟧',
+    relatedTerms: ['Stabilize', 'Disperse', 'Variance'],
+    boundTo: ['Index: 6', 'Sigil: ߞ (U+07DE)', 'IR: RecoverClaim'],
+  },
+  {
+    term: 'Novel',
+    definition: 'Claim type 7. Detected when z-trajectory enters a region with no known basin, indicating discovery of a new pattern.',
+    category: 'claim',
+    aliases: ['novel', 'New Basin Discovery'],
+    formula: 'd(z_t, nearest_basin) > θ_novelty',
+    nkoRepresentation: 'ߣ ⟦t*⟧ : ★ ⟦B_new⟧ ; nearest=⟦B_near#⟧,d=⟦dist⟧ ; c=⟦conf⟧',
+    relatedTerms: ['Basin', 'ProtoBasin', 'Return'],
+    boundTo: ['Index: 7', 'Sigil: ߣ (U+07E3)', 'IR: NovelClaim'],
+  },
+  {
+    term: 'PlaceShift',
+    definition: 'Claim type 8. Detected on first visit to a new semantic place, indicating spatial novelty in activity context.',
+    category: 'claim',
+    aliases: ['placeShift', 'New Place Discovery'],
+    formula: 'place(t) ∉ PlaceHistory',
+    nkoRepresentation: 'ߠ ⟦t*⟧ : ⟦P_from⟧ → ⟦P_to⟧ ; ↪ ⟦coupled_claim⟧ ; c=⟦conf⟧',
+    relatedTerms: ['Place', 'Transition', 'Novel'],
+    boundTo: ['Index: 8', 'Sigil: ߠ (U+07E0)', 'IR: PlaceShiftClaim'],
+  },
+  {
+    term: 'Echo',
+    definition: 'Claim type 9. Detected when current claim pattern is similar to a recent claim, indicating repetition or reinforcement.',
+    category: 'claim',
+    aliases: ['echo', 'Pattern Repetition'],
+    formula: 'sim(claim_t, claim_{t-k}) > θ_echo',
+    nkoRepresentation: 'ߥ ⟦t0–t1⟧ : ≈ ⟦E#⟧ ; sim=⟦similarity⟧ ; refs=⟦n⟧ ; c=⟦conf⟧',
+    relatedTerms: ['Oscillate', 'Return', 'Similarity'],
+    boundTo: ['Index: 9', 'Sigil: ߥ (U+07E5)', 'IR: EchoClaim'],
+  },
+
+  // ===== SYSTEM COMPONENTS =====
+  {
+    term: 'ClaimDetector',
+    definition: 'One of 10 specialized detector modules that analyze z-trajectory to detect specific claim patterns. Detectors run at 6Hz (every 10 frames at 60fps).',
+    category: 'system',
+    aliases: ['Detector', 'Claim Detector Module'],
+    relatedTerms: ['Claim', 'z-trajectory', 'Detection Rate'],
+    codeReference: 'fusion_bridge.rs::ClaimDetector',
+    boundTo: ['Detection Frequency: 6Hz', '10 Detector Types', 'Confidence Threshold'],
+  },
+  {
+    term: 'Fusion Loop',
+    definition: 'The 60Hz processing loop that receives sensor data, runs DELL encoding, and outputs z-trajectory frames. The core real-time processing pipeline.',
+    category: 'system',
+    aliases: ['FusionLoop', 'Main Loop'],
+    relatedTerms: ['DELL', 'Sensor Receiver', 'z-trajectory'],
+    codeReference: 'fusion_loop.rs',
+    boundTo: ['60Hz Rate', 'Sensor Input', 'z-trajectory Output'],
+  },
+  {
+    term: 'Sensor Receiver',
+    definition: 'Module that receives motion data from mocopi suit at 60Hz. Handles deserialization and queuing of sensor frames for the fusion loop.',
+    category: 'system',
+    aliases: ['SensorReceiver', 'Motion Input'],
+    relatedTerms: ['Fusion Loop', 'Motion Sensors'],
+    codeReference: 'sensor_receiver.rs',
+    boundTo: ['WebSocket Connection', 'Frame Buffer', 'Timestamp Alignment'],
+  },
+  {
+    term: 'Provenance',
+    definition: 'The cryptographic chain of evidence linking an inscription back to its source sensor data. Includes fusion frame ID, sensor frame IDs, and typed intermediate representation.',
+    category: 'system',
+    aliases: ['InscriptionProvenance', 'Evidence Chain'],
+    relatedTerms: ['Inscription', 'Fusion Loop', 'ClaimIR'],
+    codeReference: 'types.ts::InscriptionProvenance',
+    boundTo: ['Fusion Frame ID', 'Sensor Frame IDs[]', 'Claim IR'],
+  },
+  {
+    term: 'Place',
+    definition: 'A semantic location or activity context derived from sensor data (e.g., "home", "studio", "transit"). Places provide spatial grounding for claims.',
+    category: 'system',
+    aliases: ['Semantic Place', 'PlaceClass'],
+    relatedTerms: ['Transition', 'PlaceShift', 'Place History'],
+    boundTo: ['Place Label', 'GPS/Context', 'Place History Set'],
+  },
+  {
+    term: 'Graph Kernel',
+    definition: 'The deterministic algorithm for slicing claim context into directed acyclic graphs (DAGs). Ensures reproducible context retrieval for any inscription.',
+    category: 'system',
+    aliases: ['Context Kernel', 'DAG Slicer'],
+    relatedTerms: ['Slice', 'DAG', 'Context Window'],
+    codeReference: 'cc-graph-kernel',
+    boundTo: ['Node Limit', 'Time Window', 'Deterministic Hash'],
+  },
+  {
+    term: 'Slice',
+    definition: 'A DAG-structured subset of the z-trajectory context around a claim. Slices are deterministically reproducible given the same input parameters.',
+    category: 'system',
+    aliases: ['Context Slice', 'DAG Slice'],
+    relatedTerms: ['Graph Kernel', 'DAG', 'Claim'],
+    boundTo: ['Slice ID', 'Root Node', 'Node Set', 'Edge Set'],
+  },
+
+  // ===== ARCHITECTURE =====
+  {
+    term: 'Typed IR',
+    definition: 'Typed Intermediate Representation. The structured data format between raw z-trajectory and final N\'Ko text. Each claim type has a specific IR schema.',
+    category: 'architecture',
+    aliases: ['ClaimIR', 'Intermediate Representation'],
+    relatedTerms: ['Claim', 'Inscription', 'Provenance'],
+    boundTo: ['Type-specific fields', 'JSON serialization', 'Validation schema'],
+  },
+  {
+    term: 'Detection Pipeline',
+    definition: 'The full processing chain from motion sensors to inscriptions: Sensors → Fusion → DELL → z-trajectory → ClaimDetectors → IR → N\'Ko Render.',
+    category: 'architecture',
+    aliases: ['Inscription Pipeline', 'Processing Pipeline'],
+    relatedTerms: ['Fusion Loop', 'ClaimDetector', 'Inscription'],
+    boundTo: ['7 Pipeline Stages', 'Real-time Processing', 'Provenance Chain'],
+  },
+  {
+    term: 'Basin Lifecycle',
+    definition: 'The state machine governing basin evolution: Detection → ProtoBasin → Graduation → Basin. Includes operations like Split and Merge.',
+    category: 'architecture',
+    relatedTerms: ['Basin', 'ProtoBasin', 'Graduation'],
+    boundTo: ['Visit Threshold (3+)', 'Split/Merge Operations', 'Semantic Labeling'],
+  },
+  {
+    term: 'Lexicon Versioning',
+    definition: 'The system for tracking lexicon evolution over time. Each change (new basin, split, merge) creates a new version, enabling historical reproducibility.',
+    category: 'architecture',
+    relatedTerms: ['Lexicon', 'Basin', 'Version History'],
+    codeReference: 'lexicons/v1.0.json',
+    boundTo: ['Version ID', 'Changelog', 'Backwards Compatibility'],
+  },
+  {
+    term: 'Supabase',
+    definition: 'The cloud database backend storing inscriptions, basins, and sessions. Provides real-time subscriptions for live inscription streaming.',
+    category: 'architecture',
+    aliases: ['Database', 'Cloud Backend'],
+    relatedTerms: ['Inscription', 'Basin', 'Real-time'],
+    boundTo: ['nko_inscriptions table', 'nko_basins table', 'Real-time subscriptions'],
+  },
+  {
+    term: 'WebSocket',
+    definition: 'The real-time communication protocol used for both sensor input (mocopi → backend) and inscription output (backend → frontend).',
+    category: 'architecture',
+    relatedTerms: ['Sensor Receiver', 'Real-time', 'Streaming'],
+    boundTo: ['ws://136.114.76.114:8765', 'Message Envelope', 'Binary Frames'],
+  },
+];
+
+const CATEGORY_CONFIG: Record<GlossaryTerm['category'], { label: string; color: string; bgColor: string; borderColor: string }> = {
+  core: { label: 'Core Concept', color: 'text-amber-300', bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/30' },
+  mathematical: { label: 'Mathematical', color: 'text-blue-300', bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/30' },
+  nko: { label: 'N\'Ko Specific', color: 'text-purple-300', bgColor: 'bg-purple-500/10', borderColor: 'border-purple-500/30' },
+  claim: { label: 'Claim Type', color: 'text-orange-300', bgColor: 'bg-orange-500/10', borderColor: 'border-orange-500/30' },
+  system: { label: 'System Component', color: 'text-emerald-300', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-500/30' },
+  architecture: { label: 'Architecture', color: 'text-pink-300', bgColor: 'bg-pink-500/10', borderColor: 'border-pink-500/30' },
+};
+
+function GlossarySection() {
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [selectedCategory, setSelectedCategory] = React.useState<GlossaryTerm['category'] | 'all'>('all');
+  const [expandedTerms, setExpandedTerms] = React.useState<Set<string>>(new Set());
+
+  const filteredTerms = React.useMemo(() => {
+    return GLOSSARY_TERMS.filter((term) => {
+      const matchesSearch = searchQuery === '' ||
+        term.term.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        term.definition.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        term.aliases?.some(a => a.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesCategory = selectedCategory === 'all' || term.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [searchQuery, selectedCategory]);
+
+  const toggleTerm = (term: string) => {
+    setExpandedTerms((prev) => {
+      const next = new Set(prev);
+      if (next.has(term)) {
+        next.delete(term);
+      } else {
+        next.add(term);
+      }
+      return next;
+    });
+  };
+
+  const categories = ['all', 'core', 'mathematical', 'nko', 'claim', 'system', 'architecture'] as const;
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="text-center space-y-4">
+        <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
+          Reference Documentation
+        </Badge>
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-amber-400 via-orange-300 to-yellow-400 bg-clip-text text-transparent">
+          System Glossary
+        </h1>
+        <p className="text-gray-300 text-lg max-w-3xl mx-auto">
+          Comprehensive reference of all terms, concepts, and associations in the N'Ko Inscription System.
+          Each term includes its definition, relationships, and technical bindings.
+        </p>
+      </div>
+
+      {/* Search and Filter */}
+      <Card className="p-6 border-amber-500/20 bg-gradient-to-br from-space-800/80 to-space-900/80">
+        <div className="flex flex-col sm:flex-row gap-4">
+          {/* Search Input */}
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              placeholder="Search terms, definitions, aliases..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg bg-space-900/80 border border-amber-500/20 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-amber-500/50 transition-colors"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Category Filter */}
+          <div className="flex flex-wrap gap-2">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-3 py-2 rounded-lg text-sm transition-all ${
+                  selectedCategory === cat
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                    : 'bg-space-800/50 text-gray-400 border border-space-700/50 hover:text-amber-300 hover:border-amber-500/30'
+                }`}
+              >
+                {cat === 'all' ? 'All' : CATEGORY_CONFIG[cat].label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4 text-sm text-gray-500">
+          Showing {filteredTerms.length} of {GLOSSARY_TERMS.length} terms
+        </div>
+      </Card>
+
+      {/* Glossary Terms */}
+      <div className="space-y-4">
+        {filteredTerms.map((term) => {
+          const config = CATEGORY_CONFIG[term.category];
+          const isExpanded = expandedTerms.has(term.term);
+
+          return (
+            <motion.div
+              key={term.term}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Card className={`border ${config.borderColor} ${config.bgColor} overflow-hidden`}>
+                {/* Header - Always visible */}
+                <button
+                  onClick={() => toggleTerm(term.term)}
+                  className="w-full p-6 text-left flex items-start gap-4 hover:bg-space-800/30 transition-colors"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className={`text-xl font-bold ${config.color}`}>{term.term}</h3>
+                      <Badge variant="outline" className={`text-xs ${config.color} border-current`}>
+                        {config.label}
+                      </Badge>
+                      {term.nkoRepresentation && (
+                        <span
+                          className="text-lg text-amber-400"
+                          style={{ fontFamily: "'Geeza Pro', 'Al Nile', serif" }}
+                          dir="rtl"
+                        >
+                          {term.nkoRepresentation.split(',')[0]}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-gray-300 leading-relaxed">{term.definition}</p>
+
+                    {/* Aliases - inline */}
+                    {term.aliases && term.aliases.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <span className="text-xs text-gray-500">Also known as:</span>
+                        {term.aliases.map((alias) => (
+                          <span key={alias} className="text-xs text-gray-400 bg-space-800/50 px-2 py-0.5 rounded">
+                            {alias}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Expanded Content */}
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-6 pb-6 pt-2 border-t border-space-700/50 space-y-4">
+                        {/* Formula */}
+                        {term.formula && (
+                          <div className="p-4 rounded-lg bg-space-900/60 border border-space-700/50">
+                            <h4 className="text-sm font-semibold text-gray-400 uppercase mb-2">Formula / Condition</h4>
+                            <code className="text-emerald-300 font-mono text-sm">{term.formula}</code>
+                          </div>
+                        )}
+
+                        {/* N'Ko Representation */}
+                        {term.nkoRepresentation && (
+                          <div className="p-4 rounded-lg bg-space-900/60 border border-space-700/50">
+                            <h4 className="text-sm font-semibold text-gray-400 uppercase mb-2">N'Ko Representation</h4>
+                            <div
+                              className="text-amber-300 font-mono text-sm"
+                              style={{ fontFamily: "'Geeza Pro', 'Al Nile', serif" }}
+                              dir="rtl"
+                            >
+                              {term.nkoRepresentation}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Bound To */}
+                        {term.boundTo && term.boundTo.length > 0 && (
+                          <div className="p-4 rounded-lg bg-space-900/60 border border-amber-500/20">
+                            <h4 className="text-sm font-semibold text-amber-400 uppercase mb-3 flex items-center gap-2">
+                              <Target className="w-4 h-4" />
+                              Bound To / Associations
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                              {term.boundTo.map((binding) => (
+                                <span key={binding} className="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm">
+                                  {binding}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Related Terms */}
+                        {term.relatedTerms && term.relatedTerms.length > 0 && (
+                          <div className="p-4 rounded-lg bg-space-900/60 border border-space-700/50">
+                            <h4 className="text-sm font-semibold text-gray-400 uppercase mb-3 flex items-center gap-2">
+                              <Network className="w-4 h-4" />
+                              Related Terms
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                              {term.relatedTerms.map((related) => (
+                                <button
+                                  key={related}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSearchQuery(related);
+                                    setSelectedCategory('all');
+                                  }}
+                                  className="px-3 py-1.5 rounded-lg bg-space-800/80 border border-space-600/50 text-gray-300 text-sm hover:border-amber-500/30 hover:text-amber-300 transition-colors"
+                                >
+                                  {related}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Code Reference */}
+                        {term.codeReference && (
+                          <div className="p-4 rounded-lg bg-space-900/60 border border-space-700/50">
+                            <h4 className="text-sm font-semibold text-gray-400 uppercase mb-2 flex items-center gap-2">
+                              <FileCode className="w-4 h-4" />
+                              Code Reference
+                            </h4>
+                            <code className="text-pink-300 font-mono text-sm">{term.codeReference}</code>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </Card>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* No Results */}
+      {filteredTerms.length === 0 && (
+        <Card className="p-12 text-center border-gray-700/50 bg-space-900/50">
+          <p className="text-gray-400 text-lg">No terms found matching your search.</p>
+          <button
+            onClick={() => {
+              setSearchQuery('');
+              setSelectedCategory('all');
+            }}
+            className="mt-4 text-amber-400 hover:text-amber-300 transition-colors"
+          >
+            Clear filters
+          </button>
+        </Card>
+      )}
+
+      {/* Quick Reference Cards */}
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
+        {/* Sigil Quick Reference */}
+        <Card className="p-6 border-amber-500/20 bg-gradient-to-br from-space-800/80 to-space-900/80">
+          <h3 className="font-semibold text-amber-300 mb-4 flex items-center gap-2">
+            <Sparkles className="w-5 h-5" />
+            Sigil Quick Reference
+          </h3>
+          <div className="grid grid-cols-5 gap-2">
+            {Object.entries(CLAIM_SIGILS).map(([type, sigil]) => (
+              <div key={type} className="text-center p-2 rounded-lg bg-space-900/60 border border-space-700/50">
+                <div
+                  className="text-2xl text-amber-400 mb-1"
+                  style={{ fontFamily: "'Geeza Pro', 'Al Nile', serif" }}
+                >
+                  {sigil}
+                </div>
+                <div className="text-[10px] text-gray-500 truncate">{type}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Category Statistics */}
+        <Card className="p-6 border-purple-500/20 bg-gradient-to-br from-space-800/80 to-space-900/80">
+          <h3 className="font-semibold text-purple-300 mb-4 flex items-center gap-2">
+            <Layers className="w-5 h-5" />
+            Term Categories
+          </h3>
+          <div className="space-y-2">
+            {Object.entries(CATEGORY_CONFIG).map(([cat, config]) => {
+              const count = GLOSSARY_TERMS.filter(t => t.category === cat).length;
+              return (
+                <div key={cat} className="flex items-center justify-between">
+                  <span className={`text-sm ${config.color}`}>{config.label}</span>
+                  <Badge variant="outline" className="text-xs text-gray-400">{count}</Badge>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+
+        {/* Key Associations */}
+        <Card className="p-6 border-emerald-500/20 bg-gradient-to-br from-space-800/80 to-space-900/80">
+          <h3 className="font-semibold text-emerald-300 mb-4 flex items-center gap-2">
+            <Network className="w-5 h-5" />
+            Key Data Flow
+          </h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center gap-2 text-gray-300">
+              <ArrowRight className="w-4 h-4 text-emerald-400" />
+              Motion → DELL → z-trajectory
+            </div>
+            <div className="flex items-center gap-2 text-gray-300">
+              <ArrowRight className="w-4 h-4 text-emerald-400" />
+              z-trajectory → Detectors → Claims
+            </div>
+            <div className="flex items-center gap-2 text-gray-300">
+              <ArrowRight className="w-4 h-4 text-emerald-400" />
+              Claims → IR → N'Ko Inscription
+            </div>
+            <div className="flex items-center gap-2 text-gray-300">
+              <ArrowRight className="w-4 h-4 text-emerald-400" />
+              Basin → Lexicon → Semantic Label
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// =====================================================
 // MAIN PAGE COMPONENT
 // =====================================================
 
@@ -3192,6 +3920,7 @@ export default function TechnicalPage() {
           {currentSection === 'claims' && <ClaimsIRSection />}
           {currentSection === 'basin' && <BasinLifecycleSection />}
           {currentSection === 'api' && <APIReferenceSection />}
+          {currentSection === 'glossary' && <GlossarySection />}
         </div>
 
         {/* Footer Navigation */}
