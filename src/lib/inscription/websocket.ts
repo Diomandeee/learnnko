@@ -22,10 +22,18 @@ import type { ConnectionStatus } from '@/store/use-inscription-store';
 // CONFIGURATION
 // =====================================================
 
-/** WebSocket endpoint for fusion system */
+/** WebSocket endpoint for fusion system
+ *
+ * Priority:
+ * 1. NEXT_PUBLIC_INSCRIPTION_WS_URL env var (set in Vercel)
+ * 2. Local daemon (localhost:8001)
+ *
+ * Note: Cloud Run (cc-mcs-headless) does NOT support WebSocket streaming.
+ * For production, use Supabase Realtime or a GCP VM with persistent connection.
+ */
 const WEBSOCKET_URL =
   process.env.NEXT_PUBLIC_INSCRIPTION_WS_URL ||
-  'ws://localhost:8765/fusion/ws?subscribe=inscription';
+  'ws://localhost:8001/visualization?device_id=local&subscribe=inscription';
 
 /** Initial reconnect delay (ms) */
 const INITIAL_RECONNECT_DELAY = 2000;
