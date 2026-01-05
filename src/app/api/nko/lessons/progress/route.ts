@@ -1,9 +1,26 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/db/prisma"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth/config"
 
 export async function POST(request: Request) {
   try {
-    const { lessonId, progress, isCompleted, timeSpent, quizScore } = await request.json()
+    const body = await request.json()
+    const {
+      lessonId,
+      progress,
+      isCompleted,
+      completed,
+      timeSpent,
+      quizScore,
+    } = body as {
+      lessonId?: string
+      progress?: number
+      isCompleted?: boolean
+      completed?: boolean
+      timeSpent?: number
+      quizScore?: number
+    }
 
     if (!lessonId) {
       return NextResponse.json(
@@ -12,57 +29,108 @@ export async function POST(request: Request) {
       )
     }
 
-    // For now, we'll store progress without user authentication
-    // In the future, this would be tied to a specific user
-    const progressData = {
-      lessonId,
-      progress: Math.min(Math.max(progress || 0, 0), 100), // Ensure 0-100 range
-      isCompleted: isCompleted || false,
-      timeSpent: timeSpent || 0,
-      lastAccessed: new Date()
+    const session = await getServerSession(authOptions)
+    const userId = session?.user?.id || null
+
+    const lesson = await prisma.nkoLesson.findUnique({ where: { slug: lessonId } })
+    if (!lesson) {
+      return NextResponse.json({ error: "Lesson not found" }, { status: 404 })
     }
 
-    // Try to update existing progress or create new
-    const existingProgress = await prisma.nkoUserLessonProgress.findFirst({
-      where: { 
-        lessonId,
-        userId: null // For guest users, we'll use null
-      }
-    })
+    const clampedProgress = Math.min(Math.max(progress || 0, 0), 100)
+    const completedFlag = Boolean(isCompleted ?? completed ?? false)
+    const timeSpentMinutes = Math.max(timeSpent || 0, 0)
+    const lastAccessed = new Date()
 
     let updatedProgress
-    if (existingProgress) {
-      updatedProgress = await prisma.nkoUserLessonProgress.update({
-        where: { id: existingProgress.id },
-        data: {
-          progress: progressData.progress,
-          isCompleted: progressData.isCompleted,
-          timeSpent: (existingProgress.timeSpent || 0) + (timeSpent || 0),
-          lastAccessed: progressData.lastAccessed,
-          ...(quizScore && {
+    if (userId) {
+      updatedProgress = await prisma.nkoUserLessonProgress.upsert({
+        where: { userId_lessonId: { userId, lessonId: lesson.id } },
+        update: {
+          progress: clampedProgress,
+          completed: completedFlag,
+          timeSpent: { increment: timeSpentMinutes },
+          lastAccessed,
+          ...(quizScore !== undefined && {
             quizScores: {
               push: {
                 score: quizScore,
                 timestamp: new Date(),
-                attempt: (existingProgress.quizScores as any[])?.length + 1 || 1
-              }
-            }
-          })
-        }
+              },
+            },
+          }),
+        },
+        create: {
+          userId,
+          lessonId: lesson.id,
+          progress: clampedProgress,
+          completed: completedFlag,
+          timeSpent: timeSpentMinutes,
+          lastAccessed,
+          sectionsCompleted: [],
+          quizCompleted: false,
+          currentSection: 0,
+          lastPosition: 0,
+          exercisesCompleted: [],
+          ...(quizScore !== undefined && {
+            quizScores: [
+              {
+                score: quizScore,
+                timestamp: new Date(),
+              },
+            ],
+          }),
+        },
       })
     } else {
-      updatedProgress = await prisma.nkoUserLessonProgress.create({
-        data: {
-          ...progressData,
-          ...(quizScore && {
-            quizScores: [{
-              score: quizScore,
-              timestamp: new Date(),
-              attempt: 1
-            }]
-          })
-        }
+      const existingProgress = await prisma.nkoUserLessonProgress.findFirst({
+        where: { lessonId: lesson.id, userId: null },
+        orderBy: { lastAccessed: "desc" },
       })
+
+      if (existingProgress) {
+        updatedProgress = await prisma.nkoUserLessonProgress.update({
+          where: { id: existingProgress.id },
+          data: {
+            progress: clampedProgress,
+            completed: completedFlag,
+            timeSpent: { increment: timeSpentMinutes },
+            lastAccessed,
+            ...(quizScore !== undefined && {
+              quizScores: {
+                push: {
+                  score: quizScore,
+                  timestamp: new Date(),
+                },
+              },
+            }),
+          },
+        })
+      } else {
+        updatedProgress = await prisma.nkoUserLessonProgress.create({
+          data: {
+            userId: null,
+            lessonId: lesson.id,
+            progress: clampedProgress,
+            completed: completedFlag,
+            timeSpent: timeSpentMinutes,
+            lastAccessed,
+            sectionsCompleted: [],
+            quizCompleted: false,
+            currentSection: 0,
+            lastPosition: 0,
+            exercisesCompleted: [],
+            ...(quizScore !== undefined && {
+              quizScores: [
+                {
+                  score: quizScore,
+                  timestamp: new Date(),
+                },
+              ],
+            }),
+          },
+        })
+      }
     }
 
     return NextResponse.json({ 

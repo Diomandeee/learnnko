@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getServerSession } from "next-auth";
-import { authConfig } from "@/lib/auth/config";
+import { authOptions } from "@/lib/auth/config";
 
 export async function GET(
   req: Request,
@@ -12,7 +12,7 @@ export async function GET(
     const lessonSlug = id;
 
     // Get user session
-    const session = await getServerSession(authConfig);
+    const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
       return NextResponse.json(
