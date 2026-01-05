@@ -101,7 +101,7 @@ export function LessonSection({
       <div>
         <h3 className="text-xl font-semibold mb-2 flex items-center">
           {section.title}
-          {isCompleted && <CheckCircle className="h-5 w-5 text-green-500 ml-2" />}
+          {isCompleted && <CheckCircle className="h-5 w-5 text-amber-500 ml-2" />}
         </h3>
         <p className="text-muted-foreground">{section.content}</p>
       </div>
@@ -153,7 +153,7 @@ export function LessonSection({
             <Card key={index} className={
               exerciseAnswers[index] !== null
                 ? exerciseAnswers[index] === Number(exercise.correctAnswer)
-                  ? "border-green-500"
+                  ? "border-amber-500"
                   : "border-red-500"
                 : ""
             }>

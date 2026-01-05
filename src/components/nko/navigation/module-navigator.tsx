@@ -143,7 +143,7 @@ export function ModuleNavigator({
                       <li key={lessonId}>
                         <div className="flex items-center gap-2">
                           {isCompleted ? (
-                            <Check className="h-4 w-4 text-green-500" />
+                            <Check className="h-4 w-4 text-amber-500" />
                           ) : isLocked ? (
                             <Lock className="h-4 w-4 text-muted-foreground" />
                           ) : (

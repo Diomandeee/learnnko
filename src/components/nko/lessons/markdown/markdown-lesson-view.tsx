@@ -360,13 +360,13 @@ export function MarkdownLessonView({
             {lesson.quiz.questions.map((question, index) => (
               <Card key={index} className={
                 progress.quizAnswers[index] === question.correctAnswer
-                  ? "border-green-500"
+                  ? "border-amber-500"
                   : "border-red-500"
               }>
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
                     {progress.quizAnswers[index] === question.correctAnswer ? (
-                      <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
+                      <CheckCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />
                     ) : (
                       <XCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
                     )}
@@ -381,7 +381,7 @@ export function MarkdownLessonView({
                         key={optIndex} 
                         className={`px-3 py-2 rounded-md ${
                           optIndex === question.correctAnswer 
-                            ? "bg-green-100 border border-green-500" 
+                            ? "bg-amber-900/30 border border-amber-500" 
                             : optIndex === progress.quizAnswers[index] 
                               ? "bg-red-100 border border-red-500" 
                               : "bg-muted"
@@ -595,8 +595,8 @@ export function MarkdownLessonView({
             <Badge key={topic} variant="outline">{topic}</Badge>
           ))}
           <Badge className={
-            lesson.frontmatter.level === 'beginner' ? 'bg-green-500' : 
-            lesson.frontmatter.level === 'intermediate' ? 'bg-blue-500' : 'bg-purple-500'
+            lesson.frontmatter.level === 'beginner' ? 'bg-amber-500' : 
+            lesson.frontmatter.level === 'intermediate' ? 'bg-orange-500' : 'bg-purple-500'
           }>
             {lesson.frontmatter.level}
           </Badge>
@@ -643,10 +643,10 @@ export function MarkdownLessonView({
                            progress.sectionsCompleted[index] ? "outline" : "ghost"}
                   size="sm"
                   onClick={() => goToSection(index)}
-                  className={progress.sectionsCompleted[index] ? "border-green-500" : ""}
+                  className={progress.sectionsCompleted[index] ? "border-amber-500" : ""}
                 >
                   {progress.sectionsCompleted[index] && (
-                    <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
+                    <CheckCircle className="h-3 w-3 mr-1 text-amber-500" />
                   )}
                   {index + 1}
                 </Button>

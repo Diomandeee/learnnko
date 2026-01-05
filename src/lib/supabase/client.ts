@@ -603,6 +603,101 @@ export async function getFramesBySource(
 }
 
 // ============================================
+// Inscription Operations
+// ============================================
+
+import type { Inscription } from '@/lib/inscription/types';
+
+/**
+ * Save an inscription to the database.
+ * Called when inscriptions are received via WebSocket.
+ */
+export async function saveInscription(inscription: Inscription): Promise<void> {
+  const supabase = getSupabase();
+
+  // Map claim type string to index (0-9)
+  const claimTypeIndex: Record<string, number> = {
+    stabilize: 0,
+    disperse: 1,
+    transition: 2,
+    return: 3,
+    dwell: 4,
+    oscillate: 5,
+    recover: 6,
+    novel: 7,
+    placeShift: 8,
+    echo: 9,
+  };
+
+  const { error } = await supabase.from('nko_inscriptions').upsert(
+    {
+      id: inscription.id,
+      claim_type: claimTypeIndex[inscription.claimType] ?? 0,
+      nko_text: inscription.nkoText,
+      timestamp_ms: inscription.timestampMs,
+      window_t0: inscription.window?.t0 ?? null,
+      window_t1: inscription.window?.t1 ?? null,
+      confidence: inscription.confidence,
+      place: inscription.place ?? null,
+      basin_id: inscription.basinId ?? null,
+      fusion_frame_id: inscription.provenance?.fusionFrameId ?? null,
+      sensor_frame_ids: inscription.provenance?.sensorFrameIds ?? null,
+      claim_ir: inscription.provenance?.claimIr ?? {},
+      session_id: inscription.sessionId ?? null,
+    },
+    { onConflict: 'id' }
+  );
+
+  if (error) {
+    console.error('Failed to save inscription:', error);
+  }
+}
+
+/**
+ * Save multiple inscriptions in batch.
+ */
+export async function saveInscriptions(inscriptions: Inscription[]): Promise<void> {
+  if (inscriptions.length === 0) return;
+
+  const supabase = getSupabase();
+
+  const claimTypeIndex: Record<string, number> = {
+    stabilize: 0,
+    disperse: 1,
+    transition: 2,
+    return: 3,
+    dwell: 4,
+    oscillate: 5,
+    recover: 6,
+    novel: 7,
+    placeShift: 8,
+    echo: 9,
+  };
+
+  const rows = inscriptions.map((inscription) => ({
+    id: inscription.id,
+    claim_type: claimTypeIndex[inscription.claimType] ?? 0,
+    nko_text: inscription.nkoText,
+    timestamp_ms: inscription.timestampMs,
+    window_t0: inscription.window?.t0 ?? null,
+    window_t1: inscription.window?.t1 ?? null,
+    confidence: inscription.confidence,
+    place: inscription.place ?? null,
+    basin_id: inscription.basinId ?? null,
+    fusion_frame_id: inscription.provenance?.fusionFrameId ?? null,
+    sensor_frame_ids: inscription.provenance?.sensorFrameIds ?? null,
+    claim_ir: inscription.provenance?.claimIr ?? {},
+    session_id: inscription.sessionId ?? null,
+  }));
+
+  const { error } = await supabase.from('nko_inscriptions').upsert(rows, { onConflict: 'id' });
+
+  if (error) {
+    console.error('Failed to save inscriptions:', error);
+  }
+}
+
+// ============================================
 // Export all types
 // ============================================
 

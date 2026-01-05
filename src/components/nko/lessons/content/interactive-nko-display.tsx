@@ -104,11 +104,11 @@ export function InteractiveNkoDisplay({
   const getCharacterColor = (type: string) => {
     switch (type) {
       case 'vowel':
-        return 'from-emerald-500 to-teal-500'
+        return 'from-amber-500 to-orange-500'
       case 'consonant':
-        return 'from-blue-500 to-cyan-500'
+        return 'from-orange-500 to-yellow-500'
       case 'diacritic':
-        return 'from-purple-500 to-indigo-500'
+        return 'from-purple-500 to-yellow-500'
       case 'number':
         return 'from-amber-500 to-orange-500'
       default:
@@ -120,27 +120,27 @@ export function InteractiveNkoDisplay({
     switch (culturalTheme) {
       case 'traditional':
         return {
-          background: 'bg-gradient-to-br from-amber-50 via-orange-50 to-red-50',
-          border: 'border-amber-200',
-          accent: 'text-amber-700'
+          background: 'bg-gradient-to-br from-space-900/80 via-space-800/80 to-amber-900/30',
+          border: 'border-amber-500/30',
+          accent: 'text-amber-300'
         }
       case 'modern':
         return {
-          background: 'bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50',
-          border: 'border-blue-200',
-          accent: 'text-blue-700'
+          background: 'bg-gradient-to-br from-space-900/30 to-amber-900/30',
+          border: 'border-orange-500/30',
+          accent: 'text-blue-300'
         }
       case 'academic':
         return {
-          background: 'bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50',
-          border: 'border-emerald-200',
-          accent: 'text-emerald-700'
+          background: 'bg-space-950',
+          border: 'border-amber-500/30',
+          accent: 'text-amber-300'
         }
       default:
         return {
-          background: 'bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50',
-          border: 'border-emerald-200',
-          accent: 'text-emerald-700'
+          background: 'bg-space-950',
+          border: 'border-amber-500/30',
+          accent: 'text-amber-300'
         }
     }
   }
@@ -202,7 +202,7 @@ export function InteractiveNkoDisplay({
                   </div>
                   
                   <div className="space-y-3">
-                    <h4 className="text-xl font-semibold text-slate-800">
+                    <h4 className="text-xl font-semibold text-gray-100">
                       {currentCharacter.name}
                     </h4>
                     
@@ -218,7 +218,7 @@ export function InteractiveNkoDisplay({
                         variant="ghost"
                         size="sm"
                         onClick={() => playPronunciation(currentCharacter)}
-                        className="text-slate-600 hover:text-slate-800"
+                        className="text-gray-300 hover:text-gray-100"
                       >
                         <Volume2 className="w-4 h-4 mr-2" />
                         {currentCharacter.pronunciation}
@@ -236,30 +236,30 @@ export function InteractiveNkoDisplay({
           <CardContent className="p-8">
             <div className="space-y-6">
               <div>
-                <h5 className="font-semibold text-slate-700 mb-2">Transliteration</h5>
-                <p className="text-2xl font-mono text-slate-800 bg-slate-100 px-4 py-2 rounded-lg">
+                <h5 className="font-semibold text-gray-200 mb-2">Transliteration</h5>
+                <p className="text-2xl font-mono text-gray-100 bg-space-800/50 px-4 py-2 rounded-lg">
                   {currentCharacter.transliteration}
                 </p>
               </div>
               
               <div>
-                <h5 className="font-semibold text-slate-700 mb-2">Pronunciation Guide</h5>
-                <p className="text-lg text-slate-600 bg-slate-50 px-4 py-2 rounded-lg">
+                <h5 className="font-semibold text-gray-200 mb-2">Pronunciation Guide</h5>
+                <p className="text-lg text-gray-300 bg-space-900/80 px-4 py-2 rounded-lg">
                   {currentCharacter.pronunciation}
                 </p>
               </div>
               
               {currentCharacter.meaning && (
                 <div>
-                  <h5 className="font-semibold text-slate-700 mb-2">Cultural Meaning</h5>
-                  <p className="text-slate-600 bg-amber-50 px-4 py-3 rounded-lg border-l-4 border-amber-400">
+                  <h5 className="font-semibold text-gray-200 mb-2">Cultural Meaning</h5>
+                  <p className="text-gray-300 bg-amber-900/30 px-4 py-3 rounded-lg border-l-4 border-amber-400">
                     {currentCharacter.meaning}
                   </p>
                 </div>
               )}
               
               <div>
-                <h5 className="font-semibold text-slate-700 mb-2">Character Type</h5>
+                <h5 className="font-semibold text-gray-200 mb-2">Character Type</h5>
                 <div className="flex items-center gap-2">
                   <Star className={`w-4 h-4 ${themeStyles.accent}`} />
                   <span className={`capitalize font-medium ${themeStyles.accent}`}>
@@ -283,7 +283,7 @@ export function InteractiveNkoDisplay({
             className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold transition-all duration-200 ${
               index === currentIndex
                 ? `bg-gradient-to-br ${getCharacterColor(char.type)} text-white shadow-lg`
-                : 'bg-white text-slate-600 hover:bg-slate-100 border-2 border-slate-200 hover:border-slate-300'
+                : 'bg-space-900/80 text-gray-300 hover:bg-space-800/50 border-2 border-space-700/50 hover:border-amber-500/30'
             }`}
             style={{ fontFamily: "'Geeza Pro', 'Al Nile', serif" }}
             dir="rtl"
@@ -294,8 +294,8 @@ export function InteractiveNkoDisplay({
       </div>
 
       {/* Cultural Note */}
-      <div className="mt-6 p-4 bg-white/50 rounded-lg border border-white/20">
-        <p className="text-sm text-slate-600 text-center italic">
+      <div className="mt-6 p-4 bg-space-900/50 rounded-lg border border-amber-500/20">
+        <p className="text-sm text-gray-300 text-center italic">
           💫 Each N'Ko character carries centuries of West African wisdom and tradition
         </p>
       </div>

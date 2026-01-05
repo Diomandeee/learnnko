@@ -235,7 +235,7 @@ export function ExternalSearch({ className }: ExternalSearchProps) {
                       {isSaving[index] ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : savedItems[index] ? (
-                        <Check className="h-4 w-4 text-green-500" />
+                        <Check className="h-4 w-4 text-amber-500" />
                       ) : (
                         <BookmarkPlus className="h-4 w-4" />
                       )}

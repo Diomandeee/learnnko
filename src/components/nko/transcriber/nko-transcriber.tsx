@@ -319,13 +319,13 @@ export function NkoTranscriber({ onTextSave }: NkoTranscriberProps) {
       {/* Input Methods */}
       <div className="space-y-4">
         {/* File Upload */}
-        <Card>
+        <Card className="bg-gradient-to-br from-space-800/80 to-space-900/80 backdrop-blur-xl border border-amber-500/20 shadow-amber">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-amber-300">
               <Upload className="w-5 h-5" />
               Audio File Upload
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-gray-300">
               Upload audio files for transcription to N'Ko
             </CardDescription>
           </CardHeader>
@@ -359,13 +359,13 @@ export function NkoTranscriber({ onTextSave }: NkoTranscriberProps) {
         </Card>
 
         {/* YouTube URL */}
-        <Card>
+        <Card className="bg-gradient-to-br from-space-800/80 to-space-900/80 backdrop-blur-xl border border-violet-500/20 shadow-violet">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-violet-300">
               <Youtube className="w-5 h-5" />
               YouTube Video
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-gray-300">
               Transcribe and translate YouTube videos
             </CardDescription>
           </CardHeader>
@@ -388,13 +388,13 @@ export function NkoTranscriber({ onTextSave }: NkoTranscriberProps) {
         </Card>
 
         {/* Voice Recording */}
-        <Card>
+        <Card className="bg-gradient-to-br from-space-800/80 to-space-900/80 backdrop-blur-xl border border-amber-500/20 shadow-cyber">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-yellow-300">
               <Mic className="w-5 h-5" />
               Voice Recording
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-gray-300">
               Record your voice for live transcription
             </CardDescription>
           </CardHeader>
@@ -426,13 +426,13 @@ export function NkoTranscriber({ onTextSave }: NkoTranscriberProps) {
       </div>
 
       {/* Results */}
-      <Card>
+      <Card className="bg-gradient-to-br from-space-800/80 to-space-900/80 backdrop-blur-xl border border-amber-500/20 shadow-amber">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-amber-300">
             <FileText className="w-5 h-5" />
             Transcription Results
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-gray-300">
             Your transcriptions with N'Ko translations
           </CardDescription>
         </CardHeader>

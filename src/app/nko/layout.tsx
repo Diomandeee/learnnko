@@ -1,12 +1,4 @@
-import { Metadata } from "next"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft, Home } from "lucide-react"
-
-export const metadata: Metadata = {
-  title: "N'Ko Learning Hub",
-  description: "Master the N'Ko language and writing system",
-}
+import { IconNav } from "@/components/dashboard/navigation/icon-nav";
 
 export default function NkoLayout({
   children,
@@ -14,35 +6,30 @@ export default function NkoLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Top Navigation */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
-          <div className="mr-4 flex">
-            <Link href="/" className="mr-6 flex items-center space-x-2">
-              <Button variant="ghost" size="sm">
-                <Home className="h-4 w-4 mr-2" />
-                Home
-              </Button>
-            </Link>
-          </div>
-          <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-            <nav className="flex items-center space-x-6 text-sm font-medium">
-              <Link
-                href="/nko"
-                className="transition-colors hover:text-foreground/80 text-foreground"
-              >
-                Learning Hub
-              </Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+    <div className="relative min-h-screen bg-space-950">
+      {/* Cosmic Background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-b from-space-950 via-space-900 to-space-950" />
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,rgba(245,158,11,0.08),transparent_40%)]"></div>
+        <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_80%,rgba(139,92,246,0.06),transparent_40%)]"></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-amber-400/10 to-orange-400/8 rounded-full blur-3xl opacity-60"></div>
+        <div className="absolute top-1/2 -left-20 w-64 h-64 bg-gradient-to-br from-violet-400/8 to-purple-400/8 rounded-full blur-3xl opacity-50"></div>
+        <div className="absolute bottom-0 right-1/3 w-96 h-96 bg-gradient-to-br from-amber-400/6 to-yellow-400/4 rounded-full blur-3xl opacity-40"></div>
+
+        {/* N'Ko script floating elements - hidden on mobile for cleaner UI */}
+        <div className="hidden md:block absolute top-20 left-1/4 text-amber-400/15 text-4xl font-nko">ߒ</div>
+        <div className="hidden md:block absolute top-1/3 right-1/4 text-violet-400/12 text-3xl font-nko">ߓ</div>
+        <div className="hidden lg:block absolute bottom-1/3 left-1/3 text-amber-300/12 text-5xl font-nko">ߕ</div>
+        <div className="hidden lg:block absolute bottom-1/4 right-1/5 text-cyan-400/8 text-4xl font-nko">ߞ</div>
+      </div>
+
+      {/* Top Icon Navigation */}
+      <IconNav />
 
       {/* Main Content */}
-      <main className="flex-1">
+      <main className="relative z-10 pt-16 min-h-screen">
         {children}
       </main>
     </div>
-  )
-} 
+  );
+}

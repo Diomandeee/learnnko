@@ -75,7 +75,7 @@ export function LessonsList() {
           key={lesson.id}
           className={`
             ${lesson.status === 'completed' ? 'border-primary/50' : ''}
-            ${lesson.status === 'in-progress' ? 'border-blue-500/50' : ''}
+            ${lesson.status === 'in-progress' ? 'border-orange-500/50' : ''}
             ${lesson.status === 'locked' ? 'opacity-60' : ''}
           `}
         >
@@ -83,7 +83,7 @@ export function LessonsList() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {lesson.status === 'completed' ? (
-                  <CircleCheck className="h-5 w-5 text-green-500" />
+                  <CircleCheck className="h-5 w-5 text-amber-500" />
                 ) : lesson.status === 'locked' ? (
                   <LockIcon className="h-5 w-5 text-muted-foreground" />
                 ) : (

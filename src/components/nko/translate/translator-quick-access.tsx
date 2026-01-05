@@ -86,7 +86,7 @@ export function TranslatorQuickAccess({ className = "", compact = false }: Trans
       <Card className={`border-0 shadow-md ${className}`}>
         <CardContent className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Languages className="w-4 h-4 text-emerald-600" />
+            <Languages className="w-4 h-4 text-amber-600" />
             <span className="font-medium text-sm">Quick Translate</span>
             <Link href="/nko/translator">
               <Button variant="ghost" size="sm" className="h-6 px-2 ml-auto">
@@ -116,11 +116,11 @@ export function TranslatorQuickAccess({ className = "", compact = false }: Trans
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
-                className="p-2 bg-emerald-50 rounded border"
+                className="p-2 bg-amber-900/30 rounded border"
               >
                 <div className="flex items-center justify-between">
                   <span 
-                    className="text-emerald-700 font-medium"
+                    className="text-amber-700 font-medium"
                     style={{ fontFamily: "'Geeza Pro', 'Al Nile', serif" }}
                     dir="rtl"
                   >
@@ -143,7 +143,7 @@ export function TranslatorQuickAccess({ className = "", compact = false }: Trans
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg flex items-center justify-center">
               <Languages className="w-4 h-4 text-white" />
             </div>
             <h3 className="font-semibold">Quick Translator</h3>
@@ -176,13 +176,13 @@ export function TranslatorQuickAccess({ className = "", compact = false }: Trans
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-200"
+                className="p-4 bg-gradient-to-r from-amber-900/30 to-orange-900/30 rounded-lg border border-amber-500/30"
               >
                 <div className="flex items-center justify-between">
                   <div>
                     <Badge variant="outline" className="text-xs mb-2">N'Ko Translation</Badge>
                     <div 
-                      className="text-xl font-bold text-emerald-800"
+                      className="text-xl font-bold text-amber-800"
                       style={{ fontFamily: "'Geeza Pro', 'Al Nile', serif" }}
                       dir="rtl"
                     >
@@ -215,7 +215,7 @@ export function TranslatorQuickAccess({ className = "", compact = false }: Trans
                 >
                   <div className="text-sm font-medium">{phrase.text}</div>
                   <div 
-                    className="text-xs text-emerald-600"
+                    className="text-xs text-amber-600"
                     style={{ fontFamily: "'Geeza Pro', 'Al Nile', serif" }}
                     dir="rtl"
                   >

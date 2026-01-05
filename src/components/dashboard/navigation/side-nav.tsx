@@ -11,7 +11,8 @@ import {
   BookMarked,
   MessageCircle,
   Mic,
-  Keyboard
+  Keyboard,
+  Activity
 } from "lucide-react"
 
 const navigation = [
@@ -28,6 +29,7 @@ const navigation = [
       { name: "Translator", href: "/nko/translator", icon: Languages },
       { name: "Transcribe", href: "/nko/transcribe", icon: Mic },
       { name: "Keyboard", href: "/nko/keyboard", icon: Keyboard },
+      { name: "Inscriptions", href: "/dashboard/nko/inscriptions", icon: Activity },
       { name: "History", href: "/nko/history", icon: BookMarked },
     ],
   },
@@ -41,7 +43,7 @@ export function SideNav({ className }: SideNavProps) {
   const pathname = usePathname()
 
   return (
-    <div className={cn("flex h-full flex-col border-r bg-card", className)}>
+    <div className={cn("flex h-full flex-col border-r border-amber-500/20 backdrop-blur-xl bg-space-950/95", className)}>
       <div className="flex-1 overflow-y-auto py-4">
         <nav className="space-y-1 px-2">
           {navigation.map((item) => {
@@ -56,8 +58,8 @@ export function SideNav({ className }: SideNavProps) {
                   className={cn(
                     "group flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      ? "bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 text-space-950 shadow-amber"
+                      : "text-gray-300 hover:bg-amber-500/10 hover:text-amber-300"
                   )}
                 >
                   <item.icon className="mr-3 h-4 w-4 flex-shrink-0" />
@@ -74,8 +76,8 @@ export function SideNav({ className }: SideNavProps) {
                           className={cn(
                             "group flex items-center rounded-md px-3 py-1 text-sm transition-colors",
                             isChildActive
-                              ? "bg-primary/10 text-primary"
-                              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                              ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                              : "text-gray-400 hover:bg-amber-500/10 hover:text-amber-300"
                           )}
                         >
                           <child.icon className="mr-3 h-3 w-3 flex-shrink-0" />

@@ -52,7 +52,7 @@ export function LearningProgress() {
               </div>
               
               <div className="flex flex-col items-center p-2 border rounded-lg">
-                <Calendar className="h-5 w-5 text-blue-500 mb-1" />
+                <Calendar className="h-5 w-5 text-orange-500 mb-1" />
                 <span className="text-xl font-bold">{Math.ceil(stats.minutesStudied / 60)}</span>
                 <span className="text-xs text-center">Hours Studied</span>
               </div>
@@ -100,7 +100,7 @@ export function LearningProgress() {
                 <div 
                   key={index} 
                   className={`flex flex-col items-center p-3 border rounded-lg ${
-                    achievement.unlocked ? "border-primary" : "border-gray-200 opacity-50"
+                    achievement.unlocked ? "border-primary" : "border-space-700/50 opacity-50"
                   }`}
                 >
                   <achievement.icon className={`h-8 w-8 mb-2 ${
