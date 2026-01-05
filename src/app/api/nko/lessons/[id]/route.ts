@@ -1,40 +1,39 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/db/prisma"
 import { getServerSession } from "next-auth"
-import { authConfig } from "@/lib/auth/config"
+import { authOptions } from "@/lib/auth/config"
+import { getLessonFromLibrary } from "@/lib/nko/seed/lessons/lesson-library"
 
-// Helper function to check if prerequisites are completed
-async function checkPrerequisites(prerequisiteSlugs: string[]): Promise<boolean> {
+async function getIsLockedForUser(args: { userId: string; prerequisiteSlugs: string[] }) {
+  const { userId, prerequisiteSlugs } = args
   if (prerequisiteSlugs.length === 0) return false
 
-  // Get all prerequisite lessons
-  const prerequisiteLessons = await prisma.nkoLesson.findMany({
-    where: {
-      slug: {
-        in: prerequisiteSlugs
-      }
-    },
-    include: {
-      progress: true
-    }
+  const prereqLessons = await prisma.nkoLesson.findMany({
+    where: { slug: { in: prerequisiteSlugs } },
+    select: { id: true, slug: true },
   })
 
-  // Check if all prerequisites are completed
-  return prerequisiteLessons.every(lesson => 
-    lesson.progress && lesson.progress.completed
-  )
+  const prereqById = new Map(prereqLessons.map((l) => [l.id, l.slug]))
+  const progress = await prisma.nkoUserLessonProgress.findMany({
+    where: { userId, lessonId: { in: prereqLessons.map((l) => l.id) }, completed: true },
+    select: { lessonId: true },
+  })
+
+  const completedSlugs = new Set(progress.map((p) => prereqById.get(p.lessonId)).filter(Boolean) as string[])
+  return prerequisiteSlugs.some((slug) => !completedSlugs.has(slug))
 }
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id } = await params
-    const lessonSlug = id
+  const { id } = await params
+  const lessonSlug = id
 
+  try {
     // Get user session
-    const session = await getServerSession(authConfig)
+    const session = await getServerSession(authOptions)
+    const userId = session?.user?.id || null
 
     // Get lesson from database using slug
     const lesson = await prisma.nkoLesson.findUnique({
@@ -42,20 +41,50 @@ export async function GET(
     })
 
     if (!lesson) {
-      return NextResponse.json(
-        { error: "Lesson not found" },
-        { status: 404 }
-      )
+      const fallback = getLessonFromLibrary(lessonSlug)
+      if (!fallback) {
+        return NextResponse.json({ error: "Lesson not found" }, { status: 404 })
+      }
+
+      return NextResponse.json({
+        id: fallback.slug,
+        slug: fallback.slug,
+        title: fallback.title,
+        description: fallback.description || "",
+        level: fallback.level,
+        duration: fallback.duration || "30 minutes",
+        estimatedTime: fallback.estimatedTime || 0,
+        topics: fallback.topics || [],
+        prerequisites: fallback.prerequisites || [],
+        content: fallback.content,
+        objectives: fallback.objectives || [],
+        vocabulary: fallback.vocabulary || [],
+        grammarPoints: fallback.grammarPoints || [],
+        culturalNotes: fallback.culturalNotes || [],
+        difficulty: fallback.difficulty || 1,
+        tags: fallback.tags || [],
+        track: fallback.track,
+        module: fallback.module,
+        moduleOrder: fallback.moduleOrder,
+        order: fallback.order,
+        progress: 0,
+        isCompleted: false,
+        currentSection: 0,
+        sectionsCompleted: [],
+        quizCompleted: false,
+        timeSpent: 0,
+        isLocked: false,
+      })
     }
 
     let lessonProgress = null
 
     // Get or create lesson progress only if user is authenticated
-    if (session?.user?.id) {
+    if (userId) {
       lessonProgress = await prisma.nkoUserLessonProgress.findUnique({
         where: { 
           userId_lessonId: {
-            userId: session.user.id,
+            userId,
             lessonId: lesson.id
           }
         }
@@ -65,7 +94,7 @@ export async function GET(
       if (!lessonProgress) {
         lessonProgress = await prisma.nkoUserLessonProgress.create({
           data: {
-            userId: session.user.id,
+            userId,
             lessonId: lesson.id,
             progress: 0,
             completed: false,
@@ -98,6 +127,10 @@ export async function GET(
       culturalNotes: lesson.culturalNotes || [],
       difficulty: lesson.difficulty,
       tags: lesson.tags || [],
+      track: lesson.track,
+      module: lesson.module,
+      moduleOrder: lesson.moduleOrder,
+      order: lesson.order,
       // Real progress from database (or defaults if user not authenticated)
       progress: lessonProgress?.progress || 0,
       isCompleted: lessonProgress?.completed || false,
@@ -106,16 +139,46 @@ export async function GET(
       quizCompleted: lessonProgress?.quizCompleted || false,
       timeSpent: lessonProgress?.timeSpent || 0,
       // Determine if lesson is locked based on prerequisites
-      isLocked: lesson.prerequisites.length === 0 ? false : await checkPrerequisites(lesson.prerequisites)
+      isLocked: userId ? await getIsLockedForUser({ userId, prerequisiteSlugs: lesson.prerequisites }) : false,
     }
 
     return NextResponse.json(transformedLesson)
   } catch (error) {
     console.error("Error fetching lesson:", error)
-    return NextResponse.json(
-      { error: "Failed to fetch lesson" },
-      { status: 500 }
-    )
+    const fallback = getLessonFromLibrary(lessonSlug)
+    if (fallback) {
+      return NextResponse.json({
+        id: fallback.slug,
+        slug: fallback.slug,
+        title: fallback.title,
+        description: fallback.description || "",
+        level: fallback.level,
+        duration: fallback.duration || "30 minutes",
+        estimatedTime: fallback.estimatedTime || 0,
+        topics: fallback.topics || [],
+        prerequisites: fallback.prerequisites || [],
+        content: fallback.content,
+        objectives: fallback.objectives || [],
+        vocabulary: fallback.vocabulary || [],
+        grammarPoints: fallback.grammarPoints || [],
+        culturalNotes: fallback.culturalNotes || [],
+        difficulty: fallback.difficulty || 1,
+        tags: fallback.tags || [],
+        track: fallback.track,
+        module: fallback.module,
+        moduleOrder: fallback.moduleOrder,
+        order: fallback.order,
+        progress: 0,
+        isCompleted: false,
+        currentSection: 0,
+        sectionsCompleted: [],
+        quizCompleted: false,
+        timeSpent: 0,
+        isLocked: false,
+      })
+    }
+
+    return NextResponse.json({ error: "Failed to fetch lesson" }, { status: 500 })
   }
 }
 
