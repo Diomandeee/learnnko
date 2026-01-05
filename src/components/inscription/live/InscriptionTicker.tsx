@@ -230,11 +230,11 @@ export function InscriptionTicker({
           )}
         </div>
 
-        {/* RTL Ticker Display */}
+        {/* RTL Ticker Display - 10 lines of inscriptions */}
         <div
           className={cn(
-            'min-h-[120px] flex items-center justify-end',
-            'overflow-hidden',
+            'min-h-[500px] flex items-start justify-end',
+            'overflow-y-auto',
             'bg-gradient-to-l from-space-900/90 via-space-800/80 to-transparent',
             'border-y border-amber-500/20',
             'py-6 px-4'
@@ -251,7 +251,7 @@ export function InscriptionTicker({
                   : 'Connecting...'}
             </div>
           ) : (
-            <div className="flex flex-row-reverse flex-wrap items-center">
+            <div className="flex flex-row-reverse flex-wrap items-start content-start w-full">
               {tickerItems.map((item, index) => (
                 <TickerItemDisplay key={item.id} item={item} index={index} />
               ))}
