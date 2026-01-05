@@ -229,20 +229,20 @@ export function InscriptionTicker({
           )}
         </div>
 
-        {/* RTL Ticker Display - 10 lines of inscriptions */}
+        {/* RTL Ticker Display - expands to fill space */}
         <div
           className={cn(
-            'min-h-[500px] flex items-start justify-end',
-            'overflow-y-auto',
-            'bg-gradient-to-l from-space-900/90 via-space-800/80 to-transparent',
-            'border-y border-amber-500/20',
+            'min-h-[500px] max-h-[70vh]',
+            'overflow-y-auto overflow-x-hidden',
+            'bg-gradient-to-br from-space-900/90 via-space-800/80 to-space-900/90',
+            'border border-amber-500/20 rounded-lg',
             'py-6 px-4'
           )}
           dir="rtl"
           lang="nqo"
         >
           {tickerItems.length === 0 ? (
-            <div className="text-gray-500 text-sm animate-pulse">
+            <div className="text-gray-500 text-sm animate-pulse text-center py-12">
               {isLoadingRecent
                 ? 'Loading historical inscriptions...'
                 : isConnected
@@ -250,7 +250,7 @@ export function InscriptionTicker({
                   : 'Connecting...'}
             </div>
           ) : (
-            <div className="flex flex-row-reverse flex-wrap items-start content-start w-full">
+            <div className="flex flex-wrap justify-start items-start content-start gap-1">
               {tickerItems.map((item, index) => (
                 <TickerItemDisplay key={item.id} item={item} index={index} />
               ))}
