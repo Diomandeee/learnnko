@@ -345,7 +345,7 @@ export function InscriptionTicker({
               </div>
             </div>
           ) : (
-            <div className="flex flex-wrap justify-center items-center content-start gap-2 min-h-full">
+            <div className="flex flex-wrap justify-start items-start content-start gap-x-1 gap-y-2">
               {tickerItems.map((item, index) => (
                 <TickerItemDisplay key={item.id} item={item} index={index} />
               ))}
