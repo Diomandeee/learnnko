@@ -8,33 +8,52 @@ LearnN'Ko is an AI-powered N'Ko language learning platform that:
 
 1. **Extracts** N'Ko text from educational YouTube videos
 2. **Generates** diverse learning contexts (5 "worlds")
-3. **Stores** structured training data in Supabase
-4. **Delivers** adaptive learning experiences via the web frontend
+3. **Transcribes** Bambara speech using Jeli ASR
+4. **Stores** structured training data in Supabase
+5. **Delivers** adaptive learning experiences via the web frontend
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         LearnN'Ko Architecture                       │
+│                    LearnN'Ko Architecture (v2)                       │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐           │
-│  │   YouTube    │───▶│   Training   │───▶│   Supabase   │           │
-│  │   Channel    │    │   Pipeline   │    │   Database   │           │
-│  └──────────────┘    └──────────────┘    └──────────────┘           │
-│                             │                    │                   │
-│                             ▼                    ▼                   │
-│                      ┌──────────────┐    ┌──────────────┐           │
-│                      │    Local     │    │   Next.js    │           │
-│                      │   Storage    │    │   Frontend   │           │
+│  │   YouTube    │───▶│   Google     │───▶│   Daily      │           │
+│  │   933 Videos │    │   Cloud      │    │   Scheduler  │           │
+│  └──────────────┘    │   Storage    │    │   ($2/day)   │           │
 │                      └──────────────┘    └──────────────┘           │
+│                                                  │                   │
+│                             ┌────────────────────┼────────────────┐ │
+│                             │                    │                │ │
+│                             ▼                    ▼                ▼ │
+│                      ┌──────────────┐    ┌──────────────┐  ┌──────┐│
+│                      │   Gemini     │    │   Jeli ASR   │  │Supa- ││
+│                      │   2.5 Flash  │    │   (Bambara)  │  │base  ││
+│                      └──────────────┘    └──────────────┘  └──────┘│
+│                             │                    │             │    │
+│                             └────────────────────┴─────────────┘    │
 │                                                  │                   │
 │                                                  ▼                   │
 │                                          ┌──────────────┐           │
-│                                          │    User      │           │
-│                                          │   Browser    │           │
+│                                          │   Next.js    │           │
+│                                          │   Frontend   │           │
 │                                          └──────────────┘           │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+## Processing Strategy
+
+**60-Day Streaming Pipeline**: Process 933 videos over 60 days at ~$2/day.
+
+| Metric | Value |
+|--------|-------|
+| Total videos | 933 |
+| Videos per day | ~16 |
+| Daily budget | $2.00 |
+| Total cost | ~$120 |
+| OCR model | Gemini 3 Flash (`gemini-3-flash-preview`) |
+| ASR model | Jeli ASR (Bambara) |
 
 ## Core Components
 
@@ -97,7 +116,9 @@ YAML-based prompt definitions:
 | Python 3.9+ | Pipeline orchestration |
 | yt-dlp | YouTube video download |
 | FFmpeg | Frame/audio extraction |
-| Gemini API | Multimodal OCR, text generation |
+| Gemini 3 Flash | Multimodal OCR, text generation ($0.50/$3 per 1M tokens) |
+| Jeli ASR | Bambara speech-to-text (sudoping01/jeli-asr) |
+| Google Cloud Storage | Video/audio storage |
 | aiohttp | Async HTTP requests |
 
 ### Database
@@ -152,7 +173,7 @@ YouTube Videos
 ┌─────────────────────────────────────────────┐
 │        Pass 4: Transcription (Optional)      │
 │  • Load audio segments                       │
-│  • Whisper ASR                               │
+│  • Jeli ASR (Bambara-optimized)              │
 │  • Link to slides                            │
 └─────────────────────────────────────────────┘
       │

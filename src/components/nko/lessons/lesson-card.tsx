@@ -43,33 +43,33 @@ export function LessonCard({
 }: LessonCardProps) {
   const getLevelColor = (level: string) => {
     switch(level) {
-      case 'beginner': return 'bg-green-500'
-      case 'intermediate': return 'bg-blue-500'
-      case 'advanced': return 'bg-purple-500'
-      default: return 'bg-gray-500'
+      case 'beginner': return 'bg-amber-500'
+      case 'intermediate': return 'bg-orange-500'
+      case 'advanced': return 'bg-yellow-600'
+      default: return 'bg-space-700'
     }
   }
   
   return (
-    <Card 
+    <Card
       className={`
-        ${isCompleted ? 'border-primary/50' : ''}
-        ${progress > 0 && !isCompleted ? 'border-blue-500/50' : ''}
+        ${isCompleted ? 'border-amber-500/50' : ''}
+        ${progress > 0 && !isCompleted ? 'border-orange-500/50' : ''}
         ${isLocked ? 'opacity-60' : ''}
-        transition-all hover:shadow-md
+        transition-all hover:shadow-md hover:border-amber-500/30
       `}
     >
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {isCompleted ? (
-              <CircleCheck className="h-5 w-5 text-green-500" />
+              <CircleCheck className="h-5 w-5 text-amber-400" />
             ) : isLocked ? (
               <LockIcon className="h-5 w-5 text-muted-foreground" />
             ) : progress > 0 ? (
-              <Pencil className="h-5 w-5 text-blue-500" />
+              <Pencil className="h-5 w-5 text-orange-400" />
             ) : (
-              <BookOpen className="h-5 w-5 text-primary" />
+              <BookOpen className="h-5 w-5 text-amber-400" />
             )}
             <CardTitle>{title}</CardTitle>
           </div>

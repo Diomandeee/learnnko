@@ -70,7 +70,7 @@ export function LessonSummary({ summary, vocabulary, onComplete }: LessonSummary
           <p className="text-muted-foreground">You've successfully completed this lesson.</p>
         </div>
         
-        <Card className="bg-gradient-to-br from-purple-50 to-blue-50 p-8 max-w-xl mx-auto border-2 border-primary/20">
+        <Card className="bg-gradient-to-br from-space-900/50 to-space-800/50 p-8 max-w-xl mx-auto border-2 border-primary/20">
           <CardContent className="text-center p-6">
             <h3 className="text-xl font-bold mb-6">Certificate of Completion</h3>
             <p className="mb-2">This certifies that</p>

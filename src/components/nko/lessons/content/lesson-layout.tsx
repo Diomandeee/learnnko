@@ -174,10 +174,10 @@ export function LessonLayout({
                              progress.sectionsCompleted[index] ? "outline" : "ghost"}
                     size="sm"
                     onClick={() => goToSection(index)}
-                    className={progress.sectionsCompleted[index] ? "border-green-500" : ""}
+                    className={progress.sectionsCompleted[index] ? "border-amber-500" : ""}
                   >
                     {progress.sectionsCompleted[index] && (
-                      <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
+                      <CheckCircle className="h-3 w-3 mr-1 text-amber-500" />
                     )}
                     {index + 1}
                   </Button>

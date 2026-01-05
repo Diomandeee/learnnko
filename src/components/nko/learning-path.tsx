@@ -72,15 +72,15 @@ export function LearningPath({ className }: LearningPathProps) {
               <div key={index} className={`
                 border rounded-lg p-4 
                 ${module.status === 'completed' ? 'border-primary/50 bg-primary/5' : ''}
-                ${module.status === 'in-progress' ? 'border-blue-500/50 bg-blue-500/5' : ''}
+                ${module.status === 'in-progress' ? 'border-orange-500/50 bg-orange-500/5' : ''}
                 ${module.status === 'locked' ? 'border-muted opacity-70' : ''}
               `}>
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center">
                     <StatusIcon className={`
                       h-5 w-5 mr-2 
-                      ${module.status === 'completed' ? 'text-green-500' : ''}
-                      ${module.status === 'in-progress' ? 'text-blue-500' : ''}
+                      ${module.status === 'completed' ? 'text-amber-500' : ''}
+                      ${module.status === 'in-progress' ? 'text-orange-500' : ''}
                       ${module.status === 'locked' ? 'text-muted-foreground' : ''}
                     `} />
                     <h3 className="font-medium">{module.title}</h3>

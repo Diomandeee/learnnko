@@ -100,7 +100,7 @@ export function EnhancedLearningJourney({
       level: "intermediate",
       duration: 12,
       progress: 0,
-      isLocked: true,
+      isLocked: false,
       isCompleted: false,
       category: "Practice",
       order: 4,
@@ -118,10 +118,10 @@ export function EnhancedLearningJourney({
   }
 
   const getStatusColor = (lesson: Lesson) => {
-    if (lesson.isCompleted) return "text-emerald-600"
+    if (lesson.isCompleted) return "text-amber-400"
     if (lesson.isLocked) return "text-slate-400"
-    if (lesson.progress > 0) return "text-blue-600"
-    return "text-indigo-600"
+    if (lesson.progress > 0) return "text-orange-400"
+    return "text-amber-400"
   }
 
   const getCategoryIcon = (category: string) => {
@@ -135,41 +135,41 @@ export function EnhancedLearningJourney({
 
   const getLevelColor = (level: string) => {
     switch (level) {
-      case 'beginner': return 'bg-emerald-500 text-white'
-      case 'intermediate': return 'bg-blue-500 text-white'
-      case 'advanced': return 'bg-purple-500 text-white'
-      default: return 'bg-slate-500 text-white'
+      case 'beginner': return 'bg-amber-500 text-white'
+      case 'intermediate': return 'bg-orange-500 text-white'
+      case 'advanced': return 'bg-yellow-600 text-white'
+      default: return 'bg-space-700 text-white'
     }
   }
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Journey Header */}
-      <Card className="border-0 shadow-xl bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50">
+      <Card className="border-0 shadow-xl bg-gradient-to-r from-space-900/80 via-space-800/80 to-space-900/80 border-amber-500/20">
         <CardHeader className="pb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
                 <User className="w-6 h-6 text-white" />
               </div>
               <div>
-                <CardTitle className="text-2xl font-bold text-slate-800">Learning Journey</CardTitle>
-                <CardDescription className="text-base text-slate-600">
+                <CardTitle className="text-2xl font-bold text-gray-100">Learning Journey</CardTitle>
+                <CardDescription className="text-base text-gray-200">
                   Your progress through N'Ko
                 </CardDescription>
               </div>
             </div>
             <div className="text-right">
-              <div className="text-3xl font-bold text-emerald-600">{userProgress.totalProgress}%</div>
-              <div className="text-sm text-slate-500">Complete</div>
+              <div className="text-3xl font-bold text-amber-400">{userProgress.totalProgress}%</div>
+              <div className="text-sm text-gray-300">Complete</div>
             </div>
           </div>
-          
+
           {/* Overall Progress */}
           <div className="mt-6">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-slate-700">Overall Progress</span>
-              <span className="text-sm text-slate-600">
+              <span className="text-sm font-medium text-gray-100">Overall Progress</span>
+              <span className="text-sm text-gray-200">
                 {userProgress.completedLessons} of {userProgress.totalLessons} lessons
               </span>
             </div>
@@ -195,19 +195,19 @@ export function EnhancedLearningJourney({
             >
               {/* Timeline connector */}
               {index < displayLessons.length - 1 && (
-                <div className="absolute left-6 top-20 w-0.5 h-12 bg-gradient-to-b from-slate-300 to-slate-200"></div>
+                <div className="absolute left-6 top-20 w-0.5 h-12 bg-gradient-to-b from-amber-500/30 to-orange-500/30"></div>
               )}
 
               <Card className={`
-                relative overflow-hidden transition-all duration-300 hover:shadow-lg
-                ${lesson.isCompleted ? 'border-emerald-200 bg-emerald-50/50' : ''}
-                ${isNext ? 'border-blue-200 bg-blue-50/50 shadow-md' : ''}
+                relative overflow-hidden transition-all duration-300 hover:shadow-lg border-space-700/50
+                ${lesson.isCompleted ? 'border-amber-500/50 bg-space-900/50' : ''}
+                ${isNext ? 'border-orange-500/50 bg-space-800/80 shadow-md' : ''}
                 ${lesson.isLocked ? 'opacity-70' : ''}
-                ${lesson.progress > 0 && !lesson.isCompleted ? 'border-orange-200 bg-orange-50/30' : ''}
+                ${lesson.progress > 0 && !lesson.isCompleted ? 'border-orange-500/50 bg-space-900/50' : ''}
               `}>
                 {/* Next lesson highlight */}
                 {isNext && (
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 to-yellow-500"></div>
                 )}
 
                 <CardContent className="p-8">
@@ -215,10 +215,10 @@ export function EnhancedLearningJourney({
                     {/* Status Icon */}
                     <div className={`
                       flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center
-                      ${lesson.isCompleted ? 'bg-emerald-100' : ''}
-                      ${lesson.isLocked ? 'bg-slate-100' : ''}
-                      ${lesson.progress > 0 && !lesson.isCompleted ? 'bg-orange-100' : ''}
-                      ${lesson.progress === 0 && !lesson.isLocked ? 'bg-indigo-100' : ''}
+                      ${lesson.isCompleted ? 'bg-amber-900/30' : ''}
+                      ${lesson.isLocked ? 'bg-space-800/50' : ''}
+                      ${lesson.progress > 0 && !lesson.isCompleted ? 'bg-orange-900/30' : ''}
+                      ${lesson.progress === 0 && !lesson.isLocked ? 'bg-amber-900/20' : ''}
                     `}>
                       <StatusIcon className={`w-6 h-6 ${getStatusColor(lesson)}`} />
                     </div>
@@ -228,13 +228,13 @@ export function EnhancedLearningJourney({
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
-                            <CategoryIcon className="w-5 h-5 text-slate-600" />
-                            <span className="text-sm font-medium text-slate-600">{lesson.category}</span>
+                            <CategoryIcon className="w-5 h-5 text-amber-400" />
+                            <span className="text-sm font-medium text-amber-300">{lesson.category}</span>
                           </div>
-                          <h3 className="text-xl font-bold text-slate-800 mb-2 leading-tight">
+                          <h3 className="text-xl font-bold text-gray-100 mb-2 leading-tight">
                             {lesson.title}
                           </h3>
-                          <p className="text-slate-600 leading-relaxed">
+                          <p className="text-gray-200 leading-relaxed">
                             {lesson.description}
                           </p>
                         </div>
@@ -244,7 +244,7 @@ export function EnhancedLearningJourney({
                           <Badge className={getLevelColor(lesson.level)}>
                             {lesson.level.charAt(0).toUpperCase() + lesson.level.slice(1)}
                           </Badge>
-                          <div className="flex items-center gap-1 text-sm text-slate-500">
+                          <div className="flex items-center gap-1 text-sm text-gray-300">
                             <Clock className="w-4 h-4" />
                             <span>{lesson.duration} min</span>
                           </div>
@@ -255,8 +255,8 @@ export function EnhancedLearningJourney({
                       {lesson.progress > 0 && !lesson.isCompleted && (
                         <div className="mb-4">
                           <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-medium text-slate-700">Progress</span>
-                            <span className="text-sm text-slate-600">{lesson.progress}%</span>
+                            <span className="text-sm font-medium text-gray-100">Progress</span>
+                            <span className="text-sm text-gray-200">{lesson.progress}%</span>
                           </div>
                           <Progress value={lesson.progress} className="h-2" />
                         </div>
@@ -287,7 +287,7 @@ export function EnhancedLearningJourney({
                             <Button 
                               className={`
                                 px-6 transition-all
-                                ${isNext ? 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 shadow-lg' : ''}
+                                ${isNext ? 'bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 shadow-lg' : ''}
                               `}
                             >
                               {lesson.isCompleted ? (
@@ -320,35 +320,35 @@ export function EnhancedLearningJourney({
       </div>
 
       {/* Journey Stats */}
-      <Card className="border-0 shadow-lg bg-gradient-to-r from-slate-50 to-blue-50">
+      <Card className="border-0 shadow-lg bg-gradient-to-r from-space-900/50 to-space-800/50 border-amber-500/20">
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center">
-              <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+              <div className="w-12 h-12 bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+                <CheckCircle2 className="w-6 h-6 text-amber-400" />
               </div>
-              <div className="text-2xl font-bold text-slate-800">{userProgress.completedLessons}</div>
-              <div className="text-sm text-slate-600">Lessons Completed</div>
+              <div className="text-2xl font-bold text-gray-100">{userProgress.completedLessons}</div>
+              <div className="text-sm text-gray-200">Lessons Completed</div>
             </div>
-            
+
             <div className="text-center">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Star className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 bg-orange-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Star className="w-6 h-6 text-orange-400" />
               </div>
-              <div className="text-2xl font-bold text-slate-800">
+              <div className="text-2xl font-bold text-gray-100">
                 {Math.round(userProgress.totalProgress)}%
               </div>
-              <div className="text-sm text-slate-600">Journey Progress</div>
+              <div className="text-sm text-gray-200">Journey Progress</div>
             </div>
-            
+
             <div className="text-center">
-              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Trophy className="w-6 h-6 text-purple-600" />
+              <div className="w-12 h-12 bg-yellow-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Trophy className="w-6 h-6 text-yellow-400" />
               </div>
-              <div className="text-2xl font-bold text-slate-800">
+              <div className="text-2xl font-bold text-gray-100">
                 {userProgress.totalLessons - userProgress.completedLessons}
               </div>
-              <div className="text-sm text-slate-600">Lessons Remaining</div>
+              <div className="text-sm text-gray-200">Lessons Remaining</div>
             </div>
           </div>
         </CardContent>

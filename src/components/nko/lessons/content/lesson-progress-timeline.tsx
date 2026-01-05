@@ -42,9 +42,9 @@ export function LessonProgressTimeline({
   
   const getSectionIcon = (type: string, isCompleted: boolean, isCurrent: boolean) => {
     const iconClass = `w-5 h-5 ${
-      isCompleted ? 'text-emerald-600' : 
-      isCurrent ? 'text-teal-600' : 
-      'text-slate-400'
+      isCompleted ? 'text-amber-400' :
+      isCurrent ? 'text-orange-400' :
+      'text-gray-400'
     }`
     
     switch (type) {
@@ -68,13 +68,13 @@ export function LessonProgressTimeline({
       case 'introduction':
         return 'from-amber-500 to-orange-500'
       case 'content':
-        return 'from-blue-500 to-indigo-500'
+        return 'from-orange-500 to-yellow-500'
       case 'practice':
-        return 'from-emerald-500 to-teal-500'
+        return 'from-amber-500 to-orange-500'
       case 'cultural':
         return 'from-purple-500 to-pink-500'
       case 'summary':
-        return 'from-cyan-500 to-blue-500'
+        return 'from-yellow-500 to-orange-500'
       default:
         return 'from-slate-500 to-gray-500'
     }
@@ -98,37 +98,37 @@ export function LessonProgressTimeline({
   }
 
   return (
-    <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-50 to-emerald-50">
+    <Card className="border-0 shadow-lg bg-gradient-to-br from-space-900/80 to-space-800/80 border-space-700/50">
       <CardContent className="p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg flex items-center justify-center">
               <Users className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-800">Learning Journey</h3>
-              <p className="text-sm text-slate-600">Your progress through N'Ko</p>
+              <h3 className="font-bold text-gray-100">Learning Journey</h3>
+              <p className="text-sm text-gray-300">Your progress through N'Ko</p>
             </div>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-bold text-emerald-600">{totalProgress}%</div>
-            <div className="text-xs text-slate-500">Complete</div>
+            <div className="text-2xl font-bold text-amber-400">{totalProgress}%</div>
+            <div className="text-xs text-gray-300">Complete</div>
           </div>
         </div>
 
         {/* Progress Bar */}
         <div className="mb-6">
           <div className="relative">
-            <div className="absolute inset-0 bg-slate-200 rounded-full h-2"></div>
+            <div className="absolute inset-0 bg-space-800/50 rounded-full h-2"></div>
             <motion.div
-              className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full h-2"
+              className="absolute inset-y-0 left-0 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full h-2"
               initial={{ width: 0 }}
               animate={{ width: `${totalProgress}%` }}
               transition={{ duration: 0.5 }}
             />
           </div>
-          <div className="flex justify-between mt-2 text-xs text-slate-500">
+          <div className="flex justify-between mt-2 text-xs text-gray-300">
             <span>Start</span>
             <span>Complete</span>
           </div>
@@ -147,10 +147,10 @@ export function LessonProgressTimeline({
                 variant="ghost"
                 className={`w-full p-4 h-auto justify-start transition-all duration-200 ${
                   section.isCurrent
-                    ? 'bg-gradient-to-r from-emerald-100 to-teal-100 border-2 border-emerald-300'
+                    ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-2 border-amber-500/30'
                     : section.isCompleted
-                    ? 'bg-emerald-50 hover:bg-emerald-100'
-                    : 'hover:bg-slate-100'
+                    ? 'bg-amber-900/20 hover:bg-amber-900/30'
+                    : 'hover:bg-space-800/50'
                 }`}
                 onClick={() => onSectionClick(index)}
               >
@@ -161,7 +161,7 @@ export function LessonProgressTimeline({
                       <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center"
+                        className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center"
                       >
                         <CheckCircle className="w-4 h-4 text-white" />
                       </motion.div>
@@ -174,16 +174,16 @@ export function LessonProgressTimeline({
                         {getSectionIcon(section.type, section.isCompleted, section.isCurrent)}
                       </motion.div>
                     ) : (
-                      <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center">
+                      <div className="w-8 h-8 bg-space-800/50 rounded-full flex items-center justify-center">
                         {getSectionIcon(section.type, section.isCompleted, section.isCurrent)}
                       </div>
                     )}
-                    
+
                     {/* Connection line */}
                     {index < sections.length - 1 && (
                       <div className="absolute top-8 left-1/2 transform -translate-x-1/2">
                         <div className={`w-0.5 h-6 ${
-                          section.isCompleted ? 'bg-emerald-300' : 'bg-slate-200'
+                          section.isCompleted ? 'bg-amber-500/30' : 'bg-space-700/50'
                         }`} />
                       </div>
                     )}
@@ -193,32 +193,32 @@ export function LessonProgressTimeline({
                   <div className="flex-1 text-left">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className={`font-semibold ${
-                        section.isCurrent ? 'text-emerald-800' :
-                        section.isCompleted ? 'text-emerald-700' : 
-                        'text-slate-700'
+                        section.isCurrent ? 'text-amber-300' :
+                        section.isCompleted ? 'text-amber-400' :
+                        'text-gray-200'
                       }`}>
                         {section.title}
                       </h4>
-                      <Badge 
-                        variant="secondary" 
+                      <Badge
+                        variant="secondary"
                         className={`text-xs ${
-                          section.isCurrent ? 'bg-teal-100 text-teal-700' :
-                          section.isCompleted ? 'bg-emerald-100 text-emerald-700' :
-                          'bg-slate-100 text-slate-600'
+                          section.isCurrent ? 'bg-orange-900/30 text-orange-300' :
+                          section.isCompleted ? 'bg-amber-900/30 text-amber-300' :
+                          'bg-space-800/50 text-gray-300'
                         }`}
                       >
                         {getTypeLabel(section.type)}
                       </Badge>
                     </div>
-                    
+
                     <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-1 text-slate-500">
+                      <div className="flex items-center gap-1 text-gray-300">
                         <Clock className="w-3 h-3" />
                         <span className="text-xs">{section.duration} min</span>
                       </div>
-                      
+
                       {section.description && (
-                        <p className="text-xs text-slate-500 flex-1">
+                        <p className="text-xs text-gray-300 flex-1">
                           {section.description}
                         </p>
                       )}
@@ -231,7 +231,7 @@ export function LessonProgressTimeline({
                       <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="text-emerald-600"
+                        className="text-amber-400"
                       >
                         <CheckCircle className="w-5 h-5" />
                       </motion.div>
@@ -240,7 +240,7 @@ export function LessonProgressTimeline({
                       <motion.div
                         animate={{ rotate: 360 }}
                         transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                        className="text-teal-600"
+                        className="text-orange-400"
                       >
                         <Circle className="w-5 h-5" />
                       </motion.div>
@@ -253,16 +253,16 @@ export function LessonProgressTimeline({
         </div>
 
         {/* Cultural Quote */}
-        <div className="mt-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg border border-amber-200">
+        <div className="mt-6 p-4 bg-gradient-to-r from-amber-900/30 to-orange-900/30 rounded-lg border border-amber-500/30">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
               <span className="text-white text-sm font-bold">ߒ</span>
             </div>
             <div>
-              <p className="text-sm text-amber-800 italic leading-relaxed">
+              <p className="text-sm text-amber-300 italic leading-relaxed">
                 "ߒߞߏ ߦߋ߫ ߞߊ߬ߙߊ߲ ߞߎ߲߬ߠߊ߬ߛߌ߮ ߟߋ߬ ߘߌ߫"
               </p>
-              <p className="text-xs text-amber-600 mt-1">
+              <p className="text-xs text-amber-400 mt-1">
                 "N'Ko is an ancient learning tradition" - Traditional saying
               </p>
             </div>

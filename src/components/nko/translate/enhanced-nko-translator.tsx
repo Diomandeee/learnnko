@@ -270,7 +270,7 @@ export function EnhancedNkoTranslator() {
 
   const getConfidenceColor = () => {
     switch (confidence) {
-      case 'high': return 'text-emerald-600 bg-emerald-50'
+      case 'high': return 'text-amber-600 bg-amber-900/30'
       case 'medium': return 'text-amber-600 bg-amber-50'
       case 'low': return 'text-orange-600 bg-orange-50'
       default: return 'text-slate-600 bg-slate-50'
@@ -287,16 +287,16 @@ export function EnhancedNkoTranslator() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
+    <div className="min-h-screen bg-gradient-to-br from-space-950 via-space-900 to-space-950">
       <div className="container mx-auto py-8 space-y-8">
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
               <Languages className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-teal-700 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
                 N'Ko Translator
               </h1>
               <p className="text-slate-600">Intelligent French/English to N'Ko translation</p>
@@ -305,15 +305,15 @@ export function EnhancedNkoTranslator() {
           
           <div className="flex justify-center gap-4 text-sm text-slate-600">
             <div className="flex items-center gap-1">
-              <Sparkles className="w-4 h-4 text-emerald-500" />
+              <Sparkles className="w-4 h-4 text-amber-500" />
               <span>Real-time translation</span>
             </div>
             <div className="flex items-center gap-1">
-              <BookOpen className="w-4 h-4 text-teal-500" />
+              <BookOpen className="w-4 h-4 text-orange-500" />
               <span>Smart suggestions</span>
             </div>
             <div className="flex items-center gap-1">
-              <Volume2 className="w-4 h-4 text-cyan-500" />
+              <Volume2 className="w-4 h-4 text-yellow-500" />
               <span>Audio support</span>
             </div>
           </div>
@@ -326,7 +326,7 @@ export function EnhancedNkoTranslator() {
             <Card className="border-0 shadow-xl">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                  <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
                     <span className="text-white text-xs font-bold">FR</span>
                   </div>
                   French/English
@@ -338,11 +338,11 @@ export function EnhancedNkoTranslator() {
                     value={sourceText}
                     onChange={(e) => setSourceText(e.target.value)}
                     placeholder="Type in French or English... Try 'hello', 'thank you', or 'good morning'"
-                    className="min-h-[120px] text-lg resize-none border-2 border-slate-200 focus:border-emerald-400 transition-colors"
+                    className="min-h-[120px] text-lg resize-none border-2 border-slate-200 focus:border-amber-500 transition-colors"
                   />
                   {isTranslating && (
                     <div className="absolute top-2 right-2">
-                      <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
+                      <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
                     </div>
                   )}
                 </div>
@@ -366,7 +366,7 @@ export function EnhancedNkoTranslator() {
                           animate={{ opacity: 1, scale: 1 }}
                           transition={{ delay: index * 0.1 }}
                           onClick={() => handleSuggestionClick(suggestion)}
-                          className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm hover:bg-emerald-200 transition-colors"
+                          className="px-3 py-1 bg-amber-900/30 text-amber-700 rounded-full text-sm hover:bg-amber-800/30 transition-colors"
                         >
                           {suggestion}
                         </motion.button>
@@ -399,7 +399,7 @@ export function EnhancedNkoTranslator() {
             <Card className="border-0 shadow-xl">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center">
+                  <div className="w-6 h-6 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center">
                     <span className="text-white text-xs font-bold">ߒ</span>
                   </div>
                   N'Ko Script
@@ -408,7 +408,7 @@ export function EnhancedNkoTranslator() {
               <CardContent className="space-y-4">
                 <div className="relative">
                   <div 
-                    className="min-h-[120px] p-4 border-2 border-slate-200 rounded-lg bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center"
+                    className="min-h-[120px] p-4 border-2 border-slate-200 rounded-lg bg-gradient-to-br from-amber-900/30 to-orange-900/30 flex items-center justify-center"
                     dir="rtl"
                   >
                     <AnimatePresence mode="wait">
@@ -421,7 +421,7 @@ export function EnhancedNkoTranslator() {
                           className="text-center"
                         >
                           <div 
-                            className="text-2xl font-bold text-emerald-800 mb-2 leading-relaxed"
+                            className="text-2xl font-bold text-amber-800 mb-2 leading-relaxed"
                             style={{ fontFamily: "'Geeza Pro', 'Al Nile', serif" }}
                           >
                             {translatedText}
@@ -505,7 +505,7 @@ export function EnhancedNkoTranslator() {
                       <div>
                         <div className="font-medium text-slate-800">{example.english}</div>
                         <div 
-                          className="text-sm text-emerald-600 mt-1"
+                          className="text-sm text-amber-600 mt-1"
                           style={{ fontFamily: "'Geeza Pro', 'Al Nile', serif" }}
                           dir="rtl"
                         >
@@ -526,7 +526,7 @@ export function EnhancedNkoTranslator() {
               <Card className="border-0 shadow-lg">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <BookOpen className="w-5 h-5 text-teal-500" />
+                    <BookOpen className="w-5 h-5 text-orange-500" />
                     Recent Translations
                   </CardTitle>
                 </CardHeader>
@@ -540,7 +540,7 @@ export function EnhancedNkoTranslator() {
                     >
                       <div className="text-sm text-slate-600 mb-1">{translation.input}</div>
                       <div 
-                        className="font-medium text-emerald-700"
+                        className="font-medium text-amber-700"
                         style={{ fontFamily: "'Geeza Pro', 'Al Nile', serif" }}
                         dir="rtl"
                       >
@@ -558,10 +558,10 @@ export function EnhancedNkoTranslator() {
         </div>
 
         {/* Help Section */}
-        <Card className="border-0 shadow-lg bg-gradient-to-r from-blue-50 to-indigo-50">
+        <Card className="border-0 shadow-lg bg-gradient-to-r from-space-900/50 to-space-800/50">
           <CardContent className="p-6">
             <div className="flex items-start gap-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-lg flex items-center justify-center flex-shrink-0">
                 <Lightbulb className="w-5 h-5 text-white" />
               </div>
               <div>

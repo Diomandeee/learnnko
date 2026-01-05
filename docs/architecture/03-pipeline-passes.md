@@ -12,13 +12,15 @@ The N'Ko training pipeline uses a multi-pass architecture to optimize cost and q
 │  Pass 1         Pass 2          Pass 3           Pass 4             │
 │  ┌────────┐    ┌────────┐      ┌────────┐       ┌────────┐          │
 │  │Extract │───▶│Consolidate│──▶│Generate│──────▶│Transcribe│        │
-│  │$57     │    │ FREE    │    │ $2     │       │ $188     │        │
+│  │$103    │    │ FREE    │    │ $9     │       │ FREE     │        │
 │  └────────┘    └────────┘      └────────┘       └────────┘          │
 │     │              │               │                │               │
-│   OCR +          Dedup +         5 Worlds        ASR +              │
-│   Audio          Vocab           per phrase      Align              │
+│   OCR +          Dedup +         5 Worlds        Jeli ASR           │
+│   Audio          Vocab           per phrase      (Bambara)          │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
+
+**60-Day Streaming**: Process 933 videos at ~16 videos/day within $2/day budget.
 ```
 
 ## Pass 1: Extraction
@@ -72,10 +74,13 @@ for video in channel_videos:
 
 | Component | Calculation | Cost |
 |-----------|-------------|------|
-| Gemini OCR | 522 × 55 frames × $0.002 | $57.42 |
+| Gemini 3 Flash OCR | 933 × 55 frames × ~$0.0012/call | ~$61 |
 | yt-dlp | Free | $0 |
 | FFmpeg | Free | $0 |
-| **Total** | | **~$57** |
+| GCS Storage | ~100GB @ $0.02/GB | $2.00 |
+| **Total** | | **~$63** |
+
+*Note: Gemini 3 Flash pricing is $0.50/1M input tokens + $3.00/1M output tokens.*
 
 ### Commands
 
@@ -218,9 +223,11 @@ for word in vocabulary:
 
 | Component | Calculation | Cost |
 |-----------|-------------|------|
-| Gemini text | 3000 × 5 × $0.0001 | $1.50 |
-| Buffer | Retries, etc. | $0.50 |
-| **Total** | | **~$2** |
+| Gemini 3 Flash text | 5000 × 5 × ~$0.0016/call | ~$40 |
+| Buffer | Retries, etc. | $5.00 |
+| **Total** | | **~$45** |
+
+*Note: Text generation uses more output tokens. Pricing is $0.50/1M input + $3.00/1M output.*
 
 ### Commands
 
@@ -242,28 +249,30 @@ python run_worlds.py --worlds everyday,formal
 **Script:** `training/scripts/run_transcription.py`
 
 ### Purpose
-Add speech transcriptions to align with visual slides.
+Add Bambara speech transcriptions to align with visual slides using Jeli ASR.
 
 ### Process
 
 ```python
 # 1. Load manifests
-for video_dir in data/videos/*/: 
+for video_dir in data/videos/*/:
     manifest = load_manifest(video_dir / "manifest.json")
-    
-    # 2. Transcribe each audio segment
+
+    # 2. Transcribe each audio segment with Jeli ASR
     for segment in manifest.scenes:
         audio_path = video_dir / segment.audio_path
-        
-        transcription = whisper.transcribe(audio_path)
-        
-        # 3. Store in database
+
+        # Jeli ASR - Bambara-optimized Whisper (sudoping01/jeli-asr)
+        transcription = jeli_asr.transcribe(audio_path, language="bm")
+
+        # 3. Store in database with translation
         supabase.update_audio_segment(
             segment_id=segment.id,
             transcription=transcription.text,
+            translation_en=transcription.translation_en,
             confidence=transcription.confidence
         )
-        
+
         # 4. Link to frame/slide
         align_transcription_to_frame(
             transcription=transcription,
@@ -272,28 +281,41 @@ for video_dir in data/videos/*/:
 ```
 
 ### Inputs
-- Audio segments (local files)
+- Audio segments (local files or GCS)
 - Video manifests
 
 ### Outputs
 - `nko_audio_segments.transcription` populated
+- English translations
 - Frame-transcription alignments
+
+### ASR Providers
+
+| Provider | Language | Cost | Recommended |
+|----------|----------|------|-------------|
+| Jeli ASR | Bambara | Free (local) | Yes |
+| OpenAI Whisper | Multi | $0.006/min | Fallback |
+| Local Whisper | Multi | Free (GPU) | Alternative |
 
 ### Cost Breakdown
 
 | Component | Calculation | Cost |
 |-----------|-------------|------|
-| Whisper API | 522 × 60 min × $0.006/min | $187.92 |
-| **Total** | | **~$188** |
+| Jeli ASR | Local model, no API cost | $0 |
+| GPU compute | Optional, can run on CPU | $0 |
+| **Total** | | **FREE** |
 
 ### Commands
 
 ```bash
-# Transcribe all
-python run_transcription.py
+# Transcribe with Jeli ASR (default)
+python run_transcription.py --jeli
 
-# Single video
-python run_transcription.py --video-id xsUrdpKD5wM
+# Use OpenAI Whisper instead
+python run_transcription.py --no-jeli
+
+# Set language (bm=Bambara, nko, fr, en)
+python run_transcription.py --language bm
 
 # Dry run (show what would be transcribed)
 python run_transcription.py --dry-run
@@ -305,13 +327,40 @@ python run_transcription.py --dry-run
 
 | Pass | Description | Cost | Required |
 |------|-------------|------|----------|
-| 1 | Extraction | $57 | ✅ Yes |
+| 1 | Extraction (933 videos) | ~$63 | ✅ Yes |
 | 2 | Consolidation | $0 | ✅ Yes |
-| 3 | Worlds | $2 | ✅ Yes |
-| 4 | Transcription | $188 | ❌ Optional |
-| **Total** | | **$60-$247** | |
+| 3 | Worlds | ~$45 | ✅ Yes |
+| 4 | Transcription (Jeli ASR) | $0 | ✅ Yes |
+| **Total** | | **~$110** | |
+
+**Model**: Gemini 3 Flash (`gemini-3-flash-preview`) - $0.50/1M input, $3.00/1M output
+
+### 60-Day Streaming Schedule
+
+| Metric | Value |
+|--------|-------|
+| Total videos | 933 |
+| Videos per day | ~16 |
+| Daily budget | $2.00 |
+| Total days | 60 |
+| Total cost | ~$120 |
 
 ## Execution Order
+
+### Option A: Daily Streaming (Recommended)
+
+```bash
+# Run daily batch (~16 videos/day at $2/day)
+python scripts/daily_pipeline_scheduler.py
+
+# Check progress
+python scripts/daily_pipeline_scheduler.py --status
+
+# Preview without processing
+python scripts/daily_pipeline_scheduler.py --dry-run
+```
+
+### Option B: Full Batch Processing
 
 ```bash
 # Pass 1: Extract (runs for ~8-12 hours)
@@ -325,8 +374,8 @@ python run_consolidation.py
 # Pass 3: Generate worlds (~30 minutes)
 python run_worlds.py
 
-# Pass 4: Transcribe (optional, ~4-6 hours)
-python run_transcription.py
+# Pass 4: Transcribe with Jeli ASR (~1-2 hours)
+python run_transcription.py --jeli
 ```
 
 ## Pipeline Status

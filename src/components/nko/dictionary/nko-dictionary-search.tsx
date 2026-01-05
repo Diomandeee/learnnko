@@ -261,8 +261,8 @@ export function NkoDictionarySearch() {
 
   return (
     <div className="space-y-6">
-      <Card className="shadow-md border-slate-200 overflow-hidden">
-        <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b pb-8">
+      <Card className="shadow-md border-amber-500/20 overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-space-900/50 to-space-800/50 border-b pb-8">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-2xl font-bold flex items-center">
@@ -373,19 +373,19 @@ export function NkoDictionarySearch() {
                   <Card 
                     key={entry.id || index} 
                     className={`overflow-hidden transition-all duration-200 ${
-                      entry.isFromGemini ? "border-green-200 hover:border-green-300" : "hover:border-primary/50"
+                      entry.isFromGemini ? "border-amber-500/30 hover:border-green-300" : "hover:border-primary/50"
                     }`}
                   >
-                    <CardHeader className="pb-2 bg-gradient-to-r from-slate-50 to-slate-100">
+                    <CardHeader className="pb-2 bg-gradient-to-r from-space-900/50 to-space-800/50">
                       <div className="flex justify-between items-start">
                         <div>
                           <CardTitle className="flex items-center gap-2 text-xl">
                             {entry.english}
-                            <span className="text-sm font-normal px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                            <span className="text-sm font-normal px-2 py-0.5 rounded-full bg-space-700/50 text-gray-200">
                               {entry.partOfSpeech}
                             </span>
                             {entry.isFromGemini && (
-                              <Badge variant="outline" className="bg-green-50 border-green-200 text-green-700 ml-2">
+                              <Badge variant="outline" className="bg-amber-900/30 border-amber-500/30 text-amber-400 ml-2">
                                 <Bot className="h-3 w-3 mr-1" />
                                 Gemini
                               </Badge>
@@ -489,13 +489,13 @@ export function NkoDictionarySearch() {
                       </div>
                       
                       {entry.example && (
-                        <div className="mt-4 p-4 rounded-md border border-slate-200 bg-slate-50">
+                        <div className="mt-4 p-4 rounded-md border border-amber-500/20 bg-space-900/80">
                           <h4 className="text-sm font-medium text-slate-500 mb-2 flex items-center">
                             <Book className="h-3.5 w-3.5 mr-1.5 text-primary" />
                             Example
                           </h4>
                           <p className="font-nko text-xl mb-3" dir="rtl">{entry.example.nko}</p>
-                          <Separator className="my-2 bg-slate-200" />
+                          <Separator className="my-2 bg-space-700/50" />
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                             <div className="flex items-start gap-1.5">
                               <Badge variant="outline" className="mt-0.5">EN</Badge>
@@ -524,7 +524,7 @@ export function NkoDictionarySearch() {
                 ))}
               </div>
             ) : (
-              <div className="text-center p-8 border rounded-md bg-gradient-to-b from-slate-50 to-slate-100">
+              <div className="text-center p-8 border rounded-md bg-gradient-to-b from-space-900/50 to-space-800/50">
                 <Search className="h-12 w-12 text-slate-300 mx-auto mb-3" />
                 <h3 className="text-lg font-medium">No results found</h3>
                 <p className="text-muted-foreground max-w-md mx-auto mt-1">
@@ -536,7 +536,7 @@ export function NkoDictionarySearch() {
               </div>
             )
           ) : (
-            <div className="text-center p-8 border rounded-md bg-gradient-to-b from-slate-50 to-slate-100">
+            <div className="text-center p-8 border rounded-md bg-gradient-to-b from-space-900/50 to-space-800/50">
               <AlignLeft className="h-12 w-12 text-slate-300 mx-auto mb-3" />
               <h3 className="text-lg font-medium">Search the N'Ko dictionary</h3>
               <p className="text-muted-foreground max-w-md mx-auto mt-1">
@@ -552,11 +552,11 @@ export function NkoDictionarySearch() {
               <div className="space-y-4">
                 {favoriteWords.map((entry, index) => (
                   <Card key={index} className="overflow-hidden hover:border-primary/50 transition-all duration-200">
-                    <CardHeader className="pb-2 bg-gradient-to-r from-slate-50 to-slate-100">
+                    <CardHeader className="pb-2 bg-gradient-to-r from-space-900/50 to-space-800/50">
                       <div className="flex justify-between items-start">
                         <CardTitle className="flex items-center gap-2 text-xl">
                           {entry.english}
-                          <span className="text-sm font-normal px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                          <span className="text-sm font-normal px-2 py-0.5 rounded-full bg-space-700/50 text-gray-200">
                             {entry.partOfSpeech}
                           </span>
                         </CardTitle>
@@ -634,13 +634,13 @@ export function NkoDictionarySearch() {
                       </div>
                       
                       {entry.example && (
-                        <div className="mt-4 p-4 rounded-md border border-slate-200 bg-slate-50">
+                        <div className="mt-4 p-4 rounded-md border border-amber-500/20 bg-space-900/80">
                           <h4 className="text-sm font-medium text-slate-500 mb-2 flex items-center">
                             <Book className="h-3.5 w-3.5 mr-1.5 text-primary" />
                             Example
                           </h4>
                           <p className="font-nko text-xl mb-3" dir="rtl">{entry.example.nko}</p>
-                          <Separator className="my-2 bg-slate-200" />
+                          <Separator className="my-2 bg-space-700/50" />
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                             <div className="flex items-start gap-1.5">
                               <Badge variant="outline" className="mt-0.5">EN</Badge>
@@ -659,7 +659,7 @@ export function NkoDictionarySearch() {
               </div>
             </ScrollArea>
           ) : (
-            <div className="text-center p-8 border rounded-md bg-gradient-to-b from-slate-50 to-slate-100">
+            <div className="text-center p-8 border rounded-md bg-gradient-to-b from-space-900/50 to-space-800/50">
               <Star className="h-12 w-12 text-slate-300 mx-auto mb-3" />
               <h3 className="text-lg font-medium">No favorite words yet</h3>
               <p className="text-muted-foreground max-w-md mx-auto mt-1">
@@ -691,7 +691,7 @@ export function NkoDictionarySearch() {
                     {recentSearches.map((search, index) => (
                       <Card
                         key={index}
-                        className="p-4 hover:bg-slate-50 transition-colors cursor-pointer"
+                        className="p-4 hover:bg-space-900/80 transition-colors cursor-pointer"
                         onClick={() => {
                           setSearchQuery(search);
                           handleSearch();
@@ -724,7 +724,7 @@ export function NkoDictionarySearch() {
               </CardContent>
             </Card>
           ) : (
-            <div className="text-center p-8 border rounded-md bg-gradient-to-b from-slate-50 to-slate-100">
+            <div className="text-center p-8 border rounded-md bg-gradient-to-b from-space-900/50 to-space-800/50">
               <History className="h-12 w-12 text-slate-300 mx-auto mb-3" />
               <h3 className="text-lg font-medium">No recent searches</h3>
               <p className="text-muted-foreground max-w-md mx-auto mt-1">

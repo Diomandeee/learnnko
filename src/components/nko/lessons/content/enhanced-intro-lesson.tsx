@@ -264,12 +264,12 @@ Remember: every letter you learn connects you to a rich heritage of African scho
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
+      <div className="min-h-screen bg-space-950">
         <div className="container mx-auto py-8">
           <div className="animate-pulse space-y-6">
-            <div className="h-16 bg-gradient-to-r from-emerald-200 to-teal-200 rounded-xl"></div>
-            <div className="h-8 bg-emerald-100 rounded w-96"></div>
-            <div className="h-96 bg-gradient-to-r from-teal-100 to-cyan-100 rounded-xl"></div>
+            <div className="h-16 bg-gradient-to-r from-amber-200 to-orange-200 rounded-xl"></div>
+            <div className="h-8 bg-amber-900/30 rounded w-96"></div>
+            <div className="h-96 bg-gradient-to-r from-orange-600/30 to-yellow-600/30 rounded-xl"></div>
           </div>
         </div>
       </div>
@@ -278,7 +278,7 @@ Remember: every letter you learn connects you to a rich heritage of African scho
 
   if (!lesson) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center">
+      <div className="min-h-screen bg-space-950 flex items-center justify-center">
         <Card className="max-w-md">
           <CardContent className="p-8 text-center">
             <h2 className="text-2xl font-semibold mb-4">Lesson Not Found</h2>
@@ -299,7 +299,7 @@ Remember: every letter you learn connects you to a rich heritage of African scho
   const progress = calculateOverallProgress()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
+    <div className="min-h-screen bg-space-950">
       {/* Celebration Animation */}
       <AnimatePresence>
         {showCelebration && (
@@ -309,10 +309,10 @@ Remember: every letter you learn connects you to a rich heritage of African scho
             exit={{ opacity: 0, scale: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
           >
-            <div className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-8 py-4 rounded-full shadow-lg flex items-center gap-3">
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-8 py-4 rounded-full shadow-lg flex items-center gap-3">
               <Sparkles className="w-6 h-6 text-yellow-300" />
               <span className="font-semibold">Section Complete!</span>
-              <CheckCircle className="w-6 h-6 text-green-300" />
+              <CheckCircle className="w-6 h-6 text-amber-300" />
             </div>
           </motion.div>
         )}
@@ -322,10 +322,10 @@ Remember: every letter you learn connects you to a rich heritage of African scho
       <div className="relative overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-10 left-10 text-6xl text-emerald-600">ߒ</div>
-          <div className="absolute top-20 right-20 text-4xl text-teal-600">ߞ</div>
-          <div className="absolute bottom-20 left-20 text-5xl text-cyan-600">ߏ</div>
-          <div className="absolute bottom-10 right-10 text-3xl text-emerald-600">ߊ</div>
+          <div className="absolute top-10 left-10 text-6xl text-amber-600">ߒ</div>
+          <div className="absolute top-20 right-20 text-4xl text-orange-600">ߞ</div>
+          <div className="absolute bottom-20 left-20 text-5xl text-yellow-600">ߏ</div>
+          <div className="absolute bottom-10 right-10 text-3xl text-amber-600">ߊ</div>
         </div>
 
         <div className="container mx-auto py-8 relative z-10">
@@ -335,12 +335,12 @@ Remember: every letter you learn connects you to a rich heritage of African scho
               variant="outline"
               size="sm"
               onClick={() => router.push('/nko/lessons')}
-              className="bg-white/80 backdrop-blur-sm hover:bg-white"
+              className="bg-space-900/80 backdrop-blur-sm hover:bg-space-800/80 border-amber-500/30 text-amber-400"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Lessons
             </Button>
-            <div className="flex items-center gap-2 text-sm text-emerald-700">
+            <div className="flex items-center gap-2 text-sm text-amber-400">
               <Globe className="w-4 h-4" />
               <span>N'Ko Learning Hub</span>
               <ChevronRight className="w-3 h-3" />
@@ -349,43 +349,43 @@ Remember: every letter you learn connects you to a rich heritage of African scho
           </div>
 
           {/* Lesson Header Card */}
-          <Card className="mb-8 border-0 shadow-xl bg-gradient-to-r from-white via-emerald-50 to-teal-50">
+          <Card className="mb-8 border-0 shadow-xl bg-gradient-to-r from-space-900/80 via-space-800/80 to-space-900/80">
             <CardHeader className="pb-6">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg">
+                    <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
                       <span className="text-white font-bold text-xl">ߒ</span>
                     </div>
                     <div>
-                      <Badge variant="secondary" className="mb-2 bg-emerald-100 text-emerald-800">
+                      <Badge variant="secondary" className="mb-2 bg-amber-900/30 text-amber-300">
                         {lesson.level.charAt(0).toUpperCase() + lesson.level.slice(1)} Level
                       </Badge>
-                      <CardTitle className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-teal-700 bg-clip-text text-transparent">
+                      <CardTitle className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
                         {lesson.title}
                       </CardTitle>
                     </div>
                   </div>
-                  <p className="text-lg text-slate-600 leading-relaxed mb-6">
+                  <p className="text-lg text-gray-200 leading-relaxed mb-6">
                     {lesson.description}
                   </p>
                   
                   {/* Lesson Stats */}
                   <div className="flex flex-wrap gap-6">
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <Clock className="w-5 h-5 text-emerald-600" />
+                    <div className="flex items-center gap-2 text-gray-200">
+                      <Clock className="w-5 h-5 text-amber-400" />
                       <span className="font-medium">{lesson.duration} minutes</span>
                     </div>
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <BookOpen className="w-5 h-5 text-teal-600" />
+                    <div className="flex items-center gap-2 text-gray-200">
+                      <BookOpen className="w-5 h-5 text-orange-400" />
                       <span className="font-medium">{lesson.content?.sections?.length || 0} sections</span>
                     </div>
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <Users className="w-5 h-5 text-cyan-600" />
+                    <div className="flex items-center gap-2 text-gray-200">
+                      <Users className="w-5 h-5 text-yellow-400" />
                       <span className="font-medium">Interactive exercises</span>
                     </div>
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <Award className="w-5 h-5 text-amber-600" />
+                    <div className="flex items-center gap-2 text-gray-200">
+                      <Award className="w-5 h-5 text-amber-400" />
                       <span className="font-medium">Cultural context</span>
                     </div>
                   </div>
@@ -402,7 +402,7 @@ Remember: every letter you learn connects you to a rich heritage of African scho
                         stroke="currentColor"
                         strokeWidth="8"
                         fill="transparent"
-                        className="text-emerald-200"
+                        className="text-space-700/50"
                       />
                       <circle
                         cx="50"
@@ -413,15 +413,15 @@ Remember: every letter you learn connects you to a rich heritage of African scho
                         fill="transparent"
                         strokeDasharray={`${2 * Math.PI * 40}`}
                         strokeDashoffset={`${2 * Math.PI * 40 * (1 - progress / 100)}`}
-                        className="text-emerald-500 transition-all duration-500"
+                        className="text-amber-500 transition-all duration-500"
                         strokeLinecap="round"
                       />
                     </svg>
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-xl font-bold text-emerald-700">{progress}%</span>
+                      <span className="text-xl font-bold text-amber-400">{progress}%</span>
                     </div>
                   </div>
-                  <span className="text-sm font-medium text-slate-600">Progress</span>
+                  <span className="text-sm font-medium text-gray-200">Progress</span>
                 </div>
               </div>
             </CardHeader>
@@ -452,7 +452,7 @@ Remember: every letter you learn connects you to a rich heritage of African scho
                 <Card className="border-0 shadow-lg">
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <Target className="w-5 h-5 text-teal-600" />
+                      <Target className="w-5 h-5 text-orange-400" />
                       Learning Goals
                     </CardTitle>
                   </CardHeader>
@@ -460,8 +460,8 @@ Remember: every letter you learn connects you to a rich heritage of African scho
                     <ul className="space-y-3 text-sm">
                       {lesson.objectives.map((objective, index) => (
                         <li key={index} className="flex items-start gap-3">
-                          <Star className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                          <span className="text-slate-600 leading-relaxed">{objective}</span>
+                          <Star className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+                          <span className="text-gray-200 leading-relaxed">{objective}</span>
                         </li>
                       ))}
                     </ul>
@@ -486,17 +486,17 @@ Remember: every letter you learn connects you to a rich heritage of African scho
               transition={{ duration: 0.3 }}
             >
               <Card className="border-0 shadow-xl">
-                <CardHeader className="bg-gradient-to-r from-slate-50 to-emerald-50 border-b">
+                <CardHeader className="bg-gradient-to-r from-space-900/50 to-space-800/50 border-b border-amber-500/20">
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="text-2xl font-bold text-slate-800">
+                      <CardTitle className="text-2xl font-bold text-gray-100">
                         {currentSectionData?.title}
                       </CardTitle>
-                      <p className="text-slate-600 mt-1">
+                      <p className="text-gray-200 mt-1">
                         Section {currentSection + 1} of {lesson.content?.sections?.length || 0}
                       </p>
                     </div>
-                    <Badge variant="outline" className="bg-white border-emerald-200 text-emerald-700">
+                    <Badge variant="outline" className="bg-space-900/80 border-amber-500/30 text-amber-400">
                       {currentSectionData?.duration || 5} min read
                     </Badge>
                   </div>
@@ -505,7 +505,7 @@ Remember: every letter you learn connects you to a rich heritage of African scho
                 <CardContent className="p-8 space-y-8">
                   {/* Section Content */}
                   <div className="prose max-w-none">
-                    <div className="text-lg leading-relaxed text-slate-700 whitespace-pre-wrap">
+                    <div className="text-lg leading-relaxed text-gray-200 whitespace-pre-wrap">
                       {currentSectionData?.content}
                     </div>
                   </div>
@@ -517,21 +517,21 @@ Remember: every letter you learn connects you to a rich heritage of African scho
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.2 }}
                     >
-                      <Card className="bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 border-emerald-200">
+                      <Card className="bg-gradient-to-r from-amber-900/30 via-orange-900/30 to-yellow-900/30 border-amber-500/30">
                         <CardContent className="p-6">
                           <div className="text-center space-y-4">
                             <div className="flex items-center justify-center gap-4">
-                              <div 
-                                className="text-4xl font-bold text-emerald-800" 
+                              <div
+                                className="text-4xl font-bold text-amber-300" 
                                 style={{ fontFamily: "'Geeza Pro', 'Al Nile', serif" }}
                                 dir="rtl"
                               >
                                 {currentSectionData.nkoText}
                               </div>
-                              <Button 
-                                variant="ghost" 
+                              <Button
+                                variant="ghost"
                                 size="sm"
-                                className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100"
+                                className="text-amber-400 hover:text-amber-300 hover:bg-amber-900/30"
                                 onClick={() => playAudio(currentSectionData.nkoText || '')}
                               >
                                 <Volume2 className="w-5 h-5" />
@@ -540,10 +540,10 @@ Remember: every letter you learn connects you to a rich heritage of African scho
                             
                             {currentSectionData.latinTransliteration && (
                               <div>
-                                <Badge variant="secondary" className="mb-2 bg-teal-100 text-teal-800">
+                                <Badge variant="secondary" className="mb-2 bg-orange-900/30 text-orange-300">
                                   Transliteration
                                 </Badge>
-                                <div className="text-slate-600 font-medium">
+                                <div className="text-gray-200 font-medium">
                                   {currentSectionData.latinTransliteration}
                                 </div>
                               </div>
@@ -551,10 +551,10 @@ Remember: every letter you learn connects you to a rich heritage of African scho
                             
                             {currentSectionData.englishTranslation && (
                               <div>
-                                <Badge variant="secondary" className="mb-2 bg-cyan-100 text-cyan-800">
+                                <Badge variant="secondary" className="mb-2 bg-yellow-900/30 text-yellow-300">
                                   English
                                 </Badge>
-                                <div className="text-slate-600">
+                                <div className="text-gray-200">
                                   {currentSectionData.englishTranslation}
                                 </div>
                               </div>
@@ -562,10 +562,10 @@ Remember: every letter you learn connects you to a rich heritage of African scho
                             
                             {currentSectionData.pronunciation && (
                               <div>
-                                <Badge variant="secondary" className="mb-2 bg-amber-100 text-amber-800">
+                                <Badge variant="secondary" className="mb-2 bg-amber-900/30 text-amber-300">
                                   Pronunciation
                                 </Badge>
-                                <div className="text-slate-600 font-mono">
+                                <div className="text-gray-200 font-mono">
                                   {currentSectionData.pronunciation}
                                 </div>
                               </div>
@@ -586,8 +586,8 @@ Remember: every letter you learn connects you to a rich heritage of African scho
                     >
                       <Separator />
                       <div>
-                        <h3 className="text-xl font-semibold text-slate-800 mb-6 flex items-center gap-2">
-                          <Sparkles className="w-6 h-6 text-amber-600" />
+                        <h3 className="text-xl font-semibold text-gray-100 mb-6 flex items-center gap-2">
+                          <Sparkles className="w-6 h-6 text-amber-400" />
                           Experience N'Ko Characters
                         </h3>
                         <IntroNkoShowcase />
@@ -605,16 +605,16 @@ Remember: every letter you learn connects you to a rich heritage of African scho
                     >
                       <Separator />
                       <div>
-                        <h3 className="text-xl font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                          <PlayCircle className="w-6 h-6 text-emerald-600" />
+                        <h3 className="text-xl font-semibold text-gray-100 mb-4 flex items-center gap-2">
+                          <PlayCircle className="w-6 h-6 text-amber-400" />
                           Practice Exercises
                         </h3>
                         <div className="space-y-4">
                           {currentSectionData.exercises.map((exercise, index) => (
-                            <Card key={index} className="border-l-4 border-l-emerald-500 shadow-md">
+                            <Card key={index} className="border-l-4 border-l-amber-500 shadow-md">
                               <CardContent className="p-6">
                                 <div className="space-y-4">
-                                  <h4 className="font-semibold text-lg text-slate-800">
+                                  <h4 className="font-semibold text-lg text-gray-100">
                                     {exercise.question}
                                   </h4>
                                   {exercise.type === 'multiple-choice' && exercise.options && (
@@ -628,7 +628,7 @@ Remember: every letter you learn connects you to a rich heritage of African scho
                                           <Button
                                             variant="outline"
                                             size="lg"
-                                            className="w-full justify-start h-auto p-4 text-left hover:bg-emerald-50 hover:border-emerald-300"
+                                            className="w-full justify-start h-auto p-4 text-left hover:bg-amber-900/30 hover:border-amber-500/50"
                                             onClick={() => {
                                               const isCorrect = optionIndex === exercise.correctAnswer
                                               toast({
@@ -641,7 +641,7 @@ Remember: every letter you learn connects you to a rich heritage of African scho
                                             }}
                                           >
                                             <div className="flex items-center gap-3">
-                                              <div className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center text-sm font-medium">
+                                              <div className="w-6 h-6 bg-space-800/50 rounded-full flex items-center justify-center text-sm font-medium">
                                                 {String.fromCharCode(65 + optionIndex)}
                                               </div>
                                               {option}
@@ -677,7 +677,7 @@ Remember: every letter you learn connects you to a rich heritage of African scho
                       <Button
                         size="lg"
                         onClick={nextSection}
-                        className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg flex items-center gap-2"
+                        className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg flex items-center gap-2"
                       >
                         Complete & Continue
                         <ArrowRight className="w-4 h-4" />
@@ -693,7 +693,7 @@ Remember: every letter you learn connects you to a rich heritage of African scho
                           })
                           setTimeout(() => router.push('/nko/lessons'), 2000)
                         }}
-                        className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-xl flex items-center gap-2"
+                        className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white shadow-xl flex items-center gap-2"
                       >
                         Complete Lesson
                         <CheckCircle className="w-4 h-4" />

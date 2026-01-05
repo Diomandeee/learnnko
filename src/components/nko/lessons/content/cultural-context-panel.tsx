@@ -102,13 +102,13 @@ export function CulturalContextPanel({
       case 'history':
         return 'from-amber-500 to-orange-500'
       case 'geography':
-        return 'from-emerald-500 to-teal-500'
+        return 'from-amber-500 to-orange-500'
       case 'language':
-        return 'from-blue-500 to-indigo-500'
+        return 'from-orange-500 to-yellow-500'
       case 'tradition':
         return 'from-purple-500 to-pink-500'
       case 'modern':
-        return 'from-cyan-500 to-blue-500'
+        return 'from-yellow-500 to-orange-500'
       default:
         return 'from-slate-500 to-gray-500'
     }
@@ -116,25 +116,25 @@ export function CulturalContextPanel({
 
   const getCategoryBadge = (category: string) => {
     const colors = {
-      history: 'bg-amber-100 text-amber-800',
-      geography: 'bg-emerald-100 text-emerald-800',
-      language: 'bg-blue-100 text-blue-800',
-      tradition: 'bg-purple-100 text-purple-800',
-      modern: 'bg-cyan-100 text-cyan-800'
+      history: 'bg-amber-900/30 text-amber-300',
+      geography: 'bg-amber-900/30 text-amber-300',
+      language: 'bg-blue-900/30 text-blue-300',
+      tradition: 'bg-purple-900/30 text-purple-300',
+      modern: 'bg-yellow-900/30 text-yellow-300'
     }
-    return colors[category as keyof typeof colors] || 'bg-slate-100 text-slate-800'
+    return colors[category as keyof typeof colors] || 'bg-space-800/50 text-gray-100'
   }
 
   const getThemeStyles = () => {
     switch (culturalTheme) {
       case 'traditional':
-        return 'bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 border-amber-200'
+        return 'bg-gradient-to-br from-space-900/80 via-space-800/80 to-amber-900/30 border-amber-500/30'
       case 'modern':
-        return 'bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 border-blue-200'
+        return 'bg-gradient-to-br from-space-900/30 to-amber-900/30 border-orange-500/30'
       case 'academic':
-        return 'bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 border-emerald-200'
+        return 'bg-space-950 border-amber-500/30'
       default:
-        return 'bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 border-emerald-200'
+        return 'bg-space-950 border-amber-500/30'
     }
   }
 
@@ -153,7 +153,7 @@ export function CulturalContextPanel({
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Globe className="w-5 h-5 text-emerald-600" />
+            <Globe className="w-5 h-5 text-amber-400" />
             Cultural Context
           </CardTitle>
           <Badge variant="outline" className="text-xs">
@@ -180,14 +180,14 @@ export function CulturalContextPanel({
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-semibold text-slate-800">{fact.title}</h3>
+                  <h3 className="font-semibold text-gray-100">{fact.title}</h3>
                   <Badge variant="secondary" className={`text-xs ${getCategoryBadge(fact.category)}`}>
                     {fact.category}
                   </Badge>
                 </div>
                 {fact.nkoText && (
-                  <div 
-                    className="text-xl font-bold text-emerald-700 mb-2" 
+                  <div
+                    className="text-xl font-bold text-amber-300 mb-2"
                     style={{ fontFamily: "'Geeza Pro', 'Al Nile', serif" }}
                     dir="rtl"
                   >
@@ -198,17 +198,17 @@ export function CulturalContextPanel({
             </div>
 
             {/* Content */}
-            <div className="bg-white/70 p-4 rounded-lg">
-              <p className="text-slate-700 leading-relaxed mb-3">
+            <div className="bg-space-900/70 p-4 rounded-lg">
+              <p className="text-gray-200 leading-relaxed mb-3">
                 {fact.content}
               </p>
-              
-              <div className="border-l-4 border-emerald-400 pl-4 bg-emerald-50/50 p-3 rounded-r-lg">
+
+              <div className="border-l-4 border-amber-400 pl-4 bg-amber-900/30 p-3 rounded-r-lg">
                 <div className="flex items-start gap-2">
-                  <Heart className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
+                  <Heart className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-emerald-800 mb-1">Cultural Significance</p>
-                    <p className="text-sm text-emerald-700">{fact.significance}</p>
+                    <p className="text-sm font-medium text-amber-300 mb-1">Cultural Significance</p>
+                    <p className="text-sm text-amber-200">{fact.significance}</p>
                   </div>
                 </div>
               </div>
@@ -224,19 +224,19 @@ export function CulturalContextPanel({
                 key={index}
                 onClick={() => setCurrentFact(index)}
                 className={`w-2 h-2 rounded-full transition-all ${
-                  index === currentFact 
-                    ? 'bg-emerald-500 w-6' 
-                    : 'bg-slate-300 hover:bg-slate-400'
+                  index === currentFact
+                    ? 'bg-amber-500 w-6'
+                    : 'bg-gray-400 hover:bg-gray-300'
                 }`}
               />
             ))}
           </div>
-          
+
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setCurrentFact((prev) => (prev + 1) % relevantFacts.length)}
-            className="text-emerald-600 hover:text-emerald-700"
+            className="text-amber-400 hover:text-amber-300"
           >
             Next Insight
             <ChevronRight className="w-3 h-3 ml-1" />
@@ -244,22 +244,22 @@ export function CulturalContextPanel({
         </div>
 
         {/* Quick Facts */}
-        <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/50">
-          <div className="text-center p-3 bg-white/50 rounded-lg">
-            <div className="text-lg font-bold text-slate-800">27</div>
-            <div className="text-xs text-slate-600">Letters in N'Ko</div>
+        <div className="grid grid-cols-2 gap-3 pt-4 border-t border-amber-500/20">
+          <div className="text-center p-3 bg-space-900/50 rounded-lg">
+            <div className="text-lg font-bold text-gray-100">27</div>
+            <div className="text-xs text-gray-300">Letters in N'Ko</div>
           </div>
-          <div className="text-center p-3 bg-white/50 rounded-lg">
-            <div className="text-lg font-bold text-slate-800">1949</div>
-            <div className="text-xs text-slate-600">Year Created</div>
+          <div className="text-center p-3 bg-space-900/50 rounded-lg">
+            <div className="text-lg font-bold text-gray-100">1949</div>
+            <div className="text-xs text-gray-300">Year Created</div>
           </div>
-          <div className="text-center p-3 bg-white/50 rounded-lg">
-            <div className="text-lg font-bold text-slate-800">15M+</div>
-            <div className="text-xs text-slate-600">Speakers Served</div>
+          <div className="text-center p-3 bg-space-900/50 rounded-lg">
+            <div className="text-lg font-bold text-gray-100">15M+</div>
+            <div className="text-xs text-gray-300">Speakers Served</div>
           </div>
-          <div className="text-center p-3 bg-white/50 rounded-lg">
-            <div className="text-lg font-bold text-slate-800">RTL</div>
-            <div className="text-xs text-slate-600">Writing Direction</div>
+          <div className="text-center p-3 bg-space-900/50 rounded-lg">
+            <div className="text-lg font-bold text-gray-100">RTL</div>
+            <div className="text-xs text-gray-300">Writing Direction</div>
           </div>
         </div>
 
@@ -267,9 +267,9 @@ export function CulturalContextPanel({
         <div className="flex justify-center pt-4">
           <div className="flex gap-1 opacity-30">
             {['ߒ', 'ߞ', 'ߏ', '߫', 'ߒ', 'ߞ', 'ߏ'].map((char, i) => (
-              <span 
-                key={i} 
-                className="text-emerald-600 text-sm"
+              <span
+                key={i}
+                className="text-amber-400 text-sm"
                 style={{ fontFamily: "'Geeza Pro', 'Al Nile', serif" }}
               >
                 {char}

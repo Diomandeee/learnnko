@@ -54,7 +54,11 @@ interface VocabularyItem {
   createdAt: Date
 }
 
-export function NkoLearningHub() {
+interface NkoLearningHubProps {
+  showExtraTabs?: boolean // AI Learning and Batch tabs
+}
+
+export function NkoLearningHub({ showExtraTabs = false }: NkoLearningHubProps) {
   const [stats, setStats] = useState({
     messagesCount: 0,
     wordsLearned: 0,
@@ -119,37 +123,37 @@ export function NkoLearningHub() {
   return (
     <div className="space-y-4 md:space-y-6 lg:space-y-8 px-1 md:px-0">
       {/* Enhanced Header - Mobile Responsive */}
-      <Card className="border-0 shadow-xl bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50">
+      <Card className="border-0 shadow-xl bg-gradient-to-br from-amber-50/50 via-orange-50/50 to-yellow-50/50 backdrop-blur-sm border border-amber-500/20">
         <CardHeader className="pb-4 md:pb-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             {/* Title Section */}
             <div className="flex items-center gap-3 md:gap-4">
-              <div className="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg">
+              <div className="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-amber-500 via-orange-400 to-yellow-500 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/20">
                 <Languages className="w-6 h-6 md:w-8 md:h-8 text-white" />
               </div>
               <div>
-                <CardTitle className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-emerald-700 to-teal-700 bg-clip-text text-transparent">
+                <CardTitle className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-amber-600 via-orange-500 to-yellow-600 bg-clip-text text-transparent">
                   N'Ko Learning Hub
                 </CardTitle>
-                <p className="text-sm md:text-base lg:text-lg text-slate-600 mt-1 hidden md:block">
+                <p className="text-sm md:text-base lg:text-lg text-gray-600 mt-1 hidden md:block">
                   Comprehensive N'Ko language learning platform
                 </p>
               </div>
             </div>
-            
+
             {/* Stats Section - Responsive */}
             <div className="grid grid-cols-3 gap-4 lg:flex lg:items-center lg:gap-6">
               <div className="text-center">
-                <div className="text-lg md:text-xl lg:text-2xl font-bold text-emerald-600">{stats.messagesCount}</div>
-                <div className="text-xs md:text-sm text-slate-600">Messages</div>
+                <div className="text-lg md:text-xl lg:text-2xl font-bold text-amber-600">{stats.messagesCount}</div>
+                <div className="text-xs md:text-sm text-gray-600">Messages</div>
               </div>
               <div className="text-center">
-                <div className="text-lg md:text-xl lg:text-2xl font-bold text-teal-600">{stats.vocabulary}</div>
-                <div className="text-xs md:text-sm text-slate-600">Words</div>
+                <div className="text-lg md:text-xl lg:text-2xl font-bold text-orange-600">{stats.vocabulary}</div>
+                <div className="text-xs md:text-sm text-gray-600">Words</div>
               </div>
               <div className="text-center">
-                <div className="text-lg md:text-xl lg:text-2xl font-bold text-cyan-600">{stats.savedTexts}</div>
-                <div className="text-xs md:text-sm text-slate-600">Saved</div>
+                <div className="text-lg md:text-xl lg:text-2xl font-bold text-yellow-600">{stats.savedTexts}</div>
+                <div className="text-xs md:text-sm text-gray-600">Saved</div>
               </div>
             </div>
           </div>
@@ -198,16 +202,18 @@ export function NkoLearningHub() {
                   <span>French</span>
                 </TabsTrigger>
               </TabsList>
-              <TabsList className="grid w-full grid-cols-2 gap-1 bg-gradient-to-r from-purple-100 to-indigo-100 h-auto p-1 mt-2">
-                <TabsTrigger value="learning" className="flex items-center justify-center gap-2 py-2 text-xs bg-gradient-to-r from-purple-500/10 to-indigo-500/10">
-                  <Brain className="w-4 h-4 text-purple-600" />
-                  <span className="text-purple-700 font-medium">AI Learning</span>
-                </TabsTrigger>
-                <TabsTrigger value="batch" className="flex items-center justify-center gap-2 py-2 text-xs bg-gradient-to-r from-green-500/10 to-emerald-500/10">
-                  <Layers className="w-4 h-4 text-green-600" />
-                  <span className="text-green-700 font-medium">Batch (50% off)</span>
-                </TabsTrigger>
-              </TabsList>
+              {showExtraTabs && (
+                <TabsList className="grid w-full grid-cols-2 gap-1 bg-gradient-to-r from-purple-100 to-indigo-100 h-auto p-1 mt-2">
+                  <TabsTrigger value="learning" className="flex items-center justify-center gap-2 py-2 text-xs bg-gradient-to-r from-purple-500/10 to-yellow-500/10">
+                    <Brain className="w-4 h-4 text-purple-600" />
+                    <span className="text-purple-700 font-medium">AI Learning</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="batch" className="flex items-center justify-center gap-2 py-2 text-xs bg-gradient-to-r from-amber-500/10 to-amber-500/10">
+                    <Layers className="w-4 h-4 text-green-600" />
+                    <span className="text-green-700 font-medium">Batch (50% off)</span>
+                  </TabsTrigger>
+                </TabsList>
+              )}
             </div>
 
             {/* Tablet: Grid layout */}
@@ -248,16 +254,18 @@ export function NkoLearningHub() {
                   <span>French</span>
                 </TabsTrigger>
               </TabsList>
-              <TabsList className="grid w-full grid-cols-2 gap-1 bg-gradient-to-r from-purple-100 to-indigo-100 mt-2">
-                <TabsTrigger value="learning" className="flex items-center justify-center gap-2 py-3">
-                  <Brain className="w-4 h-4 text-purple-600" />
-                  <span className="text-purple-700 font-medium">AI Learning (Live)</span>
-                </TabsTrigger>
-                <TabsTrigger value="batch" className="flex items-center justify-center gap-2 py-3">
-                  <Layers className="w-4 h-4 text-green-600" />
-                  <span className="text-green-700 font-medium">Batch (50% off)</span>
-                </TabsTrigger>
-              </TabsList>
+              {showExtraTabs && (
+                <TabsList className="grid w-full grid-cols-2 gap-1 bg-gradient-to-r from-purple-100 to-indigo-100 mt-2">
+                  <TabsTrigger value="learning" className="flex items-center justify-center gap-2 py-3">
+                    <Brain className="w-4 h-4 text-purple-600" />
+                    <span className="text-purple-700 font-medium">AI Learning (Live)</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="batch" className="flex items-center justify-center gap-2 py-3">
+                    <Layers className="w-4 h-4 text-green-600" />
+                    <span className="text-green-700 font-medium">Batch (50% off)</span>
+                  </TabsTrigger>
+                </TabsList>
+              )}
             </div>
 
             {/* Desktop: Two rows with standard tabs and featured Learning tab */}
@@ -296,16 +304,18 @@ export function NkoLearningHub() {
                   French
                 </TabsTrigger>
               </TabsList>
-              <TabsList className="grid w-full grid-cols-2 gap-1 bg-gradient-to-r from-purple-100 to-indigo-100">
-                <TabsTrigger value="learning" className="flex items-center justify-center gap-2 py-3">
-                  <Brain className="w-5 h-5 text-purple-600" />
-                  <span className="text-purple-700 font-medium">AI Learning (Live)</span>
-                </TabsTrigger>
-                <TabsTrigger value="batch" className="flex items-center justify-center gap-2 py-3">
-                  <Layers className="w-5 h-5 text-green-600" />
-                  <span className="text-green-700 font-medium">Batch Processing (50% off)</span>
-                </TabsTrigger>
-              </TabsList>
+              {showExtraTabs && (
+                <TabsList className="grid w-full grid-cols-2 gap-1 bg-gradient-to-r from-purple-100 to-indigo-100">
+                  <TabsTrigger value="learning" className="flex items-center justify-center gap-2 py-3">
+                    <Brain className="w-5 h-5 text-purple-600" />
+                    <span className="text-purple-700 font-medium">AI Learning (Live)</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="batch" className="flex items-center justify-center gap-2 py-3">
+                    <Layers className="w-5 h-5 text-green-600" />
+                    <span className="text-green-700 font-medium">Batch Processing (50% off)</span>
+                  </TabsTrigger>
+                </TabsList>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -555,10 +565,12 @@ export function NkoLearningHub() {
         </TabsContent>
       </Tabs>
 
-      {/* Quick Access Widgets - Hidden on Mobile */}
-      <div className="mt-4 md:mt-6 lg:mt-8 hidden md:block">
-        <TranslatorQuickAccess compact={true} />
-      </div>
+      {/* Quick Access Widgets - Hidden on Mobile and on home page */}
+      {showExtraTabs && (
+        <div className="mt-4 md:mt-6 lg:mt-8 hidden md:block">
+          <TranslatorQuickAccess compact={true} />
+        </div>
+      )}
     </div>
   )
 } 
