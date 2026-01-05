@@ -42,6 +42,64 @@ import { ConversationTab } from '@/components/translate/conversation-tab';
 import { InscriptionTicker } from '@/components/inscription/live/InscriptionTicker';
 import { InscriptionStream } from '@/components/inscription/live/InscriptionStream';
 import { ClaimLegend, ClaimLegendInline } from '@/components/inscription/live/ClaimLegend';
+import { useInscriptionStore } from '@/store/use-inscription-store';
+import { Badge } from '@/components/ui/badge';
+import { BarChart3, Clock, TrendingUp, Wifi } from 'lucide-react';
+
+// Analytics component for inscription stats
+function InscriptionAnalytics() {
+  const stats = useInscriptionStore((state) => state.stats);
+  const liveInscriptions = useInscriptionStore((state) => state.liveInscriptions);
+  const isRealtimeSubscribed = useInscriptionStore((state) => state.isRealtimeSubscribed);
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-gradient-to-br from-space-800/80 to-space-900/80 border border-amber-500/20 rounded-lg">
+      {/* Connection Status */}
+      <div className="flex items-center gap-2">
+        <Wifi className={`h-4 w-4 ${isRealtimeSubscribed ? 'text-green-500' : 'text-gray-500'}`} />
+        <div>
+          <div className="text-xs text-gray-400">Status</div>
+          <div className="text-sm font-medium text-amber-200">
+            {isRealtimeSubscribed ? 'Live' : 'Offline'}
+          </div>
+        </div>
+      </div>
+
+      {/* Total Count */}
+      <div className="flex items-center gap-2">
+        <BarChart3 className="h-4 w-4 text-amber-400" />
+        <div>
+          <div className="text-xs text-gray-400">Total</div>
+          <div className="text-sm font-medium text-amber-200">
+            {liveInscriptions.length.toLocaleString()}
+          </div>
+        </div>
+      </div>
+
+      {/* Avg Confidence */}
+      <div className="flex items-center gap-2">
+        <TrendingUp className="h-4 w-4 text-amber-400" />
+        <div>
+          <div className="text-xs text-gray-400">Avg Confidence</div>
+          <div className="text-sm font-medium text-amber-200">
+            {stats ? `${Math.round(stats.avgConfidence * 100)}%` : '—'}
+          </div>
+        </div>
+      </div>
+
+      {/* Detection Rate */}
+      <div className="flex items-center gap-2">
+        <Clock className="h-4 w-4 text-amber-400" />
+        <div>
+          <div className="text-xs text-gray-400">Rate</div>
+          <div className="text-sm font-medium text-amber-200">
+            {stats && stats.detectionRate > 0 ? `${stats.detectionRate.toFixed(1)}/s` : '—'}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function NkoDashboardContent() {
   const searchParams = useSearchParams();
@@ -140,42 +198,48 @@ function NkoDashboardContent() {
           </TabsContent>
 
           <TabsContent value="inscriptions">
-            <div className="space-y-4 lg:grid lg:grid-cols-4 lg:gap-6 lg:space-y-0">
-              {/* Main Content - Ticker or Detailed Stream */}
-              <div className="lg:col-span-3">
-                {showDetailedView ? (
-                  <div className="space-y-4">
-                    <InscriptionStream />
-                    <button
-                      onClick={() => setShowDetailedView(false)}
-                      className="flex items-center gap-2 text-sm text-amber-400 hover:text-amber-300 transition-colors"
-                    >
-                      <Activity className="h-4 w-4" />
-                      Back to simple stream
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <InscriptionTicker
-                      onShowDetails={() => setShowDetailedView(true)}
-                      maxItems={100}
-                      className="rounded-lg"
-                    />
-                    {/* Inline legend below ticker on mobile */}
-                    <div className="lg:hidden">
-                      <ClaimLegendInline className="rounded-lg" />
-                    </div>
-                  </div>
-                )}
-              </div>
+            <div className="space-y-4">
+              {/* Analytics Bar */}
+              <InscriptionAnalytics />
 
-              {/* Sidebar - Claim Legend (visible on desktop) */}
-              <div className="hidden lg:block">
-                <ClaimLegend
-                  compact={false}
-                  collapsible={true}
-                  defaultCollapsed={false}
-                />
+              {/* Main Content Grid */}
+              <div className="lg:grid lg:grid-cols-4 lg:gap-6">
+                {/* Main Content - Ticker or Detailed Stream */}
+                <div className="lg:col-span-3">
+                  {showDetailedView ? (
+                    <div className="space-y-4">
+                      <InscriptionStream />
+                      <button
+                        onClick={() => setShowDetailedView(false)}
+                        className="flex items-center gap-2 text-sm text-amber-400 hover:text-amber-300 transition-colors"
+                      >
+                        <Activity className="h-4 w-4" />
+                        Back to simple stream
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <InscriptionTicker
+                        onShowDetails={() => setShowDetailedView(true)}
+                        maxItems={100}
+                        className="rounded-lg w-full"
+                      />
+                      {/* Inline legend below ticker on mobile */}
+                      <div className="lg:hidden">
+                        <ClaimLegendInline className="rounded-lg" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sidebar - Claim Legend (visible on desktop) */}
+                <div className="hidden lg:block">
+                  <ClaimLegend
+                    compact={false}
+                    collapsible={true}
+                    defaultCollapsed={false}
+                  />
+                </div>
               </div>
             </div>
           </TabsContent>
