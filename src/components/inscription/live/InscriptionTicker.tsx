@@ -9,9 +9,10 @@
 'use client';
 
 import * as React from 'react';
-import { Wifi, WifiOff, Settings, Info } from 'lucide-react';
+import { Wifi, WifiOff, Settings, Info, Eye, EyeOff, BarChart2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
   Tooltip,
   TooltipContent,
@@ -137,6 +138,7 @@ export function InscriptionTicker({
 }: InscriptionTickerProps) {
   const [wsInstance, setWsInstance] = React.useState<InscriptionWebSocket | null>(null);
   const [tickerItems, setTickerItems] = React.useState<TickerItem[]>([]);
+  const [showPatternAnalysis, setShowPatternAnalysis] = React.useState(false);
 
   // Store actions and state
   const addLiveInscription = useInscriptionStore((state) => state.addLiveInscription);
@@ -205,52 +207,145 @@ export function InscriptionTicker({
   // Connection indicator - prefer realtime status
   const isConnected = isRealtimeSubscribed || connectionStatus === 'connected';
 
+  // Compute pattern statistics for analysis view
+  const patternStats = React.useMemo(() => {
+    if (tickerItems.length === 0) return null;
+
+    const claimCounts: Record<ClaimType, number> = {} as Record<ClaimType, number>;
+    let totalConfidence = 0;
+
+    tickerItems.forEach((item) => {
+      claimCounts[item.claimType] = (claimCounts[item.claimType] || 0) + 1;
+      totalConfidence += item.confidence || 0;
+    });
+
+    const dominantClaim = Object.entries(claimCounts).sort((a, b) => b[1] - a[1])[0];
+    const avgConfidence = totalConfidence / tickerItems.length;
+
+    return {
+      claimCounts,
+      dominantClaim: dominantClaim ? { type: dominantClaim[0] as ClaimType, count: dominantClaim[1] } : null,
+      avgConfidence,
+      total: tickerItems.length,
+    };
+  }, [tickerItems]);
+
   return (
     <TooltipProvider>
-      <div className={cn('relative', className)}>
-        {/* Connection Status (top right) */}
-        <div className="absolute top-2 right-2 z-10 flex items-center gap-2">
-          {isConnected ? (
-            <Wifi className="h-4 w-4 text-green-500 animate-pulse" />
-          ) : (
-            <WifiOff className="h-4 w-4 text-gray-500" />
-          )}
+      <div className={cn('relative flex flex-col', className)}>
+        {/* Header Bar */}
+        <div className="flex items-center justify-between p-2 bg-space-800/60 border-b border-amber-500/20 rounded-t-lg">
+          {/* Left: Connection status */}
+          <div className="flex items-center gap-2">
+            {isConnected ? (
+              <Wifi className="h-4 w-4 text-green-500 animate-pulse" />
+            ) : (
+              <WifiOff className="h-4 w-4 text-gray-500" />
+            )}
+            <span className="text-xs text-gray-400">
+              {tickerItems.length} inscriptions
+            </span>
+          </div>
 
-          {onShowDetails && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 text-gray-400 hover:text-amber-300"
-              onClick={onShowDetails}
-              title="Show detailed view"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          )}
+          {/* Right: Controls */}
+          <div className="flex items-center gap-3">
+            {/* Pattern Analysis Toggle */}
+            <div className="flex items-center gap-2">
+              <BarChart2 className={cn('h-4 w-4', showPatternAnalysis ? 'text-amber-400' : 'text-gray-500')} />
+              <Switch
+                checked={showPatternAnalysis}
+                onCheckedChange={setShowPatternAnalysis}
+                className="data-[state=checked]:bg-amber-500"
+              />
+              <span className="text-xs text-gray-400 hidden sm:inline">Patterns</span>
+            </div>
+
+            {onShowDetails && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 text-gray-400 hover:text-amber-300"
+                onClick={onShowDetails}
+                title="Show detailed view"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
 
-        {/* RTL Ticker Display - expands to fill space */}
+        {/* Pattern Analysis Panel (collapsible) */}
+        {showPatternAnalysis && patternStats && (
+          <div className="p-3 bg-space-800/80 border-b border-amber-500/20 space-y-2">
+            <div className="text-xs font-medium text-amber-300 flex items-center gap-2">
+              <Eye className="h-3 w-3" />
+              Pattern Analysis
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              {/* Dominant Claim */}
+              <div className="bg-space-900/60 p-2 rounded">
+                <div className="text-gray-500">Dominant</div>
+                <div className="text-amber-200 font-medium capitalize">
+                  {patternStats.dominantClaim?.type || '—'}
+                  <span className="text-gray-400 ml-1">
+                    ({patternStats.dominantClaim?.count || 0})
+                  </span>
+                </div>
+              </div>
+              {/* Avg Confidence */}
+              <div className="bg-space-900/60 p-2 rounded">
+                <div className="text-gray-500">Avg Confidence</div>
+                <div className="text-amber-200 font-medium">
+                  {Math.round(patternStats.avgConfidence * 100)}%
+                </div>
+              </div>
+              {/* Claim Distribution */}
+              <div className="bg-space-900/60 p-2 rounded col-span-2">
+                <div className="text-gray-500 mb-1">Distribution</div>
+                <div className="flex flex-wrap gap-1">
+                  {Object.entries(patternStats.claimCounts)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5)
+                    .map(([type, count]) => (
+                      <Badge
+                        key={type}
+                        variant="outline"
+                        className="text-[10px] px-1.5 py-0 capitalize"
+                        style={{ borderColor: CLAIM_COLORS[type as ClaimType] + '60', color: CLAIM_COLORS[type as ClaimType] }}
+                      >
+                        {CLAIM_SIGILS[type as ClaimType]} {count}
+                      </Badge>
+                    ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* RTL Ticker Display - expands to fill remaining space */}
         <div
           className={cn(
-            'min-h-[500px] max-h-[70vh]',
+            'flex-1 min-h-[400px]',
             'overflow-y-auto overflow-x-hidden',
             'bg-gradient-to-br from-space-900/90 via-space-800/80 to-space-900/90',
-            'border border-amber-500/20 rounded-lg',
+            'border-x border-b border-amber-500/20 rounded-b-lg',
             'py-6 px-4'
           )}
           dir="rtl"
           lang="nqo"
         >
           {tickerItems.length === 0 ? (
-            <div className="text-gray-500 text-sm animate-pulse text-center py-12">
-              {isLoadingRecent
-                ? 'Loading historical inscriptions...'
-                : isConnected
-                  ? 'Waiting for new inscriptions...'
-                  : 'Connecting...'}
+            <div className="h-full flex items-center justify-center">
+              <div className="text-gray-500 text-sm animate-pulse text-center">
+                {isLoadingRecent
+                  ? 'Loading historical inscriptions...'
+                  : isConnected
+                    ? 'Waiting for new inscriptions...'
+                    : 'Connecting...'}
+              </div>
             </div>
           ) : (
-            <div className="flex flex-wrap justify-start items-start content-start gap-1">
+            <div className="flex flex-wrap justify-center items-center content-start gap-2 min-h-full">
               {tickerItems.map((item, index) => (
                 <TickerItemDisplay key={item.id} item={item} index={index} />
               ))}
@@ -259,13 +354,13 @@ export function InscriptionTicker({
         </div>
 
         {/* Hover hint */}
-        <div className="absolute bottom-1 left-2 text-xs text-gray-600 flex items-center gap-1">
+        <div className="absolute bottom-2 left-3 text-xs text-gray-600 flex items-center gap-1 z-10">
           <Info className="h-3 w-3" />
           <span>Hover over sigils for details</span>
         </div>
 
         {/* Subtle gradient overlay for fade effect */}
-        <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-space-900 to-transparent pointer-events-none" />
+        <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-space-900/50 to-transparent pointer-events-none rounded-l-lg" />
       </div>
     </TooltipProvider>
   );
