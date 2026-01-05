@@ -44,7 +44,7 @@ interface TickerItem {
   confidence?: number;
 }
 
-function TickerItemDisplay({ item, index }: { item: TickerItem; index: number }) {
+function TickerItemDisplay({ item }: { item: TickerItem; index: number }) {
   const color = CLAIM_COLORS[item.claimType];
   const metadata = CLAIM_METADATA.find((c) => c.type === item.claimType);
 
@@ -56,14 +56,13 @@ function TickerItemDisplay({ item, index }: { item: TickerItem; index: number })
       <TooltipTrigger asChild>
         <span
           className={cn(
-            'inline-block animate-in fade-in slide-in-from-right-8 duration-700',
-            'mx-2 text-4xl md:text-5xl lg:text-6xl',
-            'hover:scale-125 transition-transform cursor-pointer',
-            'hover:drop-shadow-[0_0_8px_currentColor]'
+            'inline-block opacity-100',
+            'mx-1.5 text-3xl md:text-4xl lg:text-5xl',
+            'hover:scale-110 transition-transform duration-150 cursor-pointer',
+            'hover:drop-shadow-[0_0_6px_currentColor]'
           )}
           style={{
             color,
-            animationDelay: `${index * 100}ms`,
             fontFamily: "'Noto Sans NKo', 'Ebrima', sans-serif",
           }}
         >

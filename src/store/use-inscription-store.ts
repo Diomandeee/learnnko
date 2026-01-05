@@ -327,7 +327,7 @@ export const useInscriptionStore = create<InscriptionState>()(
         }
 
         set((state) => ({
-          liveInscriptions: [inscription, ...state.liveInscriptions].slice(0, 50),
+          liveInscriptions: [inscription, ...state.liveInscriptions].slice(0, 200),
         }));
 
         // Persist to Supabase (fire and forget) unless skipPersist is true
