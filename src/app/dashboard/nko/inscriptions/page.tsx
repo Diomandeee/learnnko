@@ -252,8 +252,8 @@ function NkoDashboardContent() {
                         <div className="space-y-3">
                           <InscriptionTicker
                             onShowDetails={() => setShowDetailedView(true)}
-                            maxItems={100}
-                            className="rounded-lg w-full h-[60vh]"
+                            maxItems={150}
+                            className="rounded-lg w-full h-[70vh]"
                           />
                           {/* Inline legend below ticker on mobile */}
                           <div className="lg:hidden">
