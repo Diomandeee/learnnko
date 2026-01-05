@@ -44,7 +44,10 @@ next-env.d.ts
 .DS_Store
 *.log
 
-# ML Training System - generated files
+# ML Training System - separate git repo
+nko/
+
+# ML Training System - generated files (if nko tracked)
 nko/__pycache__/
 nko/**/__pycache__/
 nko/**/*.pyc
