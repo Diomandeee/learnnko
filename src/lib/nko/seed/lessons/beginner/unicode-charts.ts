@@ -1,4 +1,4 @@
-import { NkoLessonSeed } from "../lesson-library-types"
+import { NkoLessonSeed } from "../lesson-library-types.ts"
 
 export const beginnerUnicodeChartsLessons: NkoLessonSeed[] = [
   {
