@@ -7,13 +7,14 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import {
   type Inscription,
   type ClaimType,
   type InscriptionFilters,
   type InscriptionStats,
 } from '@/lib/inscription/types';
-import { getSupabase, saveInscription } from '@/lib/supabase/client';
+import { getSupabase, saveInscription, isSupabaseConfigured } from '@/lib/supabase/client';
 
 // =====================================================
 // CONNECTION STATUS
@@ -76,7 +77,7 @@ interface InscriptionState {
   // ============ Actions ============
 
   // Live stream actions
-  addLiveInscription: (inscription: Inscription) => void;
+  addLiveInscription: (inscription: Inscription, skipPersist?: boolean) => void;
   clearLiveInscriptions: () => void;
   pauseLive: () => void;
   resumeLive: () => void;
@@ -91,6 +92,11 @@ interface InscriptionState {
   // Historical data actions
   loadRecentInscriptions: (limit?: number) => Promise<void>;
   isLoadingRecent: boolean;
+
+  // Realtime subscription actions
+  subscribeToLiveInscriptions: () => void;
+  unsubscribeFromLiveInscriptions: () => void;
+  isRealtimeSubscribed: boolean;
 
   // Filter actions
   setFilters: (filters: Partial<InscriptionFilters>) => void;
@@ -117,6 +123,62 @@ const DEFAULT_FILTERS: InscriptionFilters = {
   sessionId: undefined,
   dateRange: undefined,
 };
+
+// Module-level subscription channel (not persisted)
+let realtimeChannel: RealtimeChannel | null = null;
+
+// Claim type index for converting DB rows
+const CLAIM_TYPE_INDEX: (
+  | 'stabilize'
+  | 'disperse'
+  | 'transition'
+  | 'return'
+  | 'dwell'
+  | 'oscillate'
+  | 'recover'
+  | 'novel'
+  | 'placeShift'
+  | 'echo'
+)[] = [
+  'stabilize',
+  'disperse',
+  'transition',
+  'return',
+  'dwell',
+  'oscillate',
+  'recover',
+  'novel',
+  'placeShift',
+  'echo',
+];
+
+/**
+ * Convert a database row to an Inscription object.
+ */
+function rowToInscription(row: any): Inscription {
+  return {
+    id: row.id,
+    claimType: typeof row.claim_type === 'number'
+      ? CLAIM_TYPE_INDEX[row.claim_type] || 'stabilize'
+      : row.claim_type,
+    nkoText: row.nko_text,
+    timestampMs: row.timestamp_ms,
+    window:
+      row.window_t0 && row.window_t1
+        ? { t0: row.window_t0, t1: row.window_t1 }
+        : null,
+    confidence: row.confidence,
+    place: row.place,
+    basinId: row.basin_id,
+    provenance: {
+      fusionFrameId: row.fusion_frame_id || 0,
+      sensorFrameIds: row.sensor_frame_ids || [],
+      claimIr: row.claim_ir || {},
+    },
+    createdAt: row.created_at,
+    sessionId: row.session_id,
+  };
+}
 
 // =====================================================
 // HELPER FUNCTIONS
@@ -245,6 +307,7 @@ export const useInscriptionStore = create<InscriptionState>()(
       sessionInscriptions: [],
       isLoadingSession: false,
       isLoadingRecent: false,
+      isRealtimeSubscribed: false,
       filters: DEFAULT_FILTERS,
       stats: null,
       isLivePaused: false,
@@ -252,20 +315,28 @@ export const useInscriptionStore = create<InscriptionState>()(
 
       // ============ Live Stream Actions ============
 
-      addLiveInscription: (inscription) => {
-        const { isLivePaused } = get();
+      addLiveInscription: (inscription, skipPersist = false) => {
+        const { isLivePaused, liveInscriptions } = get();
 
         // Don't add if live is paused
         if (isLivePaused) return;
+
+        // Check for duplicates
+        if (liveInscriptions.some((i) => i.id === inscription.id)) {
+          return; // Already have this inscription
+        }
 
         set((state) => ({
           liveInscriptions: [inscription, ...state.liveInscriptions].slice(0, 50),
         }));
 
-        // Persist to Supabase (fire and forget)
-        saveInscription(inscription).catch((err) => {
-          console.error('Failed to persist inscription:', err);
-        });
+        // Persist to Supabase (fire and forget) unless skipPersist is true
+        // skipPersist is true when the inscription comes from Supabase Realtime (already persisted)
+        if (!skipPersist) {
+          saveInscription(inscription).catch((err) => {
+            console.error('Failed to persist inscription:', err);
+          });
+        }
 
         // Recompute stats
         get().computeStats();
@@ -432,6 +503,81 @@ export const useInscriptionStore = create<InscriptionState>()(
         } catch (error) {
           console.error('Error loading recent inscriptions:', error);
           set({ isLoadingRecent: false });
+        }
+      },
+
+      // ============ Realtime Subscription Actions ============
+
+      subscribeToLiveInscriptions: () => {
+        // Check if already subscribed or not configured
+        if (realtimeChannel || !isSupabaseConfigured()) {
+          console.log('[InscriptionStore] Already subscribed or Supabase not configured');
+          return;
+        }
+
+        try {
+          const supabase = getSupabase();
+
+          // Create a channel for nko_inscriptions INSERT events
+          realtimeChannel = supabase
+            .channel('nko_inscriptions_realtime')
+            .on(
+              'postgres_changes',
+              {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'nko_inscriptions',
+              },
+              (payload) => {
+                console.log('[InscriptionStore] Realtime INSERT:', payload.new?.id);
+
+                // Convert the database row to an Inscription
+                const inscription = rowToInscription(payload.new);
+
+                // Add to live inscriptions (skipPersist=true since it's already in DB)
+                get().addLiveInscription(inscription, true);
+              }
+            )
+            .subscribe((status) => {
+              console.log('[InscriptionStore] Realtime subscription status:', status);
+              if (status === 'SUBSCRIBED') {
+                set({
+                  isRealtimeSubscribed: true,
+                  connectionStatus: 'connected',
+                  isConnected: true,
+                });
+              } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+                set({
+                  isRealtimeSubscribed: false,
+                  connectionStatus: 'disconnected',
+                  isConnected: false,
+                });
+              }
+            });
+
+          console.log('[InscriptionStore] Subscribed to nko_inscriptions realtime');
+        } catch (error) {
+          console.error('[InscriptionStore] Failed to subscribe:', error);
+          set({
+            connectionStatus: 'error',
+            connectionError: String(error),
+          });
+        }
+      },
+
+      unsubscribeFromLiveInscriptions: () => {
+        if (realtimeChannel) {
+          const supabase = getSupabase();
+          supabase.removeChannel(realtimeChannel);
+          realtimeChannel = null;
+
+          set({
+            isRealtimeSubscribed: false,
+            connectionStatus: 'disconnected',
+            isConnected: false,
+          });
+
+          console.log('[InscriptionStore] Unsubscribed from nko_inscriptions realtime');
         }
       },
 

@@ -147,63 +147,64 @@ export function InscriptionTicker({
   const liveInscriptions = useInscriptionStore((state) => state.liveInscriptions);
   const isLoadingRecent = useInscriptionStore((state) => state.isLoadingRecent);
 
-  // Load historical inscriptions on mount
+  // Get realtime subscription actions
+  const subscribeToLiveInscriptions = useInscriptionStore((state) => state.subscribeToLiveInscriptions);
+  const unsubscribeFromLiveInscriptions = useInscriptionStore((state) => state.unsubscribeFromLiveInscriptions);
+  const isRealtimeSubscribed = useInscriptionStore((state) => state.isRealtimeSubscribed);
+
+  // Load historical inscriptions and subscribe to realtime on mount
   React.useEffect(() => {
     loadRecentInscriptions(maxItems);
-  }, [loadRecentInscriptions, maxItems]);
+    subscribeToLiveInscriptions();
 
-  // Seed ticker with existing store data
+    return () => {
+      unsubscribeFromLiveInscriptions();
+    };
+  }, [loadRecentInscriptions, subscribeToLiveInscriptions, unsubscribeFromLiveInscriptions, maxItems]);
+
+  // Update ticker items when store inscriptions change
   React.useEffect(() => {
-    if (liveInscriptions.length > 0 && tickerItems.length === 0) {
-      const existingItems: TickerItem[] = liveInscriptions.map((inscription) => ({
+    if (liveInscriptions.length > 0) {
+      const items: TickerItem[] = liveInscriptions.map((inscription) => ({
         id: inscription.id,
         sigil: CLAIM_SIGILS[inscription.claimType],
         claimType: inscription.claimType,
         timestamp: inscription.timestampMs,
         confidence: inscription.confidence,
       }));
-      setTickerItems(existingItems.slice(0, maxItems));
+      setTickerItems(items.slice(0, maxItems));
     }
-  }, [liveInscriptions, tickerItems.length, maxItems]);
+  }, [liveInscriptions, maxItems]);
 
-  // WebSocket Setup
+  // Optional WebSocket for local development (localhost only)
   React.useEffect(() => {
-    const ws = new InscriptionWebSocket(
-      undefined,
-      (inscription) => {
-        // Add to store
-        addLiveInscription(inscription);
+    // Only use WebSocket in local dev mode as a supplemental source
+    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+      const ws = new InscriptionWebSocket(
+        undefined,
+        (inscription) => {
+          // Add to store (Supabase Realtime will dedupe if same ID)
+          addLiveInscription(inscription);
+        },
+        (status, error) => {
+          // Only update status if not already connected via Supabase
+          if (!isRealtimeSubscribed) {
+            setConnectionStatus(status, error);
+          }
+        }
+      );
 
-        // Add to ticker (sigil with metadata)
-        const sigil = CLAIM_SIGILS[inscription.claimType];
-        setTickerItems((prev) => {
-          const newItem: TickerItem = {
-            id: inscription.id,
-            sigil,
-            claimType: inscription.claimType,
-            timestamp: inscription.timestampMs,
-            confidence: inscription.confidence,
-          };
-          // Prepend new items (RTL - newest on right)
-          const updated = [newItem, ...prev];
-          return updated.slice(0, maxItems);
-        });
-      },
-      (status, error) => {
-        setConnectionStatus(status, error);
-      }
-    );
+      setWsInstance(ws);
+      ws.connect();
 
-    setWsInstance(ws);
-    ws.connect();
+      return () => {
+        ws.disconnect();
+      };
+    }
+  }, [addLiveInscription, setConnectionStatus, isRealtimeSubscribed]);
 
-    return () => {
-      ws.disconnect();
-    };
-  }, [addLiveInscription, setConnectionStatus, maxItems]);
-
-  // Connection indicator
-  const isConnected = connectionStatus === 'connected';
+  // Connection indicator - prefer realtime status
+  const isConnected = isRealtimeSubscribed || connectionStatus === 'connected';
 
   return (
     <TooltipProvider>
