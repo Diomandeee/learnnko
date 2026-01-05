@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client'
-import { nkoLessonLibrary } from '../src/lib/nko/seed/lessons/lesson-library.ts'
+import { nkoLessonLibrary } from '../src/lib/nko/seed/lessons/lesson-library'
 
 const prisma = new PrismaClient()
 
