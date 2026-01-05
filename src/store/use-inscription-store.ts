@@ -419,7 +419,7 @@ export const useInscriptionStore = create<InscriptionState>()(
 
       // ============ Historical Data Actions ============
 
-      loadRecentInscriptions: async (limit = 50) => {
+      loadRecentInscriptions: async (limit = 150) => {
         // Don't reload if we already have data
         const { liveInscriptions, isLoadingRecent } = get();
         if (isLoadingRecent) return;
