@@ -42,6 +42,7 @@ import { ConversationTab } from '@/components/translate/conversation-tab';
 import { InscriptionTicker } from '@/components/inscription/live/InscriptionTicker';
 import { InscriptionStream } from '@/components/inscription/live/InscriptionStream';
 import { ClaimLegend, ClaimLegendInline } from '@/components/inscription/live/ClaimLegend';
+import { SessionReview } from '@/components/inscription/live/SessionReview';
 import { useInscriptionStore } from '@/store/use-inscription-store';
 import { Badge } from '@/components/ui/badge';
 import { BarChart3, Clock, TrendingUp, Wifi } from 'lucide-react';
@@ -106,6 +107,7 @@ function NkoDashboardContent() {
   const tabFromUrl = searchParams.get('tab') || 'conversation';
   const [activeTab, setActiveTab] = React.useState(tabFromUrl);
   const [showDetailedView, setShowDetailedView] = React.useState(false);
+  const [inscriptionSubTab, setInscriptionSubTab] = React.useState<'live' | 'sessions'>('live');
 
   // Update active tab when URL changes
   React.useEffect(() => {
@@ -199,48 +201,84 @@ function NkoDashboardContent() {
 
           <TabsContent value="inscriptions">
             <div className="space-y-4">
-              {/* Analytics Bar */}
-              <InscriptionAnalytics />
-
-              {/* Main Content Grid */}
-              <div className="lg:grid lg:grid-cols-4 lg:gap-6">
-                {/* Main Content - Ticker or Detailed Stream */}
-                <div className="lg:col-span-3">
-                  {showDetailedView ? (
-                    <div className="space-y-4">
-                      <InscriptionStream />
-                      <button
-                        onClick={() => setShowDetailedView(false)}
-                        className="flex items-center gap-2 text-sm text-amber-400 hover:text-amber-300 transition-colors"
-                      >
-                        <Activity className="h-4 w-4" />
-                        Back to simple stream
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <InscriptionTicker
-                        onShowDetails={() => setShowDetailedView(true)}
-                        maxItems={100}
-                        className="rounded-lg w-full"
-                      />
-                      {/* Inline legend below ticker on mobile */}
-                      <div className="lg:hidden">
-                        <ClaimLegendInline className="rounded-lg" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Sidebar - Claim Legend (visible on desktop) */}
-                <div className="hidden lg:block">
-                  <ClaimLegend
-                    compact={false}
-                    collapsible={true}
-                    defaultCollapsed={false}
-                  />
-                </div>
+              {/* Sub-tabs for Live vs Sessions */}
+              <div className="flex items-center gap-4 border-b border-amber-500/20 pb-3">
+                <button
+                  onClick={() => setInscriptionSubTab('live')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    inscriptionSubTab === 'live'
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                      : 'text-gray-400 hover:text-amber-300 hover:bg-space-800/60'
+                  }`}
+                >
+                  <Wifi className="h-4 w-4" />
+                  Live Stream
+                </button>
+                <button
+                  onClick={() => setInscriptionSubTab('sessions')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    inscriptionSubTab === 'sessions'
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                      : 'text-gray-400 hover:text-amber-300 hover:bg-space-800/60'
+                  }`}
+                >
+                  <Clock className="h-4 w-4" />
+                  Session Review
+                </button>
               </div>
+
+              {/* Live Stream View */}
+              {inscriptionSubTab === 'live' && (
+                <>
+                  {/* Analytics Bar */}
+                  <InscriptionAnalytics />
+
+                  {/* Main Content Grid */}
+                  <div className="lg:grid lg:grid-cols-4 lg:gap-6">
+                    {/* Main Content - Ticker or Detailed Stream */}
+                    <div className="lg:col-span-3">
+                      {showDetailedView ? (
+                        <div className="space-y-4">
+                          <InscriptionStream />
+                          <button
+                            onClick={() => setShowDetailedView(false)}
+                            className="flex items-center gap-2 text-sm text-amber-400 hover:text-amber-300 transition-colors"
+                          >
+                            <Activity className="h-4 w-4" />
+                            Back to simple stream
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <InscriptionTicker
+                            onShowDetails={() => setShowDetailedView(true)}
+                            maxItems={100}
+                            className="rounded-lg w-full h-[60vh]"
+                          />
+                          {/* Inline legend below ticker on mobile */}
+                          <div className="lg:hidden">
+                            <ClaimLegendInline className="rounded-lg" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Sidebar - Claim Legend (visible on desktop) */}
+                    <div className="hidden lg:block">
+                      <ClaimLegend
+                        compact={false}
+                        collapsible={true}
+                        defaultCollapsed={false}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Session Review View */}
+              {inscriptionSubTab === 'sessions' && (
+                <SessionReview />
+              )}
             </div>
           </TabsContent>
         </Tabs>
