@@ -140,6 +140,9 @@ model User {
   // Relations
   lessonProgress    NkoUserLessonProgress[]
   achievements      UserAchievement[]
+  srsCards          SRSCard[]
+  srsSessions       SRSSession[]
+  srsStats          SRSUserStats?
   
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
@@ -276,4 +279,152 @@ model NkoDictionaryEntry {
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+// ==========================================
+// Spaced Repetition System (SRS) Models
+// ==========================================
+
+enum CardStatus {
+  NEW
+  LEARNING
+  REVIEW
+  RELEARNING
+  MASTERED
+}
+
+enum CardType {
+  VOCABULARY
+  LESSON
+  CHARACTER
+  PHRASE
+}
+
+model SRSCard {
+  id            String      @id @default(cuid())
+  userId        String
+  cardType      CardType
+  contentId     String      // Reference to vocabulary, lesson, etc.
+  
+  // SM-2 Algorithm fields
+  easeFactor    Float       @default(2.5)  // EF starts at 2.5
+  interval      Int         @default(0)     // Current interval in days
+  repetitions   Int         @default(0)     // Successful repetitions count
+  nextReviewDate DateTime   @default(now())
+  lastReviewDate DateTime?
+  status        CardStatus  @default(NEW)
+  streak        Int         @default(0)     // Consecutive correct answers
+  lapses        Int         @default(0)     // Times card was forgotten
+  
+  // Denormalized content for display (avoids joins during review)
+  front         String      // Question/prompt (e.g., N'Ko word)
+  back          String      // Answer (e.g., English translation)
+  pronunciation String?
+  example       String?
+  audioUrl      String?
+  
+  // Review history (stored as JSON array of quality ratings 0-5)
+  qualityHistory Int[]      @default([])
+  
+  // Relations
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviews       SRSReview[]
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  @@unique([userId, cardType, contentId])
+  @@index([userId, nextReviewDate])
+  @@index([userId, status])
+}
+
+model SRSReview {
+  id            String      @id @default(cuid())
+  cardId        String
+  userId        String
+  
+  // Review details
+  quality       Int         // Quality rating 0-5
+  responseTimeMs Int        // How long user took to respond
+  
+  // State before review (for analytics)
+  previousEF    Float
+  previousInterval Int
+  previousStatus CardStatus
+  
+  // State after review
+  newEF         Float
+  newInterval   Int
+  newStatus     CardStatus
+  
+  // Relations
+  card          SRSCard     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  session       SRSSession? @relation(fields: [sessionId], references: [id])
+  sessionId     String?
+  
+  createdAt     DateTime    @default(now())
+  
+  @@index([userId, createdAt])
+  @@index([cardId])
+}
+
+model SRSSession {
+  id            String      @id @default(cuid())
+  userId        String
+  
+  // Session timing
+  startedAt     DateTime    @default(now())
+  endedAt       DateTime?
+  
+  // Session statistics
+  cardsReviewed Int         @default(0)
+  correctCount  Int         @default(0)
+  incorrectCount Int        @default(0)
+  averageQuality Float      @default(0)
+  totalTimeMs   Int         @default(0)
+  
+  // Relations
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviews       SRSReview[]
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  @@index([userId, startedAt])
+}
+
+model SRSUserStats {
+  id            String      @id @default(cuid())
+  userId        String      @unique
+  
+  // Card counts by status
+  totalCards    Int         @default(0)
+  newCards      Int         @default(0)
+  learningCards Int         @default(0)
+  reviewCards   Int         @default(0)
+  masteredCards Int         @default(0)
+  
+  // Review statistics
+  totalReviews  Int         @default(0)
+  reviewsToday  Int         @default(0)
+  reviewsThisWeek Int       @default(0)
+  reviewsThisMonth Int      @default(0)
+  
+  // Performance metrics
+  averageEaseFactor Float   @default(2.5)
+  retentionRate Float       @default(0)
+  currentStreak Int         @default(0)
+  longestStreak Int         @default(0)
+  
+  // Time tracking
+  totalStudyTimeMinutes Int @default(0)
+  
+  lastReviewDate DateTime?
+  lastStatsUpdate DateTime  @default(now())
+  
+  // Relations
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }
