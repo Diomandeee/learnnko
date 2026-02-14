@@ -22,6 +22,7 @@ import { NkoKeyboard } from "@/components/nko/input/nko-keyboard"
 import { ConversationTab } from "@/components/translate/conversation-tab"
 import { InscriptionTicker } from "@/components/inscription/live/InscriptionTicker"
 import { InscriptionStream } from "@/components/inscription/live/InscriptionStream"
+import { CurriculumHub } from "@/components/curriculum/CurriculumHub"
 
 function NkoPageContent() {
   const searchParams = useSearchParams()
@@ -126,6 +127,10 @@ function NkoPageContent() {
 
           <TabsContent value="french">
             <ConversationTab />
+          </TabsContent>
+
+          <TabsContent value="curriculum">
+            <CurriculumHub />
           </TabsContent>
 
           <TabsContent value="inscriptions">

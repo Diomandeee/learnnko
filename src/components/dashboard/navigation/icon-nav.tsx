@@ -10,6 +10,7 @@ import {
   Keyboard,
   Archive,
   Activity,
+  GraduationCap,
   Menu,
   X,
   type LucideIcon
@@ -72,6 +73,12 @@ const navigation: NavItem[] = [
     href: "/nko?tab=french",
     icon: MessageCircle,
     label: "French"
+  },
+  {
+    name: "Curriculum",
+    href: "/nko?tab=curriculum",
+    icon: GraduationCap,
+    label: "Curriculum"
   },
   {
     name: "Inscriptions",

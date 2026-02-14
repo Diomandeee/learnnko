@@ -19,6 +19,7 @@ Usage:
     python run_extraction.py --dry-run          # List videos without processing
     python run_extraction.py --no-audio         # Skip audio extraction
     python run_extraction.py --retry-failed     # Retry previously failed videos
+    python run_extraction.py --from-manifest --resume  # Use existing manifest + resume
 """
 
 import asyncio
@@ -180,6 +181,54 @@ def get_channel_videos(channel_url: str, limit: Optional[int] = None) -> List[Di
             print(f"  yt-dlp fallback also failed: {e2}")
     
     print(f"Found {len(videos)} videos")
+    return videos
+
+
+def load_videos_from_manifest(manifest_path: Optional[str] = None, limit: Optional[int] = None) -> List[Dict[str, str]]:
+    """
+    Load videos from an existing manifest file instead of fetching from YouTube.
+
+    Args:
+        manifest_path: Path to manifest file, or None to auto-detect
+        limit: Maximum number of videos to return
+
+    Returns:
+        List of video dicts with video_id, title, url
+    """
+    # Auto-detect manifest path
+    if manifest_path is None or manifest_path == 'auto':
+        manifest_path = Path(__file__).parent.parent / "data" / "video_manifest.json"
+    else:
+        manifest_path = Path(manifest_path)
+
+    if not manifest_path.exists():
+        print(f"Manifest file not found: {manifest_path}")
+        return []
+
+    print(f"Loading videos from manifest: {manifest_path}")
+
+    with open(manifest_path) as f:
+        manifest = json.load(f)
+
+    videos = []
+    for v in manifest.get("videos", []):
+        # Handle both 'id' and 'video_id' formats
+        video_id = v.get("video_id") or v.get("id")
+        if not video_id:
+            continue
+
+        videos.append({
+            "video_id": video_id,
+            "title": v.get("title", f"Video {video_id}"),
+            "url": v.get("url", f"https://www.youtube.com/watch?v={video_id}"),
+        })
+
+        if limit and len(videos) >= limit:
+            break
+
+    channel = manifest.get("channel", "unknown")
+    print(f"Loaded {len(videos)} videos from {channel} (manifest: {manifest.get('total_videos', '?')} total)")
+
     return videos
 
 
@@ -490,11 +539,14 @@ Examples:
   python run_extraction.py --resume          # Resume from last checkpoint
   python run_extraction.py --retry-failed    # Retry previously failed videos
   python run_extraction.py --status          # Show current progress
+  python run_extraction.py --from-manifest   # Use existing video_manifest.json
         """
     )
     parser.add_argument("--limit", type=int, help="Limit number of videos to process")
     parser.add_argument("--resume", action="store_true", help="Resume from checkpoint")
     parser.add_argument("--retry-failed", action="store_true", help="Retry previously failed videos")
+    parser.add_argument("--from-manifest", type=str, nargs='?', const='auto',
+                        help="Load videos from manifest file instead of YouTube. Use 'auto' or provide path.")
     parser.add_argument("--dry-run", action="store_true", help="List videos without processing")
     parser.add_argument("--no-audio", action="store_true", help="Skip audio extraction")
     parser.add_argument("--force", action="store_true", help="Force run even if another instance running")
@@ -669,7 +721,7 @@ Examples:
         if not failed:
             print("No failed videos to retry!")
             sys.exit(0)
-        
+
         videos = [
             {
                 "video_id": v["id"],
@@ -679,10 +731,14 @@ Examples:
             for v in failed
         ]
         print(f"Retrying {len(videos)} failed videos...")
-        
+
         # Clear failed list
         checkpoint["failed_videos"] = []
         save_checkpoint(checkpoint)
+    elif args.from_manifest:
+        # Load videos from existing manifest file (bypasses YouTube fetch)
+        manifest_path = None if args.from_manifest == 'auto' else args.from_manifest
+        videos = load_videos_from_manifest(manifest_path, limit=args.limit)
     else:
         videos = get_channel_videos(channel_url, limit=args.limit)
     
