@@ -56,7 +56,7 @@
     "@types/leaflet": "^1.9.16",
     "@types/nodemailer": "^6.4.17",
     "autoprefixer": "^10.4.21",
-    "axios": "^1.8.2",
+    "axios": "^1.15.0",
     "bcryptjs": "^3.0.2",
     "cheerio": "^1.0.0",
     "child_process": "^1.0.2",
