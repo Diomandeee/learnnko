@@ -128,8 +128,9 @@ const DEFAULT_FILTERS: InscriptionFilters = {
 // Module-level subscription channel (not persisted)
 let realtimeChannel: RealtimeChannel | null = null;
 
-const EXTERNAL_INSCRIPTION_HTTP_BASE =
-  process.env.NEXT_PUBLIC_INSCRIPTION_HTTP_URL || 'https://mac4.tail226fc2.ts.net';
+const EXTERNAL_INSCRIPTION_HTTP_BASE = (
+  process.env.NEXT_PUBLIC_INSCRIPTION_HTTP_URL || 'https://mac4.tail226fc2.ts.net'
+).replace(/\\n/g, '').trim();
 
 // Claim type index for converting DB rows
 const CLAIM_TYPE_INDEX: (
