@@ -158,7 +158,12 @@ export function InscriptionTicker({
     loadRecentInscriptions(maxItems);
     subscribeToLiveInscriptions();
 
+    const interval = setInterval(() => {
+      loadRecentInscriptions(maxItems);
+    }, 2000);
+
     return () => {
+      clearInterval(interval);
       unsubscribeFromLiveInscriptions();
     };
   }, [loadRecentInscriptions, subscribeToLiveInscriptions, unsubscribeFromLiveInscriptions, maxItems]);

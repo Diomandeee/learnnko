@@ -13,6 +13,7 @@ import {
   type ClaimType,
   type InscriptionFilters,
   type InscriptionStats,
+  CLAIM_SIGILS,
 } from '@/lib/inscription/types';
 import { getSupabase, saveInscription, isSupabaseConfigured } from '@/lib/supabase/client';
 
@@ -127,6 +128,9 @@ const DEFAULT_FILTERS: InscriptionFilters = {
 // Module-level subscription channel (not persisted)
 let realtimeChannel: RealtimeChannel | null = null;
 
+const EXTERNAL_INSCRIPTION_HTTP_BASE =
+  process.env.NEXT_PUBLIC_INSCRIPTION_HTTP_URL || 'https://mac4.tail226fc2.ts.net';
+
 // Claim type index for converting DB rows
 const CLAIM_TYPE_INDEX: (
   | 'stabilize'
@@ -178,6 +182,77 @@ function rowToInscription(row: any): Inscription {
     createdAt: row.created_at,
     sessionId: row.session_id,
   };
+}
+
+function claimTypeFromExternalRow(row: Record<string, unknown>): ClaimType {
+  const direction = row.direction;
+  if (typeof direction === 'string' && CLAIM_TYPE_INDEX.includes(direction as ClaimType)) {
+    return direction as ClaimType;
+  }
+
+  const symbol = row.symbol;
+  if (typeof symbol === 'string') {
+    const match = Object.entries(CLAIM_SIGILS).find(([, sigil]) => sigil === symbol);
+    if (match) return match[0] as ClaimType;
+  }
+
+  return 'stabilize';
+}
+
+function externalRowToInscription(row: Record<string, unknown>): Inscription {
+  const createdAtRaw = row.createdAt ?? row._creationTime ?? Date.now();
+  const createdAtMs =
+    typeof createdAtRaw === 'number'
+      ? createdAtRaw
+      : typeof createdAtRaw === 'string'
+        ? Date.parse(createdAtRaw)
+        : Date.now();
+
+  const claimType = claimTypeFromExternalRow(row);
+  const symbol = typeof row.symbol === 'string' ? row.symbol : CLAIM_SIGILS[claimType];
+
+  return {
+    id: String(row._id ?? row.id ?? `${claimType}-${createdAtMs}`),
+    claimType,
+    nkoText: typeof row.surfaceText === 'string' && row.surfaceText.length > 0 ? row.surfaceText : symbol,
+    timestampMs: createdAtMs,
+    window: null,
+    confidence: typeof row.confidence === 'number' ? row.confidence : 0,
+    place: undefined,
+    basinId: undefined,
+    provenance: {
+      fusionFrameId: 0,
+      sensorFrameIds: [],
+      claimIr: {
+        source: row.source ?? 'motion',
+        behaviorVector: row.behaviorVector ?? [],
+        direction: row.direction ?? null,
+        opacity: row.opacity ?? null,
+      },
+    },
+    createdAt: new Date(createdAtMs).toISOString(),
+    sessionId: typeof row.sessionId === 'string' ? row.sessionId : undefined,
+  };
+}
+
+async function fetchExternalInscriptions(limit: number): Promise<Inscription[] | null> {
+  if (!EXTERNAL_INSCRIPTION_HTTP_BASE) return null;
+
+  try {
+    const res = await fetch(
+      `${EXTERNAL_INSCRIPTION_HTTP_BASE}/inscription/recent?limit=${limit}`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    if (!data?.ok || !Array.isArray(data.inscriptions)) return null;
+
+    return data.inscriptions.map((row: Record<string, unknown>) => externalRowToInscription(row));
+  } catch (error) {
+    console.warn('[InscriptionStore] External inscription feed unavailable:', error);
+    return null;
+  }
 }
 
 // =====================================================
@@ -427,6 +502,23 @@ export const useInscriptionStore = create<InscriptionState>()(
         set({ isLoadingRecent: true });
 
         try {
+          const externalInscriptions = await fetchExternalInscriptions(limit);
+          if (externalInscriptions && externalInscriptions.length > 0) {
+            const existingIds = new Set(liveInscriptions.map((i) => i.id));
+            const newInscriptions = externalInscriptions.filter((i) => !existingIds.has(i.id));
+
+            set({
+              liveInscriptions: [...newInscriptions, ...liveInscriptions].slice(0, limit),
+              isLoadingRecent: false,
+              connectionStatus: 'connected',
+              isConnected: true,
+              connectionError: null,
+            });
+
+            get().computeStats();
+            return;
+          }
+
           const supabase = getSupabase();
 
           const { data, error } = await supabase
